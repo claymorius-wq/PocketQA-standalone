@@ -10,15 +10,24 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 |---|---|---|
 | 0 Foundation | lead | **APPROVED** by pqa-qa (round 2, plus a targeted re-review of post-approval fixes). No open P0–P2. Initial commit on `main`. P3 follow-ups are carried below. |
 | 1 S0 capture spike (real device) | mobile | **blocked:** no physical Android device attached (`adb devices` empty). Emulator evidence will be labeled as emulator. |
-| 2 Domain + contracts | backend | not started |
-| 3 Local API | backend | not started |
+| 2 Domain + contracts | lead (backend hat) | **APPROVED** by pqa-qa (r2, plus r3 targeted). Merged to `main`. Domain 156 tests; state machines at 100% branch coverage. |
+| 3 Local API | lead (backend hat) | **APPROVED** and merged. 238 API tests: authz matrix, lifecycle, evidence, wallet/devnet (fake RPC), log redaction, config/bind, export/delete. Real-server smoke test on 127.0.0.1. |
 | 4 App shell + flows (Gate A) | mobile | not started |
 | 5 Android recorder (Gate B1) | mobile | not started |
 | 6 Devnet wallet (Gate B2) | wallet | not started |
-| 7 Admin/disputes/export/deletion | backend + mobile | not started |
+| 7 Admin/disputes/export/deletion | backend + mobile | API side approved and merged (disputes with 7-day window, moderation, audit, export, delete, ADR 0002). UI pending (Phase 4). |
 | 8 Independent QA | qa | not started |
 
-## Carried P3 follow-ups (from the Phase 0 reviews)
+## Carried P3 follow-ups
+
+From Phase 2-3:
+- Error-mapping test should also assert the log line.
+- Account deletion removes the counterparty's demo-transfer history (documented in ADR 0002).
+- No admin tool to force a decision on a stuck submission (ADR 0002 limitation).
+- 100 MB per-file and 500 MB per-participation caps are untested.
+- The API layer was written before its tests. This was disclosed, and mutation checks compensate.
+
+From Phase 0:
 - Plan and handoff status lines are stale. **Hamza:** the lead's edit was denied.
 - Exact command text for 2 evidence lines; eslint/@eslint/js/typescript rows cite the lockfile.
 - Phase 3: redact `/media/` by matched route, not raw string, and add an encoded-path test.
@@ -28,6 +37,10 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 - Phase 6: SIWS domain vs. MWA app identity URI, from one constant, verified against Solana Mobile docs.
 
 ## Log
+
+### 2026-10-02: Phase 2-3 merged
+- Branch `feat/domain-api` got 3 review rounds from pqa-qa: CHANGES_REQUIRED (3×P2) → APPROVE → APPROVE (targeted).
+- Fixes: 7-day dispute window (reject-then-close abuse), deletion PII scrub, copy lint on all builder and admin text, MP4 brand allowlist, upload race re-checks, timing-safe login, token revocation on logout and deletion, finalized commitment, constraint-error mapping, no-echo admin password prompt.
 
 ### 2026-10-02 (round 2)
 - Fixed every round-1 finding:

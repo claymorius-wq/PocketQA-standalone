@@ -76,3 +76,25 @@ Notes:
 - `lint` runs real ESLint (`eslint .` at the root, typescript-eslint recommended) over `scripts/` and `packages/`.
 - So far, `typecheck` covers only `packages/contracts`. Each new package adds its own `typecheck` script.
 - Superseded: the round-1 entry (Node 25.4.0, 2 scanner tests and 7 contract tests) was replaced after independent review. Node 25 is EOL.
+
+## 2026-10-02: Phase 2-3, domain + API (lead, `wX:p1`, branch `feat/domain-api`)
+
+- `pnpm verify` → EXIT=0. Full output: `docs/reviews/phase2-3/pnpm-verify.txt`.
+  - check:secrets: 88 files clean.
+  - Scanner self-test 7/7, contracts 14/14.
+  - domain 156/156, with the coverage thresholds met.
+  - api 238/238 across 8 files.
+- Red runs before the fixes:
+  - Domain: all 8 test files failed with "Cannot find module" before any implementation existed.
+  - Review fixes: 7 of 8 tests in `review-fixes.test.ts` failed before the fixes.
+  - The error-mapping test failed against the old mapping (`1 failed | 10 passed (11)`).
+- Mutation checks, as listed in `docs/reviews/phase2-3/candidate.md`: M3 → 11 failures, M5 → 2, M6 → 1, M7 → 66, M8 → 1. Removing both evidence-freeze layers → 2 failures; removing both redaction layers → 1.
+- Real server on `127.0.0.1:8799` with a scratch data dir:
+  - `lsof` shows the server listening on `127.0.0.1:8799`.
+  - `/health` returned ok.
+  - register and `/me` returned the user JSON with no password fields.
+  - `/ai/status` returned `available:false`.
+  - Origin `https://evil.example` got no ACAO header; `http://localhost:8081` was allowed.
+  - The server log had 0 matches for the token, "bearer", or the password.
+- Redacted log lines captured for `/media/<token>` and `/%6Dedia/<token>`: both show `"url":"/media/[redacted]"`.
+- `create-admin` with the password piped on stdin printed "Admin account created." A second run printed "An account with that email already exists." and exited 1.
