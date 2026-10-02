@@ -34,6 +34,9 @@ Pocket QA is a buyer-funded, real-device mobile usability testing product. Its s
    - Publishing a study reserves `reward × slots`.
    - A slot's credits are committed while a participation is consented, in progress, submitted or disputed.
    - Approval credits the tester exactly once. A dispute overturned after rejection credits once via `dispute_credit`.
+   - **Dispute window.** A rejected tester has 7 days from the decision to dispute.
+     - During the window the rejection keeps its reward on hold, and the study can't close. A builder therefore can't reject and then close to remove the tester's recourse.
+     - After the window, the hold is released.
    - Withdrawal and closing release the credits.
    - Nothing is ever labeled "paid".
 
@@ -56,7 +59,7 @@ Pocket QA is a buyer-funded, real-device mobile usability testing product. Its s
    - A builder may send `DEVNET_DEMO_LAMPORTS` to the linked wallet of an approved tester.
    - When the server creates the transfer intent, it fixes the sender (the builder's linked wallet), the recipient (the tester's linked wallet) and the amount. Expected values never come from the request.
    - The client submits only the signature it claims to have sent.
-   - The server marks the transfer `confirmed` only after it fetches the transaction from devnet and verifies four things: the genesis hash, that the transaction succeeded, a system transfer of exactly that sender, recipient and amount, and a block time after the intent was created.
+   - The server marks the transfer `confirmed` only after it fetches the transaction from devnet at `finalized` commitment and verifies four things: the genesis hash, that the transaction succeeded, a system transfer of exactly that sender, recipient and amount, and a block time after the intent was created.
    - A signature can be used only once across all transfers.
    - The UI labels the whole feature "Devnet demo · no real value".
 

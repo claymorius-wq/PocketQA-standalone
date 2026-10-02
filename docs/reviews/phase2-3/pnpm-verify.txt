@@ -1,0 +1,71 @@
+> pocket-qa@ verify /Users/hamzadiaz/Projects/pocket-qa
+> pnpm check:secrets && pnpm typecheck && pnpm lint && pnpm test
+> pocket-qa@ check:secrets /Users/hamzadiaz/Projects/pocket-qa
+> node scripts/check-secrets.mjs
+check:secrets passed: 88 committable files scanned, no findings.
+> pocket-qa@ typecheck /Users/hamzadiaz/Projects/pocket-qa
+> pnpm -r --if-present typecheck
+Scope: 3 of 4 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+> pocket-qa@ lint /Users/hamzadiaz/Projects/pocket-qa
+> eslint .
+> pocket-qa@ test /Users/hamzadiaz/Projects/pocket-qa
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+✔ flags known token shapes (1.014875ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.062ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.235583ms)
+✔ allow marker covers only its own line (0.0785ms)
+✔ forbidden paths (0.259042ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (144.571208ms)
+✔ CLI still runs when invoked through a symlink (48.145041ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 226.194167
+Scope: 3 of 4 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  14 passed (14)
+packages/contracts test:    Start at  23:08:51
+packages/contracts test:    Duration  99ms (import 49%, transform 39%, tests 8%, worker 3%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  9 passed (9)
+packages/domain test:       Tests  156 passed (156)
+packages/domain test:    Start at  23:08:51
+packages/domain test:    Duration  222ms (transform 43%, import 32%, worker 17%, tests 9%)
+packages/domain test:  % Coverage report from v8
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.45 |    99.21 |     100 |   98.58 |                   
+packages/domain test:  copy.ts          |   93.33 |    83.33 |     100 |     100 | 33                
+packages/domain test:  wallet.ts        |   93.54 |      100 |     100 |      90 | 44,52             
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.45% ( 191/194 )
+packages/domain test: Branches     : 99.21% ( 127/128 )
+packages/domain test: Functions    : 100% ( 44/44 )
+packages/domain test: Lines        : 98.58% ( 139/141 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/api test$ vitest run
+apps/api test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/apps/api
+apps/api test:  Test Files  8 passed (8)
+apps/api test:       Tests  238 passed (238)
+apps/api test:    Start at  23:08:52
+apps/api test:    Duration  808ms (tests 69%, import 18%, transform 12%)
+apps/api test: Done
+EXIT=0
