@@ -1,0 +1,7 @@
+appId: com.reshareai.pocketqa
+---
+- tapOn:
+    text: "Allow"
+    optional: true
+- assertVisible: "Share your screen with Pocket QA?"
+- tapOn: "Cancel"

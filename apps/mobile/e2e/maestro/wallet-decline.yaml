@@ -1,0 +1,12 @@
+# Gate B2 (emulator): declining the wallet connection links nothing and says so.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-wallet.yaml
+- assertVisible: "wants to connect"
+- tapOn: "Cancel"
+- scrollUntilVisible:
+    element:
+      id: wallet-error
+- assertVisible: ".*declined or closed. Nothing was linked.*"
+- assertVisible: "NOT LINKED"
+- takeScreenshot: wallet-declined

@@ -47,3 +47,4 @@ id.json
 .vscode/
 *.log
 apps/mobile/dist-web/
+apps/mobile/e2e/maestro/.results/

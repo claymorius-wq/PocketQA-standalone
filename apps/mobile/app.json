@@ -7,8 +7,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.reshareai.pocketqa",
-      "edgeToEdgeEnabled": true
+      "package": "com.reshareai.pocketqa"
     },
     "ios": {
       "bundleIdentifier": "com.reshareai.pocketqa",
@@ -18,6 +17,6 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image"]
+    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image", "./plugins/withLocalhostCleartext"]
   }
 }

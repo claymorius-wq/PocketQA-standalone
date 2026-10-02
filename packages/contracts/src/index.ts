@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.2.0';
+export const CONTRACT_VERSION = '0.2.1';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 /** Bearer session token travels in this header; never in URLs, never logged. */
@@ -356,12 +356,20 @@ export const DeleteMeBody = z.object({ confirm: z.literal('DELETE MY ACCOUNT') }
 export const SOLANA_DEVNET_CHAIN = 'solana:devnet' as const;
 export const SOLANA_DEVNET_GENESIS_HASH = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
 export const WALLET_NONCE_TTL_SECONDS = 300;
+/**
+ * The one SIWS domain: the server puts it in every sign-in message and the app derives
+ * its MWA identity URI from it (not configurable, so the two can never diverge).
+ */
+export const DEFAULT_SIWS_DOMAIN = 'pocketqa.local';
+export const appIdentityUri = (domain: string) => `https://${domain}`;
 
 export const WalletNonceBody = z.object({ address: Base58Address });
 /**
  * Server-issued SIWS input, bound server-side to (user, address, nonce, domain, chain,
- * issuedAt, expiresAt). The app passes it to MWA `signIn` (preferred: the wallet shows
- * the domain) or renders it with `buildSiwsMessage` for `signMessages`.
+ * issuedAt, expiresAt). The app renders it with `buildSiwsMessage` and has the wallet sign
+ * that exact text via MWA `signMessages` (the wallet displays it; it performs no domain
+ * check of its own). Follow-up: MWA `sign_in_payload` would need the nonce issued before
+ * the address is known (ADR 0003).
  */
 export const SiwsInput = z.object({
   domain: z.string().min(1).max(253),

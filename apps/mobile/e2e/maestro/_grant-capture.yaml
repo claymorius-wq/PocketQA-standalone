@@ -1,0 +1,14 @@
+# Android 14+ system consent dialog (text observed on Android 16 / API 36 emulator).
+# Chooses "Share entire screen" so the clip shows Pocket QA itself, then confirms.
+appId: com.reshareai.pocketqa
+---
+# Android 13+: Pocket QA asks for notifications first (the recording indicator).
+- tapOn:
+    text: "Allow"
+    optional: true
+- assertVisible: "Share your screen with Pocket QA?"
+- takeScreenshot: os-consent-dialog
+- tapOn: "Share one app"
+- tapOn: "Share entire screen"
+- takeScreenshot: os-consent-entire-screen
+- tapOn: "Share screen"

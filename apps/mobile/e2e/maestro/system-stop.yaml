@@ -1,0 +1,30 @@
+# Gate B1: a stop from the system UI (Android 16 status-bar "sharing" chip → "Stop sharing")
+# still finalizes the clip; the app keeps it for review and says why recording ended.
+# Note: on the API 36 emulator a screen lock turned the capture display OFF but did not
+# end the projection, so the lock path is documented, not asserted here.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop
+- swipe:
+    direction: UP
+- tapOn:
+    point: "22%,1%"
+- assertVisible: "Stop sharing screen?"
+- takeScreenshot: status-bar-stop-dialog
+- tapOn: "Stop sharing"
+- scrollUntilVisible:
+    element:
+      id: recording-stopped
+- takeScreenshot: system-stopped-clip-kept
+- scrollUntilVisible:
+    element:
+      id: segment-recorded
+- scrollUntilVisible:
+    element:
+      id: record-start
+    direction: UP

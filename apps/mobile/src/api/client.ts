@@ -39,8 +39,15 @@ async function send(method: string, path: string, init: { body?: BodyInit; json?
   let res: globalThis.Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { method, headers, ...(body !== undefined ? { body } : {}) });
-  } catch {
-    throw new ApiError('OFFLINE', 'Can’t reach the Pocket QA server. Check that the local API is running.', 0);
+  } catch (e) {
+    // Only genuine network failures are "offline"; anything else (e.g. an unsupported
+    // request body) must surface as a real error instead of being hidden.
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/network|failed to fetch|fetch failed|ECONNREFUSED|timed? ?out|abort/i.test(msg)) {
+      throw new ApiError('OFFLINE', 'Can’t reach the Pocket QA server. Check that the local API is running.', 0);
+    }
+    console.warn('[pocketqa] request failed before reaching the server:', msg);
+    throw new ApiError('BAD_RESPONSE', `The request couldn’t be sent (${msg}).`, 0);
   }
   const text = await res.text();
   let data: unknown;
@@ -73,11 +80,15 @@ export async function api<N extends RouteName>(
   return parsed.data as Response<N>;
 }
 
-/** Multipart evidence upload; `file` is a web File/Blob or a native `{uri,name,type}` descriptor. */
-export async function uploadEvidence(participationId: string, meta: Record<string, unknown>, file: Blob | { uri: string; name: string; type: string }) {
+/**
+ * Multipart evidence upload. `file` must be a real Blob: the web File, or on native an
+ * expo-file-system `File` (which implements Blob). Expo's fetch does not support React
+ * Native's legacy `{uri,name,type}` FormData parts.
+ */
+export async function uploadEvidence(participationId: string, meta: Record<string, unknown>, file: Blob, filename: string) {
   const form = new FormData();
   form.append('meta', JSON.stringify(meta)); // must precede `file`
-  form.append('file', file as unknown as Blob);
+  form.append('file', file, filename);
   const data = await send('POST', buildPath(routes.uploadEvidence.path, { id: participationId }), { body: form });
   const parsed = routes.uploadEvidence.response.safeParse(data);
   if (!parsed.success) throw new ApiError('BAD_RESPONSE', 'Unexpected upload response.', 200);

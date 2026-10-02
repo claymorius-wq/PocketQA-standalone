@@ -1,10 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { Link2, Unlink, Wallet } from 'lucide-react-native';
-import { api, ApiError } from '../api/client';
+import { api } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { walletCapability } from '../lib/capability';
 import { useTheme } from '../theme/ThemeProvider';
 import { Button, Card, Notice, Row, StatusPill, Text } from '../ui';
+import { walletErrorText } from './errors';
 import { linkWalletWithMwa } from './link';
 
 export function WalletSection() {
@@ -35,7 +36,7 @@ export function WalletSection() {
         <Notice tone="info" title="Unavailable on this device" testID="wallet-unavailable">{cap.reason}</Notice>
       )}
       {link.error || unlink.error ? (
-        <Notice tone="danger" title="Wallet action failed">{((link.error || unlink.error) as ApiError | Error).message}</Notice>
+        <Notice tone="danger" title="Wallet action failed" testID="wallet-error">{walletErrorText(link.error || unlink.error)}</Notice>
       ) : null}
     </Card>
   );

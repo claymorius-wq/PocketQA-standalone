@@ -1,0 +1,30 @@
+# Shared: sign in as the seeded tester and open a session on the seeded study.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+    # Maestro grants every runtime permission by default; NOTIFICATIONS lets a flow deny it.
+    permissions:
+      notifications: ${NOTIFICATIONS || 'allow'}
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- tapOn: ${STUDY}
+- scrollUntilVisible:
+    element:
+      id: consent-checkbox
+- tapOn:
+    id: consent-checkbox
+- tapOn:
+    id: consent-submit
+- tapOn:
+    id: session-start
+- scrollUntilVisible:
+    element:
+      id: record-start
