@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Pocket QA",
+    "slug": "pocket-qa",
+    "scheme": "pocketqa",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "android": {
+      "package": "com.reshareai.pocketqa",
+      "edgeToEdgeEnabled": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.reshareai.pocketqa",
+      "supportsTablet": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image"]
+  }
+}

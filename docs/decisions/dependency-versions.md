@@ -40,6 +40,22 @@ Scope of verification: registry existence, exact version, engines/peer compatibi
 | @playwright/test | 1.63.0 | E |
 | @noble/curves | 2.4.0 | E (server-side ed25519) |
 
+## Mobile app (resolved in the lockfile at Phase 4)
+
+`npx expo install` resolved these for SDK 57. `~` ranges are kept for Expo-managed modules, because that is Expo's own compatibility contract. The exact versions are pinned by `pnpm-lock.yaml`; the versions below were read from the installed `package.json` files.
+
+| Package | Resolved |
+|---|---|
+| expo / expo-router | 57.0.26 / 57.0.24 |
+| expo-secure-store, expo-document-picker, expo-video, expo-image, expo-file-system, expo-dev-client | 57.0.4, 57.0.3, 57.0.5, 57.0.5, 57.0.7, 57.0.19 |
+| react-native-screens / react-native-safe-area-context / react-native-svg | 4.26.2 / 5.7.0 / 15.15.4 |
+| react-native-web | 0.21.3 (exact) |
+| @react-native-async-storage/async-storage | 2.2.0 (SDK 57 pin) |
+| @tanstack/react-query | 5.104.1 (exact) |
+| lucide-react-native | 1.50.0 (exact) |
+| jest-expo / jest / @testing-library/react-native | 57.0.5 / 29.7.0 / 14.0.1 (exact) |
+| @playwright/test | 1.63.0 (exact) |
+
 ## Candidates only (unverified; Phase 6 decides)
 
 | Package | Candidate | Note |
