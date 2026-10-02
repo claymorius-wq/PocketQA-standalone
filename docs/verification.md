@@ -98,3 +98,17 @@ Notes:
   - The server log had 0 matches for the token, "bearer", or the password.
 - Redacted log lines captured for `/media/<token>` and `/%6Dedia/<token>`: both show `"url":"/media/[redacted]"`.
 - `create-admin` with the password piped on stdin printed "Admin account created." A second run printed "An account with that email already exists." and exited 1.
+
+## 2026-10-02: Phase 4, Gate A (lead, branch `feat/mobile`)
+
+- `pnpm verify` → EXIT=0. Full output: `docs/reviews/phase4/pnpm-verify.txt`.
+  - mobile jest 99/99: contrast in both themes, upload queue (including the in-flight removal race and cancellation), capability matrix, a banned-copy scan of all UI strings, and focus refetch.
+  - api 238/238, domain 156/156, contracts 14/14; secrets 167 files clean.
+- `cd apps/mobile && npx playwright test` → 4 passed. Output: `docs/reviews/phase4/playwright.txt`. Each run uses a fresh API on 127.0.0.1:8787 with a temp data dir and a fresh `expo export` web build on 127.0.0.1:8090.
+- Red runs before the fixes:
+  - focus-refetch with the old dependency: `Expected number of calls: 0 / Received: 5`.
+  - The upload race test: `1 failed, 3 passed`.
+  - The removeSegment test: `1 failed, 5 passed`.
+- Earlier E2E passes against the Metro dev server were **discarded** after I found the dev bundle was stale.
+- Screenshots: 23 PNGs in `docs/reviews/gate-a/`.
+- Emulator `Medium_Phone_API_36.1` booted headless (Android 16, API 36). Solana Mobile's official `mock-mwa-wallet` (commit d444aff, built with `./gradlew :app:assembleDebug` in scratch) installed as `com.solana.mwallet`. These are used in Phases 5 and 6.

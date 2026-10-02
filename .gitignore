@@ -46,3 +46,4 @@ id.json
 .idea/
 .vscode/
 *.log
+apps/mobile/dist-web/
