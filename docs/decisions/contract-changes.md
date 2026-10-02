@@ -1,0 +1,8 @@
+# Contract change log (`packages/contracts`)
+
+Owner: backend, after the foundation commit. Each change to `packages/contracts/src` gets one entry here: date, author role, the change, and which consumers it affects. Also give the build lead a heads-up so mobile and wallet can rebase.
+
+| Date | Role | Change | Consumers |
+|---|---|---|---|
+| 2026-10-02 | lead | v0.1.0 initial contract (draft, never committed) | n/a |
+| 2026-10-02 | lead | v0.2.0 after independent-qa round 1. Routes now bind `auth`, `scope`, `body` and `response`. Added `TesterStudyView` and `/tester/studies/:id`. Added the SIWS input, `buildSiwsMessage`, and `WalletLinkBody{signedMessage, signature}`. Devnet transfers are now server-owned intents: `POST /devnet/transfers {participationId}`, then `POST /devnet/transfers/:id/signature`. Added `withdrawn` status and the withdraw route. Added user moderation, the audit list, the export bundle, and the delete confirmation. Added evidence caps and the playback TTL. Added `REDACTED_PATH_PREFIXES`/`redactPath`. Renamed `StudyBudget.paid` to `awarded` and added `committed`. Switched to Zod 4 `z.email()`/`z.iso.datetime()`. Extras beyond plan §5.2 are listed in ADR 0001. | all |
