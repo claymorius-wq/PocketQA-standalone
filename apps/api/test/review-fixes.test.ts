@@ -104,6 +104,20 @@ describe('finding 3: earnings / fake-payment wording in all builder and admin te
   });
 });
 
+describe('final QA P2: no fake-payment wording from builders', () => {
+  it('rejects "paid", payout and currency claims in approve notes and findings', async () => {
+    const { builder, tester, participationId } = await seeded(t);
+    await t.req('POST', `/participations/${participationId}/submit`, tester.token);
+    for (const note of ['You’ve been paid', "You've been paid — payout of 50 USDC sent to your wallet", 'Bonus $20 for you']) {
+      const r = await t.req('POST', `/participations/${participationId}/approve`, builder.token, { note });
+      expect(r.status, note).toBe(400);
+    }
+    const f = await t.req('POST', `/participations/${participationId}/findings`, builder.token, { title: 'Payout processed', severity: 'info', description: 'ok text' });
+    expect(f.status).toBe(400);
+    expect((await t.req('POST', `/participations/${participationId}/approve`, builder.token, { note: 'Great session, thanks.' })).status).toBe(200);
+  });
+});
+
 describe('P3 fixes', () => {
   it('accepts only real MP4 brands for ftyp files (HEIC/AVIF/MOV are not MP4)', async () => {
     const { tester, participationId } = await seeded(t);

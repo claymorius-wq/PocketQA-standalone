@@ -197,3 +197,24 @@ POST /participations/:id/evidence 200   (exactly one)
 POST /wallet/nonce 200 → POST /wallet/link 200 → DELETE /wallet 200   (wallet-decline requested no nonce)
 wallet_nonces issued during run: [{ used: 1 }]
 ```
+
+## 2026-10-03: Phase 8 fixes (lead, branch `fix/final-qa`)
+
+**Copy rule (final QA P2).** The domain rules now cover `paid`/`payout`, "…to your wallet", and currency amounts, with negations allowed.
+```
+$ npx vitest run src/copy.test.ts (domain)           → Tests 3 passed (3)
+$ npx jest --ci __tests__/copy.test.ts (all UI strings) → Tests: 46 passed, 46 total
+$ apps/api review-fixes.test.ts with main's copy.ts → 1 failed | 9 passed (10)   (red)
+$ apps/api review-fixes.test.ts with the fix        → 10 passed (10)
+```
+
+**Web E2E** (now including the account-deletion UI): 5 passed. Output: `docs/reviews/final/playwright.txt`.
+
+**Final APK** (rebuilt with the domain change):
+```
+apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+51002616 bytes  sha256 82f214ece799d209ffac6ef7279977d68e9c10154ed4e040600b3fe90cbdce85
+$ WALLET_PIN=<test AVD pin> apps/mobile/e2e/maestro/run-native.sh   (run 20261003-014123)
+record-consent / record-decline / notifications-denied / remove-segment / system-stop /
+notification-stop / leave-while-recording / wallet-decline / wallet-link → all EXIT=0, active_projections=0
+```

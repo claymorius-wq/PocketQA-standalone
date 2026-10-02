@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <testsuites>
-  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="30.0">
-    <testcase id="wallet-decline" name="wallet-decline" classname="wallet-decline" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/wallet-decline.yaml" time="30.0" status="SUCCESS"/>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="32.0">
+    <testcase id="wallet-decline" name="wallet-decline" classname="wallet-decline" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/wallet-decline.yaml" time="32.0" status="SUCCESS"/>
   </testsuite>
 </testsuites>

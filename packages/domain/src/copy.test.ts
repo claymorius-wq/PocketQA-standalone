@@ -13,6 +13,13 @@ describe('copy linter', () => {
       'Free money airdrop',
       'Your payment is complete',
       'AI-generated insights about your app',
+      'You’ve been paid',
+      "You've been paid — payout of 50 USDC sent to your wallet",
+      'Payout processed',
+      'Payouts every Friday',
+      'We transferred 0.5 SOL to your wallet',
+      'Bonus: $20 for this task',
+      'Reward: 10 USDT',
     ]) {
       expect(lintCopy(text).length, text).toBeGreaterThan(0);
     }
@@ -26,6 +33,9 @@ describe('copy linter', () => {
       'Devnet demo · no real value',
       'Record your screen only while doing the tasks below.',
       'Rejected: no evidence for task 2.',
+      'Test credits are not paid out and have no cash value.',
+      'No payouts: rewards are test credits only.',
+      'Devnet demo transfer · not a reward payout',
     ]) {
       expect(lintCopy(text), text).toEqual([]);
     }
