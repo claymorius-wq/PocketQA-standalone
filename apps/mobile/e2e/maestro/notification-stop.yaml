@@ -1,0 +1,26 @@
+# Gate B1: the foreground notification's "Stop recording" action (the only stop control on
+# Android 10–14, which have no status-bar chip) ends capture and keeps the clip for review.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop
+# One swipe opens the notification shade (two would open full Quick Settings).
+- swipe:
+    start: 50%, 1%
+    end: 50%, 70%
+- assertVisible: "Pocket QA is recording your screen"
+- takeScreenshot: notification-with-stop-action
+- tapOn: "Stop recording"
+- pressKey: back
+- scrollUntilVisible:
+    element:
+      id: segment-recorded
+- takeScreenshot: notification-stopped-clip-kept
+- scrollUntilVisible:
+    element:
+      id: record-start
+    direction: UP

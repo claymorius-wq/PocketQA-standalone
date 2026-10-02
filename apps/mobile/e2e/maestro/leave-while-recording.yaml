@@ -1,0 +1,16 @@
+# Gate B1: capture never outlives the session screen. Start recording, leave the screen;
+# run-native.sh then asserts via adb that no projection is active.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop
+- back
+- assertVisible:
+    id: discover-screen
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: left-session-while-recording

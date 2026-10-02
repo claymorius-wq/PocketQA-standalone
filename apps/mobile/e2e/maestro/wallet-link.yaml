@@ -1,0 +1,24 @@
+# Gate B2 (emulator): link a devnet wallet over Mobile Wallet Adapter using Solana
+# Mobile's mock wallet (com.solana.mwallet), then unlink.
+# The mock wallet needs a device credential to sign; this AVD uses a test PIN.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _fresh-wallet.yaml
+- runFlow: _open-wallet.yaml
+- assertVisible: "wants to connect"
+- takeScreenshot: mock-wallet-connect
+- tapOn: "Connect"
+- assertVisible: ".*pocketqa.local wants you to sign in with your Solana account.*"
+- takeScreenshot: mock-wallet-sign-siws
+- tapOn: "Approve"
+- scrollUntilVisible:
+    element:
+      id: wallet-address
+- assertVisible: "LINKED"
+- takeScreenshot: wallet-linked
+- tapOn:
+    id: wallet-unlink
+- scrollUntilVisible:
+    element:
+      id: wallet-link
+- assertVisible: "NOT LINKED"

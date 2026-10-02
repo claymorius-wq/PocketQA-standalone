@@ -1,0 +1,13 @@
+# Gate B1: declining the OS dialog records nothing.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _decline-capture.yaml
+- assertVisible:
+    id: evidence-error
+- assertVisible: .*Nothing was recorded.*
+- takeScreenshot: consent-declined
+- assertNotVisible:
+    id: segment-recorded

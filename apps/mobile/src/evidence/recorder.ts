@@ -9,6 +9,10 @@ type NativeRecorder = {
   startAsync(): Promise<void>;
   stopAsync(): Promise<RecordedClip>;
   isRecording(): boolean;
+  /** Stops an active session, if any, and deletes its file (screen left mid-recording). */
+  discardAsync(): Promise<void>;
+  /** Deletes every recording file except an active session's (a system stop may have landed just before unmount). */
+  purgeAsync(): Promise<void>;
   addListener?(event: 'onStopped', cb: (e: { reason: 'user' | 'system' | 'error'; clip: RecordedClip | null }) => void): { remove(): void };
 };
 

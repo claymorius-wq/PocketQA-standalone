@@ -1,0 +1,47 @@
+# Gate B1: recording starts only after the OS consent dialog, and the clip lands in the
+# on-device review queue (not uploaded). Run: maestro test -e EMAIL=.. -e PASSWORD=.. -e STUDY=.. record-consent.yaml
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop
+- takeScreenshot: recording-in-progress
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: record-stop
+- tapOn:
+    id: record-stop
+- scrollUntilVisible:
+    element:
+      id: segment-recorded
+- scrollUntilVisible:
+    element:
+      text: .*video/mp4.*
+- takeScreenshot: clip-not-reviewed
+- scrollUntilVisible:
+    element:
+      id: segment-keep
+# Kept clips upload only on explicit request.
+- tapOn:
+    id: segment-keep
+- scrollUntilVisible:
+    element:
+      id: upload-kept
+- tapOn:
+    id: upload-kept
+- scrollUntilVisible:
+    element:
+      id: uploaded-evidence
+    timeout: 30000
+- assertVisible: .*Uploaded \(1\).*
+- scrollUntilVisible:
+    element:
+      text: .*Recording · video/mp4.*
+- takeScreenshot: clip-uploaded

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import { API_DEFAULT_PORT } from '@pocket-qa/contracts';
+import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN } from '@pocket-qa/contracts';
 
 export type Config = {
   host: '127.0.0.1' | '::1';
@@ -66,7 +66,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     port,
     dataDir,
     rpcUrl,
-    siwsDomain: env.POCKETQA_SIWS_DOMAIN || 'pocketqa.local',
+    // Fixed (not configurable) so it always matches the app's MWA identity URI.
+    siwsDomain: DEFAULT_SIWS_DOMAIN,
     aiProvider: env.POCKETQA_AI_PROVIDER ? env.POCKETQA_AI_PROVIDER : null,
   };
 }

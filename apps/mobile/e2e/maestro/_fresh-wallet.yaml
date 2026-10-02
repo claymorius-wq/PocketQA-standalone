@@ -1,0 +1,15 @@
+# Reset Solana Mobile's mock wallet (fresh ephemeral key) and unlock signing for 15 min
+# with the AVD's test device PIN (-e WALLET_PIN=...). Emulator-only test tooling.
+appId: com.solana.mwallet
+---
+- launchApp:
+    clearState: true
+- tapOn: "AUTHENTICATE"
+- extendedWaitUntil:
+    visible: "Log in to mwallet"
+    timeout: 10000
+- inputText: ${WALLET_PIN}
+- pressKey: Enter
+- extendedWaitUntil:
+    notVisible: "Log in to mwallet"
+    timeout: 10000

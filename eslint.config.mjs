@@ -22,11 +22,17 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly' },
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly', fetch: 'readonly' },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'off',
     },
+  },
+  {
+    // Expo config plugins are CommonJS modules loaded by the Expo CLI in Node.
+    files: ['apps/mobile/plugins/**/*.js'],
+    languageOptions: { sourceType: 'commonjs', globals: { require: 'readonly', module: 'writable' } },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
 );

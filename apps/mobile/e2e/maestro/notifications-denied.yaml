@@ -1,0 +1,19 @@
+# Android 13+: without the notification permission (the visible recording indicator and
+# its Stop action), Pocket QA refuses to start recording at all.
+appId: com.reshareai.pocketqa
+---
+- runFlow:
+    file: _open-session.yaml
+    env:
+      NOTIFICATIONS: deny
+- tapOn:
+    id: record-start
+- assertVisible: "Allow Pocket QA to send you notifications?"
+- takeScreenshot: notifications-permission-prompt
+- tapOn: "Don.t allow"
+- scrollUntilVisible:
+    element:
+      id: evidence-error
+- assertVisible: ".*Allow notifications for Pocket QA.*Nothing was recorded.*"
+- assertNotVisible: "Share your screen with Pocket QA?"
+- takeScreenshot: notifications-denied

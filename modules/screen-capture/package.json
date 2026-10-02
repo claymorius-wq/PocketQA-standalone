@@ -1,0 +1,8 @@
+{
+  "name": "pocketqa-screen-capture",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Consent-gated Android MediaProjection screen recorder for Pocket QA (Android 10+ only).",
+  "main": "src/index.ts",
+  "types": "src/index.ts"
+}

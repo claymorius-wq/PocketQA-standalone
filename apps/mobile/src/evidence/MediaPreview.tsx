@@ -6,7 +6,8 @@ import { radius } from '../theme/tokens';
 
 function Video({ uri, testID }: { uri: string; testID?: string }) {
   const player = useVideoPlayer(uri);
-  return <VideoView player={player} style={{ width: '100%', aspectRatio: 9 / 16, maxHeight: 420 }} nativeControls contentFit="contain" testID={testID} />;
+  // Centered portrait frame: a 9:16 clip capped at 420dp tall.
+  return <VideoView player={player} style={{ height: 420, aspectRatio: 9 / 16, alignSelf: 'center' }} nativeControls contentFit="contain" testID={testID} />;
 }
 
 export function MediaPreview({ uri, mimeType, testID }: { uri: string; mimeType: string; testID?: string }) {

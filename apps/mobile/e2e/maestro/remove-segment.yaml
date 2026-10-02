@@ -1,0 +1,25 @@
+# Gate B1: a recorded clip can be removed before upload and never appears as uploaded.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- swipe:
+    direction: UP
+- scrollUntilVisible:
+    element:
+      id: record-stop
+- tapOn:
+    id: record-stop
+- scrollUntilVisible:
+    element:
+      id: segment-remove
+- tapOn:
+    id: segment-remove
+- assertNotVisible:
+    id: segment-recorded
+- assertNotVisible:
+    id: upload-kept
+- assertVisible: .*No evidence uploaded yet.*
+- takeScreenshot: clip-removed

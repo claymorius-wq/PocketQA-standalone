@@ -112,3 +112,88 @@ Notes:
 - Earlier E2E passes against the Metro dev server were **discarded** after I found the dev bundle was stale.
 - Screenshots: 23 PNGs in `docs/reviews/gate-a/`.
 - Emulator `Medium_Phone_API_36.1` booted headless (Android 16, API 36). Solana Mobile's official `mock-mwa-wallet` (commit d444aff, built with `./gradlew :app:assembleDebug` in scratch) installed as `com.solana.mwallet`. These are used in Phases 5 and 6.
+
+## 2026-10-03: Phases 5-6, Android recorder and MWA link (lead, branch `feat/native`). EMULATOR ONLY
+
+Device: AVD `Medium_Phone_API_36.1` (`sdk_gphone64_arm64`, Android 16, API 36). No physical device. Wallet: Solana Mobile **mock** wallet `com.solana.mwallet`, built from mock-mwa-wallet commit d444aff.
+
+### Build
+```
+$ ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a   (JAVA_HOME=Android Studio JBR 21)
+BUILD SUCCESSFUL in 24s
+$ ls -la app-release.apk && shasum -a 256 app-release.apk
+51000412 Oct 3 00:36
+cfa929c247cfaab60c5b49760e34d3cc409c461153d0f5b22b0ae0d88ce960b3
+$ adb install -r app-release.apk → Success
+```
+
+### Recording state (during record-consent, first manual run)
+```
+$ adb shell dumpsys activity services com.reshareai.pocketqa
+  * ServiceRecord{... com.reshareai.pocketqa/expo.modules.pocketqascreencapture.ScreenCaptureService ...}
+    isForeground=true foregroundId=4711 types=0x00000020 foregroundNoti=Notification(channel=pocketqa-recording ... flags=ONGOING_EVENT|NO_CLEAR|FOREGROUND_SERVICE ...)
+$ adb shell dumpsys notification --noredact → android.title=String (Pocket QA is recording your screen)
+$ adb shell dumpsys media_projection → packageName: com.reshareai.pocketqa  type: TYPE_SCREEN_CAPTURE
+```
+
+### Uploaded clip (server side, after record-consent)
+```
+evidence: { kind: 'screen_recording', mime_type: 'video/mp4', size_bytes: 1361076, duration_ms: 5716, captured_on: 'android' }
+$ file <media file> → ISO Media, MP4 v2 [ISO 14496-14]
+```
+
+### Screen lock on this image
+```
+$ adb shell input keyevent KEYCODE_SLEEP → mWakefulness=Asleep
+$ adb shell dumpsys media_projection | grep -c packageName → 1        (projection still active)
+logcat: VirtualDisplayAdapter: Changing state of virtual display PocketQaCapture from ON to OFF
+```
+Status-bar chip → "Stop sharing" → `dumpsys media_projection | grep -c packageName` → 0, and logcat shows `Release VirtualDisplay PocketQaCapture`.
+
+### Wallet link (mock wallet)
+```
+API: /wallet/nonce 200 → /wallet/link 200
+wallet_links: [{ address: 'D9XZLRBjngUfC2VoSjKX6LVgSkxUJfopvF2yF8GrD9wN', linked_at: '2026-10-02T22:20:40.340Z' }]
+wallet_nonces (latest): [{ used: 1 }]
+Same wallet key from a second test account → /wallet/link 409, UI "This wallet is already linked to another account."
+```
+
+### Native gate run on the final APK
+```
+$ WALLET_PIN=<test AVD pin> apps/mobile/e2e/maestro/run-native.sh
+record-consent EXIT=0
+record-decline EXIT=0
+remove-segment EXIT=0
+system-stop EXIT=0
+wallet-decline EXIT=0
+wallet-link EXIT=0
+JUnit (6 files): tests="1" failures="0"
+```
+Curated screenshots and JUnit: `docs/reviews/gate-b-emulator/`.
+
+### Repo checks
+- `pnpm verify` → EXIT=0. Output: `docs/reviews/phase5-6/pnpm-verify.txt`. mobile 111/111.
+- Web regression: Playwright 4 passed (`docs/reviews/phase5-6/playwright.txt`).
+
+### Phases 5-6 round 3: final APK and run (2026-10-03)
+```
+APK 51001144 bytes, sha256 1c941c781e9e4fa529c46f2b2ca7b47dec5d48eb2d1a170a3da4ea7a67c0b02b
+$ WALLET_PIN=<test AVD pin> apps/mobile/e2e/maestro/run-native.sh     (run 20261003-012751)
+record-consent EXIT=0 active_projections=0
+record-decline EXIT=0 active_projections=0
+notifications-denied EXIT=0 active_projections=0
+remove-segment EXIT=0 active_projections=0
+system-stop EXIT=0 active_projections=0
+notification-stop EXIT=0 active_projections=0
+leave-while-recording EXIT=0 active_projections=0
+wallet-decline EXIT=0 active_projections=0
+wallet-link EXIT=0 active_projections=0
+```
+Server side, same run. Rows since the run start; API request log filtered to wallet and evidence routes.
+```
+evidence: [{ kind: 'screen_recording', mime_type: 'video/mp4', size_bytes: 1367648, duration_ms: 5241, captured_on: 'android' }]   ← the only upload in 9 flows
+file: ISO Media, MP4 v2 [ISO 14496-14]
+POST /participations/:id/evidence 200   (exactly one)
+POST /wallet/nonce 200 → POST /wallet/link 200 → DELETE /wallet 200   (wallet-decline requested no nonce)
+wallet_nonces issued during run: [{ used: 1 }]
+```

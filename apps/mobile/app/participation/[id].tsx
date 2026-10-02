@@ -5,7 +5,7 @@ import { File } from 'expo-file-system';
 import { useLocalSearchParams } from 'expo-router';
 import { Check, Circle, Flag, Paperclip, Play, Send, Square, Trash2, Upload, Video, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { PermissionsAndroid, Platform, View } from 'react-native';
 import { REWARD_DISCLAIMER, type Participation, type TesterStudyView } from '@pocket-qa/contracts';
 import { DISPUTE_WINDOW_MS, uploadQueue } from '@pocket-qa/domain';
 import { api, ApiError, uploadEvidence } from '../../src/api/client';
@@ -85,8 +85,10 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
   const cap = recordingCapability();
   const recorder = nativeRecorder();
   const [segments, setSegments] = useState<LocalSegment[]>([]);
-  const [recording, setRecording] = useState(false);
+  // Read the real state: a session may still be running from before a remount.
+  const [recording, setRecording] = useState(() => recorder?.isRecording() ?? false);
   const [error, setError] = useState<string | null>(null);
+  const [stopped, setStopped] = useState(false);
   const [busy, setBusy] = useState(false);
   // The ref is the source of truth so the uploader always sees the latest list (a removal
   // during an upload must win); React state mirrors it for rendering.
@@ -95,7 +97,8 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
     live.current = fn(live.current);
     setSegments(live.current);
   };
-  const pending = segments.filter((s) => s.state === 'recorded' || s.state === 'kept' || s.state === 'failed' || s.state === 'uploading').length;
+  const pending =
+    segments.filter((s) => s.state === 'recorded' || s.state === 'kept' || s.state === 'failed' || s.state === 'uploading').length + (recording ? 1 : 0);
   useEffect(() => onPendingChange(pending), [pending, onPendingChange]);
   // Leaving the screen discards anything not uploaded: stop the upload loop (it reads the
   // list through `get`, which returns nothing once cancelled) and delete the local copies.
@@ -103,6 +106,11 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
   useEffect(
     () => () => {
       cancelled.current = true;
+      // Capture never outlives the session screen: stop and delete an in-progress recording.
+      if (recorder) {
+        const discard = recorder.isRecording() ? recorder.discardAsync() : Promise.resolve();
+        void discard.then(() => recorder.purgeAsync()).catch(() => {});
+      }
       live.current.filter((s) => s.state !== 'uploaded' && s.state !== 'removed').forEach(deleteLocal);
     },
     [],
@@ -113,7 +121,8 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
     const sub = recorder?.addListener?.('onStopped', (e) => {
       setRecording(false);
       if (e.clip) addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: e.clip.mimeType, size: e.clip.sizeBytes, uri: e.clip.uri, durationMs: e.clip.durationMs });
-      if (e.reason === 'system') setError('Recording was stopped by the system. Your clip so far is below for review.');
+      if (e.reason === 'system') setStopped(true);
+      if (e.reason === 'error') setError('Recording failed. Nothing was recorded.');
     });
     return () => sub?.remove();
   }, [recorder]);
@@ -124,6 +133,16 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
 
   async function startRecording() {
     setError(null);
+    setStopped(false);
+    // Android 13+: the recording notification (with its Stop action) is the visible
+    // indicator on versions without a status-bar chip, so it must be allowed first.
+    if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+      const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      if (res !== PermissionsAndroid.RESULTS.GRANTED) {
+        setError('Allow notifications for Pocket QA so the recording indicator and its Stop button are visible. Nothing was recorded.');
+        return;
+      }
+    }
     try {
       await recorder!.startAsync();
       setRecording(true);
@@ -171,7 +190,8 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
         uploadEvidence(
           p.id,
           { kind: s.kind, capturedOn: s.capturedOn, clientSegmentId: s.id, ...(s.durationMs ? { durationMs: s.durationMs } : {}) },
-          s.file ?? { uri: s.uri, name: s.name, type: s.mimeType },
+          s.file ?? (new File(s.uri) as unknown as Blob),
+          s.name,
         ),
       update,
     );
@@ -198,6 +218,11 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
         <Notice tone="warning" title="Recording unavailable" testID="recording-unavailable">{cap.reason}</Notice>
       )}
       <Button label="Attach screenshot or clip" icon={Paperclip} variant="secondary" onPress={attach} testID="attach-evidence" />
+      {stopped ? (
+        <Notice tone="warning" title="Recording stopped" testID="recording-stopped">
+          Android stopped the recording (status-bar control or screen lock). Your clip so far is below for review.
+        </Notice>
+      ) : null}
       {error ? <Notice tone="danger" title="Evidence" testID="evidence-error">{error}</Notice> : null}
       {visible.length > 0 ? (
         <Notice tone="info" title="Review before upload">Nothing leaves this device until you keep it and tap Upload. Removed items are deleted here and never uploaded.</Notice>
@@ -331,7 +356,7 @@ function Session({ p, study }: { p: Participation; study: TesterStudyView }) {
         <Section title="Finish">
           {pendingEvidence > 0 ? (
             <Notice tone="warning" title="Evidence not uploaded yet" testID="pending-evidence">
-              {`Upload or remove ${pendingEvidence} item${pendingEvidence === 1 ? '' : 's'} before submitting. Submitting locks your evidence.`}
+              {`Stop any recording, then upload or remove ${pendingEvidence} item${pendingEvidence === 1 ? '' : 's'} before submitting. Submitting locks your evidence.`}
             </Notice>
           ) : null}
           <Button label="Submit for review" icon={Send} onPress={() => setConfirm('submit')} disabled={pendingEvidence > 0} testID="session-submit" />

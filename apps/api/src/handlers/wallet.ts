@@ -1,4 +1,4 @@
-import { DEVNET_DEMO_LAMPORTS, SOLANA_DEVNET_CHAIN, SOLANA_DEVNET_GENESIS_HASH, WALLET_NONCE_TTL_SECONDS, type DevnetTransfer, type SiwsInput } from '@pocket-qa/contracts';
+import { appIdentityUri, DEVNET_DEMO_LAMPORTS, SOLANA_DEVNET_CHAIN, SOLANA_DEVNET_GENESIS_HASH, WALLET_NONCE_TTL_SECONDS, type DevnetTransfer, type SiwsInput } from '@pocket-qa/contracts';
 import { type DomainError, verifyTransfer, verifyWalletLink, type NonceRecord } from '@pocket-qa/domain';
 import { ownerParticipation, partyParticipation } from '../access';
 import { me, type Ctx, type Handler } from '../context';
@@ -105,7 +105,7 @@ export const walletHandlers = {
       domain,
       address: ctx.body.address,
       statement: 'Link this devnet wallet to your Pocket QA account. This is not a payment.',
-      uri: `https://${domain}`,
+      uri: appIdentityUri(domain),
       version: '1',
       chainId: SOLANA_DEVNET_CHAIN,
       nonce,
