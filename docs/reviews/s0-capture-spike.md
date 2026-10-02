@@ -5,7 +5,7 @@
 | Item | Value |
 |---|---|
 | Device | Android emulator `Medium_Phone_API_36.1`: `sdk_gphone64_arm64`, Android 16 (API 36), google_apis_playstore image |
-| App | Pocket QA release APK, `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, sha256 `1c941c781e9e4fa529c46f2b2ca7b47dec5d48eb2d1a170a3da4ea7a67c0b02b` (final, run `20261003-012751`) |
+| App | Pocket QA release APK, `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, sha256 `82f214ece799d209ffac6ef7279977d68e9c10154ed4e040600b3fe90cbdce85` (final, run `20261003-014123`) |
 | Recorder | `modules/screen-capture` (MediaProjection + foreground service, ADR 0003) |
 | Date | 2026-10-02/03 |
 

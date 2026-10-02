@@ -1,3 +1,4 @@
+# run 20261003-014123 · APK sha256 82f214ece799d209ffac6ef7279977d68e9c10154ed4e040600b3fe90cbdce85 · Android 16 emulator + Solana Mobile mock wallet
 record-consent EXIT=0 active_projections=0
 record-decline EXIT=0 active_projections=0
 notifications-denied EXIT=0 active_projections=0

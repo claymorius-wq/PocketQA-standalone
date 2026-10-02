@@ -13,10 +13,10 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 | 2 Domain + contracts | lead (backend hat) | **APPROVED** by pqa-qa (r2, plus r3 targeted). Merged to `main`. Domain 156 tests; state machines at 100% branch coverage. |
 | 3 Local API | lead (backend hat) | **APPROVED** and merged. 238 API tests: authz matrix, lifecycle, evidence, wallet/devnet (fake RPC), log redaction, config/bind, export/delete. Real-server smoke test on 127.0.0.1. |
 | 4 App shell + flows (Gate A) | lead (mobile hat) | **APPROVED** (r1 CHANGES_REQUIRED with a P1 upload race; r2 APPROVE; r3 targeted APPROVE). Merged. Expo SDK 57 app with tester, builder and admin flows; 99 jest tests; 4 Playwright E2E against the real API and a static web export; 23 light/dark screenshots in `docs/reviews/gate-a/`. |
-| 5 Android recorder (Gate B1) | lead (mobile hat) | **Emulator: APPROVED and merged** (r1 CHANGES_REQUIRED, P2 recording outlived the screen; r2 APPROVE; r3 targeted APPROVE). 7 native Maestro flows pass on the release APK. **Real device: BLOCKED.** |
+| 5 Android recorder (Gate B1) | lead (mobile hat) | **Emulator: APPROVED and merged** (r1 CHANGES_REQUIRED, P2 recording outlived the screen; r2 APPROVE; r3 targeted APPROVE). 9 native Maestro flows (recording, decline, notifications-denied, remove, system stop, notification stop, leave-while-recording, wallet decline, wallet link) pass on the release APK. **Real device: BLOCKED.** |
 | 6 Devnet wallet (Gate B2) | lead (wallet hat) | **Emulator + Solana Mobile mock wallet: APPROVED and merged.** MWA link and decline flows pass, with server signature verification and a consumed nonce. **Real wallet / real device: BLOCKED.** Devnet transfer UI: **not built** (API only). |
-| 7 Admin/disputes/export/deletion | backend + mobile | API and UI approved and merged. Admin disputes, moderation and audit are E2E-tested. The export and delete UI exists; deletion is tested at API level. |
-| 8 Independent QA | qa | not started |
+| 7 Admin/disputes/export/deletion | lead | API and UI approved and merged. Admin disputes, moderation and audit are E2E-tested. Export and typed-confirmation deletion are E2E-tested through the UI (`account-delete.spec.ts`). |
+| 8 Independent QA | pqa-qa | **APPROVE-LOCAL-MVP** (r1 CHANGES_REQUIRED, P2 'paid'/'payout' wording; r2 approve). Final counts: api 239, domain 156, contracts 14, mobile 111, web E2E 5, native 9/9 (emulator). See `docs/reviews/final/`. |
 
 ## Open gates (not passed; need hardware or approval)
 - Real-device S0/B1 on a Seeker or other Android 14+ phone: wallet app-switch capture, FLAG_SECURE screens, auto-stop on screen lock (the emulator image didn't auto-stop on lock).
@@ -29,6 +29,12 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 - The test AVD has a screen-lock PIN set for the mock wallet. Remove it with `adb shell locksettings clear --old <pin>`.
 
 ## Carried P3 follow-ups
+
+From Phase 8 (do before any real pilot):
+- Scope the payment and currency copy rules to tester-facing reviewer text (approve and reject notes, findings, dispute notes, UI), so study tasks can say "buy the $5 item" or "send 0.1 devnet SOL".
+
+(The test counts in the per-phase rows are as of each phase's merge.)
+
 
 From Phase 5-6:
 - The notification-stop flow could also assert in-shade that the notification is gone.
@@ -50,11 +56,11 @@ From Phase 2-3:
 From Phase 0:
 - Plan and handoff status lines are stale. **Hamza:** the lead's edit was denied.
 - Exact command text for 2 evidence lines; eslint/@eslint/js/typescript rows cite the lockfile.
-- Phase 3: redact `/media/` by matched route, not raw string, and add an encoded-path test.
-- Scanner policy for devnet explorer URLs and large review media: decide before Gate A and B2 evidence.
+- ~~Phase 3: redact `/media/` by matched route, plus an encoded-path test.~~ Done in Phase 3 (`apps/api/src/app.ts` `logUrl`, `log.redact.test.ts` `/%6Dedia/`).
+- Scanner policy, **decided**. Binary review media (PNG) isn't content-scanned and is size-limited (8 MB per file). No explorer URLs are committed, because there's no transfer UI, so no exemption is needed yet.
 - `pqa-qa` read-only limits are enforced by prompt only, because the pane runs in Hamza's default auto mode. **Hamza to acknowledge.**
 - Phase 7: builder view of disputes on their own studies.
-- Phase 6: SIWS domain vs. MWA app identity URI, from one constant, verified against Solana Mobile docs.
+- ~~Phase 6: SIWS domain vs. MWA identity URI from one constant.~~ Done: `DEFAULT_SIWS_DOMAIN`, no override.
 
 ## Log
 
