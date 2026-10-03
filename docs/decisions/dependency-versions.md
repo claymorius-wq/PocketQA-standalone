@@ -56,6 +56,28 @@ Scope of verification: registry existence, exact version, engines/peer compatibi
 | jest-expo / jest / @testing-library/react-native | 57.0.5 / 29.7.0 / 14.0.1 (exact) |
 | @playwright/test | 1.63.0 (exact) |
 
+## Lens visual system (added 2026-10-03, branch `feat/lens-ui`)
+
+Installed with `cd apps/mobile && pnpm exec expo install react-native-reanimated react-native-worklets expo-blur expo-font @expo-google-fonts/red-hat-display @expo-google-fonts/instrument-sans @expo-google-fonts/dm-mono`. Expo modules keep Expo's `~` range (as above); everything else is pinned exactly. The SDK 57 pins come from `expo@57.0.26/bundledNativeModules.json` (`react-native-reanimated 4.5.1`, `react-native-worklets 0.10.1`, `expo-blur ~57.0.3`, `expo-font ~57.0.4`). Rationale: `docs/decisions/0005-lens-visual-system.md`.
+
+| Package | Pinned | Resolved | Why |
+|---|---|---|---|
+| react-native-reanimated | 4.5.1 (exact) | 4.5.1 | UI-thread animation for the Lens motion system (press, entrances, sheets, Uplight, signature motions) and `useReducedMotion`. Before this change pnpm had auto-installed 4.7.1 (registry latest) as the peer of `react-native-drawer-layout`, an expo-router dependency; that version is outside the SDK 57 pin and needs worklets 0.13, which `expo-modules-core@57.0.20` does not accept (`^0.7.4 … ^0.10.0`). |
+| react-native-worklets | 0.10.1 (exact) | 0.10.1 | Required peer of Reanimated 4. `babel-preset-expo` adds `react-native-worklets/plugin` automatically when the package resolves, so there is no `babel.config.js`. |
+| expo-blur | ~57.0.3 | 57.0.3 | The L3 overlay only (tab bar or bottom dock, and sheets). Android needs `blurMethod="dimezisBlurViewSdk31Plus"` plus a `BlurTargetView`. |
+| expo-font | ~57.0.4 | 57.0.4 | Runtime font loading (`useFonts`) in `app/_layout.tsx`; config plugin added to `app.json` by `expo install` (no embedded fonts configured). |
+| @expo-google-fonts/red-hat-display | 0.4.1 (exact) | 0.4.1 | Display and numerals: weights 300, 400, 500 (spec §12). |
+| @expo-google-fonts/instrument-sans | 0.4.2 (exact) | 0.4.2 | UI and body: weights 400, 600. |
+| @expo-google-fonts/dm-mono | 0.4.2 (exact) | 0.4.2 | Labels and readouts: weights 400, 500. |
+
+Only the seven weights above are imported, through per-weight subpaths (`@expo-google-fonts/<family>/<weight>`); each package's index would pull every weight into the Metro bundle. Already present and reused: `react-native-svg` 15.15.4 (gradients, rims, grain, Uplight floor, fluted lens).
+
+Jest: `apps/mobile/package.json` sets `resolver: "react-native-worklets/jest/resolver.js"` (shipped by worklets: it stops Jest from loading the `.native` worklets entry, which needs the native module) and `setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"]`, which calls Reanimated's documented `setUpTests()`.
+
+Lockfile side effect: with Reanimated back on the SDK 57 pin, its worklets peer no longer pulls the 0.87 React Native tooling. `@react-native/metro-config`, `@react-native/babel-preset` and `@react-native/metro-babel-transformer` resolve 0.86.3 (were 0.87.1), and the 0.87.1 entries of `@react-native/codegen` and `@react-native/babel-plugin-codegen` are gone (0.86.3 is used). All now match `react-native` 0.86.3. No package.json range changed for them.
+
+Not added: `@shopify/react-native-skia` (see ADR 0005), `expo-linear-gradient` (SVG gradients cover it and also handle the radial layers), `react-native-shadow-2` (React Native's own `boxShadow` takes the spec's shadow lists, inset included).
+
 ## Candidates only (unverified; Phase 6 decides)
 
 | Package | Candidate | Note |

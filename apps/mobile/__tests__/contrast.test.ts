@@ -1,4 +1,4 @@
-import { dark, light, type Palette } from '../src/theme/tokens';
+import { dark, glassDark, glassLight, light, type GlassRecipes, type GlassSurface, type Palette, type Tone } from '../src/theme/tokens';
 
 // WCAG 2.1 relative luminance and contrast ratio.
 function lum(hex: string): number {
@@ -12,6 +12,14 @@ function lum(hex: string): number {
 export function ratio(a: string, b: string): number {
   const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
   return (x! + 0.05) / (y! + 0.05);
+}
+
+/** Source-over compositing of `fg` at `alpha` onto opaque `bg`, as an opaque hex. */
+function over(fg: string, alpha: number, bg: string): string {
+  const a = parseInt(fg.slice(1), 16);
+  const b = parseInt(bg.slice(1), 16);
+  const mix = (shift: number) => Math.round(((a >> shift) & 255) * alpha + ((b >> shift) & 255) * (1 - alpha));
+  return `#${[16, 8, 0].map((sh) => mix(sh).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
 }
 
 const TEXT_PAIRS: [keyof Palette, keyof Palette][] = [
@@ -34,12 +42,32 @@ const TEXT_PAIRS: [keyof Palette, keyof Palette][] = [
   ['text', 'warningBg'],
   ['text', 'dangerBg'],
   ['text', 'infoBg'],
+  // Lens pairs.
+  ['neutral', 'neutralBg'], // neutral status pill
+  ['danger', 'background'], // field error label and helper
+  ['primary', 'surfaceAlt'], // ghost action on raised glass
+  ['primary', 'glassViolet'], // active tab label
+  ['text', 'glassViolet'], // selected segment label
+  ['text', 'well'], // input text
+  ['textMuted', 'well'], // reward caption in its well
+  ['numeral', 'well'], // reward numerals
+  ['textFaint', 'well'], // placeholder in an input well
+  ['textFaint', 'surface'],
+  ['textDisabled', 'disabledBg'], // disabled primary label
+  ['violet', 'surface'], // section numerals
+  ['text', 'ink'], // pressed floors
+  ['textMuted', 'ink'],
 ];
 const UI_PAIRS: [keyof Palette, keyof Palette][] = [
   ['borderStrong', 'surface'],
   ['borderStrong', 'background'],
   ['primary', 'surface'],
   ['danger', 'surface'],
+  // Lens pairs.
+  ['borderStrong', 'well'], // well rim at rest (near wall)
+  ['lensBlue', 'surface'], // focus ring
+  ['lensBlue', 'background'],
+  ['primary', 'background'], // checkbox glass on the ground
 ];
 
 describe.each([
@@ -51,5 +79,73 @@ describe.each([
   });
   it.each(UI_PAIRS)('%s on %s ≥ 3:1 (non-text UI)', (fg, bg) => {
     expect(ratio(p[fg], p[bg])).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// Glass surfaces are gradients: text must clear 4.5:1 on every opaque stop of the body fill
+// (the lowest fill layer). Corner blooms are decorative light that card padding keeps text off.
+function bodyStops(surface: GlassSurface): string[] {
+  const body = surface.fill[0]!;
+  return body.stops.filter((st) => st.opacity === 1).map((st) => st.color);
+}
+// An uplit surface lists its pool last; text near the bottom sits over the pool at its peak,
+// composited onto the body's last (bottom-right) stop. Text never sits over the source core.
+function uplitStops(surface: GlassSurface): string[] {
+  const body = bodyStops(surface);
+  if (surface.fill.length < 2) return body;
+  const pool = surface.fill[surface.fill.length - 1]!.stops[0]!;
+  return [...body, over(pool.color, pool.opacity, body[body.length - 1]!)];
+}
+// The overlay (tab bar, sheets) is translucent: measure each stop composited onto the ground.
+function overlayStops(g: GlassRecipes, p: Palette): string[] {
+  return g.overlay.fill[0]!.stops.map((st) => over(st.color, st.opacity, p.background));
+}
+
+const TONES: Tone[] = ['success', 'warning', 'danger', 'info', 'neutral'];
+type Case = [string, (keyof Palette)[], string[]];
+function glassCases(g: GlassRecipes, p: Palette): Case[] {
+  const cases: Case[] = [
+    ['card(1)', ['text', 'textMuted', 'primary', 'success', 'danger'], bodyStops(g.card(1))],
+    ['card(0.64)', ['text', 'textMuted'], bodyStops(g.card(0.64))],
+    ['cardPressed', ['text', 'textMuted'], bodyStops(g.cardPressed)],
+    ['raised', ['text', 'textMuted', 'primary'], bodyStops(g.raised)],
+    ['violetTile', ['text', 'primary'], bodyStops(g.violetTile)],
+    ['overlay', ['text', 'textMuted', 'primary'], overlayStops(g, p)],
+    ['well', ['text', 'textMuted', 'numeral', 'textFaint'], bodyStops(g.well)],
+    ['wellError', ['text', 'textFaint'], g.wellError.fill[0]!.stops.map((st) => st.color)],
+    ['primary', ['onPrimary'], bodyStops(g.primary)],
+    ['primaryPressed', ['onPrimary'], bodyStops(g.primaryPressed)],
+    ['primaryDisabled', ['textDisabled'], bodyStops(g.primaryDisabled)],
+    ['secondary', ['text'], bodyStops(g.secondary)],
+    ['secondaryPressed', ['text'], bodyStops(g.secondaryPressed)],
+    ['destructive', ['danger'], bodyStops(g.destructive)],
+    ['uplight.card(1)', ['text', 'textMuted'], uplitStops(g.uplight.card(1))],
+  ];
+  for (const tone of TONES) {
+    const fg: keyof Palette = tone;
+    cases.push([`pill(${tone})`, [fg], bodyStops(g.pill(tone))]);
+    cases.push([`notice(${tone})`, [fg, 'textMuted'], bodyStops(g.notice(tone))]);
+    cases.push([`uplight.notice(${tone})`, [fg, 'textMuted'], uplitStops(g.uplight.notice(tone))]);
+  }
+  return cases;
+}
+
+describe.each([
+  ['light', light, glassLight],
+  ['dark', dark, glassDark],
+])('%s glass recipe contrast', (_name, p, g) => {
+  const rows = glassCases(g, p).flatMap(([surface, fgs, bgs]) => fgs.flatMap((fg) => bgs.map((bg) => [surface, fg, bg] as const)));
+  it.each(rows)('%s: %s on %s ≥ 4.5:1', (_surface, fg, bg) => {
+    expect(ratio(p[fg], bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe('light press feedback (no Lens layers)', () => {
+  it('the pressed primary is a visibly darker fill, still ≥ 4.5:1 for onPrimary', () => {
+    const rest = glassLight.primary.fill[0]!.stops[0]!.color;
+    const pressed = glassLight.primaryPressed.fill[0]!.stops[0]!.color;
+    expect(pressed).not.toBe(rest);
+    expect(ratio(light.onPrimary, pressed)).toBeGreaterThan(ratio(light.onPrimary, rest));
+    expect(ratio(light.onPrimary, pressed)).toBeGreaterThanOrEqual(4.5);
   });
 });

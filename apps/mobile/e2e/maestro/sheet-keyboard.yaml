@@ -1,0 +1,33 @@
+# Lens ConfirmSheet keyboard regression: a field inside a bottom sheet must stay usable with the
+# software keyboard up. Types the delete phrase and taps the confirm WITHOUT hideKeyboard: the
+# sheet lifts above the keyboard, so the confirm is reachable (the account is a throwaway seed).
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: delete-account
+- tapOn:
+    id: delete-account
+- tapOn:
+    id: delete-phrase
+- inputText: DELETE MY ACCOUNT
+- assertVisible:
+    id: confirm-ok
+- takeScreenshot: sheet-above-keyboard
+- tapOn:
+    id: confirm-ok
+- assertVisible:
+    id: sign-in-email
