@@ -1,0 +1,22 @@
+started 2026-10-03T10:02:48.546Z against http://localhost:50995
+PASS  unauthenticated deep link lands on the gate login page
+PASS  app bundle not served before the gate
+PASS  gate password field is prefilled
+PASS  wrong gate password shows an error and stays on the gate
+PASS  no gate cookie after a wrong password
+PASS  gate cookie is HttpOnly, Secure, SameSite=Strict
+PASS  tester sign-in is prefilled by default
+PASS  sign-in footer says public demo preview
+PASS  tester: demo sign-in prefilled by the role picker
+PASS  tester sees Discover with the demo study
+PASS  rewards are labelled test credits, not guaranteed
+PASS  wallet section says devnet only, and that linking is not a payment
+PASS  builder: demo sign-in prefilled by the role picker
+PASS  builder sees their demo studies
+PASS  admin: demo sign-in prefilled by the role picker
+PASS  admin reaches the admin tabs (Disputes, Stuck)
+PASS  no request left the preview origin (0 foreign)
+PASS  no CSP violations (0)
+finished 2026-10-03T10:02:50.557Z
+all browser checks passed
+EXIT=0

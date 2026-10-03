@@ -55,6 +55,7 @@ const FORBIDDEN_PATHS = [
   // Protected preview: generated gate secret, credentials and synthetic data (ADR 0004).
   /(^|\/)\.preview\//,
   /(^|\/)preview-data\//,
+  /(^|\/)\.preview-test\//,
 ];
 
 export function scanText(text) {

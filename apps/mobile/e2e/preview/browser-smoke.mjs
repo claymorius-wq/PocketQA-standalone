@@ -9,9 +9,11 @@ import { join } from 'node:path';
 const BASE = process.env.PREVIEW_URL;
 const origin = new URL(BASE).origin;
 const repo = join(import.meta.dirname, '../../../..');
-const SHOTS = join(repo, 'docs/reviews/preview');
+const SHOTS = join(repo, process.env.PREVIEW_SHOTS_DIR ?? 'docs/reviews/preview');
 mkdirSync(SHOTS, { recursive: true });
-const access = readFileSync(join(repo, '.preview/access.txt'), 'utf8');
+const access = readFileSync(join(repo, process.env.PREVIEW_STATE_DIR ?? '.preview', 'access.txt'), 'utf8');
+// PREVIEW_EXPECT_CONVENIENCE=1: every role must be reachable with clicks only (no typing).
+const CONVENIENCE = process.env.PREVIEW_EXPECT_CONVENIENCE === '1';
 const gatePassword = access.match(/^Gate password: (\S+)$/m)[1];
 const acct = (role) => access.match(new RegExp(`^${role}:\\s+(\\S+)\\s+/\\s+(\\S+)$`, 'm')).slice(1, 3);
 
@@ -36,7 +38,7 @@ async function gatedPage(colorScheme = 'light') {
   page.on('console', (m) => /Content Security Policy|Refused to/i.test(m.text()) && cspErrors.push(m.text()));
   await page.goto(BASE + '/');
   await page.waitForURL('**/__gate/login');
-  await page.fill('#pw', gatePassword);
+  if (!CONVENIENCE) await page.fill('#pw', gatePassword);
   await page.click('button[type=submit]');
   await page.waitForURL((u) => !u.pathname.startsWith('/__gate'));
   return { ctx, page };
@@ -45,9 +47,16 @@ async function gatedPage(colorScheme = 'light') {
 // Lists load after the screen mounts, so wait for the text rather than counting at once.
 const shows = (page, text) => page.getByText(text).first().waitFor({ timeout: 10_000 }).then(() => true, () => false);
 
-async function appSignIn(page, [email, password]) {
-  await page.getByTestId('sign-in-email').fill(email);
-  await page.getByTestId('sign-in-password').fill(password);
+async function appSignIn(page, [email, password], role) {
+  if (CONVENIENCE) {
+    // Clicks only: pick the role, check the fields were filled for us, press Sign in.
+    await page.getByTestId('demo-accounts').waitFor();
+    await page.getByTestId(`demo-role-${role}`).click();
+    check(`${role}: demo sign-in prefilled by the role picker`, (await page.getByTestId('sign-in-email').inputValue()) === email);
+  } else {
+    await page.getByTestId('sign-in-email').fill(email);
+    await page.getByTestId('sign-in-password').fill(password);
+  }
   await page.getByTestId('sign-in-submit').click();
 }
 
@@ -58,7 +67,8 @@ async function appSignIn(page, [email, password]) {
   const res = await page.goto(BASE + '/builder/review/anything');
   check('unauthenticated deep link lands on the gate login page', new URL(page.url()).pathname === '/__gate/login' && res.status() === 200);
   check('app bundle not served before the gate', !(await page.content()).includes('_expo/static'));
-  await page.screenshot({ path: join(SHOTS, 'gate-login.png') });
+  await page.screenshot({ path: join(SHOTS, CONVENIENCE ? 'gate-login-prefilled.png' : 'gate-login.png') });
+  if (CONVENIENCE) check('gate password field is prefilled', (await page.inputValue('#pw')).length > 0);
   await page.fill('#pw', 'not-the-password');
   await page.click('button[type=submit]');
   check('wrong gate password shows an error and stays on the gate', (await page.textContent('[role=alert]'))?.includes('Wrong password') && new URL(page.url()).pathname === '/__gate/login');
@@ -73,7 +83,13 @@ async function appSignIn(page, [email, password]) {
   const [c] = await ctx.cookies();
   check('gate cookie is HttpOnly, Secure, SameSite=Strict', !!c && c.httpOnly && c.secure && c.sameSite === 'Strict' && c.name === '__Host-pqa_gate');
   await page.getByTestId('sign-in-email').waitFor();
-  await appSignIn(page, acct('Tester'));
+  if (CONVENIENCE) {
+    await page.getByTestId('demo-accounts').waitFor();
+    check('tester sign-in is prefilled by default', (await page.getByTestId('sign-in-email').inputValue()) === acct('Tester')[0]);
+    check('sign-in footer says public demo preview', await shows(page, /Public demo preview/));
+    await page.screenshot({ path: join(SHOTS, 'sign-in-demo-picker-dark.png') });
+  }
+  await appSignIn(page, acct('Tester'), 'tester');
   await page.getByTestId('discover-screen').waitFor();
   check('tester sees Discover with the demo study', await shows(page, 'Demo: onboarding screens'));
   check('rewards are labelled test credits, not guaranteed', (await shows(page, /test credits/)) && (await shows(page, /Not guaranteed/)));
@@ -89,7 +105,7 @@ async function appSignIn(page, [email, password]) {
 {
   const { ctx, page } = await gatedPage();
   await page.getByTestId('sign-in-email').waitFor();
-  await appSignIn(page, acct('Builder'));
+  await appSignIn(page, acct('Builder'), 'builder');
   await page.getByTestId('studies-screen').waitFor();
   check('builder sees their demo studies', await shows(page, 'Demo: checkout flow'));
   await page.screenshot({ path: join(SHOTS, 'builder-studies.png') });
@@ -100,7 +116,7 @@ async function appSignIn(page, [email, password]) {
 {
   const { ctx, page } = await gatedPage();
   await page.getByTestId('sign-in-email').waitFor();
-  await appSignIn(page, acct('Admin'));
+  await appSignIn(page, acct('Admin'), 'admin');
   await page.getByTestId('disputes-screen').waitFor();
   await page.getByTestId('tab-stuck').click();
   await page.getByTestId('stuck-screen').waitFor();

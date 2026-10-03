@@ -54,3 +54,6 @@ apps/mobile/artifacts/
 .preview/
 preview-data/
 apps/mobile/dist-preview/
+apps/mobile/dist-preview.next/
+apps/mobile/dist-preview.old/
+.preview-test/

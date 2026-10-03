@@ -7,7 +7,7 @@ import { createServer, request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { COOKIE, createGateServer, hashPassword, loadSecret, signSession, verifySession } from './preview/gate-server.mjs';
+import { COOKIE, createGateServer, hashPassword, loadConvenience, loadSecret, signSession, verifySession } from './preview/gate-server.mjs';
 
 const PASSWORD = randomBytes(18).toString('base64url'); // generated per run, never printed
 const HOST = 'preview.example.test';
@@ -226,6 +226,7 @@ describe('preview gate: shared-preview policy (review r1 P2)', () => {
       ['POST', '/api/participations/p1/evidence'],
       ['POST', '/api/participations/p1/evidence/'],
       ['DELETE', '/api/me'],
+      ['POST', '/api/auth/register'],
       ['POST', '/api/admin/moderation/users/u1'],
       ['POST', '/api/admin/moderation/studies/s1'],
     ]) {
@@ -344,6 +345,73 @@ describe('preview gate: login body deadline is total, not idle (review r3 P3)', 
     sock.destroy();
     g.close();
     assert.ok(closedAt !== null && closedAt - started < 1500, 'trickled login body was not cut off');
+  });
+});
+
+describe('preview gate: shared-demo convenience (Hamza, 2026-10-03)', () => {
+  const demoAccounts = [
+    { role: 'tester', email: 'demo-tester@pocketqa.example', password: randomBytes(18).toString('base64url') },
+    { role: 'builder', email: 'demo-builder@pocketqa.example', password: randomBytes(18).toString('base64url') },
+    { role: 'admin', email: 'demo-admin@pocketqa.example', password: randomBytes(18).toString('base64url') },
+  ];
+  const open = [];
+  after(() => open.forEach((g) => g.close()));
+  async function convGate(convenience) {
+    const g = createGateServer({ root, apiOrigin: `http://127.0.0.1:${upstreamPort}`, allowedHosts: [HOST], secret: { ...hashPassword(PASSWORD), cookieKey: randomBytes(32).toString('base64') }, convenience });
+    open.push(g); // closed in after() even when an assertion fails
+    return { g, port: await listen(g) };
+  }
+
+  it('prefills the gate password (HTML-escaped) and says it is not access protection', async () => {
+    const { g, port } = await convGate({ gatePrefill: PASSWORD, demoAccounts });
+    const page = await http('GET', '/__gate/login', { port });
+    assert.ok(page.body.includes(`value="${PASSWORD}"`));
+    assert.match(page.body, /not access protection/);
+    // Review r1 P2: no privacy claim anywhere while the convenience is on, error pages included.
+    assert.ok(!/Private/i.test(page.body));
+    const wrong = await http('POST', '/__gate/login', { ...form('wrong-password'), port });
+    assert.equal(wrong.status, 401);
+    assert.ok(!/Private/i.test(wrong.body) && wrong.body.includes(`value="${PASSWORD}"`) && /Public demo preview/.test(wrong.body));
+    const hostile = await convGate({ gatePrefill: 'a"><script>alert(1)</script>' });
+    const p2 = await http('GET', '/__gate/login', { port: hostile.port });
+    assert.ok(!p2.body.includes('<script>alert(1)'));
+    assert.ok(p2.body.includes('value="a&quot;&gt;&lt;script&gt;'));
+    hostile.g.close();
+    g.close();
+  });
+
+  it('serves demo sign-ins only behind the gate, GET only', async () => {
+    const { g, port } = await convGate({ gatePrefill: PASSWORD, demoAccounts });
+    const anon = await http('GET', '/__preview/bootstrap.json', { port });
+    assert.notEqual(anon.status, 200);
+    for (const a of demoAccounts) assert.ok(!anon.body.includes(a.password));
+    const login = await http('POST', '/__gate/login', { ...form(PASSWORD), port });
+    const cookie = login.headers['set-cookie'][0].split(';')[0];
+    const ok = await http('GET', '/__preview/bootstrap.json', { headers: { cookie }, port });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.headers['cache-control'], 'no-store');
+    assert.deepEqual(JSON.parse(ok.body).demoAccounts.map((a) => a.role), ['tester', 'builder', 'admin']);
+    assert.equal((await http('POST', '/__preview/bootstrap.json', { headers: { cookie }, port })).status, 405);
+    g.close();
+  });
+
+  it('is off by default: no prefill, no bootstrap', async () => {
+    const page = await http('GET', '/__gate/login');
+    assert.ok(!/ value="/.test(page.body));
+    const cookie = await signIn();
+    assert.equal((await http('GET', '/__preview/bootstrap.json', { headers: { cookie } })).status, 404);
+  });
+
+  it('the convenience file must be 0600 and list only the synthetic demo accounts', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pqa-conv-'));
+    const f = join(dir, 'convenience.json');
+    writeFileSync(f, JSON.stringify({ gatePrefill: 'x', demoAccounts }));
+    chmodSync(f, 0o644);
+    assert.throws(() => loadConvenience(f), /0600/);
+    chmodSync(f, 0o600);
+    assert.equal(loadConvenience(f).demoAccounts.length, 3);
+    writeFileSync(f, JSON.stringify({ demoAccounts: [{ role: 'admin', email: 'someone@real.example', password: 'x'.repeat(20) }] }));
+    assert.throws(() => loadConvenience(f), /synthetic/);
   });
 });
 
