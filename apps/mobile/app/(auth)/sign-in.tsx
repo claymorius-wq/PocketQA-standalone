@@ -2,7 +2,6 @@ import { Link } from 'expo-router';
 import { LogIn, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { ApiError } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { space } from '../../src/theme/tokens';
@@ -22,7 +21,8 @@ export default function SignIn() {
     try {
       await signIn(email.trim(), password);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Sign-in failed.');
+      // Show the real cause (e.g. this device couldn't store the session) instead of a generic line.
+      setError(e instanceof Error && e.message ? e.message : 'Sign-in failed.');
     } finally {
       setBusy(false);
     }

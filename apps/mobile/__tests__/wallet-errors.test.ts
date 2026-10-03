@@ -20,3 +20,13 @@ describe('walletErrorText', () => {
     expect(walletErrorText({ code: 'CONFLICT_STATE', message: 'This wallet is already linked to another account.' })).toBe('This wallet is already linked to another account.');
   });
 });
+
+describe('walletErrorText: send failures', () => {
+  it('explains a wallet that signed but could not submit (e.g. no devnet SOL for fees)', () => {
+    for (const code of [-2, -4]) {
+      expect(walletErrorText({ code, message: 'payloads invalid for signing' })).toBe(
+        'The wallet could not send the transaction (it may have no devnet SOL for fees). Nothing was sent.',
+      );
+    }
+  });
+});

@@ -24,6 +24,10 @@ export function httpDevnetRpc(url: string, timeoutMs = 8000): DevnetRpc {
       genesis ??= await call<string>('getGenesisHash', []);
       return genesis;
     },
+    async getLatestBlockhash() {
+      const r = await call<{ value: { blockhash: string; lastValidBlockHeight: number } }>('getLatestBlockhash', [{ commitment: 'finalized' }]);
+      return r.value;
+    },
     async getTransaction(signature) {
       return call<ParsedTx | null>('getTransaction', [
         signature,

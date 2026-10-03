@@ -14,6 +14,11 @@ export class FakeRpc implements DevnetRpc {
   genesis = SOLANA_DEVNET_GENESIS_HASH;
   txs = new Map<string, ParsedTx | null>();
   fail = false;
+  blockhash = 'GHtXQBsoZHVnNFa9YevAzFr17DJjgHXk3ycTKD5xD3Zi';
+  async getLatestBlockhash() {
+    if (this.fail) throw new Error('down');
+    return { blockhash: this.blockhash, lastValidBlockHeight: 1000 };
+  }
   async getGenesisHash() {
     if (this.fail) throw new Error('down');
     return this.genesis;

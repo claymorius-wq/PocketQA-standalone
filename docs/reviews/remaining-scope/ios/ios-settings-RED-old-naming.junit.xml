@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="iPhone 17 - iOS 26.4 - 4EE9659B-E7B8-49B5-8D33-19C0AC9A81D7" tests="1" failures="1" time="38.0">
+    <testcase id="ios-settings" name="ios-settings" classname="ios-settings" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/ios-settings.yaml" time="38.0" status="ERROR">
+      <failure>No visible element found: id: wallet-unavailable</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

@@ -205,6 +205,28 @@ export const walletHandlers = {
     return transferView(await reverify(ctx, pending));
   },
 
+  participationTransfers: async (ctx) => {
+    const db = ctx.deps.db;
+    const { p } = partyParticipation(db, ctx.params.id!, me(ctx));
+    const rows = db.prepare('SELECT * FROM devnet_transfers WHERE participation_id = ? ORDER BY created_at DESC').all(p.id) as TransferRow[];
+    // Re-verify pending ones so every viewer sees the chain's answer, not a stale claim.
+    const fresh: TransferRow[] = [];
+    for (const r of rows) fresh.push(r.status === 'pending' || r.status === 'awaiting_signature' ? await reverify(ctx, r).catch(() => r) : r);
+    return { items: fresh.map(transferView) };
+  },
+
+  transferBlockhash: async (ctx) => {
+    const user = me(ctx);
+    const row = ctx.deps.db.prepare('SELECT * FROM devnet_transfers WHERE id = ? AND builder_id = ?').get(ctx.params.id!, user.id) as TransferRow | undefined;
+    if (!row) throw notFound('Transfer');
+    await assertDevnet(ctx);
+    try {
+      return await ctx.deps.rpc.getLatestBlockhash();
+    } catch {
+      throw fail('CHAIN_UNAVAILABLE', 'Solana devnet RPC is unreachable.');
+    }
+  },
+
   getTransfer: async (ctx) => {
     const user = me(ctx);
     const db = ctx.deps.db;

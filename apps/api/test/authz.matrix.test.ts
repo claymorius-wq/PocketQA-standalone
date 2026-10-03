@@ -112,14 +112,14 @@ const BODY: Partial<Record<RouteName, () => unknown>> = {
 };
 
 const OWNER_SCOPED: { name: RouteName; nonOwners: (keyof typeof users)[] }[] = [
-  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature'] as RouteName[]).map(
+  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash'] as RouteName[]).map(
     (name) => ({ name, nonOwners: ['builderB'] as (keyof typeof users)[] }),
   ),
   ...(['startParticipation', 'withdrawParticipation', 'putTaskNote', 'submitParticipation', 'uploadEvidence', 'openDispute'] as RouteName[]).map((name) => ({
     name,
     nonOwners: ['testerB'] as (keyof typeof users)[],
   })),
-  ...(['getParticipation', 'listEvidence', 'playbackToken', 'listFindings', 'getTransfer'] as RouteName[]).map((name) => ({
+  ...(['getParticipation', 'listEvidence', 'playbackToken', 'listFindings', 'getTransfer', 'participationTransfers'] as RouteName[]).map((name) => ({
     name,
     nonOwners: ['testerB', 'builderB'] as (keyof typeof users)[],
   })),

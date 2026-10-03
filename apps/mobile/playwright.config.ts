@@ -18,7 +18,14 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:8090', trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'] },
   webServer: [
     {
-      command: `POCKETQA_DATA_DIR=${dataDir} pnpm --filter @pocket-qa/api start`,
+      // Loopback devnet JSON-RPC test double (see e2e/fake-devnet-rpc.mjs).
+      command: 'node e2e/fake-devnet-rpc.mjs',
+      url: 'http://127.0.0.1:8899/__health',
+      reuseExistingServer: false,
+      timeout: 30_000,
+    },
+    {
+      command: `POCKETQA_DATA_DIR=${dataDir} POCKETQA_SOLANA_RPC_URL=http://127.0.0.1:8899 pnpm --filter @pocket-qa/api start`,
       url: 'http://127.0.0.1:8787/health',
       reuseExistingServer: false,
       timeout: 60_000,

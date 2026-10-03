@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.2.1';
+export const CONTRACT_VERSION = '0.3.0';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 /** Bearer session token travels in this header; never in URLs, never logged. */
@@ -333,7 +333,7 @@ export const AuditEntry = z.object({
   id: Id,
   actorId: Id,
   action: z.string(),
-  targetType: z.enum(['study', 'user', 'dispute']),
+  targetType: z.enum(['study', 'user', 'dispute', 'participation']),
   targetId: Id,
   reason: z.string(),
   createdAt: IsoDate,
@@ -351,6 +351,28 @@ export const ExportBundle = z.object({
   disputes: z.array(Dispute),
 });
 export const DeleteMeBody = z.object({ confirm: z.literal('DELETE MY ACCOUNT') });
+
+/**
+ * A submission no builder can review: the builder's account is suspended or deleted, or
+ * the work has waited longer than STUCK_AFTER_DAYS. Only then may an admin decide it,
+ * with a mandatory reason that is written to the audit log.
+ */
+export const STUCK_AFTER_DAYS = 7;
+export const StuckReason = z.enum(['builder_inactive', 'overdue']);
+export const StuckSubmission = z.object({
+  participation: Participation,
+  studyId: Id,
+  studyTitle: z.string(),
+  builderStatus: z.enum(['active', 'suspended', 'deleted']),
+  reason: StuckReason,
+  /** The study's tasks, so an admin deciding instead of the owner can read what was asked. */
+  tasks: z.array(Task),
+});
+export type StuckSubmission = z.infer<typeof StuckSubmission>;
+export const AdminDecisionBody = z.object({
+  decision: z.enum(['approve', 'reject']),
+  reason: z.string().trim().min(10).max(1000),
+});
 
 // ---------- wallet (devnet only) ----------
 export const SOLANA_DEVNET_CHAIN = 'solana:devnet' as const;
@@ -420,6 +442,8 @@ export const DevnetTransfer = z.object({
   verifiedAt: IsoDate.nullable(),
 });
 export type DevnetTransfer = z.infer<typeof DevnetTransfer>;
+/** Fetched from devnet by the server (genesis-checked) right before the wallet signs. */
+export const TransferBlockhash = z.object({ blockhash: Base58Address, lastValidBlockHeight: z.number().int().nonnegative() });
 
 // ---------- AI ----------
 export const AiStatus = z.object({ available: z.boolean(), provider: z.string().nullable() });
@@ -475,6 +499,7 @@ export const routes = {
   resumeStudy: r({ method: 'POST', path: '/studies/:id/resume', auth: 'builder', scope: 'study-owner', body: null, response: Study }),
   closeStudy: r({ method: 'POST', path: '/studies/:id/close', auth: 'builder', scope: 'study-owner', body: null, response: Study }),
   studyParticipations: r({ method: 'GET', path: '/studies/:id/participations', auth: 'builder', scope: 'study-owner', body: null, response: list(Participation) }),
+  studyDisputes: r({ method: 'GET', path: '/studies/:id/disputes', auth: 'builder', scope: 'study-owner', body: null, response: list(Dispute) }),
   consent: r({ method: 'POST', path: '/studies/:id/consent', auth: 'tester', scope: 'any-published', body: ConsentBody, response: Participation }),
   myParticipations: r({ method: 'GET', path: '/participations', auth: 'tester', scope: 'tester-owner', body: null, response: list(Participation) }),
   getParticipation: r({ method: 'GET', path: '/participations/:id', auth: 'user', scope: 'participation-party', body: null, response: Participation }),
@@ -498,12 +523,16 @@ export const routes = {
   moderateStudy: r({ method: 'POST', path: '/admin/moderation/studies/:id', auth: 'admin', scope: 'none', body: ModerationBody, response: Study }),
   moderateUser: r({ method: 'POST', path: '/admin/moderation/users/:id', auth: 'admin', scope: 'none', body: ModerationBody, response: Ok }),
   adminAudit: r({ method: 'GET', path: '/admin/audit', auth: 'admin', scope: 'none', body: null, response: list(AuditEntry) }),
+  adminStuck: r({ method: 'GET', path: '/admin/stuck', auth: 'admin', scope: 'none', body: null, response: list(StuckSubmission) }),
+  adminDecide: r({ method: 'POST', path: '/admin/participations/:id/decide', auth: 'admin', scope: 'none', body: AdminDecisionBody, response: Participation }),
   walletNonce: r({ method: 'POST', path: '/wallet/nonce', auth: 'user', scope: 'self', body: WalletNonceBody, response: WalletNonceResponse }),
   walletLink: r({ method: 'POST', path: '/wallet/link', auth: 'user', scope: 'self', body: WalletLinkBody, response: User }),
   walletUnlink: r({ method: 'DELETE', path: '/wallet', auth: 'user', scope: 'self', body: null, response: User }),
   createTransfer: r({ method: 'POST', path: '/devnet/transfers', auth: 'builder', scope: 'study-owner', body: CreateDevnetTransferBody, response: DevnetTransfer }),
   submitTransferSignature: r({ method: 'POST', path: '/devnet/transfers/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitTransferSignatureBody, response: DevnetTransfer }),
   getTransfer: r({ method: 'GET', path: '/devnet/transfers/:id', auth: 'user', scope: 'participation-party', body: null, response: DevnetTransfer }),
+  transferBlockhash: r({ method: 'GET', path: '/devnet/transfers/:id/blockhash', auth: 'builder', scope: 'study-owner', body: null, response: TransferBlockhash }),
+  participationTransfers: r({ method: 'GET', path: '/participations/:id/devnet-transfers', auth: 'user', scope: 'participation-party', body: null, response: list(DevnetTransfer) }),
   aiStatus: r({ method: 'GET', path: '/ai/status', auth: 'user', scope: 'none', body: null, response: AiStatus }),
 } as const;
 export type RouteName = keyof typeof routes;

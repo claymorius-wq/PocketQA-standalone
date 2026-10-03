@@ -18,7 +18,7 @@ When an account is deleted with `DELETE /me` and the body `{"confirm":"DELETE MY
   - the status becomes `deleted`.
 - **Scrubs free text the user wrote or that is about them:**
   - the reason on disputes they opened becomes `[deleted]`;
-  - admin audit reasons whose target is the user become `[redacted on account deletion]`. The audit action, actor and timestamp stay.
+  - admin audit reasons whose target is the user, one of their participations (admin decisions on stuck work), or a dispute they opened become `[redacted on account deletion]`. The audit action, actor and timestamp stay.
 - **Withdraws** the user's in-flight participations (consented or in progress).
 - **Kept as the builder's work product:** findings a builder wrote about a deleted tester's participation stay, so the builder's study history remains intact. Any evidence link on them is cleared.
 - **Keeps, as the retention exception,** the test-credit ledger postings. They stay keyed by the opaque user id. Deleting them would corrupt other parties' balances and study budgets. They contain no personal data. Approved and rejected participation rows are kept for the builder's study history, but with the decision reason cleared.

@@ -48,3 +48,4 @@ id.json
 *.log
 apps/mobile/dist-web/
 apps/mobile/e2e/maestro/.results/
+apps/mobile/artifacts/

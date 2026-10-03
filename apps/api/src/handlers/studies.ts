@@ -16,6 +16,7 @@ import { accountBalance, post } from '../ledger';
 import { fail, iso, newId, notFound } from '../util';
 import {
   budgetOf,
+  disputeView,
   participationStatuses,
   participationView,
   slotsFilled,
@@ -39,8 +40,9 @@ type StudyBody = {
 };
 
 function lintStudy(b: StudyBody) {
-  assertCleanCopy({ title: b.title, objective: b.objective, buildUnderTest: b.buildUnderTest, consentText: b.consentText });
-  b.tasks?.forEach((t, i) => assertCleanCopy({ [`tasks[${i}].instruction`]: t.instruction, [`tasks[${i}].successCriteria`]: t.successCriteria }));
+  // Study content may describe prices, checkouts or devnet SOL in the app under test.
+  assertCleanCopy({ title: b.title, objective: b.objective, buildUnderTest: b.buildUnderTest, consentText: b.consentText }, 'study');
+  b.tasks?.forEach((t, i) => assertCleanCopy({ [`tasks[${i}].instruction`]: t.instruction, [`tasks[${i}].successCriteria`]: t.successCriteria }, 'study'));
 }
 
 function writeTasks(ctx: Ctx, studyId: string, tasks: NonNullable<StudyBody['tasks']>) {
@@ -159,6 +161,15 @@ export const studyHandlers = {
     const s = ownStudy(db, ctx.params.id!, me(ctx));
     const rows = db.prepare('SELECT * FROM participations WHERE study_id = ? ORDER BY consented_at').all(s.id) as ParticipationRow[];
     return { items: rows.map((p) => participationView(db, p, { withTesterName: true })) };
+  },
+
+  studyDisputes: (ctx) => {
+    const db = ctx.deps.db;
+    const s = ownStudy(db, ctx.params.id!, me(ctx));
+    const rows = db
+      .prepare(`SELECT d.* FROM disputes d JOIN participations p ON p.id = d.participation_id WHERE p.study_id = ? ORDER BY d.created_at DESC`)
+      .all(s.id) as Parameters<typeof disputeView>[0][];
+    return { items: rows.map(disputeView) };
   },
 
   eligibleStudies: (ctx) => {

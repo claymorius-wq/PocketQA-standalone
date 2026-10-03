@@ -12,6 +12,7 @@ import { api, ApiError, uploadEvidence } from '../../src/api/client';
 import { MediaPreview } from '../../src/evidence/MediaPreview';
 import { nativeRecorder } from '../../src/evidence/recorder';
 import { applySegment, removeSegment, uploadKept, type LocalSegment } from '../../src/evidence/segments';
+import { TransferCard } from '../../src/wallet/TransferCard';
 import { recordingCapability } from '../../src/lib/capability';
 import { bytes, credits, statusLabel, when } from '../../src/lib/format';
 import { useEvidence, useFindings, useMyDisputes, useParticipation, useTesterStudy } from '../../src/lib/queries';
@@ -306,6 +307,7 @@ function Decision({ p }: { p: Participation }) {
         <Field label="Reason" value={reason} onChangeText={setReason} multiline testID="dispute-reason" hint="At least 10 characters." />
         {dispute.error ? <Notice tone="danger" title="Couldn’t send">{(dispute.error as ApiError).message}</Notice> : null}
       </ConfirmSheet>
+      {p.status === 'approved' || p.status === 'resolved' ? <TransferCard participationId={p.id} role="tester" canStart={false} /> : null}
       {findings.data?.items.length ? (
         <Section title="Findings from the builder">
           {findings.data.items.map((f) => (

@@ -1,40 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RequireRole } from '../../../src/screens/RequireRole';
 import { useLocalSearchParams } from 'expo-router';
-import { Check, Eye, FileWarning, Plus, Sparkles, X } from 'lucide-react-native';
+import { Check, FileWarning, Plus, Sparkles, X } from 'lucide-react-native';
 import { useState } from 'react';
 import { View } from 'react-native';
 import type { Evidence } from '@pocket-qa/contracts';
-import { api, ApiError, mediaUrl } from '../../../src/api/client';
-import { MediaPreview } from '../../../src/evidence/MediaPreview';
-import { bytes, credits, statusLabel, when } from '../../../src/lib/format';
-import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy } from '../../../src/lib/queries';
+import { api, ApiError } from '../../../src/api/client';
+import { EvidenceItem } from '../../../src/evidence/EvidenceItem';
+import { credits, statusLabel, when } from '../../../src/lib/format';
+import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy, useStudyDisputes } from '../../../src/lib/queries';
+import { TransferCard } from '../../../src/wallet/TransferCard';
 import { space } from '../../../src/theme/tokens';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { Button, Card, ConfirmSheet, EmptyState, Field, Notice, QueryState, Row, Screen, Section, Segmented, StatusPill, Text } from '../../../src/ui';
-
-function EvidenceItem({ e }: { e: Evidence }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const open = useMutation({
-    mutationFn: () => api('playbackToken', { params: { id: e.id } }),
-    onSuccess: (t) => setUrl(mediaUrl(t.token)),
-  });
-  return (
-    <Card testID="evidence-item">
-      <Row style={{ justifyContent: 'space-between' }}>
-        <Text variant="heading">{e.kind === 'screen_recording' ? 'Screen recording' : 'Screenshot'}</Text>
-        <Text variant="small" tone="muted">{e.capturedOn} · {bytes(e.sizeBytes)}</Text>
-      </Row>
-      {url ? (
-        <MediaPreview uri={url} mimeType={e.mimeType} testID="evidence-media" />
-      ) : (
-        <Button label="View" icon={Eye} variant="secondary" onPress={() => open.mutate()} loading={open.isPending} testID="evidence-view" />
-      )}
-      {open.error ? <Notice tone="danger" title="Can’t open evidence">{(open.error as ApiError).message}</Notice> : null}
-      <Text variant="small" tone="muted">Playback links expire after 5 minutes.</Text>
-    </Card>
-  );
-}
 
 function FindingForm({ participationId, evidence }: { participationId: string; evidence: Evidence[] }) {
   const qc = useQueryClient();
@@ -91,6 +69,8 @@ function ReviewInner() {
   const ev = useEvidence(id);
   const findings = useFindings(id);
   const ai = useAiStatus();
+  const disputes = useStudyDisputes(pq.data?.studyId ?? '');
+  const dispute = disputes.data?.items.find((d) => d.participationId === id);
   const qc = useQueryClient();
   const [sheet, setSheet] = useState<null | 'approve' | 'reject'>(null);
   const [reason, setReason] = useState('');
@@ -159,6 +139,21 @@ function ReviewInner() {
               </Section>
             ) : p.decidedAt ? (
               <Notice tone={p.status === 'approved' ? 'success' : 'info'} title={`Decision: ${statusLabel[p.status]}`} testID="review-decided">{p.decisionReason ?? `Decided ${when(p.decidedAt)}`}</Notice>
+            ) : null}
+            {dispute ? (
+              <Card testID="review-dispute">
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <Text variant="heading">Tester dispute</Text>
+                  <StatusPill status={dispute.status} />
+                </Row>
+                <Text variant="small">{dispute.reason}</Text>
+                <Text variant="small" tone="muted">
+                  {dispute.outcome ? `${dispute.outcome === 'overturned' ? 'Overturned by an admin' : 'Upheld by an admin'}: ${dispute.resolutionNote ?? ''}` : 'An admin will resolve it.'}
+                </Text>
+              </Card>
+            ) : null}
+            {p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned') ? (
+              <TransferCard participationId={p.id} role="builder" canStart />
             ) : null}
             <ConfirmSheet
               visible={sheet !== null}

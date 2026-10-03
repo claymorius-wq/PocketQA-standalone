@@ -8,7 +8,7 @@ export const useEligible = () => useQuery({ queryKey: ['eligible'], queryFn: () 
 export const useTesterStudy = (id: string) => useQuery({ queryKey: ['testerStudy', id], queryFn: () => api('getTesterStudy', { params: { id } }), enabled: !!id });
 export const useMyParticipations = () => useQuery({ queryKey: ['participations'], queryFn: () => api('myParticipations') });
 export const useParticipation = (id: string) => useQuery({ queryKey: ['participation', id], queryFn: () => api('getParticipation', { params: { id } }) });
-export const useEvidence = (id: string) => useQuery({ queryKey: ['evidence', id], queryFn: () => api('listEvidence', { params: { id } }) });
+export const useEvidence = (id: string, enabled = true) => useQuery({ queryKey: ['evidence', id], queryFn: () => api('listEvidence', { params: { id } }), enabled });
 export const useFindings = (id: string) => useQuery({ queryKey: ['findings', id], queryFn: () => api('listFindings', { params: { id } }) });
 export const useCredits = () => useQuery({ queryKey: ['credits'], queryFn: () => api('credits') });
 export const useStudies = () => useQuery({ queryKey: ['studies'], queryFn: () => api('listStudies') });
@@ -18,6 +18,16 @@ export const useMyDisputes = () => useQuery({ queryKey: ['myDisputes'], queryFn:
 export const useAdminDisputes = () => useQuery({ queryKey: ['adminDisputes'], queryFn: () => api('adminDisputes') });
 export const useAdminStudies = () => useQuery({ queryKey: ['adminStudies'], queryFn: () => api('adminStudies') });
 export const useAudit = () => useQuery({ queryKey: ['audit'], queryFn: () => api('adminAudit') });
+export const useStudyDisputes = (id: string) => useQuery({ queryKey: ['studyDisputes', id], queryFn: () => api('studyDisputes', { params: { id } }), enabled: !!id });
+export const useAdminStuck = () => useQuery({ queryKey: ['adminStuck'], queryFn: () => api('adminStuck') });
+/** Polls while any transfer is still waiting on the chain, so states update without a reload. */
+export const useParticipationTransfers = (id: string) =>
+  useQuery({
+    queryKey: ['transfers', id],
+    queryFn: () => api('participationTransfers', { params: { id } }),
+    enabled: !!id,
+    refetchInterval: (q) => (q.state.data?.items.some((t) => t.status === 'pending' || t.status === 'awaiting_signature') ? 4000 : false),
+  });
 export const useAiStatus = () => useQuery({ queryKey: ['ai'], queryFn: () => api('aiStatus'), staleTime: 60_000 });
 
 /**

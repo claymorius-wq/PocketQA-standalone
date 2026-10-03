@@ -1,0 +1,25 @@
+# iOS simulator regression: Settings (which loads the wallet section) must open without
+# crashing and explain that wallet linking is Android-only. Before the fix, Settings pulled
+# in the Android-only MWA module through `link.native.ts` and the app terminated.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- tapOn:
+    id: sign-in-submit
+- tapOn:
+    text: "Not Now"
+    optional: true
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: wallet-unavailable
+- assertVisible: ".*Mobile Wallet Adapter is Android-only.*"
+- takeScreenshot: ios-settings-regression

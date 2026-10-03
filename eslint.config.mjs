@@ -22,7 +22,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly', fetch: 'readonly' },
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly', fetch: 'readonly', TextEncoder: 'readonly' },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],

@@ -34,7 +34,7 @@ function NewStudyInner() {
     consentText: consent,
   };
   const parsed = CreateStudyBody.safeParse(body);
-  const copyIssues = [title, objective, consent, ...tasks].flatMap(lintCopy);
+  const copyIssues = [title, objective, consent, ...tasks].flatMap((t) => lintCopy(t, 'study'));
   const create = useMutation({
     mutationFn: () => api('createStudy', { body }),
     onSuccess: (s) => {

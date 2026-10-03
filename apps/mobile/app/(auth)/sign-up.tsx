@@ -1,7 +1,6 @@
 import { Link } from 'expo-router';
 import { UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
-import { ApiError } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text } from '../../src/ui';
 
@@ -21,7 +20,8 @@ export default function SignUp() {
     try {
       await signUp({ email: email.trim(), password, displayName: displayName.trim(), role });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Sign-up failed.');
+      // Show the real cause (e.g. this device couldn't store the session) instead of a generic line.
+      setError(e instanceof Error && e.message ? e.message : 'Sign-up failed.');
     } finally {
       setBusy(false);
     }

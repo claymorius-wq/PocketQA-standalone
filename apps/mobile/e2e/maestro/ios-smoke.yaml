@@ -1,0 +1,56 @@
+# iOS simulator smoke (graceful degradation): the tester flow works, and recording and
+# wallet linking are shown as unavailable on iOS with plain reasons.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+# iOS: the Sign in button sits above the keyboard; Maestro can't dismiss RN's keyboard here.
+- tapOn:
+    id: sign-in-submit
+# Routine iOS "Save Password?" system prompt: dismiss without saving anything.
+- tapOn:
+    text: "Not Now"
+    optional: true
+# Newest study is first; wait for Discover to load instead of scrolling past it. iOS merges
+# the card's texts into one accessibility label, so match it as a substring.
+- extendedWaitUntil:
+    visible:
+      text: ".*${STUDY}.*"
+    timeout: 20000
+- tapOn: ".*${STUDY}.*"
+- scrollUntilVisible:
+    element:
+      id: recording-unavailable
+- assertVisible: ".*Recording other apps isn.t supported on iOS.*"
+- takeScreenshot: ios-study-recording-unavailable
+- scrollUntilVisible:
+    element:
+      id: consent-checkbox
+- tapOn:
+    id: consent-checkbox
+- tapOn:
+    id: consent-submit
+- tapOn:
+    id: session-start
+- assertVisible: "IN PROGRESS"
+# Back button must not show or announce the route-group name.
+- assertNotVisible: ".*\\(tester\\).*"
+- scrollUntilVisible:
+    element:
+      id: attach-evidence
+- takeScreenshot: ios-session
+# No hardware back on iOS: relaunch (state kept) to reach the tabs.
+- launchApp
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: wallet-unavailable
+- assertVisible: ".*Mobile Wallet Adapter is Android-only.*"
+- takeScreenshot: ios-settings-wallet-unavailable

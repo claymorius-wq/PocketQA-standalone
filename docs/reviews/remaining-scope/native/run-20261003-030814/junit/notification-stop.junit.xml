@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="49.0">
+    <testcase id="notification-stop" name="notification-stop" classname="notification-stop" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/notification-stop.yaml" time="49.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>
