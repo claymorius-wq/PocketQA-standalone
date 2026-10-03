@@ -190,6 +190,9 @@ export const walletHandlers = {
     const db = ctx.deps.db;
     const row = db.prepare('SELECT * FROM devnet_transfers WHERE id = ? AND builder_id = ?').get(ctx.params.id!, user.id) as TransferRow | undefined;
     if (!row) throw notFound('Transfer');
+    // Idempotent for the same signature: the app retries when a response is lost, and
+    // must not be told "not recorded" for a report the server already holds.
+    if (row.signature && row.signature === ctx.body.signature) return transferView(await reverify(ctx, row));
     const fresh = await reverify(ctx, row);
     if (fresh.status !== 'awaiting_signature') throw fail('CONFLICT_STATE', `Transfer is ${fresh.status}.`);
     try {

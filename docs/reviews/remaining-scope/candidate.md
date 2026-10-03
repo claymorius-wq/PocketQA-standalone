@@ -6,7 +6,7 @@
 
 1. **Payment/currency copy rules scoped to reviewer text.**
    - `lintCopy(text, scope)` and `assertCleanCopy(fields, scope)` now take a scope.
-   - `'study'` (builder study content) bans only earnings promises and fake-AI claims. "Buy the $5 item", "Send 0.1 SOL on devnet" and "Verify the payment is successful" are allowed.
+   - `'study'` (builder study content) may describe the app under test: "Buy the $5 item", "Send 0.1 SOL on devnet" and "Verify the payment is successful" are allowed. It still bans earnings promises, fake-AI claims and money aimed at testers (payouts, amounts tied to testers or rewards); see item 6 and the r2 follow-up `docs/reviews/r2-p3/`.
    - `'reviewer'` is the default. It covers approve/reject notes, findings, dispute resolutions, admin decisions, and every UI string, and still bans `paid`/`payout`, currency amounts, "…to your wallet" and "payment complete".
    - Latent bug fixed: `new-study.tsx` called `.flatMap(lintCopy)`, which passed the array index as the second argument.
 2. **Builder view of disputes on their own studies.**

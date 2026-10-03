@@ -290,3 +290,17 @@ sha256 e758f321ba21615b9cc92bdaf00bebae9ea72493d033f6f06fe6139c7ec90198
 $ WALLET_PIN=<test AVD pin> run-native.sh (run 20261003-030814) → 10/10 EXIT=0 active_projections=0; transfer awaiting_signature signature=null
 iOS simulator r2 (main.jsbundle 8e801e70…) → [Passed] ios-settings (19s), [Passed] ios-smoke (30s)
 ```
+
+## 2026-10-03: Review r2 P3 follow-ups (lead, branch `fix/r2-p3`, base `fac4d34`)
+
+```
+domain copy.test.ts (4 natural payout phrases)   → 1 failed | 8 passed (9), then 9 passed
+api remaining-scope.test.ts (same-signature retry) → expected 409 to be 200, then 8 passed
+mobile report-signature.test.ts (full signature)  → 1 failed, then 2 passed
+mutations M22 M23 M24 M25 M26 → each 1 failed; restored (cmp)
+$ pnpm verify → EXIT=0; check:secrets 342 files; contracts 14, domain 168, api 271, mobile 124
+apps/mobile/artifacts/pocketqa-release-14ac0c9e.apk  51026972 bytes  sha256 14ac0c9e9297a51fff2a0ad69f3c3cc82ee6bbc5176b08f1f60b2e7b579b31e8
+$ WALLET_PIN=<test AVD pin> run-native.sh (run 20261003-032219) → 10/10 EXIT=0 active_projections=0; transfer awaiting_signature signature=null
+iOS simulator (main.jsbundle 32a4ebac…) → [Passed] ios-settings (19s), [Passed] ios-smoke (31s)
+$ npx playwright test → 8 passed (44.6s)
+```

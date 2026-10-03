@@ -18,8 +18,9 @@ describe('reportSignature', () => {
     expect(calls).toBe(3);
     expect(err).toBeInstanceOf(SentNotRecordedError);
     expect((err as Error).message).toMatch(/wallet sent the transaction/);
-    expect((err as Error).message).toMatch(/5555…abcd/);
-    expect((err as Error).message).toMatch(/explorer before starting another/);
+    // Review r2 P3: the full signature, so it can be looked up in the explorer.
+    expect((err as Error).message).toContain(SIG);
+    expect((err as Error).message).toMatch(/devnet explorer for signature .* before starting another transfer/);
     expect((err as Error).message).not.toMatch(/Nothing was sent/);
   });
 });

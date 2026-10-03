@@ -1,0 +1,101 @@
+
+> pocket-qa@ verify /Users/hamzadiaz/Projects/pocket-qa
+> pnpm check:secrets && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets /Users/hamzadiaz/Projects/pocket-qa
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 342 committable files scanned, no findings.
+
+> pocket-qa@ typecheck /Users/hamzadiaz/Projects/pocket-qa
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint /Users/hamzadiaz/Projects/pocket-qa
+> eslint .
+
+
+> pocket-qa@ test /Users/hamzadiaz/Projects/pocket-qa
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (1.213166ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.0775ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.4775ms)
+✔ allow marker covers only its own line (0.100667ms)
+✔ forbidden paths (0.300333ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (184.440459ms)
+✔ CLI still runs when invoked through a symlink (63.819167ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 288.953167
+Scope: 5 of 6 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  14 passed (14)
+packages/contracts test:    Start at  03:24:12
+packages/contracts test:    Duration  130ms (import 48%, transform 42%, tests 6%, worker 3%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  11 passed (11)
+packages/domain test:       Tests  168 passed (168)
+packages/domain test:    Start at  03:24:13
+packages/domain test:    Duration  307ms (import 38%, transform 34%, worker 16%, tests 12%)
+packages/domain test: [34m % [39m[2mCoverage report from [22m[33mv8[39m
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.36 |    99.36 |     100 |   98.33 |                   
+packages/domain test:  copy.ts          |   96.29 |    94.73 |     100 |     100 | 74                
+packages/domain test:  transferTx.ts    |   96.66 |      100 |     100 |      96 | 12                
+packages/domain test:  wallet.ts        |   93.54 |      100 |     100 |      90 | 44,52             
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.36% ( 240/244 )
+packages/domain test: Branches     : 99.36% ( 156/157 )
+packages/domain test: Functions    : 100% ( 51/51 )
+packages/domain test: Lines        : 98.33% ( 177/180 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/api test$ vitest run
+apps/mobile test$ jest --ci
+apps/api test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/apps/api
+apps/api test:  Test Files  9 passed (9)
+apps/api test:       Tests  271 passed (271)
+apps/api test:    Start at  03:24:13
+apps/api test:    Duration  1.36s (tests 68%, import 18%, transform 13%)
+apps/api test: Done
+apps/mobile test: PASS __tests__/report-signature.test.ts
+apps/mobile test: PASS __tests__/copy.test.ts
+apps/mobile test: PASS __tests__/focus-refetch.test.tsx
+apps/mobile test: PASS __tests__/upload-queue.test.ts
+apps/mobile test: PASS __tests__/signature.test.ts
+apps/mobile test: PASS __tests__/capability.test.ts
+apps/mobile test: PASS __tests__/contrast.test.ts
+apps/mobile test: PASS __tests__/wallet-errors.test.ts
+apps/mobile test: PASS __tests__/platform-modules.test.ts
+apps/mobile test: PASS __tests__/session-restore.test.ts
+apps/mobile test: Test Suites: 10 passed, 10 total
+apps/mobile test: Tests:       124 passed, 124 total
+apps/mobile test: Snapshots:   0 total
+apps/mobile test: Time:        1.049 s
+apps/mobile test: Ran all test suites.
+apps/mobile test: Done
+EXIT=0

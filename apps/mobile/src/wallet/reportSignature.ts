@@ -3,8 +3,9 @@ export class SentNotRecordedError extends Error {}
 
 /**
  * Reports a signature the wallet has already sent. A failure here doesn't mean nothing
- * happened (the transaction may land on devnet), so it is retried, and the final error
- * names the signature instead of letting the builder think it is safe to send again.
+ * happened (the transaction may land on devnet), so it is retried (the server accepts the
+ * same signature again idempotently), and the final error names the signature instead of
+ * letting the builder think it is safe to send again.
  */
 export async function reportSignature(
   submit: () => Promise<unknown>,
@@ -18,9 +19,9 @@ export async function reportSignature(
       return;
     } catch (e) {
       if (i + 1 >= tries) {
-        const short = `${signature.slice(0, 4)}…${signature.slice(-4)}`;
+        // The full signature, so the builder can look it up in the devnet explorer.
         throw new SentNotRecordedError(
-          `Your wallet sent the transaction (${short}), but Pocket QA could not record it. Check the devnet explorer before starting another transfer.`,
+          `Your wallet sent the transaction, but Pocket QA could not record it. Check the devnet explorer for signature ${signature} before starting another transfer.`,
           { cause: e },
         );
       }

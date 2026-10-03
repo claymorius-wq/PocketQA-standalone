@@ -79,6 +79,11 @@ describe('copy scopes', () => {
     'Compensation of 15 EUR',
     'Each tester gets $5',
     'Payouts weekly',
+    // Review r2 P3: natural phrasings that slipped through.
+    'Complete this study to receive 10 USDC',
+    '20 USDC for joining',
+    'Top 3 testers win $100',
+    "We'll send you 5 SOL after the session",
   ];
 
   it('blocks money promised to testers in study content', () => {
@@ -86,7 +91,7 @@ describe('copy scopes', () => {
   });
 
   it('still allows app-describing money wording next to tester-facing words', () => {
-    for (const t of ['Check that you can buy the $5 item', 'Each item costs $3; add two to the cart', 'Send 0.1 SOL on devnet to the address shown', 'No payouts: rewards are test credits', 'The receipt shows $5. Testers receive a confirmation email afterwards.']) {
+    for (const t of ['Check that you can buy the $5 item', 'Each item costs $3; add two to the cart', 'Send 0.1 SOL on devnet to the address shown', 'No payouts: rewards are test credits', 'The receipt shows $5. Testers receive a confirmation email afterwards.', 'Add the $5 item to the cart to get free shipping', 'Pay $5 to unlock the premium plan']) {
       expect(lintCopy(t, 'study'), t).toEqual([]);
     }
   });
