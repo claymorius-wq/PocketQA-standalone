@@ -418,6 +418,23 @@ export const WalletLinkBody = z.object({
 });
 
 /**
+ * Wallet-first login (ADR 0005 §2). A separate challenge from account linking: its own
+ * statement ("Sign in … not a payment") and store, single use, rate limited. The wallet
+ * resolves only to the account it is linked to; `newAccount` creates one only if none is.
+ */
+export const WalletLoginChallengeBody = z.object({ address: Base58Address });
+export const WalletLoginBody = WalletLinkBody.extend({
+  newAccount: z.object({ role: SelfServeRole, displayName: DisplayName }).optional(),
+});
+/** `local`: an API session token. `firebase_custom_token`: exchange with the Firebase client SDK for an ID token; it is never an API bearer. */
+export const WalletLoginSession = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('local'), token: z.string().min(32) }),
+  z.object({ kind: z.literal('firebase_custom_token'), customToken: z.string().min(16) }),
+]);
+export const WalletLoginResponse = z.object({ user: User, session: WalletLoginSession });
+export type WalletLoginResponse = z.infer<typeof WalletLoginResponse>;
+
+/**
  * Devnet demo transfer: a builder may send a small devnet SOL amount to an approved
  * tester's linked wallet. It is NOT a reward payout (rewards are test credits), and the
  * UI labels it "Devnet demo · no real value". The server fixes sender, recipient and
@@ -563,6 +580,8 @@ export const routes = {
   walletNonce: r({ method: 'POST', path: '/wallet/nonce', auth: 'user', scope: 'self', body: WalletNonceBody, response: WalletNonceResponse }),
   walletLink: r({ method: 'POST', path: '/wallet/link', auth: 'user', scope: 'self', body: WalletLinkBody, response: User }),
   walletUnlink: r({ method: 'DELETE', path: '/wallet', auth: 'user', scope: 'self', body: null, response: User }),
+  walletLoginChallenge: r({ method: 'POST', path: '/auth/wallet/challenge', auth: 'public', scope: 'none', body: WalletLoginChallengeBody, response: WalletNonceResponse }),
+  walletLogin: r({ method: 'POST', path: '/auth/wallet/login', auth: 'public', scope: 'none', body: WalletLoginBody, response: WalletLoginResponse }),
   createTransfer: r({ method: 'POST', path: '/devnet/transfers', auth: 'builder', scope: 'study-owner', body: CreateDevnetTransferBody, response: DevnetTransfer }),
   submitTransferSignature: r({ method: 'POST', path: '/devnet/transfers/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitTransferSignatureBody, response: DevnetTransfer }),
   getTransfer: r({ method: 'GET', path: '/devnet/transfers/:id', auth: 'user', scope: 'participation-party', body: null, response: DevnetTransfer }),

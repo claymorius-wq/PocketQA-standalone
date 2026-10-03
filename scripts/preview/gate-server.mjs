@@ -63,6 +63,7 @@ export const PREVIEW_BLOCKED_API = [
   { method: 'DELETE', path: /^\/me$/, message: 'Deleting the shared demo account is turned off in the preview.' },
   { method: 'POST', path: /^\/auth\/register$/, message: 'Creating accounts is turned off in the shared preview. Use one of the demo accounts.' },
   { method: 'POST', path: /^\/auth\/identity\/session$/, message: 'Managed sign-in is not available in the shared preview. Use one of the demo accounts.' },
+  { method: 'POST', path: /^\/auth\/wallet\/(challenge|login)$/, message: 'Wallet sign-in is not available in the shared preview. Use one of the demo accounts.' },
   { method: 'POST', path: /^\/admin\/moderation\/(users|studies)\/[^/]+$/, message: 'Suspending demo accounts or studies is turned off in the shared preview.' },
 ];
 

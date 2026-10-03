@@ -29,6 +29,18 @@ describe('managed identity config', () => {
     expect(() => loadConfig({ ...base, FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099' })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST/);
   });
 
+  it('wallet login is opt-in and never runs on the shared demo (it creates accounts)', () => {
+    expect(loadConfig(base).walletLogin).toBe(false);
+    // Wallet login needs the real public origin for its sign-in domain (review r1 P2).
+    expect(() => loadConfig({ ...base, POCKETQA_WALLET_LOGIN: '1' })).toThrow(/POCKETQA_PUBLIC_ORIGIN/);
+    expect(loadConfig({ ...base, POCKETQA_WALLET_LOGIN: '1', POCKETQA_PUBLIC_ORIGIN: 'https://app.pocketqa.example' })).toMatchObject({ walletLogin: true, publicOrigin: 'https://app.pocketqa.example' });
+    expect(loadConfig({ ...base, POCKETQA_WALLET_LOGIN: '1', POCKETQA_PUBLIC_ORIGIN: 'http://localhost:8081' }).publicOrigin).toBe('http://localhost:8081');
+    for (const bad of ['http://app.pocketqa.example', 'https://app.pocketqa.example/path', 'https://user@app.pocketqa.example', 'pocketqa.local', 'https://*.example']) {
+      expect(() => loadConfig({ ...base, POCKETQA_WALLET_LOGIN: '1', POCKETQA_PUBLIC_ORIGIN: bad }), bad).toThrow(ConfigError);
+    }
+    expect(() => loadConfig({ ...base, POCKETQA_SHARED_DEMO: '1', POCKETQA_WALLET_LOGIN: '1', POCKETQA_PUBLIC_ORIGIN: 'https://app.pocketqa.example' })).toThrow(/wallet login/);
+  });
+
   it('the shared synthetic demo never runs with managed identity', () => {
     expect(loadConfig({ ...base, POCKETQA_SHARED_DEMO: '1' }).sharedDemo).toBe(true);
     expect(() => loadConfig({ ...fb, POCKETQA_SHARED_DEMO: '1' })).toThrow(/shared demo/);

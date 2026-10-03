@@ -37,6 +37,20 @@
      - `local` mode: an API session token;
      - `firebase` mode: a Firebase **custom token** for the user's UID. The client exchanges it for an ID token, and custom tokens are never accepted as API bearer tokens.
    - The last sign-in method can't be removed: a wallet-only account can't unlink its wallet until it has another sign-in method (a password, or a Firebase identity from a non-custom provider).
+   - **Origin binding (review r1 P2).**
+     - The challenge's SIWS `domain` and `uri` are the deployment's real public origin, `POCKETQA_PUBLIC_ORIGIN`. It is required when wallet login is on and must be an exact https origin (http only for localhost).
+     - The statement names that origin: "Sign in to Pocket QA at <origin> … Only sign this on <host>".
+     - The web client must use Wallet Standard **`solana:signIn`**, where the wallet compares the domain with the requesting page. It must never use raw `signMessage` for login.
+     - The server keeps exact-message verification, so a signature over any other domain fails.
+     - **Residual risk:** a wallet that signs SIWS-formatted text through raw `signMessage` without checking the domain can still be phished into producing a valid login. That's why wallet login is **off by default** (`POCKETQA_WALLET_LOGIN`).
+       - Hamza's explicit acceptance of this risk must be recorded here before `POCKETQA_WALLET_LOGIN=1` is set anywhere but localhost. It is **not yet recorded**.
+       - Public enabling also needs a verified production origin and the real-wallet origin test (increment 4 acceptance items).
+     - **Android:** wallet login isn't offered. MWA keeps account linking only, until an MWA `sign_in_payload` flow with verified app identity is designed and tested.
+   - **Admins** can't use wallet login; they sign in with email or Google.
+   - **Rate limits:**
+     - challenges are limited to 5 per minute per *address and client*, so a third party can't lock the owner out;
+     - each client is limited to 30 per minute;
+     - both are per process (a hosting gate).
 3. **Evidence storage behind an interface** (`apps/api/src/storage/`).
    - `POCKETQA_STORAGE` is `local` (default; current filesystem behaviour) or `r2`.
    - In `r2` mode:
@@ -48,7 +62,9 @@
    - Playback keeps today's authenticated, permission-rechecked, `Range`-capable `/media/:token` stream, now read through the store. There are no direct public or long-lived URLs.
    - Deletions that fail are queued in `storage_deletions` and retried. Expired intents have their quarantine objects removed.
    - The shared demo can't run in `r2` mode: the config refuses `POCKETQA_SHARED_DEMO=1` together with `POCKETQA_STORAGE=r2`, and the preview gate still blocks uploads.
-4. **Web wallet:** a Solana Wallet Standard connector (`link.web.ts`, `walletLogin.web.ts`) using `standard:connect` and `solana:signMessage` only. It never requests transaction signing.
+4. **Web wallet:** a Solana Wallet Standard connector (`link.web.ts`, `walletLogin.web.ts`). It never requests transaction signing.
+   - **Login** uses `solana:signIn` with the server's challenge fields only. A wallet without `solana:signIn` gets an honest "wallet login is not supported by this wallet"; there is no fallback to `signMessage`.
+   - **Account linking** (while signed in) uses `solana:signMessage` over the server's link message, as on Android.
    - Android keeps MWA.
    - iOS stays "unavailable": MWA isn't claimed for iOS, and iOS support is a separate research item.
 5. **Client config is public:** `GET /config` returns `authMode`, `storage`, `walletLogin`, and Firebase *web* config (API key, auth domain, project id). Those are public identifiers, not secrets. Server credentials never leave the server.

@@ -19,6 +19,13 @@ export type Config = {
   firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null } | null;
   /** The shared synthetic demo (preview): never runs with real-data features. */
   sharedDemo: boolean;
+  /** Wallet-first login (ADR 0005 §2); off unless POCKETQA_WALLET_LOGIN=1. */
+  walletLogin: boolean;
+  /**
+   * The app's real public origin (e.g. https://app.example). Wallet-login challenges use
+   * its host as the SIWS domain so a `solana:signIn` wallet can refuse other origins.
+   */
+  publicOrigin: string | null;
 };
 
 export class ConfigError extends Error {}
@@ -92,6 +99,23 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   }
   const sharedDemo = env.POCKETQA_SHARED_DEMO === '1';
   if (sharedDemo && authMode !== 'local') throw new ConfigError('The shared demo runs only with local auth (synthetic demo accounts).');
+  const walletLogin = env.POCKETQA_WALLET_LOGIN === '1';
+  // Wallet login can create accounts; the shared demo has no self-registration.
+  if (sharedDemo && walletLogin) throw new ConfigError('The shared demo cannot enable wallet login (it creates accounts).');
+  let publicOrigin: string | null = null;
+  if (walletLogin) {
+    const raw = env.POCKETQA_PUBLIC_ORIGIN ?? '';
+    let u: URL | null;
+    try {
+      u = new URL(raw);
+    } catch {
+      u = null;
+    }
+    const loopback = u !== null && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
+    const ok = u !== null && (u.protocol === 'https:' || (u.protocol === 'http:' && loopback)) && !u.username && !u.password && !u.hostname.includes('*') && raw === u.origin;
+    if (!ok) throw new ConfigError('POCKETQA_PUBLIC_ORIGIN must be the exact https origin of the app (http only for localhost) when wallet login is on.');
+    publicOrigin = u!.origin;
+  }
 
   return {
     host: host as Config['host'],
@@ -104,5 +128,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     authMode,
     firebase,
     sharedDemo,
+    walletLogin,
+    publicOrigin,
   };
 }

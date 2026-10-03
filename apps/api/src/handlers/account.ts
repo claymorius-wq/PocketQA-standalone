@@ -29,7 +29,7 @@ const failures = new Map<string, { count: number; first: number }>();
 let dummy: Promise<string> | null = null;
 const dummyHash = () => (dummy ??= hashPassword(newToken()));
 
-function issueSession(ctx: Ctx, user: UserRow) {
+export function issueSession(ctx: Ctx, user: UserRow) {
   const token = newToken();
   const now = ctx.deps.now();
   ctx.deps.db
@@ -69,7 +69,7 @@ export const accountHandlers = {
     return {
       authMode,
       storage: 'local' as const,
-      walletLogin: false,
+      walletLogin: ctx.deps.config.walletLogin,
       firebase: firebase
         ? {
             apiKey: firebase.webApiKey,

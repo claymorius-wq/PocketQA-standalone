@@ -32,7 +32,7 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase' } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -61,6 +61,8 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
         authMode,
         firebase: authMode === 'firebase' ? { projectId: 'demo-pocketqa', webApiKey: 'demo-web-api-key', authDomain: 'demo-pocketqa.firebaseapp.com', authEmulatorHost: null } : null, // check-secrets: allow (placeholder public Firebase web config in tests)
         sharedDemo: false,
+        walletLogin: opts.walletLogin ?? false,
+        publicOrigin: opts.walletLogin ? 'https://app.pocketqa.example' : null,
       },
       identity: authMode === 'firebase' ? identity : null,
       now: () => clock.now,
@@ -71,10 +73,11 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
   );
   await app.ready();
 
-  async function req(method: string, url: string, token?: string, payload?: unknown, headers: Record<string, string> = {}) {
+  async function req(method: string, url: string, token?: string, payload?: unknown, headers: Record<string, string> = {}, remoteAddress?: string) {
     const res = await app.inject({
       method: method as 'GET',
       url,
+      ...(remoteAddress ? { remoteAddress } : {}),
       headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
       ...(payload !== undefined ? { payload: payload as object } : {}),
     });

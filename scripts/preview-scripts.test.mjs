@@ -90,5 +90,5 @@ test('start.sh pins the shared demo to local auth and local storage (cloud revie
   // preview launcher sets these explicitly on the API command.
   const sh = readFileSync(join(dir, 'preview', 'start.sh'), 'utf8');
   const api = sh.split('\n').find((l) => l.includes('POCKETQA_API_PORT=')) ?? '';
-  for (const kv of ['POCKETQA_SHARED_DEMO=1', 'POCKETQA_AUTH_MODE=local', 'POCKETQA_STORAGE=local']) assert.ok(api.includes(kv), kv);
+  for (const kv of ['POCKETQA_SHARED_DEMO=1', 'POCKETQA_AUTH_MODE=local', 'POCKETQA_STORAGE=local', 'POCKETQA_WALLET_LOGIN=0']) assert.ok(api.includes(kv), kv);
 });

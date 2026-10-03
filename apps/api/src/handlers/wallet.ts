@@ -158,6 +158,12 @@ export const walletHandlers = {
 
   walletUnlink: (ctx) => {
     const user = me(ctx);
+    // Never remove the last way in: a wallet-only account needs a password or a verified
+    // email/Google sign-in first (ADR 0005 §2).
+    const recoverable = ctx.deps.db.prepare(`SELECT 1 FROM identities WHERE user_id = ? AND has_recovery = 1`).get(user.id);
+    if (!user.password_hash && !recoverable) {
+      throw fail('CONFLICT_STATE', 'Add an email or Google sign-in before removing your only sign-in method.');
+    }
     ctx.deps.db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
     return userView(ctx.deps.db, user);
   },

@@ -10,6 +10,7 @@ import { evidenceHandlers } from './handlers/evidence';
 import { participationHandlers } from './handlers/participations';
 import { studyHandlers } from './handlers/studies';
 import { walletHandlers } from './handlers/wallet';
+import { walletLoginHandlers } from './handlers/walletLogin';
 import { HTTP_STATUS, fail, sha256 } from './util';
 import { IdentityError, isRecoverableSignIn, type VerifiedIdentity } from './identity/types';
 import type { UserRow } from './views';
@@ -22,6 +23,7 @@ const handlers: Record<RouteName, Handler> = {
   ...evidenceHandlers,
   ...adminHandlers,
   ...walletHandlers,
+  ...walletLoginHandlers,
 };
 
 /** Routes a suspended account may still use: see itself, leave, export or delete its data. */

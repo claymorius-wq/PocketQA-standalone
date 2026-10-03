@@ -182,6 +182,19 @@ const MIGRATIONS: string[] = [
   );
   CREATE UNIQUE INDEX identities_user_provider ON identities(user_id, provider);
   `,
+  // 2: wallet-first login challenges (ADR 0005 §2). Separate from wallet_nonces (account
+  // linking), so a link signature can never be replayed as a login and vice versa.
+  `
+  CREATE TABLE wallet_login_challenges (
+    nonce TEXT PRIMARY KEY,
+    address TEXT NOT NULL,
+    input_json TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX wallet_login_challenges_expiry ON wallet_login_challenges(expires_at);
+  `,
 ];
 
 export function openDb(file: string): DB {
