@@ -12,13 +12,16 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Managed sign-in: the account is created after the email address is verified.
+  const [verificationSent, setVerificationSent] = useState(false);
   const pwError = password && password.length < 12 ? 'Use at least 12 characters.' : null;
 
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      await signUp({ email: email.trim(), password, displayName: displayName.trim(), role });
+      const r = await signUp({ email: email.trim(), password, displayName: displayName.trim(), role });
+      setVerificationSent(r.verificationSent);
     } catch (e) {
       // Show the real cause (e.g. this device couldn't store the session) instead of a generic line.
       setError(e instanceof Error && e.message ? e.message : 'Sign-up failed.');
@@ -48,6 +51,11 @@ export default function SignUp() {
         <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" testID="sign-up-email" />
         <Field label="Password" value={password} onChangeText={setPassword} secure error={pwError} hint="At least 12 characters." testID="sign-up-password" />
         {error ? <Notice tone="danger" title="Couldn’t create account" testID="sign-up-error">{error}</Notice> : null}
+        {verificationSent ? (
+          <Notice tone="info" title="Check your email" testID="sign-up-verify">
+            We sent a verification link to {email.trim()}. Open it, then sign in to finish creating your account.
+          </Notice>
+        ) : null}
         <Button label="Create account" icon={UserPlus} onPress={submit} loading={busy} disabled={!displayName || !email || password.length < 12} testID="sign-up-submit" />
       </Card>
       <Row style={{ justifyContent: 'center' }}>

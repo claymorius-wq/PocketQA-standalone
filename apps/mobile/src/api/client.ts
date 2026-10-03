@@ -22,12 +22,18 @@ export type Body<N extends RouteName> = Def<N>['body'] extends z.ZodTypeAny ? z.
 
 let tokenGetter: () => string | null = () => null;
 let onUnauthenticated: () => void = () => {};
-export function configureClient(opts: { getToken: () => string | null; onUnauthenticated: () => void }) {
+let tokenRefresher: (() => Promise<string | null>) | null = null;
+/**
+ * `refreshToken` (managed identity only): on a 401, get a fresh ID token and retry once
+ * before treating the session as ended, so an expired token after sleep isn't a sign-out.
+ */
+export function configureClient(opts: { getToken: () => string | null; onUnauthenticated: () => void; refreshToken?: () => Promise<string | null> }) {
   tokenGetter = opts.getToken;
   onUnauthenticated = opts.onUnauthenticated;
+  tokenRefresher = opts.refreshToken ?? null;
 }
 
-async function send(method: string, path: string, init: { body?: BodyInit; json?: unknown; token?: string | null }) {
+async function send(method: string, path: string, init: { body?: BodyInit; json?: unknown; token?: string | null }, retried = false): Promise<unknown> {
   const headers: Record<string, string> = {};
   const token = init.token === undefined ? tokenGetter() : init.token;
   if (token) headers.authorization = `Bearer ${token}`;
@@ -58,7 +64,14 @@ async function send(method: string, path: string, init: { body?: BodyInit; json?
   }
   if (!res.ok) {
     const err = ErrorBody.safeParse(data);
-    if (err.success && err.data.code === 'UNAUTHENTICATED' && token) onUnauthenticated();
+    if (err.success && err.data.code === 'UNAUTHENTICATED' && token) {
+      // Only requests using the session's own token are refreshed (never explicit tokens).
+      if (!retried && init.token === undefined && tokenRefresher && !(init.body instanceof FormData)) {
+        const fresh = await tokenRefresher().catch(() => null);
+        if (fresh) return send(method, path, init, true);
+      }
+      onUnauthenticated();
+    }
     throw err.success ? new ApiError(err.data.code, err.data.message, res.status) : new ApiError('BAD_RESPONSE', 'Unexpected server response.', res.status);
   }
   return data;

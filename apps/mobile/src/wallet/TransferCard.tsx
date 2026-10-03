@@ -4,7 +4,7 @@ import type { DevnetTransfer } from '@pocket-qa/contracts';
 import { api } from '../api/client';
 import { GlassSurface, useUplight } from '../glass';
 import { glyphIcon } from '../icons';
-import { walletCapability } from '../lib/capability';
+import { transferSignCapability } from '../lib/capability';
 import { when } from '../lib/format';
 import { useParticipationTransfers } from '../lib/queries';
 import { space } from '../theme/tokens';
@@ -46,7 +46,7 @@ const EXTERNAL = glyphIcon('external');
 
 function TransferRow({ t, role, lit }: { t: DevnetTransfer; role: 'builder' | 'tester'; lit: boolean }) {
   const qc = useQueryClient();
-  const cap = walletCapability();
+  const cap = transferSignCapability();
   const sign = useMutation({
     mutationFn: () => signAndSendDevnetTransfer(t),
     onSettled: () => qc.invalidateQueries({ queryKey: ['transfers', t.participationId] }),

@@ -1,5 +1,7 @@
+import { createSignInMessageText } from '@solana/wallet-standard-util';
 import { describe, expect, it } from 'vitest';
 import {
+  buildSiwsMessage,
   buildPath,
   CreateStudyBody,
   ErrorBody,
@@ -92,5 +94,22 @@ describe('contracts', () => {
   it('builds paths and refuses missing params', () => {
     expect(buildPath(routes.putTaskNote.path, { id: 'p 1', taskId: 't1' })).toBe('/participations/p%201/tasks/t1/note');
     expect(() => buildPath(routes.getStudy.path)).toThrow();
+  });
+
+  // ADR 0005 §2/§4: Wallet Standard wallets build the sign-in text themselves with the
+  // standard formatter; the server requires an exact match with buildSiwsMessage.
+  it('buildSiwsMessage is byte-identical to the Wallet Standard sign-in message text', () => {
+    const input = {
+      domain: 'app.pocketqa.example',
+      address: '3BL56hNDpaoqdnh898NyzPZiE4XXxFmFFQ9egFBsNtTB',
+      statement: 'Sign in to Pocket QA at https://app.pocketqa.example with this devnet wallet. Only sign this on app.pocketqa.example. This is not a payment and sends nothing.',
+      uri: 'https://app.pocketqa.example',
+      version: '1' as const,
+      chainId: 'solana:devnet' as const,
+      nonce: 'abcDEF1234567890xyz',
+      issuedAt: '2026-10-04T00:00:00.000Z',
+      expirationTime: '2026-10-04T00:05:00.000Z',
+    };
+    expect(buildSiwsMessage(input)).toBe(createSignInMessageText(input));
   });
 });

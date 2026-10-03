@@ -230,6 +230,11 @@ describe('preview gate: shared-preview policy (review r1 P2)', () => {
       ['POST', '/api/auth/identity/session'],
       ['POST', '/api/auth/wallet/challenge'],
       ['POST', '/api/auth/wallet/login'],
+      ['POST', '/api/wallet/nonce'],
+      ['POST', '/api/wallet/link'],
+      ['DELETE', '/api/wallet'],
+      ['POST', '/api/devnet/transfers'],
+      ['POST', '/api/devnet/transfers/t1/signature'],
       ['POST', '/api/admin/moderation/users/u1'],
       ['POST', '/api/admin/moderation/studies/s1'],
     ]) {

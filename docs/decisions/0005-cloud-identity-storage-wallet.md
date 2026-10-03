@@ -26,6 +26,11 @@
      - A provider failure during logout is logged; the server-side revocation still applies.
      - Signing back in within the same second as logout can get 401 for up to a second, and the client retries.
    - Accepted sign-in providers: email/password and Google, each with a **verified** email. Other providers are refused until reviewed. Only those verified sign-ins count as a recovery method (`has_recovery`).
+   - **Client (web):**
+     - Firebase uses tab-scoped persistence (`browserSessionPersistence`), as local mode uses sessionStorage.
+     - On a 401 the app refreshes the ID token once and retries before treating the session as ended.
+     - A startup failure only signs out on a definite `UNAUTHENTICATED`, never when offline.
+     - Sign-in errors are generic and don't reveal whether an account exists.
    - The shared demo is pinned to local auth and local storage by `scripts/preview/start.sh`. The process environment overrides `.env.local`, and the preview gate also blocks `POST /auth/identity/session`.
    - Suspension is enforced on every request from `users.status`, as today.
 2. **Wallet-first login uses a separate challenge.**

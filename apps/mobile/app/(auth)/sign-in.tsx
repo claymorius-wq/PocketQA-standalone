@@ -1,17 +1,33 @@
 import { Link } from 'expo-router';
-import { LogIn, ShieldCheck } from 'lucide-react-native';
+import { LogIn, ShieldCheck, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { API_BASE_URL, ApiError } from '../../src/api/client';
+import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
 import { useSession } from '../../src/auth/SessionProvider';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { space } from '../../src/theme/tokens';
 import { loadDemoAccounts, PREVIEW_BUILD, type DemoAccount, type DemoRole } from '../../src/preview/demoAccounts';
+import { availableWallets } from '../../src/wallet/registry';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text } from '../../src/ui';
 
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
 
 export default function SignIn() {
-  const { signIn } = useSession();
+  const { signIn, authMode, storage, walletLogin, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount } = useSession();
+  const web = Platform.OS === 'web';
+  // Wallet sign-in: web with a Solana Wallet Standard extension, when the server enables it.
+  const canWallet = walletLogin && web && availableWallets().length > 0;
+  const [role, setRole] = useState<'tester' | 'builder'>('tester');
+  const [displayName, setDisplayName] = useState('');
+  // Wallet sign-in found no account for this wallet: offer to create one (a second signature).
+  const [walletNew, setWalletNew] = useState(false);
+  // Prefill "Finish your account" with what was typed at sign-up.
+  useEffect(() => {
+    if (!pendingProfile) return;
+    setRole(pendingProfile.role);
+    setDisplayName(pendingProfile.displayName);
+  }, [pendingProfile]);
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,11 +59,11 @@ export default function SignIn() {
     };
   }, []); // load once on mount
 
-  async function submit() {
+  async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
     try {
-      await signIn(email.trim(), password);
+      await action();
     } catch (e) {
       // Show the real cause (e.g. this device couldn't store the session) instead of a generic line.
       setError(e instanceof Error && e.message ? e.message : 'Sign-in failed.');
@@ -55,6 +71,7 @@ export default function SignIn() {
       setBusy(false);
     }
   }
+  const submit = () => run(() => signIn(email.trim(), password));
 
   return (
     <Screen testID="sign-in-screen">
@@ -83,7 +100,56 @@ export default function SignIn() {
         <Field label="Password" value={password} onChangeText={setPassword} secure testID="sign-in-password" />
         {error ? <Notice tone="danger" title="Couldn’t sign in" testID="sign-in-error">{error}</Notice> : null}
         <Button label="Sign in" icon={LogIn} onPress={submit} loading={busy} disabled={!email || !password} testID="sign-in-submit" />
+        {authMode === 'firebase' && web ? <Button label="Continue with Google" variant="secondary" onPress={() => run(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
+        {canWallet ? (
+          // Sign In With Solana: the wallet shows this site's address; nothing is paid or sent.
+          <Button
+            label="Continue with wallet"
+            icon={Wallet}
+            variant="secondary"
+            onPress={() =>
+              run(async () => {
+                try {
+                  await signInWithWallet();
+                } catch (e) {
+                  if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
+                  throw e;
+                }
+              })
+            }
+            disabled={busy}
+            testID="sign-in-wallet"
+          />
+        ) : null}
       </Card>
+      {needsAccount || walletNew ? (
+        <Card testID="finish-account">
+          <Text variant="heading">{walletNew ? 'Create an account with this wallet' : 'Finish your account'}</Text>
+          <Text variant="small" tone="muted">
+            {walletNew
+              ? 'No Pocket QA account uses this wallet yet. Choose how you’ll use Pocket QA; your wallet will ask you to sign in once more.'
+              : 'You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.'}
+          </Text>
+          <Segmented
+            testID="finish-role"
+            value={role}
+            onChange={setRole}
+            options={[
+              { value: 'tester', label: 'I test apps' },
+              { value: 'builder', label: 'I build apps' },
+            ]}
+          />
+          <Field label="Display name" value={displayName} onChangeText={setDisplayName} testID="finish-name" autoCapitalize="words" />
+          <Button
+            label="Create account"
+            icon={UserPlus}
+            onPress={() => run(() => (walletNew ? signInWithWallet({ role, displayName: displayName.trim() }) : completeAccount({ role, displayName: displayName.trim() })))}
+            loading={busy}
+            disabled={!displayName.trim()}
+            testID="finish-submit"
+          />
+        </Card>
+      ) : null}
       {PREVIEW_BUILD ? null : (
         // The shared preview has no self-registration (the gate refuses it).
         <Row style={{ justifyContent: 'center' }}>
@@ -94,7 +160,7 @@ export default function SignIn() {
         </Row>
       )}
       <Text variant="small" tone="muted" style={{ textAlign: 'center' }}>
-        {PREVIEW_BUILD ? 'Public demo preview · synthetic data · devnet and test credits only' : 'Local build · data stays on this machine'}
+        {signInFooter({ preview: PREVIEW_BUILD, authMode, storage, apiLocal: isLoopbackApi(API_BASE_URL) })}
       </Text>
     </Screen>
   );

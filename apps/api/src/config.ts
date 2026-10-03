@@ -110,7 +110,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // Wallet login can create accounts; the shared demo has no self-registration.
   if (sharedDemo && walletLogin) throw new ConfigError('The shared demo cannot enable wallet login (it creates accounts).');
   let publicOrigin: string | null = null;
-  if (walletLogin) {
+  // Required for wallet login; optional otherwise (web wallet linking uses it when set).
+  if (walletLogin || env.POCKETQA_PUBLIC_ORIGIN) {
     const raw = env.POCKETQA_PUBLIC_ORIGIN ?? '';
     let u: URL | null;
     try {
@@ -120,7 +121,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     }
     const loopback = u !== null && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
     const ok = u !== null && (u.protocol === 'https:' || (u.protocol === 'http:' && loopback)) && !u.username && !u.password && !u.hostname.includes('*') && raw === u.origin;
-    if (!ok) throw new ConfigError('POCKETQA_PUBLIC_ORIGIN must be the exact https origin of the app (http only for localhost) when wallet login is on.');
+    if (!ok) throw new ConfigError('POCKETQA_PUBLIC_ORIGIN must be the exact https origin of the app (http only for localhost); wallet login requires it.');
     publicOrigin = u!.origin;
   }
 

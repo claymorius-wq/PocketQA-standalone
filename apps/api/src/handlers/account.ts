@@ -90,12 +90,14 @@ export const accountHandlers = {
     if (ctx.user) return { user: userView(db, ctx.user) };
     const mapped = db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND subject = ?`).get(id.uid);
     if (mapped) throw fail('CONFLICT_STATE', 'This sign-in belongs to a deleted account.');
-    if (!ctx.body.newAccount) throw fail('NOT_FOUND', 'No Pocket QA account uses this sign-in yet.');
+    // Check the identity itself first, so an unverified sign-in hears "verify your email"
+    // instead of being offered an account it can't create yet.
     // Custom-token identities come only from wallet login, which creates its own accounts.
     if (id.signInProvider === 'custom') throw fail('CONFLICT_STATE', 'Use wallet sign-in to create a wallet account.');
     // Every provider must prove the email, so nobody can claim someone else's address.
     if (!id.emailVerified) throw fail('EMAIL_UNVERIFIED', 'Verify your email address, then sign in again.');
     if (!RECOVERABLE_PROVIDERS.has(id.signInProvider)) throw fail('PROVIDER_UNSUPPORTED', 'This sign-in method is not supported. Use email or Google.');
+    if (!ctx.body.newAccount) throw fail('NOT_FOUND', 'No Pocket QA account uses this sign-in yet.');
     const email = Email.safeParse(id.email ?? '');
     if (!email.success) throw fail('VALIDATION', 'This sign-in has no usable email address.');
     if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email.data)) {

@@ -407,7 +407,12 @@ export const WALLET_NONCE_TTL_SECONDS = 300;
 export const DEFAULT_SIWS_DOMAIN = 'pocketqa.local';
 export const appIdentityUri = (domain: string) => `https://${domain}`;
 
-export const WalletNonceBody = z.object({ address: Base58Address });
+/**
+ * `surface`: where the link is signed. `mwa` (default, Android) uses the fixed app identity
+ * domain; `web` uses the deployment's real origin so wallets that check SIWS domains see
+ * the page they are on (ADR 0005 §4).
+ */
+export const WalletNonceBody = z.object({ address: Base58Address, surface: z.enum(['mwa', 'web']).optional() });
 /**
  * Server-issued SIWS input, bound server-side to (user, address, nonce, domain, chain,
  * issuedAt, expiresAt). The app renders it with `buildSiwsMessage` and has the wallet sign

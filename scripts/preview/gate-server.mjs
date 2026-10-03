@@ -64,6 +64,10 @@ export const PREVIEW_BLOCKED_API = [
   { method: 'POST', path: /^\/auth\/register$/, message: 'Creating accounts is turned off in the shared preview. Use one of the demo accounts.' },
   { method: 'POST', path: /^\/auth\/identity\/session$/, message: 'Managed sign-in is not available in the shared preview. Use one of the demo accounts.' },
   { method: 'POST', path: /^\/auth\/wallet\/(challenge|login)$/, message: 'Wallet sign-in is not available in the shared preview. Use one of the demo accounts.' },
+  // Shared accounts: a visitor's real wallet address must never be attached to them.
+  { method: 'POST', path: /^\/wallet\/(nonce|link)$/, message: 'Wallet linking is not available in the shared preview.' },
+  { method: 'DELETE', path: /^\/wallet$/, message: 'Wallet linking is not available in the shared preview.' },
+  { method: 'POST', path: /^\/devnet\/transfers(\/[^/]+\/signature)?$/, message: 'Devnet transfers are not available in the shared preview.' },
   { method: 'POST', path: /^\/admin\/moderation\/(users|studies)\/[^/]+$/, message: 'Suspending demo accounts or studies is turned off in the shared preview.' },
 ];
 

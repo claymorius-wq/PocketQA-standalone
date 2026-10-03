@@ -65,6 +65,12 @@ describe('identity session (first sign-in creates the account explicitly)', () =
     expect((await t.req('POST', '/auth/identity/session', google, { newAccount: { role: 'tester', displayName: 'Go' } })).status).toBe(200);
   });
 
+  it('an unverified identity hears "verify your email" before being offered an account', async () => {
+    const token = t.identity.idToken({ uid: 'uid-u', email: 'u@example.test', email_verified: false, provider: 'password' });
+    const r = await t.req('POST', '/auth/identity/session', token, {});
+    expect([r.status, r.body.code]).toEqual([403, 'EMAIL_UNVERIFIED']);
+  });
+
   it('requires a verified email for email/password identities', async () => {
     const token = t.identity.idToken({ uid: 'uid-c', email: 'c@example.test', email_verified: false, provider: 'password' });
     const r = await t.req('POST', '/auth/identity/session', token, { newAccount: { role: 'tester', displayName: 'C' } });
