@@ -61,6 +61,7 @@ function stripSet(headers) {
 export const PREVIEW_BLOCKED_API = [
   { method: 'POST', path: /^\/participations\/[^/]+\/evidence$/, message: 'Uploads are turned off in the shared preview, because other viewers could see them. Recording and evidence upload work in the Android app.' },
   { method: 'DELETE', path: /^\/me$/, message: 'Deleting the shared demo account is turned off in the preview.' },
+  { method: 'POST', path: /^\/auth\/register$/, message: 'Creating accounts is turned off in the shared preview. Use one of the demo accounts.' },
   { method: 'POST', path: /^\/admin\/moderation\/(users|studies)\/[^/]+$/, message: 'Suspending demo accounts or studies is turned off in the shared preview.' },
 ];
 
@@ -125,24 +126,30 @@ const APP_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'";
 const LOGIN_CSP = "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
-function loginPage(error) {
+const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function loginPage(error, prefill) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="pocketqa-preview" content="gate"><meta name="robots" content="noindex"><title>Pocket QA preview</title>
 <style>:root{color-scheme:light dark}body{font:16px system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:Canvas;color:CanvasText}
 main{width:min(360px,calc(100% - 32px))}h1{font-size:22px;margin:0 0 4px}p{margin:0 0 16px;opacity:.75;font-size:14px}
 input,button{box-sizing:border-box;width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid #8888}button{margin-top:12px;background:#3540c4;color:#fff;border:0;font-weight:600}
 .err{color:#c0392b;margin-top:12px;font-size:14px}</style></head>
-<body><main><h1>Pocket QA preview</h1><p>Private preview. Devnet and test credits only. No real payments.</p>
+<body><main><h1>Pocket QA preview</h1>
+${prefill
+  ? '<p><strong>Public demo preview.</strong> The password is filled in for you, so this page is not access protection: treat everything here as public. Synthetic data only. Devnet and test credits only. No real payments.</p>'
+  : '<p>Private preview. Devnet and test credits only. No real payments.</p>'}
 <p>Demo accounts are shared with other viewers: don't type personal information. Uploads are turned off.</p>
 <form method="post" action="/__gate/login"><label for="pw">Preview password</label>
-<input id="pw" name="password" type="password" autocomplete="current-password" required autofocus>
-<button type="submit">Enter preview</button></form>${error ? `<div class="err" role="alert">${error}</div>` : ''}</main></body></html>`;
+<input id="pw" name="password" type="password" autocomplete="current-password" required${prefill ? ` value="${escapeHtml(prefill)}"` : ' autofocus'}>
+<button type="submit"${prefill ? ' autofocus' : ''}>Enter preview</button></form>${error ? `<div class="err" role="alert">${error}</div>` : ''}</main></body></html>`;
 }
 
 /**
  * @param {{ root: string, apiOrigin: string, allowedHosts: string[], secret: { salt: string, hash: string, cookieKey: string },
  *           secureCookie?: boolean, now?: () => number, log?: (line: string) => void,
- *           blockedApi?: { method: string, path: RegExp, message: string }[], loginTimeoutMs?: number }} opts
+ *           blockedApi?: { method: string, path: RegExp, message: string }[], loginTimeoutMs?: number,
+ *           convenience?: { gatePrefill?: string, demoAccounts?: { role: string, email: string, password: string }[] } }} opts
  */
 export function createGateServer(opts) {
   const root = normalize(opts.root);
@@ -156,6 +163,7 @@ export function createGateServer(opts) {
   const log = opts.log ?? (() => {});
   const blocked = opts.blockedApi ?? PREVIEW_BLOCKED_API;
   const loginTimeoutMs = opts.loginTimeoutMs ?? 10_000;
+  const convenience = opts.convenience ?? null;
   const fails = new Map(); // ip -> [timestamps]
   let globalFails = [];
   const inflight = new Map(); // ip -> count of logins being verified
@@ -212,7 +220,7 @@ export function createGateServer(opts) {
     }
     const tooMany = () => {
       log('gate login rate-limited');
-      send(res, 429, loginPage('Too many attempts. Try again in 15 minutes.'), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP, 'retry-after': '900' });
+      send(res, 429, loginPage('Too many attempts. Try again in 15 minutes.', convenience?.gatePrefill), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP, 'retry-after': '900' });
     };
     if (limited(ip)) return tooMany();
     // A login body is tiny: it gets a total deadline (not an idle timeout, which a trickle
@@ -255,7 +263,7 @@ export function createGateServer(opts) {
       if (!ok) {
         recordFail(ip);
         log('gate login failed');
-        return send(res, 401, loginPage('Wrong password.'), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP });
+        return send(res, 401, loginPage('Wrong password.', convenience?.gatePrefill), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP });
       }
       log('gate login ok');
       const cookie = `${COOKIE}=${signSession(key, now())}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_S}${secure ? '; Secure' : ''}`;
@@ -323,7 +331,10 @@ export function createGateServer(opts) {
       'content-security-policy': APP_CSP,
     }));
     if (req.method === 'HEAD') return res.end();
-    createReadStream(file).pipe(res);
+    // A file can vanish mid-request (e.g. during a rebuild); end this response, not the process.
+    createReadStream(file)
+      .on('error', () => res.destroy())
+      .pipe(res);
   }
 
   return createServer((req, res) => {
@@ -333,7 +344,7 @@ export function createGateServer(opts) {
     const path = url.split('?')[0];
 
     if (path === '/__gate/login') {
-      if (req.method === 'GET') return send(res, 200, loginPage(), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP });
+      if (req.method === 'GET') return send(res, 200, loginPage(undefined, convenience?.gatePrefill), { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': LOGIN_CSP });
       if (req.method === 'POST') return login(req, res);
       return send(res, 405, 'Method not allowed', { 'content-type': 'text/plain', allow: 'GET, POST' });
     }
@@ -352,9 +363,33 @@ export function createGateServer(opts) {
       revoked.set(nonce, Number(exp));
       return send(res, 303, '', { location: '/__gate/login', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure ? '; Secure' : ''}` });
     }
+    // Demo sign-ins for the shared preview, only behind the gate (never in a bundle).
+    if (path === '/__preview/bootstrap.json') {
+      if (req.method !== 'GET') return send(res, 405, 'Method not allowed', { 'content-type': 'text/plain', allow: 'GET' });
+      if (!convenience?.demoAccounts?.length) return send(res, 404, JSON.stringify({ code: 'NOT_FOUND', message: 'No demo bootstrap.' }), { 'content-type': 'application/json', 'content-security-policy': API_CSP });
+      return send(res, 200, JSON.stringify({ demoAccounts: convenience.demoAccounts }), { 'content-type': 'application/json', 'content-security-policy': API_CSP });
+    }
     if (path === '/api' || path.startsWith('/api/')) return proxy(req, res);
     return serveStatic(req, res);
   });
+}
+
+const SYNTHETIC_DEMO = /^demo-(tester|builder|admin)@pocketqa\.example$/;
+
+/**
+ * Optional shared-demo convenience file (0600, git-ignored): the gate prefill and the
+ * synthetic demo sign-ins. Anything that isn't a seeded synthetic account is refused.
+ */
+export function loadConvenience(path) {
+  const mode = statSync(path).mode & 0o777;
+  if (mode & 0o077) throw new Error(`convenience file must be mode 0600 (is ${mode.toString(8)})`);
+  const c = JSON.parse(readFileSync(path, 'utf8'));
+  for (const a of c.demoAccounts ?? []) {
+    if (!['tester', 'builder', 'admin'].includes(a.role) || a.email !== `demo-${a.role}@pocketqa.example` || !SYNTHETIC_DEMO.test(a.email)) {
+      throw new Error('convenience file may only list the seeded synthetic demo accounts');
+    }
+  }
+  return { gatePrefill: c.gatePrefill || undefined, demoAccounts: (c.demoAccounts ?? []).map(({ role, email, password }) => ({ role, email, password })) };
 }
 
 /** Reads the gate secret file and refuses one that other users could read. */
@@ -375,12 +410,22 @@ if (import.meta.main) {
     console.error('Set PREVIEW_PORT, PREVIEW_API_PORT, PREVIEW_PUBLIC_HOST, PREVIEW_SECRET_FILE and PREVIEW_WEB_ROOT.');
     process.exit(2);
   }
+  const secret = loadSecret(env.PREVIEW_SECRET_FILE);
+  const convenience = env.PREVIEW_CONVENIENCE_FILE && existsSync(env.PREVIEW_CONVENIENCE_FILE) ? loadConvenience(env.PREVIEW_CONVENIENCE_FILE) : null;
+  // The prefill must be the real gate password; refuse to start if they drifted apart.
+  if (convenience?.gatePrefill && !(await verifyPassword(convenience.gatePrefill, secret))) {
+    console.error('PREVIEW_CONVENIENCE_FILE gatePrefill does not match the gate secret; refusing to start.');
+    process.exit(2);
+  }
   const server = createGateServer({
     root: env.PREVIEW_WEB_ROOT,
     apiOrigin: `http://127.0.0.1:${apiPort}`,
     allowedHosts: [publicHost, `127.0.0.1:${port}`, `localhost:${port}`],
-    secret: loadSecret(env.PREVIEW_SECRET_FILE),
+    secret,
+    convenience,
     log: (line) => console.log(new Date().toISOString(), line),
   });
-  server.listen(port, '127.0.0.1', () => console.log(`pocketqa preview gate on 127.0.0.1:${port} for ${publicHost} (api 127.0.0.1:${apiPort})`));
+  server.listen(port, '127.0.0.1', () =>
+    console.log(`pocketqa preview gate on 127.0.0.1:${port} for ${publicHost} (api 127.0.0.1:${apiPort})${convenience ? ' [shared-demo convenience on]' : ''}`),
+  );
 }

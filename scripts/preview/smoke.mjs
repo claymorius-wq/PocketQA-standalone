@@ -10,7 +10,11 @@ import { join } from 'node:path';
 
 const base = new URL(process.env.PREVIEW_URL ?? '');
 const host = process.env.PREVIEW_PUBLIC_HOST ?? base.host;
-const access = readFileSync(join(import.meta.dirname, '../../.preview/access.txt'), 'utf8');
+const STATE = join(import.meta.dirname, '../..', process.env.PREVIEW_STATE_DIR ?? '.preview');
+const WEB = join(import.meta.dirname, '../..', process.env.PREVIEW_WEB_DIR ?? 'apps/mobile/dist-preview');
+// PREVIEW_EXPECT_CONVENIENCE=1: the shared-demo convenience must be on (prefill + bootstrap).
+const CONVENIENCE = process.env.PREVIEW_EXPECT_CONVENIENCE === '1';
+const access = readFileSync(join(STATE, 'access.txt'), 'utf8');
 const gatePassword = access.match(/^Gate password: (\S+)$/m)?.[1];
 const tester = access.match(/^Tester:\s+(\S+)\s+\/\s+(\S+)$/m);
 if (!gatePassword || !tester) throw new Error('access.txt is missing the gate password or tester sign-in');
@@ -38,13 +42,21 @@ const check = (name, ok) => {
 
 // Unauthenticated: nothing but the login page.
 check('GET / without gate → 303 /__gate/login', ((r) => r.status === 303 && r.headers.location === '/__gate/login')(await call('GET', '/')));
-const idx = readFileSync(join(import.meta.dirname, '../../apps/mobile/dist-preview/index.html'), 'utf8');
+const idx = readFileSync(join(WEB, 'index.html'), 'utf8');
 const bundle = idx.match(/src="(\/_expo\/[^"]+\.js)"/)?.[1];
 console.log(`bundle ${bundle}`);
 check('GET app bundle without gate → 303', (await call('GET', bundle)).status === 303);
 check('GET /api/health without gate → 401 (gate)', ((r) => r.status === 401 && JSON.parse(r.body).gate === true)(await call('GET', '/api/health')));
 check('POST /api/auth/login without gate → 401', (await call('POST', '/api/auth/login', { headers: { 'content-type': 'application/json' }, body: '{}' })).status === 401);
-check('GET /__gate/login → 200 with identity marker', ((r) => r.status === 200 && /name="pocketqa-preview" content="gate"/.test(r.body))(await call('GET', '/__gate/login')));
+const gatePage = await call('GET', '/__gate/login');
+check('GET /__gate/login → 200 with identity marker', gatePage.status === 200 && /name="pocketqa-preview" content="gate"/.test(gatePage.body));
+if (CONVENIENCE) {
+  check('gate password is prefilled (shared demo convenience) and labelled as not protection', gatePage.body.includes(`value="${gatePassword}"`) && /not access protection/.test(gatePage.body));
+  const anonBoot = await call('GET', '/__preview/bootstrap.json');
+  check('demo bootstrap not served before the gate', anonBoot.status !== 200 && !anonBoot.body.includes('demoAccounts'));
+} else {
+  check('gate password is not prefilled', !/ value="/.test(gatePage.body));
+}
 check('wrong gate password → 401, no cookie', ((r) => r.status === 401 && !r.headers['set-cookie'])(await call('POST', '/__gate/login', { headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'password=not-the-password' })));
 if (base.protocol !== 'https:') check('unknown Host → 421', (await call('GET', '/', { hostHeader: 'evil.example' })).status === 421);
 
@@ -62,12 +74,29 @@ const token = signIn.status === 200 ? JSON.parse(signIn.body).token : '';
 const eligible = await call('GET', '/api/studies/eligible', { headers: { cookie, authorization: `Bearer ${token}` } });
 check('tester sees the demo studies (bearer passes through the gate)', eligible.status === 200 && JSON.parse(eligible.body).items.length >= 1);
 check('app bearer without gate cookie → still 401 at the gate', (await call('GET', '/api/me', { headers: { authorization: `Bearer ${token}` } })).status === 401);
-check('admin self-registration refused by the API', (await call('POST', '/api/auth/register', { headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'x-admin@pocketqa.example', password: randomBytes(18).toString('base64url'), displayName: 'X', role: 'admin' }) })).status === 400);
+check('self-registration refused (preview gate 403; the API also refuses admin)', (await call('POST', '/api/auth/register', { headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ email: 'x-admin@pocketqa.example', password: randomBytes(18).toString('base64url'), displayName: 'X', role: 'admin' }) })).status === 403);
 
+if (CONVENIENCE) {
+  const boot = await call('GET', '/__preview/bootstrap.json', { headers: { cookie } });
+  const roles = boot.status === 200 ? JSON.parse(boot.body).demoAccounts.map((a) => a.role).join(',') : '';
+  check('demo bootstrap after the gate lists tester, builder, admin', roles === 'tester,builder,admin');
+}
 const upload = await call('POST', '/api/participations/any/evidence', { headers: { cookie, authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: '{}' });
 check('evidence upload refused in the shared preview → 403', upload.status === 403 && /preview/.test(JSON.parse(upload.body).message));
 check('deleting the shared demo account refused → 403', (await call('DELETE', '/api/me', { headers: { cookie, authorization: `Bearer ${token}` } })).status === 403);
 check('encoded path spelling rejected → 400', (await call('POST', '/api/participations/any/%65vidence', { headers: { cookie } })).status === 400);
+// The API itself still refuses admin self-registration (checked on loopback; the gate's 403 comes first).
+if (process.env.PREVIEW_API_PORT && base.protocol !== 'https:') {
+  const direct = await new Promise((resolve, reject) => {
+    const r = httpReq({ hostname: '127.0.0.1', port: Number(process.env.PREVIEW_API_PORT), method: 'POST', path: '/auth/register', headers: { 'content-type': 'application/json' } }, (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    r.on('error', reject);
+    r.end(JSON.stringify({ email: 'x-admin@pocketqa.example', password: randomBytes(18).toString('base64url'), displayName: 'X', role: 'admin' }));
+  });
+  check('API (loopback) refuses role admin on register → 400', direct === 400);
+}
 console.log(`finished ${new Date().toISOString()}`);
 console.log(failed ? `${failed} check(s) FAILED` : 'all checks passed');
 process.exit(failed ? 1 : 0);

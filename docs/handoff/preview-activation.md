@@ -80,6 +80,32 @@ PREVIEW_URL=https://pocketqa.optijara.ai node scripts/preview/smoke.mjs         
 - **Expected identity:** the login page carries `<meta name="pocketqa-preview" content="gate">`.
 - **Health:** the API's `/health` is reachable only through the gate, or directly on loopback with `curl http://127.0.0.1:$PREVIEW_API_PORT/health`.
 
+## Shared public demo convenience (2026-10-03; ADR 0004 addendum)
+
+This makes the preview effectively public: the gate password is prefilled, and the demo sign-ins are one click away for each role. It runs against the live state (`.preview/`, `preview-data/`).
+
+**Done by the build session, only after independent review approves (no live process touched):**
+- a production web rebuild into `apps/mobile/dist-preview` (built beside it and swapped in);
+- the gate password rotated to the requested value via stdin (new salt, hash and cookie key);
+- `.preview/convenience.json` (0600) written.
+
+The final result report states when these were done.
+
+**Parent: exact restart requirement.**
+1. Restart the managed preview process. This is the pair started by `scripts/preview/start.sh`: gate `127.0.0.1:3422`, API `127.0.0.1:3423`.
+   - Use the same environment as before: `PREVIEW_PORT=3422 PREVIEW_API_PORT=3423 PREVIEW_PUBLIC_HOST=pocketqa.optijara.ai`.
+   - The `startCmd` doesn't change. `start.sh` picks up `.preview/convenience.json` by itself, and the gate log line ends with `[shared-demo convenience on]`.
+   - The gate reads the rotated secret and the convenience file only at start, so the restart is required. Until then, the running gate still uses the old password with no prefill.
+2. No tunnel, ingress, DNS or registry change is needed: same ports, same host.
+3. Verify (statuses only):
+   ```sh
+   PREVIEW_EXPECT_CONVENIENCE=1 PREVIEW_URL=http://127.0.0.1:3422 PREVIEW_PUBLIC_HOST=pocketqa.optijara.ai node scripts/preview/smoke.mjs
+   PREVIEW_EXPECT_CONVENIENCE=1 PREVIEW_URL=https://pocketqa.optijara.ai node scripts/preview/smoke.mjs
+   (cd apps/mobile && PREVIEW_EXPECT_CONVENIENCE=1 PREVIEW_SHOTS_DIR=docs/reviews/preview/convenience PREVIEW_URL=https://pocketqa.optijara.ai node e2e/preview/browser-smoke.mjs)
+   ```
+
+**Turning it off:** `node scripts/preview/enable-convenience.mjs --off`, then `node scripts/preview/init-preview.mjs --rotate` for a new random password, then restart.
+
 ## Teardown
 
 1. Remove the ingress rule and DNS route, then reload the fleet tunnel as above.

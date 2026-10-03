@@ -45,3 +45,49 @@
 - **Shared password:** it is shared among everyone given the link. Rotate it with `init-preview.mjs --rotate`, which also signs everyone out.
 - **Slow logins:** a login body has a total deadline of 10 s, using a per-request timer that is cleared when the body arrives, so it never affects later requests on a reused connection. The scrypt slots are taken only after the body is complete, so trickled requests can't hold them (reviews r2 and r3, P3).
 - **Cloudflare Access** would add identity-based access in front of the gate. That's the parent's choice when deploying.
+
+## Addendum, 2026-10-03: shared public demo convenience (supersedes "protected" for this preview)
+
+**Decision (Hamza, confirmed in-session).** Easier access was requested and accepted, after being told that it removes meaningful access protection:
+- The gate password is set to a simple, known value.
+- The password is **prefilled** on the gate page.
+- After the gate, the app's sign-in screen is prefilled with the demo tester. A Tester/Builder/Admin picker fills the matching demo sign-in, and the visitor still presses Sign in.
+
+**What this means, stated plainly.** For anyone who has the URL, the gate is now a **publicly discoverable convenience, not access protection or privacy**.
+- Treat everything in the preview as public: the synthetic studies, notes and reasons, and the shared demo accounts, including the shared admin.
+- The gate page says so ("this page is not access protection"), and the sign-in footer says "Public demo preview · synthetic data".
+- Nothing in this preview may hold real data.
+
+**What is unchanged.**
+- **Technical controls stay in place:**
+  - every path still needs the gate cookie;
+  - per-IP, global and in-flight login limits;
+  - Origin, Host and path canonicalization checks;
+  - the `/api` proxy rules and CSP;
+  - logout revocation;
+  - the API bound to loopback.
+- **The shared-preview blocks stay:** no uploads, no `DELETE /me`, no admin moderation. This addendum adds a block on self-registration (`POST /auth/register`).
+- **Labels:** devnet-only and test-credit labels are unchanged, and the data is synthetic only.
+
+**How the credentials are handled.**
+- No credential is compiled into any bundle or committed file. The preview web build only has `EXPO_PUBLIC_PREVIEW=1`, which turns on a same-origin fetch of `/__preview/bootstrap.json`. Native and local web builds never fetch it.
+- The gate serves that file **only after the gate**, from the git-ignored 0600 `.preview/convenience.json`, which `scripts/preview/enable-convenience.mjs` writes.
+- The gate refuses to start if the prefill doesn't match the stored scrypt hash.
+- The file may list only the seeded `demo-{tester,builder,admin}@pocketqa.example` accounts. The app also drops anything else.
+- `build-web.sh` fails if any generated secret value appears in the bundle.
+
+**Abuse: open publishing on the optijara.ai domain (accepted, with takedown).**
+- With the gate public, anyone can sign in as the shared builder or admin. They can publish studies, task text, notes or dispute resolutions that every visitor sees, and the copy rules don't filter links or offensive text.
+- Self-registration is refused at the gate (`POST /auth/register` gives 403), and the preview hides "Create an account".
+- Moderation is blocked, so the in-app admin can't take content down.
+- **Takedown and reset (operator):**
+  1. Stop the preview.
+  2. Move `preview-data/` aside, or delete it.
+  3. Start it again and run `seed-demo.mjs`. That creates new demo passwords in `.preview/access.txt`.
+  4. Run `enable-convenience.mjs` with the gate password, then restart.
+  - For immediate takedown, run `enable-convenience.mjs --off`, then `init-preview.mjs --rotate` (a random password), then restart.
+- Reset on a schedule if the preview stays up.
+
+**Rotation.**
+- `printf '%s' '<new>' | node scripts/preview/init-preview.mjs --rotate --password-stdin` writes a new salt, hash and cookie key using the same scrypt scheme, so all old gate sessions stop working. Re-run `enable-convenience.mjs` with the new value, then restart.
+- `enable-convenience.mjs --off` plus a restart returns to a password-only gate. Then rotate to a random password (`init-preview.mjs --rotate`) to make the gate meaningful again.

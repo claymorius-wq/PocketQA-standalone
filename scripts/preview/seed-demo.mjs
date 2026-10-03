@@ -6,12 +6,15 @@
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { appendFileSync, chmodSync, existsSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { stateDir } from './paths.mjs';
 
 const REPO = join(import.meta.dirname, '../..');
-const ACCESS = join(REPO, '.preview', 'access.txt');
-const MARKER = join(REPO, 'preview-data', '.seeded');
-const DATA_DIR = join(REPO, 'preview-data');
+// PREVIEW_STATE_DIR / PREVIEW_DATA_DIR override `.preview/` and `preview-data/` (tests).
+const STATE = stateDir();
+const DATA_DIR = resolve(REPO, process.env.PREVIEW_DATA_DIR ?? 'preview-data');
+const ACCESS = join(STATE, 'access.txt');
+const MARKER = join(DATA_DIR, '.seeded');
 const port = Number(process.env.PREVIEW_API_PORT);
 if (!port) {
   console.error('Set PREVIEW_API_PORT to the preview API port.');
@@ -101,4 +104,4 @@ These demo accounts are shared: anything typed while signed in (study text, note
 );
 chmodSync(ACCESS, 0o600);
 writeFileSync(MARKER, new Date().toISOString());
-console.log('Seeded: 2 published demo studies, 1 submitted session, tester/builder/admin demo accounts. Sign-ins written to .preview/access.txt (0600); not shown here.');
+console.log(`Seeded: 2 published demo studies, 1 submitted session, tester/builder/admin demo accounts. Sign-ins written to ${ACCESS.slice(REPO.length + 1)} (0600); not shown here.`);

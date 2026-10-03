@@ -10,7 +10,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "test": "node --test \"scripts/*.test.mjs\" && pnpm -r --if-present test",
-    "verify": "pnpm check:secrets && pnpm typecheck && pnpm lint && pnpm test"
+    "verify": "pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test"
   },
   "devDependencies": {
     "eslint": "10.11.0",
