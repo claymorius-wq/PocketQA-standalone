@@ -1,0 +1,141 @@
+
+> pocket-qa@ verify /Users/hamzadiaz/Projects/pocket-qa
+> pnpm check:secrets && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets /Users/hamzadiaz/Projects/pocket-qa
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 378 committable files scanned, no findings.
+
+> pocket-qa@ typecheck /Users/hamzadiaz/Projects/pocket-qa
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint /Users/hamzadiaz/Projects/pocket-qa
+> eslint .
+
+
+> pocket-qa@ test /Users/hamzadiaz/Projects/pocket-qa
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (1.253208ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.082083ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.29075ms)
+✔ allow marker covers only its own line (0.092958ms)
+✔ forbidden paths (0.344666ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (158.185167ms)
+✔ CLI still runs when invoked through a symlink (52.701125ms)
+▶ preview gate: nothing is served without the gate cookie
+  ✔ rejects requests for any other Host (421) (5.65725ms)
+  ✔ redirects pages and assets to the login page, and returns 401 for the API (2.407ms)
+  ✔ serves the login page with a strict CSP and an identity marker (0.359583ms)
+✔ preview gate: nothing is served without the gate cookie (56.204334ms)
+▶ preview gate: login
+  ✔ refuses a cross-site login POST (403) (0.857208ms)
+  ✔ rejects a wrong password, then rate-limits that client even with the right one (429.334625ms)
+  ✔ sets a __Host- cookie that is HttpOnly, Secure, SameSite=Strict, Path=/, no Domain (38.144834ms)
+  ✔ ignores an oversized login body (0.64325ms)
+✔ preview gate: login (469.206125ms)
+▶ preview gate: with a valid cookie
+  ✔ serves the app, with SPA fallback and no path traversal (42.241458ms)
+  ✔ proxies /api to the loopback API: path stripped, bearer kept, gate cookie and upstream cookies dropped (39.528125ms)
+  ✔ rejects tampered and expired cookies, and logout clears the cookie (39.238709ms)
+  ✔ returns 502 JSON when the API is down (114.629958ms)
+✔ preview gate: with a valid cookie (235.846791ms)
+▶ preview gate: shared-preview policy (review r1 P2)
+  ✔ refuses uploads, account deletion and admin moderation without reaching the API (40.288625ms)
+  ✔ rejects encoded, dot-segment and doubled-slash spellings instead of forwarding them (41.22125ms)
+  ✔ still forwards allowed calls on the same resources (39.130917ms)
+  ✔ strips headers named in Connection and sandboxes API responses (38.121792ms)
+✔ preview gate: shared-preview policy (review r1 P2) (158.941625ms)
+▶ preview gate: login under load (review r1 P3)
+  ✔ caps concurrent attempts so a burst cannot bypass the per-IP limit (44.314584ms)
+✔ preview gate: login under load (review r1 P3) (44.413583ms)
+▶ preview gate: slow logins (review r2 P3)
+  ✔ trickled login bodies do not hold the verification slots (145.616667ms)
+✔ preview gate: slow logins (review r2 P3) (145.713834ms)
+▶ preview gate: login timeout is per request (review r3 P3)
+  ✔ a slow proxied call on the same keep-alive connection after a login is not cut off (479.725083ms)
+✔ preview gate: login timeout is per request (review r3 P3) (479.889458ms)
+▶ preview gate: login body deadline is total, not idle (review r3 P3)
+  ✔ a body trickled faster than the timeout is still cut off at the deadline (359.21675ms)
+✔ preview gate: login body deadline is total, not idle (review r3 P3) (359.606625ms)
+▶ preview gate: configuration guards
+  ✔ refuses a non-loopback API origin and a short cookie key (76.30325ms)
+  ✔ refuses a secret file readable by other users (40.120042ms)
+  ✔ session tokens verify only with the right key and before expiry (0.1505ms)
+✔ preview gate: configuration guards (116.748875ms)
+ℹ tests 29
+ℹ suites 9
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3703.204791
+Scope: 5 of 6 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  14 passed (14)
+packages/contracts test:    Start at  11:32:41
+packages/contracts test:    Duration  120ms (import 48%, transform 41%, tests 7%, worker 4%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  11 passed (11)
+packages/domain test:       Tests  168 passed (168)
+packages/domain test:    Start at  11:32:41
+packages/domain test:    Duration  257ms (import 40%, transform 36%, worker 14%, tests 10%)
+packages/domain test: [34m % [39m[2mCoverage report from [22m[33mv8[39m
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.36 |    99.36 |     100 |   98.33 |                   
+packages/domain test:  copy.ts          |   96.29 |    94.73 |     100 |     100 | 74                
+packages/domain test:  transferTx.ts    |   96.66 |      100 |     100 |      96 | 12                
+packages/domain test:  wallet.ts        |   93.54 |      100 |     100 |      90 | 44,52             
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.36% ( 240/244 )
+packages/domain test: Branches     : 99.36% ( 156/157 )
+packages/domain test: Functions    : 100% ( 51/51 )
+packages/domain test: Lines        : 98.33% ( 177/180 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/api test$ vitest run
+apps/mobile test$ jest --ci
+apps/api test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/apps/api
+apps/api test:  Test Files  9 passed (9)
+apps/api test:       Tests  271 passed (271)
+apps/api test:    Start at  11:32:42
+apps/api test:    Duration  1.17s (tests 70%, import 17%, transform 13%)
+apps/api test: Done
+apps/mobile test: PASS __tests__/copy.test.ts
+apps/mobile test: PASS __tests__/focus-refetch.test.tsx
+apps/mobile test: PASS __tests__/upload-queue.test.ts
+apps/mobile test: PASS __tests__/signature.test.ts
+apps/mobile test: PASS __tests__/report-signature.test.ts
+apps/mobile test: PASS __tests__/platform-modules.test.ts
+apps/mobile test: PASS __tests__/contrast.test.ts
+apps/mobile test: PASS __tests__/capability.test.ts
+apps/mobile test: PASS __tests__/wallet-errors.test.ts
+apps/mobile test: PASS __tests__/session-restore.test.ts
+apps/mobile test: Test Suites: 10 passed, 10 total
+apps/mobile test: Tests:       124 passed, 124 total
+apps/mobile test: Snapshots:   0 total
+apps/mobile test: Time:        0.809 s, estimated 1 s
+apps/mobile test: Ran all test suites.
+apps/mobile test: Done
+EXIT=0

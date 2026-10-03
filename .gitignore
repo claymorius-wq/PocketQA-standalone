@@ -49,3 +49,8 @@ id.json
 apps/mobile/dist-web/
 apps/mobile/e2e/maestro/.results/
 apps/mobile/artifacts/
+
+# Protected web preview: generated secrets/credentials (0600) and isolated synthetic data
+.preview/
+preview-data/
+apps/mobile/dist-preview/
