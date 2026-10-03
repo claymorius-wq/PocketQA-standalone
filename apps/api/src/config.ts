@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, type AuthMode } from '@pocket-qa/contracts';
+import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, type AuthMode, type StorageMode } from '@pocket-qa/contracts';
 
 export type Config = {
   host: '127.0.0.1' | '::1';
@@ -26,6 +26,13 @@ export type Config = {
    * its host as the SIWS domain so a `solana:signIn` wallet can refuse other origins.
    */
   publicOrigin: string | null;
+  /** ADR 0005 §3: 'local' media directory (default) or private Cloudflare R2. */
+  storage: StorageMode;
+  /**
+   * R2 (S3 API). The access key pair is server-only, read from the environment and never
+   * logged or returned; `endpoint` is the account endpoint unless overridden for tests.
+   */
+  r2: { accountId: string; bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string } | null;
 };
 
 export class ConfigError extends Error {}
@@ -117,6 +124,28 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     publicOrigin = u!.origin;
   }
 
+  const storage = (env.POCKETQA_STORAGE ?? 'local') as StorageMode;
+  if (storage !== 'local' && storage !== 'r2') throw new ConfigError('POCKETQA_STORAGE must be local or r2.');
+  // Real uploads never go to the shared synthetic demo (its gate also refuses uploads).
+  if (sharedDemo && storage !== 'local') throw new ConfigError('The shared demo runs only with local storage (no real uploads).');
+  let r2: Config['r2'] = null;
+  if (storage === 'r2') {
+    const accountId = env.POCKETQA_R2_ACCOUNT_ID ?? '';
+    const bucket = env.POCKETQA_R2_BUCKET ?? '';
+    const accessKeyId = env.POCKETQA_R2_ACCESS_KEY_ID ?? '';
+    const secretAccessKey = env.POCKETQA_R2_SECRET_ACCESS_KEY ?? '';
+    if (!/^[a-f0-9]{32}$/.test(accountId)) throw new ConfigError('POCKETQA_R2_ACCOUNT_ID (32 hex) is required for r2 storage.');
+    if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket)) throw new ConfigError('POCKETQA_R2_BUCKET is required for r2 storage.');
+    if (!accessKeyId || !secretAccessKey) throw new ConfigError('POCKETQA_R2_ACCESS_KEY_ID and POCKETQA_R2_SECRET_ACCESS_KEY are required for r2 storage.');
+    let endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+    if (env.POCKETQA_R2_ENDPOINT) {
+      // Override only for local S3-compatible test servers; never a remote plain-http host.
+      if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(env.POCKETQA_R2_ENDPOINT)) throw new ConfigError('POCKETQA_R2_ENDPOINT may only point at a loopback test server.');
+      endpoint = env.POCKETQA_R2_ENDPOINT;
+    }
+    r2 = { accountId, bucket, endpoint, accessKeyId, secretAccessKey };
+  }
+
   return {
     host: host as Config['host'],
     port,
@@ -130,5 +159,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     sharedDemo,
     walletLogin,
     publicOrigin,
+    storage,
+    r2,
   };
 }

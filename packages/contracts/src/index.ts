@@ -258,6 +258,26 @@ export const Evidence = z.object({
 });
 export type Evidence = z.infer<typeof Evidence>;
 
+/**
+ * Direct-to-storage upload (ADR 0005 §3, `storage: 'r2'`). The server picks an opaque
+ * quarantine key and returns a short-lived presigned PUT bound to the declared type and
+ * exact size; nothing is evidence until the server completes (verifies) the upload.
+ */
+export const CreateUploadIntentBody = EvidenceUploadMeta.extend({
+  mimeType: EvidenceMime,
+  sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
+});
+export const UPLOAD_INTENT_TTL_SECONDS = 15 * 60;
+export const UploadIntent = z.object({
+  id: Id,
+  method: z.literal('PUT'),
+  uploadUrl: z.string().url(),
+  /** Send exactly these headers with the PUT (they are part of the signature). */
+  headers: z.record(z.string(), z.string()),
+  expiresAt: IsoDate,
+});
+export type UploadIntent = z.infer<typeof UploadIntent>;
+
 /** Bound to one evidence item and the requesting user; single resource, short-lived. */
 export const PlaybackToken = z.object({ token: z.string().min(32), expiresAt: IsoDate });
 
@@ -563,6 +583,8 @@ export const routes = {
   listEvidence: r({ method: 'GET', path: '/participations/:id/evidence', auth: 'user', scope: 'participation-party', body: null, response: list(Evidence) }),
   playbackToken: r({ method: 'POST', path: '/evidence/:id/playback-token', auth: 'user', scope: 'participation-party', body: null, response: PlaybackToken }),
   media: r({ method: 'GET', path: '/media/:token', auth: 'public', scope: 'token-holder', body: null, response: 'binary' }),
+  createUploadIntent: r({ method: 'POST', path: '/participations/:id/evidence/upload-intents', auth: 'tester', scope: 'tester-owner', body: CreateUploadIntentBody, response: UploadIntent }),
+  completeUploadIntent: r({ method: 'POST', path: '/evidence/upload-intents/:id/complete', auth: 'tester', scope: 'tester-owner', body: null, response: Evidence }),
   listFindings: r({ method: 'GET', path: '/participations/:id/findings', auth: 'user', scope: 'participation-party', body: null, response: list(Finding) }),
   createFinding: r({ method: 'POST', path: '/participations/:id/findings', auth: 'builder', scope: 'study-owner', body: FindingInput, response: Finding }),
   approve: r({ method: 'POST', path: '/participations/:id/approve', auth: 'builder', scope: 'study-owner', body: ApproveBody, response: Participation }),

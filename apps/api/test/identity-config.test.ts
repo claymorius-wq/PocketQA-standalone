@@ -46,3 +46,26 @@ describe('managed identity config', () => {
     expect(() => loadConfig({ ...fb, POCKETQA_SHARED_DEMO: '1' })).toThrow(/shared demo/);
   });
 });
+
+describe('storage config (ADR 0005 §3)', () => {
+  const r2 = { ...base, POCKETQA_STORAGE: 'r2', POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32), POCKETQA_R2_BUCKET: 'pqa-staging', POCKETQA_R2_ACCESS_KEY_ID: 'key-id', POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret' }; // check-secrets: allow (placeholder test values)
+
+  it('defaults to local storage; r2 needs account, bucket and server-side keys', () => {
+    expect(loadConfig(base)).toMatchObject({ storage: 'local', r2: null });
+    expect(loadConfig(r2).r2).toMatchObject({ bucket: 'pqa-staging', endpoint: `https://${'a'.repeat(32)}.r2.cloudflarestorage.com` });
+    for (const k of ['POCKETQA_R2_ACCOUNT_ID', 'POCKETQA_R2_BUCKET', 'POCKETQA_R2_ACCESS_KEY_ID', 'POCKETQA_R2_SECRET_ACCESS_KEY']) {
+      expect(() => loadConfig({ ...r2, [k]: '' }), k).toThrow(ConfigError);
+    }
+    expect(() => loadConfig({ ...base, POCKETQA_STORAGE: 's3' })).toThrow(ConfigError);
+  });
+
+  it('the endpoint override is for loopback test servers only', () => {
+    expect(loadConfig({ ...r2, POCKETQA_R2_ENDPOINT: 'http://127.0.0.1:9000' }).r2?.endpoint).toBe('http://127.0.0.1:9000');
+    expect(() => loadConfig({ ...r2, POCKETQA_R2_ENDPOINT: 'http://evil.example:9000' })).toThrow(/loopback/);
+    expect(() => loadConfig({ ...r2, POCKETQA_R2_ENDPOINT: 'https://other-account.r2.cloudflarestorage.com' })).toThrow(/loopback/);
+  });
+
+  it('the shared demo never uses real storage', () => {
+    expect(() => loadConfig({ ...r2, POCKETQA_SHARED_DEMO: '1' })).toThrow(/shared demo/);
+  });
+});

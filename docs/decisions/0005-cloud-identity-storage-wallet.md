@@ -62,6 +62,12 @@
    - Playback keeps today's authenticated, permission-rechecked, `Range`-capable `/media/:token` stream, now read through the store. There are no direct public or long-lived URLs.
    - Deletions that fail are queued in `storage_deletions` and retried. Expired intents have their quarantine objects removed.
    - The shared demo can't run in `r2` mode: the config refuses `POCKETQA_SHARED_DEMO=1` together with `POCKETQA_STORAGE=r2`, and the preview gate still blocks uploads.
+   - **Version pinning:** completion pins the object version seen by HEAD (ETag `If-Match` on the sniff read and `CopySourceIfMatch` on the copy). Bytes swapped in with the still-valid URL give a retryable 409, never unchecked evidence.
+   - **Limits (review r1 P3):**
+     - The type check is a 16-byte container signature, not full parsing. Playback is served with the stored type and `nosniff`. Before real-data production, parse the MP4/WebM box structure, or run a server-side probe, at completion.
+     - The fake S3 in tests doesn't verify signatures, signed headers or CORS. At the real-R2 gate, record that a PUT with a different length or type is refused, that only the exact app origin passes CORS, and that public access is off.
+     - Uploads are a single PUT of up to 100 MB. Multipart/resumable and background uploads are not built.
+     - The sweep and the outbox run in the API process. Multi-instance hosting needs a single runner or a database lease.
 4. **Web wallet:** a Solana Wallet Standard connector (`link.web.ts`, `walletLogin.web.ts`). It never requests transaction signing.
    - **Login** uses `solana:signIn` with the server's challenge fields only. A wallet without `solana:signIn` gets an honest "wallet login is not supported by this wallet"; there is no fallback to `signMessage`.
    - **Account linking** (while signed in) uses `solana:signMessage` over the server's link message, as on Android.

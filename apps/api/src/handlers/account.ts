@@ -1,10 +1,9 @@
-import { rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { CONTRACT_VERSION, CREDITS_DISCLAIMER, Email } from '@pocket-qa/contracts';
 import { planTopUp, userAccount } from '@pocket-qa/domain';
 import { accountBalance, post } from '../ledger';
 import { me, type Ctx, type Handler } from '../context';
 import { RECOVERABLE_PROVIDERS } from '../identity/types';
+import { deleteOrQueue } from '../storage/sweep';
 import { fail, hashPassword, iso, newId, newToken, sha256, verifyPassword } from '../util';
 import {
   disputeView,
@@ -68,7 +67,7 @@ export const accountHandlers = {
     const { authMode, firebase } = ctx.deps.config;
     return {
       authMode,
-      storage: 'local' as const,
+      storage: ctx.deps.config.storage,
       walletLogin: ctx.deps.config.walletLogin,
       firebase: firebase
         ? {
@@ -247,6 +246,7 @@ export const accountHandlers = {
     if (active.n > 0) throw fail('CONFLICT_STATE', 'Wait until your submitted work is reviewed and disputes are resolved.');
 
     const media: string[] = [];
+    const quarantine: string[] = [];
     db.transaction(() => {
       // Evidence the user recorded, and evidence inside studies the user owns.
       const ev = db
@@ -279,11 +279,18 @@ export const accountHandlers = {
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM wallet_nonces WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM identities WHERE user_id = ?').run(user.id);
+      // Open direct uploads: close them and remove their quarantine objects.
+      for (const r of db.prepare(`SELECT object_key FROM upload_intents WHERE tester_id = ? AND status IN ('pending','completing')`).all(user.id) as { object_key: string }[]) {
+        quarantine.push(r.object_key);
+      }
+      db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE tester_id = ? AND status IN ('pending','completing')`).run(user.id);
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${user.id}@deleted.invalid`, user.id);
     })();
-    for (const key of media) rmSync(join(ctx.deps.mediaDir, key), { force: true });
+    // Stored objects: deleted now, or retried through the outbox if the provider fails.
+    for (const key of media) await deleteOrQueue(ctx.deps, key);
+    for (const q of quarantine) await deleteOrQueue(ctx.deps, q);
     // After commit: the local account is gone either way. A provider failure leaves an
     // orphan provider user with no mapping (it can't reach this account); it is logged.
     if (ctx.deps.identity) {

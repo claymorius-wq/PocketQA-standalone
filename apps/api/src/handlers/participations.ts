@@ -50,6 +50,11 @@ function testerTransition(action: 'start' | 'submit' | 'withdraw') {
       if (action === 'start' && (s.status !== 'published' || s.moderation !== 'ok')) {
         throw fail('CONFLICT_STATE', 'This study is not accepting work right now.');
       }
+      // Direct uploads still in flight would be silently dropped by submission (ADR 0005 §3).
+      if (action === 'submit') {
+        const open = db.prepare(`SELECT COUNT(*) AS n FROM upload_intents WHERE participation_id = ? AND status IN ('pending','completing') AND expires_at > ?`).get(p.id, now) as { n: number };
+        if (open.n > 0) throw fail('CONFLICT_STATE', 'Finish or cancel your evidence uploads before submitting.');
+      }
       const next = transitionParticipation(p.status, action);
       const col = action === 'start' ? 'started_at' : action === 'submit' ? 'submitted_at' : null;
       if (col) db.prepare(`UPDATE participations SET status = ?, ${col} = ? WHERE id = ?`).run(next, iso(now), p.id);

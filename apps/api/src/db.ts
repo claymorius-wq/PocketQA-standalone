@@ -195,6 +195,39 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX wallet_login_challenges_expiry ON wallet_login_challenges(expires_at);
   `,
+  // 3: direct-to-storage uploads (ADR 0005 §3). An intent reserves quota until it is
+  // completed, rejected or expired; storage_deletions is a retried outbox so object
+  // deletion survives provider failures.
+  `
+  CREATE TABLE upload_intents (
+    id TEXT PRIMARY KEY,
+    participation_id TEXT NOT NULL REFERENCES participations(id),
+    tester_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    declared_size INTEGER NOT NULL,
+    duration_ms INTEGER,
+    task_id TEXT,
+    captured_on TEXT NOT NULL,
+    client_segment_id TEXT NOT NULL,
+    object_key TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL CHECK (status IN ('pending','completing','completed','rejected','expired')),
+    evidence_id TEXT,
+    -- Set once the sweep has removed the quarantine object after the intent closed (a
+    -- re-PUT with a still-valid URL can recreate it until the URL expires).
+    quarantine_swept INTEGER NOT NULL DEFAULT 0,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE UNIQUE INDEX upload_intents_one_open_segment ON upload_intents(participation_id, client_segment_id)
+    WHERE status IN ('pending','completing');
+  CREATE TABLE storage_deletions (
+    object_key TEXT PRIMARY KEY,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  `,
 ];
 
 export function openDb(file: string): DB {
