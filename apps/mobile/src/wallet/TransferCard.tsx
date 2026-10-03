@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Send } from 'lucide-react-native';
-import { Linking, View } from 'react-native';
+import { Linking, StyleSheet } from 'react-native';
 import type { DevnetTransfer } from '@pocket-qa/contracts';
 import { api } from '../api/client';
+import { GlassSurface, useUplight } from '../glass';
+import { glyphIcon } from '../icons';
 import { walletCapability } from '../lib/capability';
 import { when } from '../lib/format';
 import { useParticipationTransfers } from '../lib/queries';
@@ -40,7 +41,10 @@ const STATE: Record<DevnetTransfer['status'], { label: string; builder: string; 
   },
 };
 
-function TransferRow({ t, role }: { t: DevnetTransfer; role: 'builder' | 'tester' }) {
+const SEND = glyphIcon('send');
+const EXTERNAL = glyphIcon('external');
+
+function TransferRow({ t, role, lit }: { t: DevnetTransfer; role: 'builder' | 'tester'; lit: boolean }) {
   const qc = useQueryClient();
   const cap = walletCapability();
   const sign = useMutation({
@@ -48,8 +52,14 @@ function TransferRow({ t, role }: { t: DevnetTransfer; role: 'builder' | 'tester
     onSettled: () => qc.invalidateQueries({ queryKey: ['transfers', t.participationId] }),
   });
   const s = STATE[t.status];
-  return (
-    <View style={{ gap: space.xs }} testID={`transfer-${t.status}`}>
+  // U8 (§10.2): only a confirmed transfer may look verified. The newest confirmed row (`lit`, one
+  // Uplight per screen) takes the uplit card recipe (Earned: rise, then rest at 0.45) and no floor
+  // of its own; a row that opens already confirmed starts at rest. Pending, awaiting signature,
+  // failed and expired are never lit.
+  const confirmed = t.status === 'confirmed';
+  const light = useUplight('earned', lit, { startAtRest: true });
+  const content = (
+    <>
       <Row style={{ justifyContent: 'space-between' }}>
         <Text variant="heading">{SOL(t.lamports)}</Text>
         <StatusPill status={t.status} label={s.label} testID="transfer-status" />
@@ -62,7 +72,7 @@ function TransferRow({ t, role }: { t: DevnetTransfer; role: 'builder' | 'tester
       </Text>
       {t.status === 'awaiting_signature' && role === 'builder' ? (
         cap.available ? (
-          <Button label="Sign with devnet wallet" icon={Send} onPress={() => sign.mutate()} loading={sign.isPending} testID="transfer-sign" />
+          <Button label="Sign with devnet wallet" icon={SEND} onPress={() => sign.mutate()} loading={sign.isPending} testID="transfer-sign" />
         ) : (
           <Notice tone="info" title="Sign on Android" testID="transfer-sign-unavailable">
             Signing needs the Android app with your linked devnet wallet.
@@ -75,10 +85,29 @@ function TransferRow({ t, role }: { t: DevnetTransfer; role: 'builder' | 'tester
         </Notice>
       ) : null}
       {t.status === 'confirmed' && t.explorerUrl ? (
-        <Button label="View on devnet explorer" icon={ExternalLink} variant="ghost" onPress={() => void Linking.openURL(t.explorerUrl!)} testID="transfer-explorer" />
+        <Button label="View on devnet explorer" icon={EXTERNAL} variant="ghost" onPress={() => void Linking.openURL(t.explorerUrl!)} testID="transfer-explorer" />
       ) : null}
-    </View>
+    </>
   );
+  // Every row is the board's mini card (radius 18, padding 14/16 less the 1dp rim; pending rows at
+  // k 0.8). Confirming changes no layout: the pill swaps in 120ms, then the uplit layer fades in.
+  return (
+    <GlassSurface level="card" k={confirmed ? 1 : 0.8} radius={ROW_RADIUS} uplight={lit ? light.u : undefined} style={styles.row} testID={`transfer-${t.status}`}>
+      {content}
+    </GlassSurface>
+  );
+}
+
+const ROW_RADIUS = 18;
+
+/** The transfer that may carry the Uplight: the most recently verified confirmed one. */
+function newestConfirmed(items: readonly DevnetTransfer[]): string | null {
+  let best: DevnetTransfer | null = null;
+  for (const t of items) {
+    if (t.status !== 'confirmed') continue;
+    if (!best || Date.parse(t.verifiedAt ?? t.createdAt) > Date.parse(best.verifiedAt ?? best.createdAt)) best = t;
+  }
+  return best?.id ?? null;
 }
 
 /**
@@ -90,6 +119,7 @@ export function TransferCard({ participationId, role, canStart }: { participatio
   const q = useParticipationTransfers(participationId);
   const items = q.data?.items ?? [];
   const open = items.some((t) => t.status === 'awaiting_signature' || t.status === 'pending' || t.status === 'confirmed');
+  const litId = newestConfirmed(items);
   const create = useMutation({
     mutationFn: () => api('createTransfer', { body: { participationId } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['transfers', participationId] }),
@@ -100,7 +130,7 @@ export function TransferCard({ participationId, role, canStart }: { participatio
       <Text variant="heading">Devnet demo transfer</Text>
       <Text variant="small" tone="muted">Devnet only · no real value · not a reward (rewards are test credits).</Text>
       {items.map((t) => (
-        <TransferRow key={t.id} t={t} role={role} />
+        <TransferRow key={t.id} t={t} role={role} lit={t.id === litId} />
       ))}
       {role === 'builder' && canStart && !open ? (
         <Button label="Start devnet demo transfer" variant="secondary" onPress={() => create.mutate()} loading={create.isPending} testID="transfer-create" />
@@ -110,3 +140,7 @@ export function TransferCard({ participationId, role, canStart }: { participatio
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  row: { gap: space.xs, borderRadius: ROW_RADIUS, paddingVertical: 13, paddingHorizontal: 15 },
+});

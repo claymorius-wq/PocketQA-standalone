@@ -16,7 +16,6 @@ import { TransferCard } from '../../src/wallet/TransferCard';
 import { recordingCapability } from '../../src/lib/capability';
 import { bytes, credits, statusLabel, when } from '../../src/lib/format';
 import { useEvidence, useFindings, useMyDisputes, useParticipation, useTesterStudy } from '../../src/lib/queries';
-import { useTheme } from '../../src/theme/ThemeProvider';
 import { space } from '../../src/theme/tokens';
 import { Button, Card, ConfirmSheet, EmptyState, Field, Notice, QueryState, Row, Screen, Section, StatusPill, Text } from '../../src/ui';
 
@@ -232,7 +231,7 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
         <Card key={s.id} testID={`segment-${s.state}`}>
           <Row style={{ justifyContent: 'space-between' }}>
             <Text variant="heading" numberOfLines={1} style={{ flex: 1 }}>{s.name}</Text>
-            <StatusPill status={s.state === 'kept' ? 'confirmed' : s.state === 'failed' ? 'failed' : s.state === 'uploading' ? 'pending' : 'awaiting_signature'} label={s.state === 'recorded' ? 'Not reviewed' : s.state} />
+            <StatusPill status={s.state === 'kept' ? 'confirmed' : s.state === 'failed' ? 'failed' : s.state === 'uploading' ? 'uploading' : 'awaiting_signature'} label={s.state === 'recorded' ? 'Not reviewed' : s.state} />
           </Row>
           {s.uri ? <MediaPreview uri={s.uri} mimeType={s.mimeType} testID="segment-preview" /> : null}
           <Text variant="small" tone="muted">{s.mimeType}{s.size ? ` · ${bytes(s.size)}` : ''}</Text>
@@ -397,10 +396,10 @@ function ParticipationScreenInner() {
     }),
     [pq, sq, studyId],
   );
-  const { colors } = useTheme();
   return (
     <Screen testID="participation-screen">
-      <View style={{ gap: space.md, backgroundColor: colors.background }}>
+      {/* No background here: only the Screen's Ground paints the ground (Lens §2 light model). */}
+      <View style={{ gap: space.md }}>
         <QueryState query={both}>{({ p, s }) => <Session p={p} study={s} />}</QueryState>
       </View>
     </Screen>

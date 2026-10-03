@@ -1,16 +1,18 @@
 import { useMutation } from '@tanstack/react-query';
-import { Link2, Unlink, Wallet } from 'lucide-react-native';
 import { api } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { walletCapability } from '../lib/capability';
-import { useTheme } from '../theme/ThemeProvider';
+import { GlassTile, glyphIcon } from '../icons';
 import { Button, Card, Notice, Row, StatusPill, Text } from '../ui';
 import { walletErrorText } from './errors';
 import { linkWalletWithMwa } from './link';
 
+// Linking is "not a payment" (§14): secondary glass only, no Uplight and no caustic sweep.
+const LINK = glyphIcon('link');
+const UNLINK = glyphIcon('unlink');
+
 export function WalletSection() {
   const { user, refreshUser } = useSession();
-  const { colors } = useTheme();
   const cap = walletCapability();
   const unlink = useMutation({ mutationFn: () => api('walletUnlink'), onSuccess: () => refreshUser() });
   const link = useMutation({ mutationFn: () => linkWalletWithMwa(), onSuccess: () => refreshUser() });
@@ -19,7 +21,7 @@ export function WalletSection() {
     <Card testID="wallet-section">
       <Row style={{ justifyContent: 'space-between' }}>
         <Row>
-          <Wallet size={20} color={colors.text} />
+          <GlassTile name="wallet" size="list" />
           <Text variant="heading">Devnet wallet</Text>
         </Row>
         <StatusPill status={wallet ? 'confirmed' : 'expired'} label={wallet ? 'Linked' : 'Not linked'} />
@@ -28,10 +30,10 @@ export function WalletSection() {
       {wallet ? (
         <>
           <Text variant="small" testID="wallet-address">{wallet.address}</Text>
-          <Button label="Unlink wallet" icon={Unlink} variant="secondary" onPress={() => unlink.mutate()} loading={unlink.isPending} testID="wallet-unlink" />
+          <Button label="Unlink wallet" icon={UNLINK} variant="secondary" onPress={() => unlink.mutate()} loading={unlink.isPending} testID="wallet-unlink" />
         </>
       ) : cap.available ? (
-        <Button label="Link devnet wallet" icon={Link2} variant="secondary" onPress={() => link.mutate()} loading={link.isPending} testID="wallet-link" />
+        <Button label="Link devnet wallet" icon={LINK} variant="secondary" onPress={() => link.mutate()} loading={link.isPending} testID="wallet-link" />
       ) : (
         <Notice tone="info" title="Unavailable on this device" testID="wallet-unavailable">{cap.reason}</Notice>
       )}

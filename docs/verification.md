@@ -304,3 +304,26 @@ $ WALLET_PIN=<test AVD pin> run-native.sh (run 20261003-032219) → 10/10 EXIT=0
 iOS simulator (main.jsbundle 32a4ebac…) → [Passed] ios-settings (19s), [Passed] ios-smoke (31s)
 $ npx playwright test → 8 passed (44.6s)
 ```
+
+## 2026-10-03: Lens UI review fixes (branch `feat/lens-ui`, uncommitted; Windows 11, node 24.21.0)
+
+```
+$ pnpm typecheck        → EXIT=0 (contracts, domain, api, mobile: Done)
+$ pnpm lint             → EXIT=0 (eslint ., no problems)
+$ cd apps/mobile && pnpm test → EXIT=0
+Test Suites: 16 passed, 16 total
+Tests:       557 passed, 557 total
+$ cd apps/api && pnpm test → EXIT=1
+ FAIL  test/config.bind.test.ts > local-only configuration > refuses a data directory inside the repo that git would track
+ AssertionError: expected 'C:\Users\…\pq\apps\api\.data' to match /apps\/api\/\.data$/   (known Windows path-separator baseline)
+ Test Files  1 failed | 8 passed (9)
+      Tests  1 failed | 270 passed (271)
+```
+
+Baseline before the fixes, same machine: mobile `Tests: 553 passed, 553 total` (16 suites). The count moved by removing the
+layout-animation `Entrance`/`LensPressable` tests with that API and adding the review tests (step gap, focus-error well, LED,
+static loading, sheet padding and commit opt-out, commit pass outliving the sheet, key light following the brightest moment,
+light press feedback).
+
+Not run here (no device attached): `e2e/maestro/sheet-keyboard.yaml` (new), the Playwright web suite, and the ADR 0005 Seeker
+budget (SVG canvases per screen, Perf Monitor UI/JS fps). Run them on the Seeker before the freeze candidate.

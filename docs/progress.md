@@ -119,6 +119,12 @@ From Phase 0:
 
 ## Log
 
+### 2026-10-03: Lens UI review fixes (branch `feat/lens-ui`, uncommitted, UI only)
+- Applied the code and design review of the Lens visual system (ADR 0005). Highs: Screen's entrance steps keep the column gap (QueryState fragments had lost all spacing); ConfirmSheet docks above the keyboard (KeyboardAvoidingView) with a new Maestro flow `sheet-keyboard.yaml`; the participation screen no longer paints a flat background over the Ground; Uplight moments register with the key light and the pool follows the brightest (dark or unmounting moments no longer cut a lit one).
+- Mediums: the stack header paints no second Ground; pressed, unlit, sweep and focus layers mount lazily; errored fields keep their error well while focused; the sheet's 240ms exit is documented as blocking touches, back is ignored while closing, Android Modal is translucent; board values for the flute sizes, sheet layout and transfer rows; static loading (brand lens only on the start screen); LED ring/glow from `ledShadow`, UPLOADING is live, never PENDING; the primary's caustic arrives last; the U7 commit pass plays on the screen's floor and outlives the sheet.
+- Lows: cardK by entrance step, segmented grid, checkbox path, pill gap, rose danger notice, 12/16 helper, uniform ground scale, uplit cast split, caustic boost on the sweep, Divider id, LED stops off screen, memoised stack options, darker light pressed primary, dead layout-animation API removed, shared SVG/shadow helpers, docs corrected.
+- Not done here: Seeker measurements (SVG count per screen, Perf Monitor) and the Maestro flow run need the device; the JS-stack push stays a documented deviation until react-native-gesture-handler is approved. Evidence: `docs/verification.md`.
+
 ### 2026-10-03: Phases 5-6 merged (emulator-labeled)
 - Kotlin MediaProjection recorder and single-session MWA wallet link. The release APK was built and exercised on an Android 16 emulator with Solana Mobile's mock wallet: 9 Maestro flows, 0 active projections after each, exactly one upload of a kept clip.
 - Device testing found and fixed:

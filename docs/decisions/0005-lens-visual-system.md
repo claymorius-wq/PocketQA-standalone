@@ -1,0 +1,111 @@
+# ADR 0005: Lens visual system (Direction A v2)
+
+Status: proposed for review (2026-10-03), branch `feat/lens-ui`. Scope: UI only. No API, contract, domain, route or data-flow change.
+
+Source of truth: the Direction A "Lens" v2 spec (`DIRECTION-A.md`, with the system board `Main.dc.html` and the motion board `A-Motion.dc.html`). The spec is HTML/CSS. This ADR records how its values reach React Native, and where React Native forced an adaptation.
+
+## Decision
+
+1. **Dark is the Lens look.** `apps/mobile/src/theme/tokens.ts` sets the `dark` palette to the spec's tokens. The Palette keys the app already uses are unchanged: `background` = ground `#0B0A1F`, `surface` = glass `#16143A`, `surfaceAlt` = glass-raised `#1F1B48`, `borderStrong` = line-strong `#7A74A8`, `primary` `#A9C1FF`, `onPrimary` `#0B0A1F`, plus the spec's status tones. New keys: `neutral`, `ink`, `well`, `glassViolet`, `disabledBg`, `rimLit`, `violet`, `lensBlue`, `caustic`, `shadow`, `numeral`, `textFaint`, `textDisabled`, `upSource`, `upHalo`, `upPool`.
+2. **Glass recipes are data.** `glassDark` and `glassLight` (type `GlassRecipes`) hold every level in the spec: ground (base, key pool, light shaft, falloff), L1 card `card(k)`, pressed card, L2 raised, violet tile, glyph tile and its stacked ring, L3 overlay, well with focus and error variants, all button states, pills, notices, the live LED, the divider, sheet backdrop and grabber, the Uplight (floor, uplit card, uplit notice, lit numeral, commit confirm, motes), the fluted lens and the record core. Gradients are stop lists: hex colour plus a separate alpha, which is what react-native-svg `<Stop>` takes. Shadows are the spec's CSS `box-shadow` lists, kept verbatim.
+3. **Drawing: react-native-svg plus React Native styles, no Skia.** Gradient fills, rims, grain, the Uplight floor and the flute ribs are SVG. Shadows use React Native's own `boxShadow` style, which takes CSS shadow lists (inset and spread included) on the New Architecture and on react-native-web. Blur is `expo-blur`, used only on the L3 overlay.
+4. **Motion is UI-thread only.** `src/theme/motion.ts` exports the spec's 8 easings as `Easing.bezier` factories, 7 durations, 2 loops, the stagger rules, 2 springs, the Uplight grades and the signature timings. `useMotion()` returns a `Motion` object resolved for the OS reduce-motion setting. Only transform, opacity and the opacity of shadow layers animate. Gradients, blur radius and shadow values never animate.
+5. **Fonts.** Red Hat Display 300/400/500, Instrument Sans 400/600 and DM Mono 400/500 (spec §12) load through `expo-font` in `app/_layout.tsx` before the first render. The native splash is held with `SplashScreen.preventAutoHideAsync()` (expo-router); web renders nothing until the fonts settle. If loading fails the app still renders, and `ThemeProvider` switches `type` to platform fonts with explicit weights.
+6. **ThemeProvider.** `useTheme()` keeps `colors`, `scheme`, `preference` and `setPreference` exactly as before, and adds `type` (the type scale for the font state), `motion` and `glass` (the recipes for the scheme). It also provides `motion` to `useMotion()` consumers, so the reduce-motion listener exists once.
+
+## Alternatives considered
+
+- **@shopify/react-native-skia** (the spec's §12 suggestion for radial gradients, translucent rims, inner shadows, the flute shader and the Uplight canvas). Rejected for now:
+  - It adds a large native binary (several MB per ABI) and a second rendering surface per canvas.
+  - On web it needs CanvasKit WASM (about 3 MB more), loaded asynchronously. That would delay or break the web preview, which our Playwright e2e suite runs against.
+  - Everything the spec draws is a gradient, a clipped and mirrored copy of a gradient scene (the flute), or a shadow. SVG and `boxShadow` express all of these with the spec's exact numbers.
+  - Revisit if a measured frame budget on the Seeker (below) can't be met with SVG, or if we want the per-rib refraction shader instead of per-rib SVG clips.
+- **expo-linear-gradient.** It covers only linear fills, and most Lens layers are radial (bloom, pool, floor, sphere). SVG handles both kinds with a single primitive.
+- **react-native-shadow-2.** It predates React Native's `boxShadow`. That style now takes the spec's multi-layer lists directly, including inset shadows.
+- **Baked PNGs for glass surfaces.** Rejected as the default, because cards resize with content and PNGs can't stretch a gradient correctly. Still an option for the tab-bar glyphs (spec §7.6).
+- **React Native `Animated` or `LayoutAnimation`.** These run JS-driven or layout-driven animation. Reanimated keeps every frame on the UI thread. The kit drives entrances with one shared value per step, not Reanimated `entering` builders (see the performance budget).
+
+## Spec values adapted for React Native
+
+| Spec | React Native | Why |
+|---|---|---|
+| `linear-gradient(<angle>deg)` | `cssLinearVector(angle, w, h)` → SVG `userSpaceOnUse` vector (`src/theme/gradient.ts`) | An `objectBoundingBox` vector stretches with the aspect ratio. The helper reproduces CSS geometry exactly: the corners land on 0% and 100%. |
+| `radial-gradient(rx ry at cx cy)` | `RadialGradientSpec` with fractional or px radii → `cssRadialGeometry` | Same values. SVG takes elliptical `rx`/`ry`. |
+| padding-box / border-box gradient rim | Outer gradient layer with an inner fill inset by 1px (radius − 1), or an SVG rect stroked with the rim gradient | CSS background clipping has no React Native equivalent. |
+| Masked rim on the translucent overlay (`mask-composite: exclude`) | SVG `<Rect>` stroke (1px) painted with the rim gradient | The closest faithful equivalent. React Native has no mask compositing. |
+| `box-shadow` lists | The React Native `boxShadow` string, verbatim | Native on the New Architecture (React Native docs: outset shadows on Android 9+, inset on Android 10+; the Seeker runs Android 14+). react-native-web passes the string through. **Verify on the Seeker**: inset rendering and cost (see budget). |
+| Lit numeral: two text shadows | One shadow: `0 0 18px rgba(141,176,255,0.55·u)` | React Native draws a single text shadow. The 1px specular shadow is dropped. |
+| Grain: `feTurbulence` filter, or the 256px PNG of §12 | A raster 256px tile, `assets/textures/grain-256.png`, generated by `scripts/gen-grain.mjs` (the boards' `feTurbulence` + colour matrix evaluated offline, stitched, deterministic; `--check` verifies the committed tile), repeated with `Image resizeMode="repeat"` at the spec's opacities (ground 0.064, cards 0.056, lens 0.128) | react-native-svg has no `feTurbulence`. The tile is the one raster asset this change adds. |
+| `backdrop-filter: blur(24px)` | `expo-blur` `BlurView`, `intensity` 40, `tint="dark"`; Android `blurMethod="dimezisBlurViewSdk31Plus"` with a `BlurTargetView` | §12 mapping. Android below API 31 falls back to the translucent fill. Blur never animates. |
+| Squircle radii | The spec's radii (card 24, tile 18/12, button 18, input 16, tab tile 12, checkbox 9, tab bar 26, sheet 28) + `borderCurve: 'continuous'` | Continuous corners exist only on iOS. Android and web draw circular arcs. |
+| Segments 44px tall | 48 (`touch.segment = TOUCH`) | The repo's minimum touch target (plan §2) wins over the spec's 44. |
+| `font-weight` with each family | One family per weight file (`RedHatDisplay_300Light`, …), with `fontWeight` omitted while the Lens fonts are loaded | A face registered without a weight is synthetically emboldened on web. On Android the file is the weight. The system fallback keeps explicit weights. |
+| Font weights | Instrument Sans 500 and Red Hat Display 600 are not loaded | The type scale never uses them (the spec's §12 list). |
+| `text-transform: uppercase` on labels | Callers uppercase the string (as `Field` and `StatusPill` already do) | Keeps the accessible text and e2e selectors unchanged. |
+| Web `@font-face` fallback stack | On web, `fontFamily` carries the spec's fallback stack after the loaded family | The same fallback the boards use. On native, the name is the font alone. |
+| Spring sheet (RN) vs 420ms ease-lens (web) | `motion.spring.sheet` and `motion.timing.sheetOpen` | Both exported; the sheet component picks one per platform. |
+| `cubic-bezier(0.3, 1.5, 0.5, 1)` and `(0.2, 0.85, 0.25, 1.06)` | `Easing.bezier` with y outside 0..1 | Reanimated supports overshoot curves. A unit test checks that the release curve overshoots and the exit curve does not. |
+| Flute (§9) | Per-rib SVG `ClipPath` holding the padded scene mirrored with `scale(-0.5, 1)` about the rib centre, sampled `k × (ribCentre − S/2)` outward. `flute.ribs(size)` interpolates the 7/12/22 anchors (7–10px ribs). | The spec's own construction, which SVG supports natively. No shader. |
+| Key pool position (px on a 390-wide board) | Stored with `referenceWidth: 390`; one uniform factor `min(width, 430) / 390` scales x, y, width and height of the pool, shaft and falloff | Phones match the board; wide web windows keep a 620×560 corner light instead of a stretched horizontal band. |
+| Field error helper `aria-invalid`, `aria-describedby` | Not set | React Native's `TextInput` has no `aria-invalid`/`aria-describedby` props (0.86 typings). The error text keeps its `<testID>-error` and the red label; screen readers read both. |
+| Stack push: incoming 24dp from the right over 320ms, outgoing dims to 0.85 and drifts 12dp (§11.3) | Native-stack cross-fade (`stackScreenOptions`); Android runs its fixed ~150ms fade | **Known deviation.** react-native-screens has no such push. `jsStackScreenOptions` implements the spec exactly for `expo-router/js-stack`, which needs `react-native-gesture-handler` as a direct dependency (exact pin plus a decision note) before it can replace the native stack. |
+
+## Contrast
+
+`__tests__/contrast.test.ts` checks:
+- every palette pair the UI uses, in both themes;
+- the body stops of every glass recipe that carries text (cards at k = 1 and 0.64, pressed card, raised, violet tile, overlay composited on the ground, well and error well, the four button states, pills, notices);
+- the uplit card and uplit notices, measured over their pool at u = 1.
+
+Thresholds are unchanged: 4.5:1 for text, 3:1 for UI. All pairs pass. The measured values match the spec: primary on glass-violet 7.59, onPrimary on the darkest primary stop 7.26, text-faint on glass 4.73, text-disabled on its glass 4.80, line-strong on the ground 4.54, muted text on the uplit card pool 5.63.
+
+## Performance budget (Android Seeker, Dimensity 7300, Mali-G615 MC2)
+
+- 60 fps (16.6 ms frames); ≤ 4 ms of UI-thread animation work per frame. No per-frame JS work: animations are Reanimated worklets reading shared values.
+- No blur animation, no shadow-radius or gradient animation. Pressed and uplit states crossfade a pre-rendered layer's opacity.
+- At most 1 `BlurView` per screen, plus the sheet's.
+- At most 2 animating SVG layers at once: normally the Uplight floor, plus the flute while recording. Flute ≤ 104 px on screens, 7–12 ribs.
+- No layout animation on list containers. Screen entrances animate one shared value per item (opacity and translateY on the UI thread), capped at five stagger steps. The kit does not use Reanimated `entering` builders for them (and no longer ships any): on web, layout animations inside a tab scene were left absolutely positioned at their start snapshot, stacking the header and content on top of each other.
+- Hidden layers mount lazily and then stay: a surface's pressed body and shadows on its first press, a primary's unlit (disabled) body the first time it is disabled, its caustic-sweep layer on the first sweep, a field's focus well on its first focus. Shadow splits are cached by recipe string and the uplit recipe split is memoised, so a re-render does no string work.
+- One key light per screen: the stack header paints nothing (the screen's Ground runs under it), so a pushed screen draws one ground, not two.
+- Still to record on the Seeker (`docs/verification.md`): the SVG canvas count per screen and the Perf Monitor numbers. Not measured yet: no device was attached to this change.
+- Measure with the Perf Monitor and FrameMetrics on a real device. Above 5% janky frames, switch off the shimmer and motes first, then rib drift. The Uplight itself always stays.
+- iOS degrades gracefully (same code). On web, `boxShadow` and SVG run natively in the browser, and expo-blur uses `backdrop-filter`.
+
+## Reduced motion
+
+`useMotion()` reads the OS setting synchronously from Reanimated's `useReducedMotion()` at startup and then follows `AccessibilityInfo` `reduceMotionChanged` (on web: `prefers-reduced-motion`). The reduced variant implements spec §11.7:
+- entrances, notices and sheets become a 120 ms opacity fade, with no translate and no stagger;
+- press swaps the shadow, with no translate;
+- the tab tile jumps (`spring.tab === null`);
+- the lens shimmer, caustic sweep, motes, rib drift and number roll are off (`play.*`);
+- the record core and LED hold steady at 0.9 (`liveSteady`);
+- the Uplight holds its resting value (Live 0.86, Earned 0.45, Pilot 0.35/0.55), and Commit shows nothing.
+
+Every timing and spring config sets `reduceMotion: ReduceMotion.Never`, because the policy is already resolved. Reanimated's own `System` handling would otherwise turn the 120 ms fades into jumps.
+
+## UI kit (`src/ui`)
+
+The shared components keep every exported prop, testID, accessibility prop and copy string; only the drawing changed. Screens did not change.
+- Screen: the Ground behind every screen and the §11.3 entrance (title, subtitle, then each direct child as one step). Each step wrapper is a column with the screen's 14dp gap, so a fragment (QueryState's content) keeps its spacing, and a step that lays out empty (a closed ConfirmSheet, a component rendering null) gives its gap back. Cards take their light distance from their step (k = 1, 0.8, 0.64; §2 cardK) unless given `k`. Tab roots put the title 14 below a 44dp status band whatever the device inset. Under the stack header, `display` text becomes `displayStack`. No screen view inside `Screen` may set a background: only the Ground paints the ground.
+- Icons: the kit maps each Lucide component it receives (Button and EmptyState `icon`, role tab lists) to its Lens glyph by component identity (`src/ui/icon.tsx`), so screens can keep passing Lucide icons. Tab glyphs come from `TAB_GLYPHS` by route name (Coins is Budget for builders). **Deviation from CLAUDE.md ("Lucide icons")**: the Lens glyphs supersede Lucide rendering in both themes, per the Direction A spec approved by Hamza (§7). Lucide stays the screens' icon vocabulary, and any Lucide icon without a Lens glyph is still rendered by `KitIconView` as Lucide.
+- Tab bar: a custom `tabBar` (`src/ui/TabBar.tsx`) that repeats BottomTabBar's contract: tabPress/tabLongPress, `tabBarButtonTestID`, role `tab` with selection state, and reporting its height. It is the L3 overlay floating 12dp in from the edges, so `Screen` pads its content by the reported height. Each tab scene is wrapped in a `BlurTargetView` (`screenLayout`), because Android blurs only the target it is given. On web the tab is a pressable, not an `<a href>`.
+- Stack header: a custom transparent `header` (`src/ui/StackHeader.tsx`) with the 44dp back tile and the visible "Back" label. It paints nothing: the screen's own Ground runs under it to the top edge, so a sheet or an Uplight dims the pool under the header too and there is no seam. `Screen` starts its scroll view below it (`HeaderHeightContext`), so content never scrolls under it. The stack uses the native cross-fade (`stackScreenOptions`, a known deviation above). Its options are memoised in `app/_layout.tsx`.
+- ConfirmSheet: a bottom sheet on `useSheetMotion`, Cancel left and the confirm right, laid out like the board (padding 10/24/24, grabber at the top, title +20, body +8, actions +24 with a 10dp gap). It sits in a `KeyboardAvoidingView` (iOS padding, Android height), so a focused field and the actions stay above the keyboard; the Modal is `statusBarTranslucent navigationBarTranslucent` on Android, so its backdrop covers the system bars and the bottom inset is applied once (**verify on the Seeker**). Commit sheets (Publish, "Approve and credit …", or `moment="commit"`; `moment="none"` opts out) light a Pilot floor under the confirm; confirming plays a Commit pass in the sheet and on the screen's own floor (`ScreenInfo.commit`), which outlives the sheet's close. Android takes the solid overlay fallback, because a Modal cannot blur the window behind it. Web unmounts the sheet as soon as it closes (the e2e-found react-native-web Modal bug). Native plays the 240ms exit; a Modal is its own window (an Android Dialog, an iOS presented controller), so touches on the screen below stay blocked for those 240ms and back is ignored while it closes.
+- Loading is static unlit glass (§11.6, §13): the label and, in `QueryState`, skeleton cards. Only the start screen (`LoadingState brand`, "Starting Pocket QA…") resolves the brand lens once (S1), so the lens is never twice on a screen. There is no spinner and no loop. EmptyState is an L1 card at k = 0.8 with the 72dp lens on the left and the text beside it (Main §9, A-Credits).
+- Uplight in the kit: commit sheets (U7) and the newest confirmed devnet transfer row (U8, Earned, starts at rest when the row opens already confirmed; one Uplight per screen). Every transfer row is the board's mini card (radius 18, pending at k 0.8), so confirming changes no layout. Pills, wallet linking, pending, failed and destructive states are never lit; the live LED (ring and glow from `glass.ledShadow`) marks only IN PROGRESS and UPLOADING and stops while its screen is unfocused.
+- Key light: every Uplight moment registers its intensity with the screen's Ground, and the pool follows the brightest one (0.72 while any is lit). A dark or unmounting moment never brightens the pool while another is lit.
+
+## Light theme
+
+The user wants dark only for now and a light Lens theme later. Light, dark and system preferences keep working (CLAUDE.md). Light keeps the pre-Lens flat palette, extended with light values for the new keys. All of them pass the contrast tests.
+
+`glassLight.enabled === false`: every recipe there is a flat fill with a solid hairline rim and no shadow. Components must skip grain, blur, caustics, the Uplight, motes and the lens shimmer when `glass.enabled` is false, so light renders today's flat surfaces. `TODO(light-lens)` in `tokens.ts` marks where a light Lens palette and recipes will go. Plan:
+1. Derive a light key light: the same top-left source, rims darkening toward the bottom-right, and cast shadows in a warm grey instead of indigo.
+2. Define the light glass levels and the Uplight colours. They stay one colour family, and stay off the source core.
+3. Add the light pairs to the contrast test, then flip `enabled`.
+
+## Testing
+
+- `__tests__/motion.test.tsx` checks the token values against the spec, the stagger cap, the reduced variant, `useMotion` following the OS setting, the ThemeProvider additions, the CSS-angle vector, flute rib counts and `cardK` scaling.
+- Jest uses the worklets resolver and Reanimated's `setUpTests()` (see `dependency-versions.md`).

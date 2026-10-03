@@ -17,6 +17,6 @@
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image", "./plugins/withLocalhostCleartext"]
+    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image", "expo-font", "./plugins/withLocalhostCleartext"]
   }
 }
