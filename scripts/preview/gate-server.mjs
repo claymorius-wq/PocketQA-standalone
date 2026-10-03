@@ -68,6 +68,8 @@ export const PREVIEW_BLOCKED_API = [
   { method: 'POST', path: /^\/wallet\/(nonce|link)$/, message: 'Wallet linking is not available in the shared preview.' },
   { method: 'DELETE', path: /^\/wallet$/, message: 'Wallet linking is not available in the shared preview.' },
   { method: 'POST', path: /^\/devnet\/transfers(\/[^/]+\/signature)?$/, message: 'Devnet transfers are not available in the shared preview.' },
+  { method: 'POST', path: /^\/participations\/[^/]+\/evidence\/upload-intents$/, message: 'Uploads are turned off in the shared preview, because other viewers could see them.' },
+  { method: 'POST', path: /^\/evidence\/upload-intents\/[^/]+\/complete$/, message: 'Uploads are turned off in the shared preview, because other viewers could see them.' },
   { method: 'POST', path: /^\/admin\/moderation\/(users|studies)\/[^/]+$/, message: 'Suspending demo accounts or studies is turned off in the shared preview.' },
 ];
 

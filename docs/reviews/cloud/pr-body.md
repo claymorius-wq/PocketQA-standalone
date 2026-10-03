@@ -47,4 +47,11 @@ Every verdict is in `docs/reviews/cloud/` (`inc*-verdict-qa-r*.md`), next to the
 - Multipart/resumable uploads over 100 MB.
 - A shared rate-limit store and a sweep lease for multi-instance hosting.
 
+### Post-merge cutover for the live preview (parent; it runs from `main`)
+1. `pnpm install --frozen-lockfile` (new dependencies; the cloud SDKs are loaded only in their modes).
+2. Back up `preview-data/pocketqa.sqlite`. Migrations 1–3, which only add tables, run on the next API start.
+3. `scripts/preview/build-web.sh` (new client; the preview build keeps wallet linking hidden).
+4. A coordinated restart of the preview gate and API with the same environment (`start.sh` pins local auth, local storage and no wallet login).
+5. `scripts/preview/smoke.mjs` and `apps/mobile/e2e/preview/browser-smoke.mjs` (with `PREVIEW_EXPECT_CONVENIENCE=1` if the shared-demo convenience is on).
+
 **Do not merge** until the parent's verification. Enabling any provider mode needs the gates above.

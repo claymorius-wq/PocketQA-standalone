@@ -3,9 +3,7 @@ import { join } from 'node:path';
 import { buildApp, loggerOptions } from './app';
 import { loadConfig, readEnvFile, REPO_ROOT } from './config';
 import { openDb } from './db';
-import { firebaseIdentity } from './identity/firebase';
 import { localStore } from './storage/local';
-import { r2Store } from './storage/r2';
 import { sweepStorage } from './storage/sweep';
 import { httpDevnetRpc } from './rpc';
 
@@ -18,8 +16,10 @@ const deps = {
     now: Date.now,
     rpc: httpDevnetRpc(config.rpcUrl),
     mediaDir: join(config.dataDir, 'media'),
-    identity: config.firebase ? firebaseIdentity(config.firebase) : null,
-    store: config.r2 ? r2Store(config.r2) : localStore(join(config.dataDir, 'media')),
+    // Provider SDKs load only when their mode is configured, so local mode (and the shared
+    // preview) start without them.
+    identity: config.firebase ? (await import('./identity/firebase')).firebaseIdentity(config.firebase) : null,
+    store: config.r2 ? (await import('./storage/r2')).r2Store(config.r2) : localStore(join(config.dataDir, 'media')),
 };
 const app = await buildApp(deps, { logger: loggerOptions() });
 // loadConfig guarantees a loopback host; never bind 0.0.0.0.
