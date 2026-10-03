@@ -1,0 +1,1 @@
+Terminating app due to uncaught exception 'RCTFatalException: Unhandled JS Exception: Invariant Violation: TurboModuleRegistry.getEnforcing(...): 'SolanaMobileWalletAdapter' could not be found

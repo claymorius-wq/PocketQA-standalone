@@ -8,3 +8,5 @@ export * from './eligibility';
 export * from './transfer';
 export * from './wallet';
 export * from './utf8';
+export * from './stuck';
+export * from './transferTx';

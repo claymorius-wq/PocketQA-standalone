@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { DISPUTE_WINDOW_MS } from '@pocket-qa/domain';
-import { makeApp, MP4, PNG, seeded, DEVICE, type TestApp } from './helpers';
+import { makeApp, MP4, PNG, seeded, DEVICE, STUDY, type TestApp } from './helpers';
 
 // Regression tests for Phase 2-3 review round 1 (docs/reviews/phase2-3/verdict-qa-r1.md).
 let t: TestApp;
@@ -115,6 +115,31 @@ describe('final QA P2: no fake-payment wording from builders', () => {
     const f = await t.req('POST', `/participations/${participationId}/findings`, builder.token, { title: 'Payout processed', severity: 'info', description: 'ok text' });
     expect(f.status).toBe(400);
     expect((await t.req('POST', `/participations/${participationId}/approve`, builder.token, { note: 'Great session, thanks.' })).status).toBe(200);
+  });
+});
+
+describe('copy scopes: study content may describe prices and devnet SOL', () => {
+  it('accepts payment wording in study tasks but still rejects earnings promises', async () => {
+    const b = await t.register('builder');
+    const ok = await t.req('POST', '/studies', b.token, {
+      ...STUDY,
+      tasks: [{ instruction: 'Buy the $5 item and reach checkout' }, { instruction: 'Send 0.1 SOL on devnet and verify the payment is successful' }],
+    });
+    expect(ok.status).toBe(200);
+    const bad = await t.req('POST', '/studies', b.token, { ...STUDY, objective: 'Earn money while testing our checkout' });
+    expect(bad.status).toBe(400);
+  });
+
+  it('rejects money promised to testers in study text (review r1 P2)', async () => {
+    const b = await t.register('builder');
+    for (const body of [
+      { ...STUDY, title: 'Payout: 20 USDC per tester' },
+      { ...STUDY, objective: 'Testers receive $25 each for this checkout study.' },
+      { ...STUDY, tasks: [{ instruction: 'Bonus: $20 for completing this flow' }] },
+    ]) {
+      const r = await t.req('POST', '/studies', b.token, body);
+      expect(r.status, JSON.stringify(body).slice(0, 80)).toBe(400);
+    }
   });
 });
 

@@ -32,6 +32,10 @@ function ThemedStack() {
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: '600' },
           contentStyle: { backgroundColor: colors.background },
+          // iOS otherwise labels the back button (and its VoiceOver label) with the previous
+          // route's name, e.g. "(tester)".
+          headerBackButtonDisplayMode: 'minimal',
+          headerBackTitle: 'Back',
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />

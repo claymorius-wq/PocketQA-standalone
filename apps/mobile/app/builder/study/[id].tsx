@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { api, ApiError } from '../../../src/api/client';
 import { credits, statusLabel, when } from '../../../src/lib/format';
-import { useStudy, useStudyParticipations } from '../../../src/lib/queries';
+import { useStudy, useStudyDisputes, useStudyParticipations } from '../../../src/lib/queries';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { space } from '../../../src/theme/tokens';
 import { Button, Card, ConfirmSheet, EmptyState, Notice, QueryState, Row, Screen, Section, StatusPill, Text } from '../../../src/ui';
@@ -19,6 +19,7 @@ function BuilderStudyInner() {
   const { colors } = useTheme();
   const q = useStudy(id);
   const parts = useStudyParticipations(id);
+  const disputes = useStudyDisputes(id);
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<Action | null>(null);
   const act = useMutation({
@@ -94,6 +95,22 @@ function BuilderStudyInner() {
                   </View>
                 )}
               </QueryState>
+            </Section>
+            <Section title="Disputes" testID="study-disputes">
+              {disputes.data?.items.length ? (
+                disputes.data.items.map((d) => (
+                  <Card key={d.id} onPress={() => router.push(`/builder/review/${d.participationId}`)} testID={`study-dispute-${d.status}`} accessibilityLabel="Open disputed participation">
+                    <Row style={{ justifyContent: 'space-between' }}>
+                      <StatusPill status={d.status} />
+                      <Text variant="small" tone="muted">{when(d.createdAt)}</Text>
+                    </Row>
+                    <Text variant="small">{d.reason}</Text>
+                    {d.outcome ? <Text variant="small" tone="muted">{d.outcome === 'overturned' ? 'Overturned: the tester was credited.' : 'Upheld: your rejection stands.'} {d.resolutionNote}</Text> : <Text variant="small" tone="muted">Waiting for an admin.</Text>}
+                  </Card>
+                ))
+              ) : (
+                <Text tone="muted" testID="study-disputes-empty">No disputes on this study.</Text>
+              )}
             </Section>
             <ConfirmSheet
               visible={confirm !== null}

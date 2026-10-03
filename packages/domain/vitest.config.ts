@@ -13,6 +13,7 @@ export default defineConfig({
         'src/segment.ts': { branches: 100, lines: 100 },
         'src/transfer.ts': { branches: 100, lines: 100 },
         'src/utf8.ts': { lines: 100 },
+        'src/stuck.ts': { branches: 100, lines: 100 },
       },
     },
   },

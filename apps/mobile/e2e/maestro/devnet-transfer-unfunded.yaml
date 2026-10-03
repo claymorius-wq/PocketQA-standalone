@@ -1,0 +1,30 @@
+# Gate B2 (emulator, mock wallet): the real Android signing path for the devnet demo
+# transfer. The mock wallet's key holds no devnet SOL (faucet rate-limited, see progress),
+# so sending must fail — and the app must say so and never show "Confirmed on devnet".
+appId: com.reshareai.pocketqa
+---
+- runFlow: _fresh-wallet.yaml
+- runFlow: _builder-link-wallet.yaml
+- openLink: pocketqa://builder/review/${PARTICIPATION}
+- scrollUntilVisible:
+    element:
+      id: transfer-create
+- tapOn:
+    id: transfer-create
+- scrollUntilVisible:
+    element:
+      id: transfer-sign
+- takeScreenshot: transfer-awaiting-android
+- tapOn:
+    id: transfer-sign
+- tapOn: "Connect"
+- assertVisible: "is requesting transaction(s)"
+- takeScreenshot: wallet-transaction-request
+- tapOn: "Approve"
+- scrollUntilVisible:
+    element:
+      text: ".*could not send the transaction.*"
+- assertVisible: "Not sent"
+- assertVisible: "AWAITING SIGNATURE"
+- assertNotVisible: "CONFIRMED ON DEVNET"
+- takeScreenshot: transfer-send-failed-honest

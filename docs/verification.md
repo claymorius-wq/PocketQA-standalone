@@ -218,3 +218,75 @@ $ WALLET_PIN=<test AVD pin> apps/mobile/e2e/maestro/run-native.sh   (run 2026100
 record-consent / record-decline / notifications-denied / remove-segment / system-stop /
 notification-stop / leave-while-recording / wallet-decline / wallet-link → all EXIT=0, active_projections=0
 ```
+
+## 2026-10-03: Remaining local scope (lead, branch `feat/remaining-scope`, uncommitted candidate)
+
+Full raw outputs: `docs/reviews/remaining-scope/` (`pnpm-verify.txt`, `../remaining-scope-playwright.txt`, `native/`, `ios/`).
+
+**`pnpm verify` (latest tree):** EXIT=0.
+```
+check:secrets passed: 299 committable files scanned, no findings.
+packages/contracts Tests 14 passed (14) · packages/domain Tests 166 passed (166)
+apps/api Tests 268 passed (268) · apps/mobile Tests: 120 passed, 120 total
+```
+
+**iOS simulator.** No paid services were used: Xcode 26.4, the iPhone 17 / iOS 26.4 simulator, and an ad-hoc signature (`CODE_SIGN_IDENTITY=-`, `codesign -dv` → `Signature=adhoc`).
+```
+$ xcodebuild ... -configuration Release -sdk iphonesimulator ... CODE_SIGN_IDENTITY=-   → ** BUILD SUCCEEDED **
+$ maestro --device <sim> test --debug-output=<workspace>/.results/ios ... ios-smoke.yaml
+[Passed] ios-smoke (30s)      27/27 commands COMPLETED
+```
+- **The first runs found a real crash** in the simulator log:
+  ```
+  Terminating app due to uncaught exception 'RCTFatalException: Unhandled JS Exception: Invariant Violation: TurboModuleRegistry.getEnforcing(...): 'SolanaMobileWalletAdapter' could not be found.
+  ```
+  Fixed by making the MWA importers `*.android.ts`; the guard is `__tests__/platform-modules.test.ts`, red then green.
+- **A keychain session survived reinstall.** Fixed by `src/auth/restore.ts` and `__tests__/session-restore.test.ts`, red then green.
+- **The back button showed "(tester)".** The Maestro assertion failed on the old build, then passed after the fix.
+
+**Real devnet confirmation: BLOCKED.**
+```
+requestAirdrop (api.devnet.solana.com) → -32603 Internal error, then 429 "You've either reached your airdrop limit today or the airdrop faucet has run dry"
+```
+
+**iOS Settings crash, reproduced and then fixed.**
+```
+# fixed tree with only link.android.ts renamed back to link.native.ts
+[Failed] ios-settings (38s) (No visible element found: id: wallet-unavailable)
+tab-settings tapped 02:52:31.8 → log 02:52:32.735: Terminating app due to uncaught exception 'RCTFatalException: Unhandled JS Exception: Invariant Violation: TurboModuleRegistry.getEnforcing(...): 'SolanaMobileWalletAdapter' could not be found
+# restored link.android.ts, rebuilt (main.jsbundle sha256 32385ba4…)
+[Passed] ios-settings (19s)
+[Passed] ios-smoke (31s)
+```
+
+**Android, frozen candidate.**
+```
+apps/mobile/artifacts/pocketqa-release-85ae621a.apk  51022844 bytes
+sha256 85ae621a1d855651c2babca12e4d34fed304cdc063938bc8eafbf6109c860d04
+$ WALLET_PIN=<test AVD pin> apps/mobile/e2e/maestro/run-native.sh   (run 20261003-024918)
+record-consent / record-decline / notifications-denied / remove-segment / system-stop /
+notification-stop / leave-while-recording / wallet-decline / wallet-link / devnet-transfer-unfunded
+→ all EXIT=0 active_projections=0
+  server transfer state: awaiting_signature signature=null
+```
+
+**Web E2E, frozen tree:** `npx playwright test` → `8 passed (45.2s)` (`docs/reviews/remaining-scope-playwright.txt`).
+
+**Review r1 fixes: red, then green** (`docs/reviews/remaining-scope/verdict-qa-r1.md`).
+```
+domain copy.test.ts (tester money in study text)      → 1 failed | 8 passed (9)   then 9 passed
+api review-fixes.test.ts (POST /studies 400)           → 1 failed | 11 passed (12) then 12 passed
+api remaining-scope.test.ts (stuck tasks; deletion)   → 1 failed each, then 8 passed (8)
+mobile report-signature.test.ts                        → Cannot find module, then passed
+mutations: M15 M16 M17 M18 (domain) M19 M20 (api) M21 (guard probe) → each 1 failed; all restored (cmp)
+```
+
+**r2 tree.**
+```
+$ pnpm verify → EXIT=0; check:secrets 338 files, no findings; contracts 14, domain 168, api 271, mobile 124
+$ npx playwright test → 8 passed (45.9s)
+apps/mobile/artifacts/pocketqa-release-e758f321.apk  51026792 bytes
+sha256 e758f321ba21615b9cc92bdaf00bebae9ea72493d033f6f06fe6139c7ec90198
+$ WALLET_PIN=<test AVD pin> run-native.sh (run 20261003-030814) → 10/10 EXIT=0 active_projections=0; transfer awaiting_signature signature=null
+iOS simulator r2 (main.jsbundle 8e801e70…) → [Passed] ios-settings (19s), [Passed] ios-smoke (30s)
+```

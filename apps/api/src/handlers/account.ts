@@ -184,7 +184,15 @@ export const accountHandlers = {
       db.prepare(`UPDATE disputes SET reason = '[deleted]' WHERE opened_by = ?`).run(user.id);
       // Demo transfers carry wallet addresses (on-chain pseudonyms) and no ledger value.
       db.prepare('DELETE FROM devnet_transfers WHERE builder_id = ? OR tester_id = ?').run(user.id, user.id);
-      db.prepare(`UPDATE audit SET reason = '[redacted on account deletion]' WHERE target_type = 'user' AND target_id = ?`).run(user.id);
+      // Audit reasons about the user, or about their work (admin decisions on their
+      // participations, resolutions of their disputes), are redacted; action, actor and
+      // timestamp stay so the audit trail keeps its shape (ADR 0002).
+      db.prepare(
+        `UPDATE audit SET reason = '[redacted on account deletion]'
+         WHERE (target_type = 'user' AND target_id = ?)
+            OR (target_type = 'participation' AND target_id IN (SELECT id FROM participations WHERE tester_id = ?))
+            OR (target_type = 'dispute' AND target_id IN (SELECT id FROM disputes WHERE opened_by = ?))`,
+      ).run(user.id, user.id, user.id);
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM wallet_nonces WHERE user_id = ?').run(user.id);
       db.prepare(

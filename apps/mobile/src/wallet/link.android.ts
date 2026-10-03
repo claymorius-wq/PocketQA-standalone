@@ -1,3 +1,4 @@
+// Android-only (not .native): MWA's native module doesn't exist on iOS and loading it there crashes.
 import { transact } from '@solana-mobile/mobile-wallet-adapter-protocol';
 import { base58, base64 } from '@scure/base';
 import { appIdentityUri, buildSiwsMessage, DEFAULT_SIWS_DOMAIN, SOLANA_DEVNET_CHAIN } from '@pocket-qa/contracts';

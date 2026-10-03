@@ -4,6 +4,30 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-03, branch `feat/remaining-scope`, NOT reviewed, NOT merged)
+Hamza asked for the remaining local scope:
+- devnet transfer screen with honest awaiting, pending, confirmed, failed and expired states;
+- builder view of disputes on their own studies;
+- admin-audited resolution of stuck submissions;
+- payment and currency copy rules scoped to reviewer text;
+- an iOS simulator feasibility check;
+- a review of GitHub handoff readiness.
+
+**APKs.** `apps/mobile/artifacts/pocketqa-release-82f214ec.apk` is kept as history: it is the `main` build (Phase 8) that passed 9 native flows. The current tested build for this branch is named in the status below. **Any change requires native revalidation** before an APK can be called tested.
+
+**Status (2026-10-03, ~03:20):**
+- All four features are built test-first. `pnpm verify` passes (api 268, domain 166, contracts 14, mobile 120), and web E2E passed 8/8 on the earlier tree.
+- **iOS simulator: feasible and passing, no paid services.** The ad-hoc-signed Release simulator build passes `ios-smoke`. The run found and fixed an iOS crash (MWA modules resolved on iOS), a keychain session surviving reinstall, and a "(tester)" back label.
+- The iOS Settings crash was **reproduced** with the old file name (the app terminated), then verified fixed with `ios-settings`.
+- Review r1 (pqa-qa): CHANGES_REQUIRED, 1×P2 (study text could promise money to testers) and 6×P3. All are fixed, test-first, with mutation checks.
+- **Current tested APK:** `apps/mobile/artifacts/pocketqa-release-e758f321.apk` (r2 tree), **10/10** native flows (run `20261003-030814`).
+- iOS r2 build passes `ios-settings` and `ios-smoke`. Playwright passes 8/8 and `pnpm verify` passes (domain 168, api 271, mobile 124).
+- Awaiting review r2.
+- A real confirmed devnet transfer is **blocked** (faucet 429).
+- GitHub handoff: readiness only, nothing pushed (`docs/handoff/github-private-remote.md`).
+
+**Access rule (Hamza, 2026-10-03):** never retry denied access through another tool or path. Global permissions and the denied plan docs stay untouched; status lives here.
+
 ## Status board
 
 | Phase | Owner | State |
@@ -20,7 +44,11 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 ## Open gates (not passed; need hardware or approval)
 - Real-device S0/B1 on a Seeker or other Android 14+ phone: wallet app-switch capture, FLAG_SECURE screens, auto-stop on screen lock (the emulator image didn't auto-stop on lock).
-- Real production MWA wallet (B2), and a devnet transfer UI plus on-chain confirmation (the API is ready; the client isn't built).
+- Real production MWA wallet (B2), and a real **confirmed** devnet transfer.
+  - The transfer UI is built on `feat/remaining-scope`.
+  - The mock wallet signed and submitted to real devnet, which rejected it because the fee payer was unfunded.
+  - Funding is blocked: the devnet faucet returned 429, and faucet.solana.com needs an external login.
+- Real iPhone: not attempted. It would need an Apple signing identity, and only the simulator is verified.
 - MWA `sign_in_payload` flow: needs a contract change so the nonce is issued before the address is known.
 
 ## Needs Hamza

@@ -9,6 +9,7 @@ import type { UserRow } from './views';
 export type DevnetRpc = {
   getGenesisHash(): Promise<string>;
   getTransaction(signature: string): Promise<ParsedTx | null>;
+  getLatestBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: number }>;
 };
 
 export type Deps = { db: DB; config: Config; now: Clock; rpc: DevnetRpc; mediaDir: string };

@@ -1,0 +1,26 @@
+# Builder signs in and links the (freshly reset) mock wallet over MWA.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- tapOn:
+    id: tab-builder-settings
+- scrollUntilVisible:
+    element:
+      id: wallet-link
+- tapOn:
+    id: wallet-link
+- tapOn: "Connect"
+- tapOn: "Approve"
+- scrollUntilVisible:
+    element:
+      id: wallet-address

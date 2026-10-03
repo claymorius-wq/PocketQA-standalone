@@ -1,11 +1,11 @@
-import { assertCleanCopy, planReward, transitionParticipation } from '@pocket-qa/domain';
+import { assertCleanCopy, planReward, stuckReason, transitionParticipation } from '@pocket-qa/domain';
 import { getParticipationRow, getStudyRow } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { post } from '../ledger';
 import { fail, iso, newId, notFound } from '../util';
-import { auditView, budgetOf, disputeView, studyView, type StudyRow } from '../views';
+import { auditView, budgetOf, disputeView, participationView, studyView, tasksOf, type ParticipationRow, type StudyRow } from '../views';
 
-function audit(ctx: Ctx, action: string, targetType: 'study' | 'user' | 'dispute', targetId: string, reason: string) {
+function audit(ctx: Ctx, action: string, targetType: 'study' | 'user' | 'dispute' | 'participation', targetId: string, reason: string) {
   ctx.deps.db
     .prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)')
     .run(newId(), me(ctx).id, action, targetType, targetId, reason, iso(ctx.deps.now()));
@@ -77,6 +77,52 @@ export const adminHandlers = {
       audit(ctx, `user.${ctx.body.action}`, 'user', target.id, ctx.body.reason);
     })();
     return { ok: true as const };
+  },
+
+  adminStuck: (ctx) => {
+    const db = ctx.deps.db;
+    const now = ctx.deps.now();
+    const rows = db
+      .prepare(
+        `SELECT p.*, s.title AS study_title, u.status AS builder_status FROM participations p
+         JOIN studies s ON s.id = p.study_id JOIN users u ON u.id = s.builder_id
+         WHERE p.status = 'submitted' ORDER BY p.submitted_at`,
+      )
+      .all() as (ParticipationRow & { study_title: string; builder_status: 'active' | 'suspended' | 'deleted' })[];
+    const items = rows.flatMap((r) => {
+      const reason = stuckReason({ status: r.status, submittedAtMs: r.submitted_at ? Date.parse(r.submitted_at) : null, builderStatus: r.builder_status }, now);
+      return reason
+        ? [{ participation: participationView(db, r, { withTesterName: true }), studyId: r.study_id, studyTitle: r.study_title, builderStatus: r.builder_status, reason, tasks: tasksOf(db, r.study_id) }]
+        : [];
+    });
+    return { items };
+  },
+
+  /**
+   * Admin decision on a stuck submission only (builder inactive, or overdue). Same rules
+   * as a builder decision: one credit at most, budget never negative, reason audited.
+   */
+  adminDecide: (ctx) => {
+    const db = ctx.deps.db;
+    const now = ctx.deps.now();
+    const { decision, reason } = ctx.body;
+    assertCleanCopy({ reason });
+    db.transaction(() => {
+      const p = getParticipationRow(db, ctx.params.id!);
+      if (!p) throw notFound('Participation');
+      const s = getStudyRow(db, p.study_id)!;
+      const builder = db.prepare('SELECT status FROM users WHERE id = ?').get(s.builder_id) as { status: 'active' | 'suspended' | 'deleted' };
+      const why = stuckReason({ status: p.status, submittedAtMs: p.submitted_at ? Date.parse(p.submitted_at) : null, builderStatus: builder.status }, now);
+      if (!why) throw fail('CONFLICT_STATE', 'Only stuck submissions can be decided by an admin; the study owner reviews the rest.');
+      const next = transitionParticipation(p.status, decision);
+      if (decision === 'approve') {
+        const available = budgetOf(db, s, now).available + p.reward_credits;
+        post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'reward_credit' }), now);
+      }
+      db.prepare('UPDATE participations SET status = ?, decided_at = ?, decided_by = ?, decision_reason = ? WHERE id = ?').run(next, iso(now), me(ctx).id, reason, p.id);
+      audit(ctx, `participation.${decision}`, 'participation', p.id, `${reason} [stuck: ${why}]`);
+    })();
+    return participationView(db, getParticipationRow(db, ctx.params.id!)!, { withTesterName: true });
   },
 
   adminAudit: (ctx) => {

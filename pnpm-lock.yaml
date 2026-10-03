@@ -215,6 +215,9 @@ importers:
         specifier: 2.4.0
         version: 2.4.0
     devDependencies:
+      '@solana/kit':
+        specifier: 7.1.1
+        version: 7.1.1(typescript@6.0.3)
       '@vitest/coverage-v8':
         specifier: 5.0.3
         version: 5.0.3(vitest@5.0.3)

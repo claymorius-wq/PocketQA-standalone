@@ -2,6 +2,8 @@ import type { User } from '@pocket-qa/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api, configureClient } from '../api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
 
 type Session = {
@@ -30,7 +32,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     configureClient({ getToken: () => token.current, onUnauthenticated: () => void clear() });
     (async () => {
-      const saved = await tokenStore.get().catch(() => null);
+      const installed = { get: () => AsyncStorage.getItem('pocketqa.installed'), set: (v: string) => AsyncStorage.setItem('pocketqa.installed', v) };
+      const saved = await restoreToken(installed, tokenStore).catch(() => null);
       if (saved) {
         token.current = saved;
         try {

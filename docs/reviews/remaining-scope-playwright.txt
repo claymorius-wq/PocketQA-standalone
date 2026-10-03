@@ -1,0 +1,16 @@
+
+Running 8 tests using 1 worker
+
+  ✓  1 e2e/account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (818ms)
+
+  ✓  2 e2e/admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (5.7s)
+  ✓  3 e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (11.1s)
+  ✓  4 e2e/remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (1.5s)
+
+  ✓  5 e2e/remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (2.4s)
+  ✓  6 e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (9.3s)
+  ✓  7 e2e/review-loop.spec.ts:181:5 › theme switch persists and unauthenticated users land on sign-in (1.2s)
+  ✓  8 e2e/review-loop.spec.ts:199:5 › offline state when the API is unreachable (2.2s)
+
+  8 passed (45.9s)
+EXIT=0
