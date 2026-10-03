@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="64.0">
+    <testcase id="record-consent" name="record-consent" classname="record-consent" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/record-consent.yaml" time="64.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

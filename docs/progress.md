@@ -4,7 +4,7 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
-## Current work (2026-10-03, branch `feat/remaining-scope`, NOT reviewed, NOT merged)
+## Current work (2026-10-03): remaining local scope reviewed and merged (`feat/remaining-scope`, then `fix/r2-p3`)
 Hamza asked for the remaining local scope:
 - devnet transfer screen with honest awaiting, pending, confirmed, failed and expired states;
 - builder view of disputes on their own studies;
@@ -15,14 +15,15 @@ Hamza asked for the remaining local scope:
 
 **APKs.** `apps/mobile/artifacts/pocketqa-release-82f214ec.apk` is kept as history: it is the `main` build (Phase 8) that passed 9 native flows. The current tested build for this branch is named in the status below. **Any change requires native revalidation** before an APK can be called tested.
 
-**Status (2026-10-03, ~03:20):**
-- All four features are built test-first. `pnpm verify` passes (api 268, domain 166, contracts 14, mobile 120), and web E2E passed 8/8 on the earlier tree.
-- **iOS simulator: feasible and passing, no paid services.** The ad-hoc-signed Release simulator build passes `ios-smoke`. The run found and fixed an iOS crash (MWA modules resolved on iOS), a keychain session surviving reinstall, and a "(tester)" back label.
-- The iOS Settings crash was **reproduced** with the old file name (the app terminated), then verified fixed with `ios-settings`.
-- Review r1 (pqa-qa): CHANGES_REQUIRED, 1×P2 (study text could promise money to testers) and 6×P3. All are fixed, test-first, with mutation checks.
-- **Current tested APK:** `apps/mobile/artifacts/pocketqa-release-e758f321.apk` (r2 tree), **10/10** native flows (run `20261003-030814`).
-- iOS r2 build passes `ios-settings` and `ios-smoke`. Playwright passes 8/8 and `pnpm verify` passes (domain 168, api 271, mobile 124).
-- Awaiting review r2.
+**Status (2026-10-03, ~03:35):**
+- **Merged to `main`:** `fac4d34` (feature commit `8a20bfc`), reviewed by pqa-qa. r1 was CHANGES_REQUIRED (1×P2, 6×P3, all fixed); r2 APPROVE on tree `c0c11d30`.
+  - It covers the devnet transfer screen, builder disputes, admin stuck resolution, scoped copy rules and the iOS simulator fixes.
+  - The iOS Settings crash was reproduced with the old file name, then verified fixed.
+  - Tested APK for that merge: `apps/mobile/artifacts/pocketqa-release-e758f321.apk`, 10/10 native flows (run `20261003-030814`). Tested with it: `pnpm verify` (domain 168, api 271, mobile 124), Playwright 8/8, and iOS `ios-settings` plus `ios-smoke`.
+- **Branch `fix/r2-p3`, merged after pqa-qa r3 APPROVE (tree `5a342546`):** more natural payout phrasings blocked in study text, an idempotent same-signature report with the full signature in the error, and stale docs fixed.
+  - **Current tested APK:** `apps/mobile/artifacts/pocketqa-release-14ac0c9e.apk`, 10/10 native flows (run `20261003-032219`).
+  - Also passing on this tree: iOS `ios-settings` and `ios-smoke`, Playwright 8/8, and `pnpm verify`.
+  - The two `progress.md` status lines flagged in r3 were fixed after the review, as the reviewer suggested. That is a docs-only change.
 - A real confirmed devnet transfer is **blocked** (faucet 429).
 - GitHub handoff: readiness only, nothing pushed (`docs/handoff/github-private-remote.md`).
 
@@ -57,6 +58,10 @@ Hamza asked for the remaining local scope:
 - The test AVD has a screen-lock PIN set for the mock wallet. Remove it with `adb shell locksettings clear --old <pin>`.
 
 ## Carried P3 follow-ups
+
+From remaining-scope review r3 (`docs/reviews/r2-p3/verdict-qa-r3.md`):
+- Study copy rules over-block some legitimate tasks, all failing safe with a field-named 400: "The app will send you a $5 coupon", "…to receive the $5 discount", "Enter the code to win $50", "Stake to earn 10 SOL". They also miss "Earn 10 SOL" and "Get 20 USDC after the session". Tune the patterns and add a rewording hint to new-study.
+- In `submitTransferSignature`, a same-signature retry while the RPC is down returns 503. Use `reverify(...).catch(() => row)` in the idempotent branch (`apps/api/src/handlers/wallet.ts`).
 
 From Phase 8 (do before any real pilot):
 - Scope the payment and currency copy rules to tester-facing reviewer text (approve and reject notes, findings, dispute notes, UI), so study tasks can say "buy the $5 item" or "send 0.1 devnet SOL".

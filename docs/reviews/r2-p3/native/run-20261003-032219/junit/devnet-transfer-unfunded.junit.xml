@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="56.0">
+    <testcase id="devnet-transfer-unfunded" name="devnet-transfer-unfunded" classname="devnet-transfer-unfunded" file="/Users/hamzadiaz/Projects/pocket-qa/apps/mobile/e2e/maestro/devnet-transfer-unfunded.yaml" time="56.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

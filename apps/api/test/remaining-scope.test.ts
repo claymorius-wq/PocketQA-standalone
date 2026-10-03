@@ -148,6 +148,17 @@ describe('devnet demo transfer support', () => {
     const bh = await t.req('GET', `/devnet/transfers/${intent.id}/blockhash`, builder.token);
     expect(bh.body).toEqual({ blockhash: t.rpc.blockhash, lastValidBlockHeight: 1000 });
     expect((await t.req('GET', `/devnet/transfers/${intent.id}/blockhash`, (await t.register('builder')).token)).status).toBe(404);
+    // Review r2 P3: a retried report of the same signature (first response lost) is
+    // idempotent; a different signature for an already-reported intent is still refused.
+    const sig = base58.encode(ed25519.sign(new Uint8Array([1]), key().sk));
+    expect((await t.req('POST', `/devnet/transfers/${intent.id}/signature`, builder.token, { signature: sig })).body.status).toBe('pending');
+    const again = await t.req('POST', `/devnet/transfers/${intent.id}/signature`, builder.token, { signature: sig });
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({ id: intent.id, status: 'pending', signature: sig });
+    const other = base58.encode(ed25519.sign(new Uint8Array([2]), key().sk));
+    expect((await t.req('POST', `/devnet/transfers/${intent.id}/signature`, builder.token, { signature: other })).status).toBe(409);
+    expect((await t.req('POST', `/devnet/transfers/${intent.id}/signature`, (await t.register('builder')).token, { signature: sig })).status).toBe(404);
+
     t.rpc.genesis = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
     expect((await t.req('GET', `/devnet/transfers/${intent.id}/blockhash`, builder.token)).status).toBe(503);
   });

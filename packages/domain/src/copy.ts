@@ -19,7 +19,15 @@ export type CopyScope = 'study' | 'reviewer';
 // Money aimed at testers, matched by proximity (either order, same clause) so app text such
 // as "Check that you can buy the $5 item" or "Each item costs $3" still passes.
 const CURRENCY = String.raw`\$\s?\d|\b\d+(?:\.\d+)?\s*(?:usdc|usdt|usd|eur|sol|skr|btc|eth)\b|\b(?:usdc|usdt|usd|eur|sol)\s?\d`;
-const TO_TESTERS = String.raw`\b(?:per|for\s+each|each)\s+(?:tester|participant|person|session|test|completion|submission)s?\b|\b(?:testers?|participants?|you)\s+(?:will\s+|can\s+)?(?:get|gets|receive|receives|earn|be\s+(?:paid|given|rewarded|compensated))\b`;
+const TO_TESTERS = [
+  String.raw`\b(?:per|for\s+each|each)\s+(?:tester|participant|person|session|test|completion|submission)s?\b`,
+  String.raw`\b(?:testers?|participants?|you)\s+(?:will\s+|can\s+)?(?:get|gets|receive|receives|earn|win|wins|be\s+(?:paid|given|rewarded|compensated))\b`,
+  // "to receive 10 USDC", "send you 5 SOL", "$20 for joining", "testers win $100". Not "to get",
+  // which shopping tasks use ("to get free shipping").
+  String.raw`\bto\s+(?:receive|earn|win)\b`,
+  String.raw`\b(?:send|pay|give)s?\s+you\b`,
+  String.raw`\bfor\s+(?:joining|completing|participating|taking\s+part|your\s+(?:time|feedback|participation))\b`,
+].join('|');
 const REWARD_WORD = String.raw`\b(?:bonus(?:es)?|rewards?|compensation|stipends?|incentives?|prizes?)\b`;
 const near = (a: string, b: string) => new RegExp(`(?:${a})[^.;\n]{0,40}(?:${b})|(?:${b})[^.;\n]{0,40}(?:${a})`, 'i');
 
