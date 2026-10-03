@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '../src/api/client';
 import { SessionProvider, useSession } from '../src/auth/SessionProvider';
-import { LoadingState, lensStackScreenOptions } from '../src/ui';
+import { FocusRingStyles, LoadingState, lensStackScreenOptions } from '../src/ui';
 import { StyleSheet, View } from 'react-native';
 import { Ground } from '../src/glass';
 import { LENS_FONTS } from '../src/theme/fonts';
@@ -17,25 +17,28 @@ import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function ThemedStack() {
-  const { colors, scheme, motion } = useTheme();
+  const { colors, scheme } = useTheme();
   const { ready, user } = useSession();
   const segments = useSegments();
   // Stable options: a new `header` function per render would re-render every mounted header.
   const screenOptions = useMemo(
     () => ({
-      // The Lens header (src/ui/StackHeader.tsx): transparent over the screen's ground, glass back tile.
-      ...lensStackScreenOptions(colors, motion),
+      // The one Lens header (src/ui/StackHeader.tsx, CONSISTENCY C2): transparent over the screen's
+      // ground, glass back tile, divider. No native transition: each screen plays its own arrival
+      // (push in from the right, back, tab, replace; src/motion/entrance.ts).
+      ...lensStackScreenOptions(colors),
       // iOS otherwise labels the back button (and its VoiceOver label) with the previous
       // route's name, e.g. "(tester)".
       headerBackButtonDisplayMode: 'minimal' as const,
       headerBackTitle: 'Back',
     }),
-    [colors, motion],
+    [colors],
   );
   // Nothing protected renders (or fetches) until the saved session is restored.
   if (!ready) {
     return (
-      <Ground>
+      // The light arrives on Sign in (the launch, §M3), never on this start screen.
+      <Ground enter={false}>
         <View style={styles.starting}>
           <LoadingState label="Starting Pocket QA…" brand />
         </View>
@@ -90,6 +93,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={qc}>
         <ThemeProvider fonts={fontsLoaded ? 'lens' : 'system'}>
+          {/* Web: the one focus ring for every focusable (CONSISTENCY C1). */}
+          <FocusRingStyles />
           <SessionProvider>
             <ThemedStack />
           </SessionProvider>

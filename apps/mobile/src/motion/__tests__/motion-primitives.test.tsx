@@ -14,8 +14,6 @@ import {
   liveLevels,
   NumberRoll,
   planRoll,
-  stackScreenOptions,
-  tabScreenOptions,
   useLiveBreath,
   useSheetMotion,
   type RollColumn,
@@ -246,28 +244,6 @@ describe('sheet motion (§11.4)', () => {
 });
 
 describe('navigator presets', () => {
-  it('tab content fades and rises 6 over 240ms ease-lens; reduced is a 120ms fade', () => {
-    const full = tabScreenOptions(FULL_MOTION);
-    expect(full.animation).toBe('fade');
-    expect(full.transitionSpec).toMatchObject({ animation: 'timing', config: { duration: 240 } });
-    const scene = (o: ReturnType<typeof tabScreenOptions>, p: number) => {
-      const { sceneStyle } = o.sceneStyleInterpolator!({ current: { progress: new RNAnimated.Value(p) } }) as {
-        sceneStyle: { opacity: unknown; transform: { translateY: unknown }[] };
-      };
-      return [valueOf(sceneStyle.opacity), valueOf(sceneStyle.transform[0]!.translateY)];
-    };
-    expect(scene(full, 0)).toEqual([1, 0]);
-    expect(scene(full, 1)).toEqual([0, 6]);
-    const reduced = tabScreenOptions(REDUCED_MOTION);
-    expect(reduced.transitionSpec).toMatchObject({ config: { duration: 120 } });
-    expect(scene(reduced, -1)).toEqual([0, 0]);
-  });
-
-  it('native stack cross-fades (320ms where the platform honours it)', () => {
-    expect(stackScreenOptions(FULL_MOTION)).toEqual({ animation: 'fade', animationDuration: 320 });
-    expect(stackScreenOptions(REDUCED_MOTION)).toEqual({ animation: 'fade', animationDuration: 120 });
-  });
-
   it('JS stack: push 24 in over 320ms, the screen below dims to 0.85 and drifts 12 left; back in 240ms', () => {
     const o = jsStackScreenOptions(FULL_MOTION);
     expect(o.transitionSpec).toMatchObject({ open: { config: { duration: 320 } }, close: { config: { duration: 240 } } });

@@ -18,7 +18,7 @@ import {
 export const EASE = {
   lens: [0.22, 1, 0.36, 1], // default out: entrances, settles, sheet rise, uplight settle
   press: [0.2, 0, 0.4, 1], // press in
-  release: [0.3, 1.5, 0.5, 1], // release with a 1px overshoot
+  release: [0.3, 1.5, 0.5, 1], // press release (transform) only: the 1px overshoot back; never opacity, never the tab tile
   exit: [0.5, 0, 0.75, 0], // exits, sheet close, back, the light cut
   refract: [0.65, 0, 0.35, 1], // light travelling: lens glint, caustic sweep
   uplight: [0.12, 0.8, 0.28, 1], // Uplight rise: warms fast, long tail
@@ -29,14 +29,21 @@ export type EaseName = keyof typeof EASE;
 
 /** Duration tokens (ms). Nothing in the product is shorter than tick or longer than settle per segment. */
 export const DUR = { tick: 120, release: 180, swap: 240, enter: 320, sheet: 420, rise: 560, settle: 700 } as const;
-/** Loop periods (ms): the live breath and the rib drift while recording. */
-export const CYCLE = { breathe: 1400, drift: 5600 } as const;
+/**
+ * Loop periods (ms): the live breath, the rib drift while recording, and `cycle-spin` (§11.2, round 4):
+ * every spinner turns once per 800ms, linear; reduced motion slows it to 1600ms and never freezes it
+ * (a frozen spinner reads as a hang).
+ */
+export const CYCLE = { breathe: 1400, drift: 5600, spin: 800, spinReduced: 1600 } as const;
 /** Entrance choreography: content starts at 80ms, 40ms apart, at most five steps (later items join the fifth). */
 export const STAGGER = { step: 40, maxSteps: 5, contentStart: 80, subtitleDelay: 40 } as const;
-/** Springs (RN). Tab ≈ 320ms, sheet ≈ 420ms. */
+/**
+ * Springs (RN), round 4: both near critical damping (tab ζ ≈ 0.87, sheet ζ ≈ 0.92), so the tile
+ * lands in its slot and the sheet does not bounce past its rest. Tab ≈ 320ms, sheet ≈ 420ms.
+ */
 export const SPRING = {
-  tab: { damping: 18, stiffness: 220, mass: 1 },
-  sheet: { damping: 26, stiffness: 280, mass: 1 },
+  tab: { damping: 30, stiffness: 300, mass: 1 },
+  sheet: { damping: 32, stiffness: 300, mass: 1 },
 } as const;
 /** Distances (dp) and levels the signature motions use. */
 export const MOTION_DISTANCE = {
@@ -69,7 +76,7 @@ export const UPLIGHT = {
   pilot: { signIn: 0.35, sheet: 0.55, delay: 260, rise: DUR.rise },
   cut: DUR.release, // the light cut on stop / sheet close: never a gentle fade
   floorScaleFrom: 0.3,
-  moteDuration: 900,
+  moteDuration: DUR.settle, // 700: no segment is longer than dur-settle (§11.1)
 } as const;
 /** Signature-motion timings that are not plain duration tokens. */
 export const SIGNATURE = {

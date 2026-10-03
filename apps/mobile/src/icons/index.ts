@@ -18,7 +18,7 @@ import type { GlyphVariant } from './material';
 
 export { GlassGlyph, type GlassGlyphProps } from './GlassGlyph';
 export { GlassTile, TabGlyph, TILE_SIZES, type GlassTileProps, type TileSize } from './GlassTile';
-export { GLYPHS, GLYPH_NAMES, type GlyphName, type GlyphPart } from './glyphs';
+export { ALIASES, GLYPHS, GLYPH_NAMES, resolveGlyph, type GlyphAlias, type GlyphName, type GlyphPart } from './glyphs';
 export type { GlyphVariant } from './material';
 
 /**
@@ -35,7 +35,7 @@ export type { GlyphVariant } from './material';
  */
 export const LUCIDE_TO_GLYPH = {
   AlertTriangle: 'warning',
-  ArrowRight: 'arrow',
+  ArrowRight: 'forward',
   Ban: 'ban',
   Check: 'approve',
   CheckSquare: 'approve',
@@ -63,7 +63,7 @@ export const LUCIDE_TO_GLYPH = {
   Play: 'play',
   Plus: 'plus',
   RefreshCw: 'refresh',
-  Rocket: 'rocket',
+  Rocket: 'publish',
   Save: 'save',
   ScrollText: 'audit',
   Send: 'send',

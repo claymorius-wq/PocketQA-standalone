@@ -7,5 +7,5 @@ export { usePressMotion } from './press';
 export { canRoll, groupDigits, NumberRoll, planRoll, type RollColumn, type RollPart, type RollPlan } from './NumberRoll';
 export { BreathingCore, CORE_IDLE_OPACITY, LiveLed, liveLevels, useLiveBreath, type LiveBreath, type LiveLevels } from './BreathingCore';
 export { SHEET_CLEARANCE, useSheetMotion, type SheetMotion } from './sheet';
-export { jsStackScreenOptions, stackScreenOptions, tabScreenOptions } from './navigation';
+export { jsStackScreenOptions } from './navigation';
 export { useCrossfade, useTabTile } from './swap';

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import Animated, { getAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
 import { glassDark, glassLight } from '../../theme/tokens';
@@ -174,6 +174,28 @@ describe('glass primitives render (dark Lens and flat light)', () => {
     const card = screen.getByTestId('card');
     expect(card.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ backgroundColor: '#FFFFFF' })]));
     expect(screen.getByText('glyph', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('pressed, the cast layer drops to 0.6 (C5), never to 0', async () => {
+    function Pressed() {
+      const p = useSharedValue(1);
+      return <GlassSurface testID="c" k={1} pressed={p} />;
+    }
+    const r = await renderIn('dark', <Pressed />);
+    await fireEvent(screen.getByTestId('c'), 'layout', layout(320, 120));
+    const style = (n: { props: { style?: unknown } }) => StyleSheet.flatten(n.props.style as ViewStyle) as ViewStyle & { boxShadow?: string };
+    const [cast] = r.container.queryAll((n) => typeof n.type === 'string' && /rgba\(2,1,10/.test(String(style(n)?.boxShadow ?? '')));
+    expect(cast).toBeTruthy();
+    expect((getAnimatedStyle(cast as never) as { opacity: number }).opacity).toBeCloseTo(0.6, 5);
+  });
+
+  it('a Mode B floor is never shorter than 260 (§U)', async () => {
+    function Floor() {
+      const light = useUplight('pilot', true);
+      return <UplightFloor light={light} height={160} />;
+    }
+    const r = await renderIn('dark', <Floor />);
+    expect(JSON.stringify(r.toJSON())).toContain('"height":260');
   });
 
   it('renders Grain on Lens glass at the token opacity', async () => {

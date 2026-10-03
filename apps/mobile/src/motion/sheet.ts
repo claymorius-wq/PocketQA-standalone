@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, Platform, useWindowDimensions, type LayoutChangeEvent, type View } from 'react-native';
 import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { DUR, useMotion } from '../theme/motion';
 
@@ -89,4 +89,55 @@ export function useSheetMotion({ visible, animateExit = true }: { visible: boole
   const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.value }));
   const sheetStyle = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateY: offset.value }] }));
   return { mounted, closing: mounted && !visible, onSheetLayout, backdropStyle, sheetStyle };
+}
+
+// ---------- Sheet behaviour (CONSISTENCY C4) ----------
+//
+// Focus moves to the sheet's title 60ms after it opens; Escape (web), Android back, the backdrop
+// and Cancel all close it through one `requestClose`, which does nothing while the sheet is busy
+// (a request pending) or already closing: a sheet never closes mid-request. The rest of C4 comes
+// from the Modal it sits in: react-native-web's Modal is `role="dialog" aria-modal`, traps focus
+// inside, calls onRequestClose on Escape and returns focus to the opener when it unmounts (the
+// screen behind is unreachable, the board's `inert`); a native Modal is its own window, so the
+// screen behind is out of reach for touch and screen readers alike.
+
+/** C4: focus lands on the title this long after the sheet opens (the board's +60ms). */
+export const SHEET_FOCUS_DELAY = 60;
+
+/** Moves focus to `node`: DOM focus on web (as a programmatic target, no ring), accessibility focus on native. */
+export function focusSheetTarget(node: unknown): void {
+  if (!node) return;
+  if (Platform.OS === 'web') {
+    const el = node as HTMLElement;
+    if (typeof el.focus !== 'function') return;
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+    el.focus({ preventScroll: true });
+    return;
+  }
+  AccessibilityInfo.sendAccessibilityEvent(node as Parameters<typeof AccessibilityInfo.sendAccessibilityEvent>[0], 'focus');
+}
+
+/**
+ * C4 focus and close rules for a sheet. Put `titleRef` on the title's (accessible) wrapper and
+ * route every close (Modal onRequestClose, the backdrop, Cancel) through `requestClose`.
+ */
+export function useSheetFocus({ visible, busy, closing, onClose }: { visible: boolean; busy: boolean; closing: boolean; onClose: () => void }) {
+  const titleRef = useRef<View>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => focusSheetTarget(titleRef.current), SHEET_FOCUS_DELAY);
+    // Native: the Modal is its own window (an Android Dialog) and TalkBack often has not moved to
+    // it 60ms in, which drops the event; a second attempt once the sheet has settled lands it.
+    // Verify with TalkBack on the Seeker.
+    const t2 = Platform.OS === 'web' ? undefined : setTimeout(() => focusSheetTarget(titleRef.current), DUR.sheet);
+    return () => {
+      clearTimeout(t);
+      if (t2 !== undefined) clearTimeout(t2);
+    };
+  }, [visible]);
+  const locked = busy || closing;
+  const requestClose = useCallback(() => {
+    if (!locked) onClose();
+  }, [locked, onClose]);
+  return { titleRef, requestClose, locked };
 }

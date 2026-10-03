@@ -1,12 +1,13 @@
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from 'expo-router/tabs';
 import { useContext, useEffect, useState, type RefObject } from 'react';
-import { Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { GlassBlur, GlassSurface } from '../glass';
 import { TabGlyph, TILE_SIZES, type GlyphName } from '../icons';
 import { usePressMotion, useTabTile } from '../motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { layout, touch } from '../theme/tokens';
+import { layout, radius, touch } from '../theme/tokens';
+import { FocusPressable } from './focus';
 import { KitIconView, type KitIcon } from './icon';
 
 export type TabBarItem = { glyph: GlyphName | null; icon: KitIcon };
@@ -22,10 +23,12 @@ export type TabBarItem = { glyph: GlyphName | null; icon: KitIcon };
 
 const BAR_PADDING = 6;
 
-export function LensTabBar({ state, descriptors, navigation, insets, items, blurTarget }: BottomTabBarProps & {
+export function LensTabBar({ state, descriptors, navigation, insets, items, blurTarget, dockStyle }: BottomTabBarProps & {
   items: Record<string, TabBarItem | undefined>;
   /** The focused scene's BlurTargetView (Android blurs only what that view holds). */
   blurTarget?: RefObject<View | null>;
+  /** An animated style for the dock itself (RoleTabs' one-time fade in after sign-in). */
+  dockStyle?: ReturnType<typeof useAnimatedStyle>;
 }) {
   const { glass } = useTheme();
   const onHeight = useContext(BottomTabBarHeightCallbackContext);
@@ -45,7 +48,7 @@ export function LensTabBar({ state, descriptors, navigation, insets, items, blur
   };
 
   return (
-    <View style={[styles.dock, { left: layout.tabBarInset + insets.left, right: layout.tabBarInset + insets.right, bottom: layout.tabBarInset + insets.bottom }]}>
+    <Animated.View style={[styles.dock, { left: layout.tabBarInset + insets.left, right: layout.tabBarInset + insets.right, bottom: layout.tabBarInset + insets.bottom }, dockStyle]}>
       <GlassBlur blurTarget={blurTarget} style={styles.bar}>
         <View style={styles.row} onLayout={onLayout} role="tablist">
           {step > 0 ? (
@@ -81,7 +84,7 @@ export function LensTabBar({ state, descriptors, navigation, insets, items, blur
           })}
         </View>
       </GlassBlur>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -104,7 +107,10 @@ function TabItem({ label, focused, item, testID, accessibilityLabel, onPress, on
   const primary = colors.primary;
   const labelStyle = useAnimatedStyle(() => ({ color: interpolateColor(lit.value, [0, 1], [muted, primary]) }));
   return (
-    <Pressable
+    // C1: tab cells carry the ring at radius 18; its 4dp outset fits in the gap between the 60dp
+    // item and the 72dp row, so the bar's clipping never cuts it.
+    <FocusPressable
+      ringRadius={radius.button}
       testID={testID}
       onPress={onPress}
       onLongPress={onLongPress}
@@ -127,7 +133,7 @@ function TabItem({ label, focused, item, testID, accessibilityLabel, onPress, on
           {label}
         </Animated.Text>
       </Animated.View>
-    </Pressable>
+    </FocusPressable>
   );
 }
 

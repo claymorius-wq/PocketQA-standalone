@@ -2,15 +2,16 @@ import { Fragment, memo } from 'react';
 import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, FeGaussianBlur, Filter, G, LinearGradient, Mask, Path, RadialGradient, Rect } from 'react-native-svg';
 import { useTheme } from '../theme/ThemeProvider';
-import { GLYPHS, type GlyphName, type GlyphPart } from './glyphs';
-import { BEVEL, CAST, EXTRUSION, FACE, FACE_VECTOR, flatGlyphColor, GLYPH_PAD, HOT, ROSE_CORE, SHEEN, type GlyphVariant } from './material';
+import { GLYPHS, resolveGlyph, type GlyphAlias, type GlyphName, type GlyphPart } from './glyphs';
+import { BEVEL, CAST, EXTRUSION, FACE, FACE_VECTOR, flatGlyphColor, GLYPH_PAD, HOT, INK_STEP, ROSE_CORE, SHEEN, type GlyphVariant } from './material';
 import { PartGeometry, SoftSilhouette, stops, useSvgId } from './svg';
 
 export type GlassGlyphProps = {
-  name: GlyphName;
+  /** A source name, or a pre-round-4 alias (`rocket`, `arrow`, `ext`, `recIdle`). */
+  name: GlyphName | GlyphAlias;
   /** Rendered size of the 32-unit grid in dp (spec §7.6: 34 in a 54 tile, 26 tab bar, 24 in 36–40 tiles, 16–22 in buttons). */
   size?: number;
-  /** `lit` active or on light glass, `muted` inactive tab, `rose` danger (Stop, Remove, Reject). */
+  /** `lit` active tab / violet glass, `muted` inactive or disabled, `rose` danger (Stop, Remove, Reject), `ink` on the primary fill. */
   variant?: GlyphVariant;
   /** Light theme only: the flat silhouette colour (defaults by variant). Lens glyphs are never recoloured. */
   color?: string;
@@ -36,7 +37,7 @@ const REAL_BLUR = Platform.OS === 'web';
 export const GlassGlyph = memo(function GlassGlyph({ name, size = 24, variant = 'face', color, style, testID }: GlassGlyphProps) {
   const { colors, glass } = useTheme();
   const id = useSvgId();
-  const parts: readonly GlyphPart[] = GLYPHS[name];
+  const parts: readonly GlyphPart[] = GLYPHS[resolveGlyph(name)];
   const canvas = (size * CANVAS) / GRID;
   const offset = (size * GLYPH_PAD) / GRID;
 
@@ -50,7 +51,9 @@ export const GlassGlyph = memo(function GlassGlyph({ name, size = 24, variant = 
       style={[{ width: size, height: size, pointerEvents: 'none' }, style]}
     >
       <Svg width={canvas} height={canvas} viewBox={VIEWBOX} style={{ position: 'absolute', left: -offset, top: -offset }}>
-        {glass.enabled ? (
+        {glass.enabled && variant === 'ink' ? (
+          <InkBody id={id} parts={parts} />
+        ) : glass.enabled ? (
           <LensBody id={id} parts={parts} variant={variant} hotStops={glass.recordCore.face.stops} glow={glass.recordCore.glow} />
         ) : (
           <G>
@@ -63,6 +66,28 @@ export const GlassGlyph = memo(function GlassGlyph({ name, size = 24, variant = 
     </View>
   );
 });
+
+/** Ink (CONSISTENCY G3): the pale step, then the dark face. No cast, extrusion, sheen or bevel. */
+function InkBody({ id, parts }: { id: string; parts: readonly GlyphPart[] }) {
+  const ref = `${id}-faceI`;
+  return (
+    <G>
+      <Defs>
+        <LinearGradient id={ref} gradientUnits="userSpaceOnUse" {...FACE_VECTOR}>
+          {stops(FACE.ink)}
+        </LinearGradient>
+      </Defs>
+      {parts.map((p, i) => (
+        <G key={i}>
+          <G transform={`translate(${INK_STEP.dx} ${INK_STEP.dy})`} opacity={INK_STEP.opacity}>
+            <PartGeometry part={p} paint={INK_STEP.color} />
+          </G>
+          <PartGeometry part={p} paint={`url(#${ref})`} />
+        </G>
+      ))}
+    </G>
+  );
+}
 
 function LensBody({
   id,

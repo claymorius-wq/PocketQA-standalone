@@ -1,7 +1,8 @@
-// Lens extruded glass glyphs (Direction A v2, spec §7). Geometry is copied verbatim from the
-// design boards: the shared set from the system board (Main.dc.html, generated from
-// lens-glyphs.mjs) and the screen-local glyphs from the screen boards named in each comment.
-// Only `unlink` is new (no board draws it); it is built from `link` in the same language.
+// Lens extruded glass glyphs (Direction A v2, spec §7). Geometry is copied verbatim from the one
+// glyph source, lens-glyphs.mjs round 4 (CONSISTENCY G: boards never define a glyph), with its
+// thin tubes `t`/`tw` written as `s`/`w`. RN keeps four camelCase names for source names:
+// signIn = `signin`, signOut = `logout`, fileWarning = `filewarn`, chevronDown = `chevdown`.
+// The S6 Disputes parts (dPost, dBeam, dPanL, dPanR) are not ported: no RN screen animates them yet.
 //
 // 32-unit grid, 3.5-unit margin. A glyph is a list of parts drawn back to front. A part is a
 // closed volume `f` (fill-rule evenodd, so inner subpaths cut slots through it) and/or a tube `s`
@@ -28,10 +29,11 @@ export const GLYPHS = {
     { f: 'M9.5 7.5H11V10.6A2 2 0 0 0 13 12.6H19A2 2 0 0 0 21 10.6V7.5H22.5A3 3 0 0 1 25.5 10.5V24A3 3 0 0 1 22.5 27H9.5A3 3 0 0 1 6.5 24V10.5A3 3 0 0 1 9.5 7.5ZM11.6 17.9L20.4 17.9A1.1 1.1 0 0 0 20.4 15.7L11.6 15.7A1.1 1.1 0 0 0 11.6 17.9ZM11.6 22.5L16.4 22.5A1.1 1.1 0 0 0 16.4 20.3L11.6 20.3A1.1 1.1 0 0 0 11.6 22.5Z' },
     { f: 'M13.8 4.4H18.2a1.8 1.8 0 0 1 1.8 1.8V9.8a1.8 1.8 0 0 1 -1.8 1.8H13.8a1.8 1.8 0 0 1 -1.8 -1.8V6.2a1.8 1.8 0 0 1 1.8 -1.8Z' },
   ],
-  // Credits (Coins): one thick coin, edge on, ribbed rim and a struck ring on its lit face.
+  // Credits (Coins), round 4: one coin tilted toward the viewer, so the struck face shows above the
+  // ribbed rim (the edge-on coin read as a tin can at 26 muted).
   credits: [
-    { f: 'M5.5 12.9A10.5 5.2 0 0 0 26.5 12.9V19.9A10.5 5.2 0 0 1 5.5 19.9ZM8.45 18.76L8.45 21.96A0.75 0.75 0 0 0 9.95 21.96L9.95 18.76A0.75 0.75 0 0 0 8.45 18.76ZM11.85 19.72L11.85 22.92A0.75 0.75 0 0 0 13.35 22.92L13.35 19.72A0.75 0.75 0 0 0 11.85 19.72ZM15.25 20L15.25 23.2A0.75 0.75 0 0 0 16.75 23.2L16.75 20A0.75 0.75 0 0 0 15.25 20ZM18.65 19.72L18.65 22.92A0.75 0.75 0 0 0 20.15 22.92L20.15 19.72A0.75 0.75 0 0 0 18.65 19.72ZM22.05 18.76L22.05 21.96A0.75 0.75 0 0 0 23.55 21.96L23.55 18.76A0.75 0.75 0 0 0 22.05 18.76Z' },
-    { f: 'M5.5 11.2a10.5 5.2 0 1 0 21 0a10.5 5.2 0 1 0 -21 0ZM8.6 11.2a7.4 3.5 0 1 0 14.8 0a7.4 3.5 0 1 0 -14.8 0ZM9.9 11.2a6.1 2.75 0 1 0 12.2 0a6.1 2.75 0 1 0 -12.2 0Z' },
+    { f: 'M6.2 13.6A9.8 9.47 0 0 0 25.8 13.6V18.2A9.8 9.47 0 0 1 6.2 18.2ZM8.65 21.9L8.65 23.9A0.75 0.75 0 0 0 10.15 23.9L10.15 21.9A0.75 0.75 0 0 0 8.65 21.9ZM11.95 23.82L11.95 25.82A0.75 0.75 0 0 0 13.45 25.82L13.45 23.82A0.75 0.75 0 0 0 11.95 23.82ZM15.25 24.37L15.25 26.37A0.75 0.75 0 0 0 16.75 26.37L16.75 24.37A0.75 0.75 0 0 0 15.25 24.37ZM18.55 23.82L18.55 25.82A0.75 0.75 0 0 0 20.05 25.82L20.05 23.82A0.75 0.75 0 0 0 18.55 23.82ZM21.85 21.9L21.85 23.9A0.75 0.75 0 0 0 23.35 23.9L23.35 21.9A0.75 0.75 0 0 0 21.85 21.9Z' },
+    { f: 'M6.2 12.9a9.8 9.47 0 1 0 19.6 0a9.8 9.47 0 1 0 -19.6 0ZM8.8 12.9a7.2 6.95 0 1 0 14.4 0a7.2 6.95 0 1 0 -14.4 0ZM9.8 12.9a6.2 5.99 0 1 0 12.4 0a6.2 5.99 0 1 0 -12.4 0Z' },
   ],
   // Budget: an offset stack of three coins.
   budget: [
@@ -39,10 +41,11 @@ export const GLYPHS = {
     { f: 'M6.6 12.8a8 3.4 0 1 0 16 0a8 3.4 0 1 0 -16 0ZM6.6 14.2A8 3.4 0 0 0 22.6 14.2V17.6A8 3.4 0 0 1 6.6 17.6Z' },
     { f: 'M8.8 7.2a8 3.4 0 1 0 16 0a8 3.4 0 1 0 -16 0ZM8.8 8.6A8 3.4 0 0 0 24.8 8.6V12A8 3.4 0 0 1 8.8 12Z' },
   ],
-  // Settings: two rotary dials with pointer cuts, the small one in front.
+  // Settings, round 4: a knurled rotary dial with its pointer slot cut through, a small dial offset
+  // in front (the two plain dials merged into a key shape at 26 muted).
   settings: [
-    { f: 'M4.4 12.5a7.6 7.6 0 1 0 15.2 0a7.6 7.6 0 1 0 -15.2 0ZM11.64 10.66L9.24 8.26A1.05 1.05 0 0 0 7.76 9.74L10.16 12.14A1.05 1.05 0 0 0 11.64 10.66Z' },
-    { f: 'M15.2 20.6a5.4 5.4 0 1 0 10.8 0a5.4 5.4 0 1 0 -10.8 0ZM22.07 20.47L23.57 18.97A0.95 0.95 0 0 0 22.23 17.63L20.73 19.13A0.95 0.95 0 0 0 22.07 20.47Z' },
+    { f: 'M14.57 3.58L13.76 4.98L16.01 6.28L16.83 4.88A8.5 8.5 0 0 1 19.9 10.2L18.28 10.2L18.28 12.8L19.9 12.8A8.5 8.5 0 0 1 16.83 18.12L16.01 16.72L13.76 18.02L14.57 19.42A8.5 8.5 0 0 1 8.43 19.42L9.24 18.02L6.99 16.72L6.17 18.12A8.5 8.5 0 0 1 3.1 12.8L4.72 12.8L4.72 10.2L3.1 10.2A8.5 8.5 0 0 1 6.17 4.88L6.99 6.28L9.24 4.98L8.43 3.58A8.5 8.5 0 0 1 14.57 3.58ZM10 6.4L10 9.4A1.5 1.5 0 0 0 13 9.4L13 6.4A1.5 1.5 0 0 0 10 6.4Z' },
+    { f: 'M17.5 22a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0ZM23.34 22.07L24.47 20.94A1 1 0 0 0 23.06 19.53L21.93 20.66A1 1 0 0 0 23.34 22.07Z' },
   ],
   // Studies (FlaskConical): a flask with liquid and one bubble.
   studies: [
@@ -80,6 +83,12 @@ export const GLYPHS = {
   record: [
     { s: 'M6.4 16a9.6 9.6 0 1 0 19.2 0a9.6 9.6 0 1 0 -19.2 0Z', w: 3.8 },
     { f: 'M11 16a5 5 0 1 0 10 0a5 5 0 1 0 -10 0Z', hot: true },
+  ],
+  // Record, idle (before recording starts), round 4: the Record ring and core, the core not lit
+  // (plain face paint). Alias `recIdle`.
+  recordIdle: [
+    { s: 'M6.4 16a9.6 9.6 0 1 0 19.2 0a9.6 9.6 0 1 0 -19.2 0Z', w: 3.8 },
+    { f: 'M11 16a5 5 0 1 0 10 0a5 5 0 1 0 -10 0Z' },
   ],
   // Send ("Submit for review"): a folded paper plane, the fold line cut through the wing.
   send: [
@@ -138,74 +147,77 @@ export const GLYPHS = {
     { f: 'M11.6 3.2H20.4a4.2 4.2 0 0 1 4.2 4.2V24.6a4.2 4.2 0 0 1 -4.2 4.2H11.6a4.2 4.2 0 0 1 -4.2 -4.2V7.4a4.2 4.2 0 0 1 4.2 -4.2ZM11.8 7.6H20.2a1.8 1.8 0 0 1 1.8 1.8V22a1.8 1.8 0 0 1 -1.8 1.8H11.8a1.8 1.8 0 0 1 -1.8 -1.8V9.4a1.8 1.8 0 0 1 1.8 -1.8ZM14 6.15L18 6.15A0.75 0.75 0 0 0 18 4.65L14 4.65A0.75 0.75 0 0 0 14 6.15ZM14.2 26.9L17.8 26.9A0.8 0.8 0 0 0 17.8 25.3L14.2 25.3A0.8 0.8 0 0 0 14.2 26.9Z' },
     { f: 'M12.8 9.2H19.2a1.2 1.2 0 0 1 1.2 1.2V20.8a1.2 1.2 0 0 1 -1.2 1.2H12.8a1.2 1.2 0 0 1 -1.2 -1.2V10.4a1.2 1.2 0 0 1 1.2 -1.2Z' },
   ],
-  // Link devnet wallet (Link2): the bar behind, two open links in front.
+  // Link devnet wallet (Link2), round 4: two interlocked lens rings; the left ring passes back in
+  // front at the lower crossing.
   link: [
-    { s: 'M12 16H20', w: 3.2 },
-    { s: 'M13.2 10.2H10.8A5.8 5.8 0 0 0 10.8 21.8H13.2 M18.8 10.2H21.2A5.8 5.8 0 0 1 21.2 21.8H18.8', w: 3.6 },
+    { s: 'M5.4 16a6.6 6.6 0 1 0 13.2 0a6.6 6.6 0 1 0 -13.2 0Z', w: 3.8 },
+    { s: 'M13.4 16a6.6 6.6 0 1 0 13.2 0a6.6 6.6 0 1 0 -13.2 0Z', w: 3.8 },
+    { s: 'M17.83 19.1A6.6 6.6 0 0 1 13.37 22.46', w: 3.8 },
   ],
-  // Sign in (LogIn): a ring open to the left, an arrow entering it.
+  // Sign in (LogIn), round 4: the record ring, a 4.0 tube arrow passing in front of its rim and
+  // stopping at the core (source name `signin`).
   signIn: [
-    { s: 'M10.4 9.6A9.2 9.2 0 1 1 10.4 22.4', w: 3.6 },
-    { s: 'M4.4 16H12.4', w: 3.6 },
-    { f: 'M12.6 10.9a1.1 1.1 0 0 1 1.8-.85l6.1 5.1a1.1 1.1 0 0 1 0 1.7l-6.1 5.1a1.1 1.1 0 0 1-1.8-.85Z' },
+    { s: 'M10.2 16a8.2 8.2 0 1 0 16.4 0a8.2 8.2 0 1 0 -16.4 0Z', w: 3.8 },
+    { s: 'M5.5 16H18.6 M14.4 11.8L18.6 16L14.4 20.2', w: 4 },
   ],
-  // Create account (UserPlus): a bust in solid glass, the plus behind its shoulder.
+  // Create account (UserPlus), round 4: a tester seen through the lens ring (the rim crops the
+  // shoulders), a plus standing proud of the rim.
   join: [
-    { s: 'M24.9 7v9.4 M20.2 11.7h9.4', w: 3.8 },
-    { f: 'M4.4 27.4C4.4 22 8.1 18.9 12.7 18.9S21 22 21 27.4Z' },
-    { f: 'M7.4 11.4a5.3 5.3 0 1 0 10.6 0a5.3 5.3 0 1 0 -10.6 0Z' },
+    { f: 'M11.2 14.2a3.4 3.4 0 1 0 6.8 0a3.4 3.4 0 1 0 -6.8 0ZM8.6 24.6A6 5.4 0 0 1 20.6 24.6Z' },
+    { s: 'M5.4 17.2a9.2 9.2 0 1 0 18.4 0a9.2 9.2 0 1 0 -18.4 0Z', w: 3.8 },
+    { s: 'M23.3 5.6V11.8 M20.2 8.7H26.4', w: 3.6 },
   ],
-  // Sign out (LogOut): a door bracket, the arrow leaving it.
+  // Sign out (LogOut), round 4: the same ring, the arrow starting at the core and leaving through
+  // the rim (source name `logout`).
   signOut: [
-    { s: 'M13.5 6.5H9.4A2.4 2.4 0 0 0 7 8.9V23.1A2.4 2.4 0 0 0 9.4 25.5H13.5', w: 3.6 },
-    { f: 'M13.4 13.9H19.4V9.8L26.6 16L19.4 22.2V18.1H13.4Z' },
+    { s: 'M4.8 16a7.4 7.4 0 1 0 14.8 0a7.4 7.4 0 1 0 -14.8 0Z', w: 3.8 },
+    { s: 'M12.2 16H26.5 M22.3 11.8L26.5 16L22.3 20.2', w: 4 },
   ],
-  // Save: a disk with a chamfered corner and a label window cut through, the shutter proud.
+  // Save draft / Save device profile, round 4: the My work tray, the arrow dropping in through the clip notch.
   save: [
-    { f: 'M8.6 5.5H20.2L26.5 11.8V24A2.5 2.5 0 0 1 24 26.5H8.6A2.5 2.5 0 0 1 6.1 24V8A2.5 2.5 0 0 1 8.6 5.5ZM11.8 17.2H20.8a1.4 1.4 0 0 1 1.4 1.4V21.8a1.4 1.4 0 0 1 -1.4 1.4H11.8a1.4 1.4 0 0 1 -1.4 -1.4V18.6a1.4 1.4 0 0 1 1.4 -1.4Z' },
-    { f: 'M11.8 5.5H17.6a1.2 1.2 0 0 1 1.2 1.2V10.1a1.2 1.2 0 0 1 -1.2 1.2H11.8a1.2 1.2 0 0 1 -1.2 -1.2V6.7a1.2 1.2 0 0 1 1.2 -1.2Z' },
+    { f: 'M9.5 11H11V14.4A2.4 2.4 0 0 0 13.4 16.8H18.6A2.4 2.4 0 0 0 21 14.4V11H22.5A3 3 0 0 1 25.5 14V24A3 3 0 0 1 22.5 27H9.5A3 3 0 0 1 6.5 24V14A3 3 0 0 1 9.5 11ZM10.4 23.15L21.6 23.15A0.75 0.75 0 0 0 21.6 21.65L10.4 21.65A0.75 0.75 0 0 0 10.4 23.15Z' },
+    { s: 'M16 5.5V14.6 M11.8 10.4L16 14.6L20.2 10.4', w: 4 },
   ],
-  // Export my data (Download): a tray, the arrow dropping into it.
+  // Export my data (Download), round 4: the tray, the arrow leaving through the notch past the lit corner.
   download: [
-    { s: 'M6.5 19.4V23A2.5 2.5 0 0 0 9 25.5H23A2.5 2.5 0 0 0 25.5 23V19.4', w: 3.6 },
-    { f: 'M13.9 5.2H18.1V13H22.3L16 20.2L9.7 13H13.9Z' },
+    { f: 'M9.5 11H11V14.4A2.4 2.4 0 0 0 13.4 16.8H18.6A2.4 2.4 0 0 0 21 14.4V11H22.5A3 3 0 0 1 25.5 14V24A3 3 0 0 1 22.5 27H9.5A3 3 0 0 1 6.5 24V14A3 3 0 0 1 9.5 11ZM10.4 23.15L21.6 23.15A0.75 0.75 0 0 0 21.6 21.65L10.4 21.65A0.75 0.75 0 0 0 10.4 23.15Z' },
+    { s: 'M14.8 14.4L24.4 4.8 M18.8 4.6H24.6V10.4', w: 4 },
   ],
   // Attach (Paperclip): two nested wire loops, tilted 28deg into the key light.
   attach: [
     { s: 'M23.41 14.84L18.72 23.67A5.6 5.6 0 0 1 8.83 18.41L14.88 7.02A3.4 3.4 0 0 1 20.89 10.22L15.72 19.93', w: 2.9 },
   ],
-  // Upload: an open tray, the arrow standing proud in front of it.
+  // Upload, round 4: the tray, the arrow leaving straight up through the clip notch.
   upload: [
-    { s: 'M7 18.6v3.9a3.2 3.2 0 0 0 3.2 3.2h11.6a3.2 3.2 0 0 0 3.2-3.2v-3.9', w: 3.6 },
-    { s: 'M16 20.2V7.2 M10.9 12.1L16 7l5.1 5.1', w: 4 },
+    { f: 'M9.5 11H11V14.4A2.4 2.4 0 0 0 13.4 16.8H18.6A2.4 2.4 0 0 0 21 14.4V11H22.5A3 3 0 0 1 25.5 14V24A3 3 0 0 1 22.5 27H9.5A3 3 0 0 1 6.5 24V14A3 3 0 0 1 9.5 11ZM10.4 23.15L21.6 23.15A0.75 0.75 0 0 0 21.6 21.65L10.4 21.65A0.75 0.75 0 0 0 10.4 23.15Z' },
+    { s: 'M16 14.6V5.5 M11.8 9.7L16 5.5L20.2 9.7', w: 4 },
   ],
   // Withdrawn EmptyState (Circle): a plain glass ring.
   ring: [
     { s: 'M16 6.2a9.8 9.8 0 1 1 0 19.6a9.8 9.8 0 1 1 0-19.6Z', w: 4 },
   ],
-  // Plus (A-NewStudy, A-States).
+  // Plus (New, Add task, Add finding), round 4: a filled cross with 1.8 corners.
   plus: [
-    { s: 'M16 8V24 M8 16H24', w: 4.4 },
+    { f: 'M14.3 6.6H17.7A1.8 1.8 0 0 1 19.5 8.4V12.5H23.6A1.8 1.8 0 0 1 25.4 14.3V17.7A1.8 1.8 0 0 1 23.6 19.5H19.5V23.6A1.8 1.8 0 0 1 17.7 25.4H14.3A1.8 1.8 0 0 1 12.5 23.6V19.5H8.4A1.8 1.8 0 0 1 6.6 17.7V14.3A1.8 1.8 0 0 1 8.4 12.5H12.5V8.4A1.8 1.8 0 0 1 14.3 6.6Z' },
   ],
-  // Pause: two rounded bars, one volume (A-States).
+  // Pause (Pause study, Pause recording), round 4: two solid bars, one volume.
   pause: [
-    { f: 'M10.6 7.4H12a2 2 0 0 1 2 2V22.6a2 2 0 0 1 -2 2H10.6a2 2 0 0 1 -2 -2V9.4a2 2 0 0 1 2 -2ZM20 7.4H21.4a2 2 0 0 1 2 2V22.6a2 2 0 0 1 -2 2H20a2 2 0 0 1 -2 -2V9.4a2 2 0 0 1 2 -2Z' },
+    { f: 'M11.4 7.4H12.2a2.2 2.2 0 0 1 2.2 2.2V22.4a2.2 2.2 0 0 1 -2.2 2.2H11.4a2.2 2.2 0 0 1 -2.2 -2.2V9.6a2.2 2.2 0 0 1 2.2 -2.2ZM19.8 7.4H20.6a2.2 2.2 0 0 1 2.2 2.2V22.4a2.2 2.2 0 0 1 -2.2 2.2H19.8a2.2 2.2 0 0 1 -2.2 -2.2V9.6a2.2 2.2 0 0 1 2.2 -2.2Z' },
   ],
-  // Close study (Ban): a ring tube with the bar standing in front (A-States).
+  // Ban (Close study), round 4: a filled annulus with the slash cut through by evenodd.
   ban: [
-    { s: 'M6.2 16a9.8 9.8 0 1 0 19.6 0a9.8 9.8 0 1 0 -19.6 0Z', w: 3.6 },
-    { s: 'M9.2 22.8L22.8 9.2', w: 3.6 },
+    { f: 'M5.4 16a10.6 10.6 0 1 0 21.2 0a10.6 10.6 0 1 0 -21.2 0Z M12.2 9.65L22.35 19.8A7.4 7.4 0 0 0 12.2 9.65Z M9.65 12.2L19.8 22.35A7.4 7.4 0 0 1 9.65 12.2Z' },
   ],
-  // Participants (Users): the second person behind and to the right (A-States).
+  // Users (Participants), round 4: the second tester behind, the first in front.
   users: [
-    { f: 'M17.7 10.6a3.7 3.7 0 1 0 7.4 0a3.7 3.7 0 1 0 -7.4 0ZM15.2 25.4V24.6A6.2 6.2 0 0 1 27.6 24.6V25.4A1.2 1.2 0 0 1 26.4 26.6H16.4A1.2 1.2 0 0 1 15.2 25.4Z' },
-    { f: 'M7.9 12.2a4.5 4.5 0 1 0 9 0a4.5 4.5 0 1 0 -9 0ZM4.4 26.4V25.8A8 8 0 0 1 20.4 25.8V26.4A1.4 1.4 0 0 1 19 27.8H5.8A1.4 1.4 0 0 1 4.4 26.4Z' },
+    { f: 'M17.9 9.8a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0Z M16.6 22.2C17.2 18.1 19.2 15.6 22 15.6C25.1 15.6 27.4 18.4 27.7 22.4A1.1 1.1 0 0 1 26.6 23.6H18.2Z' },
+    { f: 'M8 11.2a4.4 4.4 0 1 0 8.8 0a4.4 4.4 0 1 0 -8.8 0Z M4.4 25.4C4.8 20.3 8 17.1 12.4 17.1S20 20.3 20.4 25.4A1.3 1.3 0 0 1 19.1 26.8H5.7A1.3 1.3 0 0 1 4.4 25.4Z' },
   ],
-  // Publish (Rocket): fins behind, a body with the window cut through, a nozzle block (A-States).
-  rocket: [
-    { f: 'M10.2 16.4L6.4 20.6V25.4L10.6 22.6Z M21.8 16.4L25.6 20.6V25.4L21.4 22.6Z' },
-    { f: 'M16 3.8C19.9 6.6 21.8 10.8 21.8 15.4V22.8A1.4 1.4 0 0 1 20.4 24.2H11.6A1.4 1.4 0 0 1 10.2 22.8V15.4C10.2 10.8 12.1 6.6 16 3.8ZM13.5 12.8a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0Z' },
-    { f: 'M14.8 25.2H17.2a1.4 1.4 0 0 1 1.4 1.4V27a1.4 1.4 0 0 1 -1.4 1.4H14.8a1.4 1.4 0 0 1 -1.4 -1.4V26.6a1.4 1.4 0 0 1 1.4 -1.4Z' },
+  // Publish (Rocket), round 4: fins and nozzle as one volume behind, the body with its window cut
+  // through in front. Alias `rocket`.
+  publish: [
+    { f: 'M12 13.6L7.3 18.9Q6.5 19.8 6.5 21V24.4Q6.5 25.8 7.7 25.1L12 22.4Z M20 13.6L24.7 18.9Q25.5 19.8 25.5 21V24.4Q25.5 25.8 24.3 25.1L20 22.4ZM15.1 19.8H16.9a1.7 1.7 0 0 1 1.7 1.7V23.7a1.7 1.7 0 0 1 -1.7 1.7H15.1a1.7 1.7 0 0 1 -1.7 -1.7V21.5a1.7 1.7 0 0 1 1.7 -1.7Z' },
+    { f: 'M16 3.6C19.7 5.9 20.5 9.7 20.5 12.9V18.4A2.6 2.6 0 0 1 17.9 21H14.1A2.6 2.6 0 0 1 11.5 18.4V12.9C11.5 9.7 12.3 5.9 16 3.6ZM13.7 11.8a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0 -4.6 0Z' },
   ],
   // No evidence (FileWarning): a page with a turned corner and a cut warning mark (A-Review, A-States).
   fileWarning: [
@@ -231,8 +243,8 @@ export const GLYPHS = {
   chevronDown: [
     { s: 'M7.5 12.5l8.5 8.5 8.5-8.5', w: 4.4 },
   ],
-  // Continue (ArrowRight) (A-Study).
-  arrow: [
+  // Forward (ArrowRight, Start session), round 4: one 4.4 tube shaft with the chevron head. Alias `arrow`.
+  forward: [
     { s: 'M6.5 16H24.2 M17.2 8.8l7.2 7.2-7.2 7.2', w: 4.4 },
   ],
   // Not allowed (Lock): the shackle behind, a body with the keyhole cut through (A-States).
@@ -240,23 +252,32 @@ export const GLYPHS = {
     { s: 'M11.2 14.6V11.4a4.8 4.8 0 0 1 9.6 0v3.2', w: 3.4 },
     { f: 'M10.4 13.6H21.6a3.2 3.2 0 0 1 3.2 3.2V24.4a3.2 3.2 0 0 1 -3.2 3.2H10.4a3.2 3.2 0 0 1 -3.2 -3.2V16.8a3.2 3.2 0 0 1 3.2 -3.2ZM14.6 18.6L14.6 22.6A1.4 1.4 0 0 0 17.4 22.6L17.4 18.6A1.4 1.4 0 0 0 14.6 18.6Z' },
   ],
-  // You're offline (WifiOff): three signal arcs and the source dot, the cut bar in front (A-States).
+  // You’re offline (WifiOff), round 4: two arcs and the source dot behind at 4.0, the cut bar at 4.4
+  // standing proud in front.
   offline: [
-    { s: 'M5.2 13.4a15.4 15.4 0 0 1 21.6 0 M9 17.3a9.8 9.8 0 0 1 14 0 M12.7 21.1a4.6 4.6 0 0 1 6.6 0', w: 3.1, f: 'M14.1 25.2a1.9 1.9 0 1 0 3.8 0a1.9 1.9 0 1 0 -3.8 0Z' },
-    { s: 'M7 6.2L25.4 25.6', w: 3.4 },
+    { s: 'M10.92 20.44A6.2 6.2 0 0 1 21.08 20.44 M5.93 18.65A11.4 11.4 0 0 1 26.07 18.65', w: 4, f: 'M13.4 24a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0 -5.2 0Z' },
+    { s: 'M7.5 4.5L25 25', w: 4.4 },
   ],
-  // Retry (RefreshCw): two arcs round one axle, the corner hooks in front (A-States).
+  // Retry (RefreshCw), round 4: two arcs, each ending in a solid arrowhead.
   refresh: [
-    { s: 'M24.8 14A9 9 0 0 0 8.6 10.6 M7.2 18A9 9 0 0 0 23.4 21.4', w: 3.3 },
-    { s: 'M8 5.6V11.2H13.6 M24 26.4V20.8H18.4', w: 3.3 },
+    { s: 'M24.34 19.37A9 9 0 0 1 8.21 20.5', w: 3.4, f: 'M6.41 17.38L5.65 22.67L11.36 19.37Z' },
+    { s: 'M7.66 12.63A9 9 0 0 1 23.79 11.5', w: 3.4, f: 'M25.59 14.62L26.35 9.33L20.64 12.63Z' },
   ],
-  // Unlink wallet (Unlink). New: the Link2 brackets pulled 0.8 apart with no bar between them, and
-  // two short break ticks standing behind the gap. Same tube widths as `link`.
+  // Unlink wallet (Unlink), round 4: the two Link2 halves pulled apart, the break marks at 2.2.
   unlink: [
-    { s: 'M16 6.6V9.4 M16 22.6V25.4', w: 2.4 },
-    { s: 'M12.4 10.2H10A5.8 5.8 0 0 0 10 21.8H12.4 M19.6 10.2H22A5.8 5.8 0 0 1 22 21.8H19.6', w: 3.6 },
+    { s: 'M16 5.4V8 M16 24V26.6', w: 2.2 },
+    { s: 'M12.2 10.2H10.2A5.8 5.8 0 0 0 10.2 21.8H12.2 M19.8 10.2H21.8A5.8 5.8 0 0 1 21.8 21.8H19.8', w: 3.6 },
   ],
 } as const satisfies Record<string, readonly GlyphPart[]>;
 
 export type GlyphName = keyof typeof GLYPHS;
 export const GLYPH_NAMES = Object.keys(GLYPHS) as GlyphName[];
+
+/** Names used before round 4, mapped to the one source name (lens-glyphs.mjs ALIASES). Never add new aliases. */
+export const ALIASES = { ext: 'external', rocket: 'publish', arrow: 'forward', recIdle: 'recordIdle' } as const satisfies Record<string, GlyphName>;
+export type GlyphAlias = keyof typeof ALIASES;
+
+/** The source name for a glyph name or a legacy alias. */
+export function resolveGlyph(name: GlyphName | GlyphAlias): GlyphName {
+  return (ALIASES as Record<string, GlyphName>)[name] ?? (name as GlyphName);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { ReduceMotion, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { DUR, useMotion } from '../theme/motion';
 
 // Small state swaps (Direction A §11.4, §13): the tab tile slide and the 120ms cross-fades of
@@ -23,9 +23,10 @@ export function useCrossfade(on: boolean) {
 }
 
 /**
- * The tab bar's violet tile: translateX to `index × step` on spring-tab (web: dur-swap 240ms
- * ease-release per §11.1–11.2; the motion board's demo uses 320). Reduced motion: it jumps. A change of `step`
- * (the bar was re-measured) also jumps, so rotation or resizing never animates.
+ * The tab bar's violet tile: translateX to `index × step`, 320ms ease-lens (web), spring-tab
+ * (native). Never ease-release: its overshoot swung the tile about 22px past its slot (§11.1).
+ * Reduced motion: it jumps. A change of `step` (the bar was re-measured) also jumps, so rotation
+ * or resizing never animates.
  */
 export function useTabTile(index: number, step: number) {
   const motion = useMotion();
@@ -36,7 +37,7 @@ export function useTabTile(index: number, step: number) {
     const resized = lastStep.current !== step;
     lastStep.current = step;
     if (resized || !motion.spring.tab) x.value = target;
-    else if (Platform.OS === 'web') x.value = withTiming(target, { ...motion.timing.release, duration: DUR.swap });
+    else if (Platform.OS === 'web') x.value = withTiming(target, { duration: DUR.enter, easing: motion.ease.lens, reduceMotion: ReduceMotion.Never });
     else x.value = withSpring(target, motion.spring.tab);
   }, [index, step, x, motion]);
   return useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));

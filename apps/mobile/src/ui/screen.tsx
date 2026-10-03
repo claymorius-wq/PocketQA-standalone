@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { causticDelay, ENTRANCE_WINDOW, entranceDelay, joinWave, type EntranceStep, type Wave } from '../motion';
+import type { Handoff, InitialArrival } from '../motion/entrance';
 import { useMotion } from '../theme/motion';
 
 /** What the kit needs to know about the Screen it renders in. */
@@ -14,13 +15,32 @@ export type ScreenInfo = {
   /** A stack screen under the Lens stack header (titles use display-stack, §5). */
   stack: boolean;
   /**
-   * Plays a Commit Uplight pass (U7) on the screen's own floor, at `x` (fraction of the screen
-   * width). The screen outlives the sheet that fired it, so the pass is never cut by the close.
+   * Launch (Sign in only) staggers each step and dips the light. Every other arrival moves the
+   * content root as one (src/motion/entrance.ts), so steps that mount with it stay still.
+   * Absent: staggered (a bare ScreenContext, as in tests).
    */
-  commit?: (x: number) => void;
+  staggered?: boolean;
+  /** Date.now() until which a mounting step is part of the root's arrival (no motion of its own). */
+  settledAt?: number;
+  /** Date.now() at which a primary's caustic arrives on a root arrival (+320 on a push, §M3). */
+  causticAt?: number;
 };
 
 export const ScreenContext = createContext<ScreenInfo | null>(null);
+
+/**
+ * How the screens under a layout open (§M3). Layouts set it where the route alone decides (the
+ * auth stack gives Sign in `launch`; the role tabs give the first tab after sign-in `replace`,
+ * with the U1 hand-off). A Screen's own `entrance` prop wins. Without either, a Screen in the
+ * tabs opens with `tab` and any other with `push`.
+ */
+export type ArrivalSpec = InitialArrival | { arrival: InitialArrival; handoff?: Handoff };
+export const ArrivalContext = createContext<ArrivalSpec | null>(null);
+
+/** The arrival an ArrivalContext value names. */
+export function arrivalOf(spec: ArrivalSpec | null): InitialArrival | null {
+  return typeof spec === 'string' ? spec : (spec?.arrival ?? null);
+}
 
 /** The entrance step a component renders in (Card distance dimming, the primary's caustic arrival). */
 export type EnterInfo = {
@@ -54,9 +74,14 @@ export function Enter({ step, delay, children, style, collapse }: {
   const screen = useContext(ScreenContext);
   const [plan] = useState(() => {
     const now = Date.now();
+    // Mounting with a root arrival: the root carries this step, which only reports its caustic time.
+    if (screen && screen.staggered === false && delay === undefined && now <= (screen.settledAt ?? 0)) {
+      return { still: true, delay: 0, rise: 0, duration: 0, causticAt: screen.causticAt ?? now };
+    }
     const elapsed = screen ? joinWave(screen.wave, now) : 0;
     const header = step === 'title' || step === 'subtitle';
     return {
+      still: false,
       delay: Math.max(0, (delay ?? entranceDelay(motion, step)) - elapsed),
       rise: header ? motion.entrance.headerRise : motion.entrance.rise,
       duration: motion.entrance.duration,
@@ -64,8 +89,9 @@ export function Enter({ step, delay, children, style, collapse }: {
       causticAt: screen ? now - elapsed + (delay ?? causticDelay(motion, step)) : 0,
     };
   });
-  const progress = useSharedValue(0);
+  const progress = useSharedValue(plan.still ? 1 : 0);
   useEffect(() => {
+    if (plan.still) return;
     progress.value = withDelay(plan.delay, withTiming(1, { duration: plan.duration, easing: motion.ease.lens, reduceMotion: ReduceMotion.Never }));
     // Mount only: entrances never replay on re-render.
   }, []);

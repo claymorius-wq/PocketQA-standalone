@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useState, type ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet, Text as RNText, type TextStyle } from 'react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Coins, ExternalLink, Send, Sparkles, Square, Trash2, X } from 'lucide-react-native';
 import type { BottomTabBarProps } from 'expo-router/tabs';
@@ -313,6 +314,8 @@ describe.each(SCHEMES)('UI kit in %s', (scheme) => {
     const credits = screen.getByTestId('tab-credits');
     expect(discover).toBeSelected();
     expect(credits).not.toBeSelected();
+    // C1: tab cells carry the focus ring at radius 18.
+    expect(StyleSheet.flatten(discover.props.style)).toMatchObject({ borderRadius: 18 });
     expect(screen.getByText('Credits')).toBeTruthy();
     await fireEvent.press(discover);
     expect(navigate).not.toHaveBeenCalled();
@@ -393,11 +396,14 @@ describe('Lens review fixes (dark)', () => {
     expect(JSON.stringify((await renderIn('dark', <StatusPill status="in_progress" />)).toJSON())).toContain(glassDark.ledShadow('info'));
   });
 
-  it('loading is static: no lens unless it is the brand start screen', async () => {
+  it('loading is the one spinner row (C7): no skeleton cards; the lens only on the brand start screen', async () => {
     const q = await renderIn('dark', <QueryState query={{ isLoading: true, error: null, data: undefined, refetch: jest.fn() }}>{() => null}</QueryState>);
-    expect(svgCount(q.toJSON())).toBe(0);
+    // Just the 18dp spinner: no lens, no placeholder cards.
+    expect(svgCount(q.toJSON())).toBe(1);
+    expect(screen.getByTestId('loading-state').props.accessibilityState).toEqual({ busy: true });
     const brand = await renderIn('dark', <LoadingState label="Starting Pocket QA…" brand />);
-    expect(svgCount(brand.toJSON())).toBeGreaterThan(0);
+    expect(svgCount(brand.toJSON())).toBeGreaterThan(1);
+    expect(screen.getByTestId('loading-state').props.accessibilityLabel).toBe('Starting Pocket QA…');
   });
 
   it('ConfirmSheet uses the board padding and opts in or out of the commit moment', async () => {
@@ -411,7 +417,40 @@ describe('Lens review fixes (dark)', () => {
     expect(count(unlit.toJSON(), FLOOR)).toBe(0);
   });
 
-  it('the commit pass plays on the screen floor and outlives the sheet that fired it', async () => {
+  /** The U7 floor's current intensity (its root view's animated opacity). */
+  const floorOpacity = (r: { container: { queryAll: (p: (n: { type: unknown; props: { style?: unknown } }) => boolean) => { props: { style?: unknown } }[] } }) => {
+    const [floor] = r.container.queryAll((n) => typeof n.type === 'string' && (StyleSheet.flatten(n.props.style as TextStyle) as { transformOrigin?: string } | undefined)?.transformOrigin === '50% 100%');
+    return floor ? (getAnimatedStyle(floor as never) as { opacity: number }).opacity : null;
+  };
+
+  it('the commit light never rises on press: the pilot holds while pending, and only success plays the pass', async () => {
+    const sheet = (status: 'idle' | 'pending' | 'success', loading = false) => (
+      <ConfirmSheet visible title="Publish this study?" confirmLabel="Publish" loading={loading} status={status} onConfirm={jest.fn()} onCancel={jest.fn()} />
+    );
+    const wrap = (ui: ReactNode) => (
+      <SafeAreaProvider initialMetrics={METRICS}>
+        <ThemeProvider fonts="system">{ui}</ThemeProvider>
+      </SafeAreaProvider>
+    );
+    const r = await renderIn('dark', sheet('idle'));
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(floorOpacity(r)).toBeCloseTo(0.55, 2);
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await r.rerender(wrap(sheet('pending', true)));
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(floorOpacity(r)).toBeCloseTo(0.55, 2);
+    await r.rerender(wrap(sheet('success')));
+    await act(async () => {
+      jest.advanceTimersByTime(560);
+    });
+    expect(floorOpacity(r)!).toBeGreaterThan(0.9);
+  });
+
+  it('no Commit tail on a screen floor: once the sheet closes the light is gone with it', async () => {
     function Publish() {
       const [open, setOpen] = useState(true);
       return (
@@ -425,12 +464,18 @@ describe('Lens review fixes (dark)', () => {
     await act(async () => {
       jest.advanceTimersByTime(400);
     });
-    // The sheet has gone (its 240ms exit is over); the screen's floor is still mid-pass.
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
-    expect(count(r.toJSON(), FLOOR)).toBeGreaterThan(0);
-    await act(async () => {
-      jest.advanceTimersByTime(1100);
-    });
     expect(count(r.toJSON(), FLOOR)).toBe(0);
+  });
+
+  it('a sheet opens with its C4 header tile beside the title, and a failure shows the alert notice', async () => {
+    const r = await renderIn(
+      'dark',
+      <ConfirmSheet visible title="Suspend study?" confirmLabel="Suspend" destructive status="error" error="Study already suspended." onConfirm={jest.fn()} onCancel={jest.fn()} />,
+    );
+    // The 54dp hero tile, then the title in the same row.
+    expect(JSON.stringify(r.toJSON())).toContain('"width":54,"height":54');
+    expect(screen.getByText('Action failed')).toBeTruthy();
+    expect(screen.getByText('Study already suspended.')).toBeTruthy();
   });
 });

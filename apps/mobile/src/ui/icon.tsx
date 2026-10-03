@@ -56,8 +56,11 @@ import { DANGER_GLYPHS, GlassGlyph, LUCIDE_TO_GLYPH, type GlyphIcon, type GlyphN
 // change; a component that is not in the mapping (a GlyphIcon from glyphIcon(), or a Lucide icon
 // added later) is rendered as given.
 
-/** An icon the kit accepts: a Lucide component or a Lens `glyphIcon(...)`. */
-export type KitIcon = LucideIcon | GlyphIcon;
+/**
+ * An icon the kit accepts: a Lens glyph name (the one source, preferred in new code), a Lucide
+ * component the screens already pass, or a Lens `glyphIcon(...)`.
+ */
+export type KitIcon = GlyphName | LucideIcon | GlyphIcon;
 
 const LUCIDE = {
   AlertTriangle,
@@ -119,13 +122,18 @@ export function glyphNameFor(icon: unknown): GlyphName | null {
   return BY_COMPONENT.get(icon) ?? null;
 }
 
+/** The glyph a kit icon draws: its name, the mapped Lucide icon's glyph, or null (draw as given). */
+function kitGlyph(icon: KitIcon): GlyphName | null {
+  return typeof icon === 'string' ? icon : glyphNameFor(icon);
+}
+
 /**
- * Draws a kit icon. Mapped Lucide icons become glass glyphs: `danger` turns the destructive glyphs
+ * Draws a kit icon. Glyph names and mapped Lucide icons become glass glyphs: `danger` turns the destructive glyphs
  * (Stop, Remove, Reject) rose (§7.5); every other glyph keeps `variant`. `color` only reaches
  * unmapped icons and the flat light-theme glyph.
  */
 export function KitIconView({ icon, size, variant = 'face', danger = false, color }: { icon: KitIcon; size: number; variant?: GlyphVariant; danger?: boolean; color: string }) {
-  const name = glyphNameFor(icon);
+  const name = kitGlyph(icon);
   if (name) {
     const v: GlyphVariant = danger && DANGER_GLYPHS.includes(name) ? 'rose' : variant;
     return <GlassGlyph name={name} size={size} variant={v} color={color} />;

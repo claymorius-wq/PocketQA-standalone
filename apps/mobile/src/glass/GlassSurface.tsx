@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedReaction, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { MOTION_LEVEL } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
 import type { GlassRecipes, GlassSurface as GlassRecipe } from '../theme/tokens';
 import { GlassBlur } from './GlassBlur';
@@ -27,8 +28,14 @@ export type GlassSurfaceProps = Omit<ViewProps, 'style' | 'children'> & {
    * press holds it at 0.6. A recipe's own caustic shadow is moved onto this layer either way.
    */
   caustic?: boolean | SharedValue<number>;
-  /** 0..1 press progress: crossfades into `pressedRecipe` and sinks 1dp down-right (not under reduced motion). */
+  /**
+   * 0..1 press progress for the layers (C5): the pressed recipe fades in and the cast layer goes
+   * 1 → 0.6. It also sinks the surface 1dp down-right (not under reduced motion) unless
+   * `pressShift` drives the sink.
+   */
   pressed?: SharedValue<number>;
+  /** The sink's own value (usePressMotion().shift): it releases with ease-release's overshoot, the layers do not. */
+  pressShift?: SharedValue<number>;
   pressedRecipe?: GlassRecipe;
   /** Uplight intensity u (useUplight().u): adds the uplit layer (bottom rim, inner pool, spill) at opacity u. */
   uplight?: SharedValue<number>;
@@ -40,6 +47,8 @@ export type GlassSurfaceProps = Omit<ViewProps, 'style' | 'children'> & {
 
 /** The cast shadow an uplit surface keeps drops to 70%: the light from below fills it (§10.1 rule 2). */
 const UPLIT_CAST = 0.7;
+/** The cast layer while pressed (C5: opacity 1 → 0.6; MOTION_LEVEL.pressCausticScale). */
+const PRESSED_CAST = MOTION_LEVEL.pressCausticScale;
 
 function levelRecipe(glass: GlassRecipes, level: GlassLevel, k: number): GlassRecipe {
   switch (level) {
@@ -69,7 +78,7 @@ export function GlassSurface(props: GlassSurfaceProps) {
   const base = useMemo(() => recipeProp ?? levelRecipe(glass, level, k), [recipeProp, glass, level, k]);
   const recipe = useMemo(() => (radius === undefined ? base : { ...base, radius }), [base, radius]);
   if (level === 'overlay' && !recipeProp) {
-    const { grain: _g, caustic: _c, pressed: _p, pressedRecipe: _pr, uplight: _u, uplitRecipe: _ur, ...viewProps } = rest;
+    const { grain: _g, caustic: _c, pressed: _p, pressShift: _ps, pressedRecipe: _pr, uplight: _u, uplitRecipe: _ur, ...viewProps } = rest;
     return (
       <GlassBlur radius={radius} corners={corners} style={style} {...viewProps}>
         {children}
@@ -79,7 +88,7 @@ export function GlassSurface(props: GlassSurfaceProps) {
   return glass.enabled ? <LensSurface {...props} level={level} recipe={recipe} corners={corners} /> : <FlatSurface {...props} level={level} recipe={recipe} corners={corners} />;
 }
 
-function FlatSurface({ recipe, corners = 'all', pressed, pressedRecipe, level: _level, style, children, k: _k, grain: _g, caustic: _c, uplight: _u, uplitRecipe: _ur, radius: _rad, ...viewProps }: GlassSurfaceProps & { recipe: GlassRecipe }) {
+function FlatSurface({ recipe, corners = 'all', pressed, pressShift: _ps, pressedRecipe, level: _level, style, children, k: _k, grain: _g, caustic: _c, uplight: _u, uplitRecipe: _ur, radius: _rad, ...viewProps }: GlassSurfaceProps & { recipe: GlassRecipe }) {
   const { glass } = useTheme();
   const rim = flatRim(recipe);
   const down = pressedRecipe ?? glass.cardPressed;
@@ -103,7 +112,7 @@ function FlatSurface({ recipe, corners = 'all', pressed, pressedRecipe, level: _
 /** A shadow's geometry (offsets, blur, spread, inset) without its colour. */
 const geometry = (shadow: string) => shadow.replace(/rgba?\([^)]*\)|#[0-9A-Fa-f]{3,8}/, '').replace(/\s+/g, ' ').trim();
 
-function LensSurface({ recipe, corners = 'all', level, grain, caustic, pressed, pressedRecipe, uplight, uplitRecipe, style, children, onLayout, k: _k, radius: _rad, ...viewProps }: GlassSurfaceProps & { recipe: GlassRecipe }) {
+function LensSurface({ recipe, corners = 'all', level, grain, caustic, pressed, pressShift, pressedRecipe, uplight, uplitRecipe, style, children, onLayout, k: _k, radius: _rad, ...viewProps }: GlassSurfaceProps & { recipe: GlassRecipe }) {
   const { glass, motion } = useTheme();
   const id = useSvgId('gs');
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -149,17 +158,22 @@ function LensSurface({ recipe, corners = 'all', level, grain, caustic, pressed, 
   const shift = motion.press.translate;
   // The pressed recipe sits translated 1dp down-right, away from the light (§4 Pressed).
   const staticSink = level === 'pressed' ? shift : 0;
+  const sink = pressShift ?? pressed;
   const outerStyle = useAnimatedStyle(() => {
-    const p = pressed ? pressed.value : 0;
+    const p = sink ? sink.value : 0;
     const d = staticSink + p * shift;
     return d ? { transform: [{ translateX: d }, { translateY: d }] } : { transform: [] };
   });
-  const baseShadowStyle = useAnimatedStyle(() => ({
-    opacity: (1 - (pressed ? pressed.value : 0)) * (1 - (1 - UPLIT_CAST) * (uplight ? uplight.value : 0)),
-  }));
-  const droppedShadowStyle = useAnimatedStyle(() => ({
-    opacity: (1 - (pressed ? pressed.value : 0)) * (1 - (uplight ? uplight.value : 0)),
-  }));
+  // C5: the cast layer goes 1 → 0.6 while pressed (never to 0); the pressed recipe's own shadows
+  // fade in on their layer above it.
+  const baseShadowStyle = useAnimatedStyle(() => {
+    const cast = 1 - (1 - PRESSED_CAST) * Math.min(1, Math.max(0, pressed ? pressed.value : 0));
+    return { opacity: cast * (1 - (1 - UPLIT_CAST) * (uplight ? uplight.value : 0)) };
+  });
+  const droppedShadowStyle = useAnimatedStyle(() => {
+    const cast = 1 - (1 - PRESSED_CAST) * Math.min(1, Math.max(0, pressed ? pressed.value : 0));
+    return { opacity: cast * (1 - (uplight ? uplight.value : 0)) };
+  });
   const pressedStyle = useAnimatedStyle(() => ({ opacity: pressed ? pressed.value : 0 }));
   const uplitStyle = useAnimatedStyle(() => ({ opacity: uplight ? uplight.value : 0 }));
   const causticStyle = useAnimatedStyle(() => ({

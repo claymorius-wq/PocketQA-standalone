@@ -1,10 +1,10 @@
-import { act, render } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ReactElement } from 'react';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
 import { glassDark } from '../../theme/tokens';
-import { GlassGlyph, GlassTile, GLYPH_NAMES, GLYPHS, glyphIcon, LUCIDE_TO_GLYPH, TAB_GLYPHS, TabGlyph, TILE_SIZES, type GlyphVariant, type TileSize } from '..';
+import { ALIASES, GlassGlyph, GlassTile, GLYPH_NAMES, GLYPHS, glyphIcon, LUCIDE_TO_GLYPH, resolveGlyph, TAB_GLYPHS, TabGlyph, TILE_SIZES, type GlyphVariant, type TileSize } from '..';
 import { splitShadow } from '../shadow';
 
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
@@ -65,10 +65,29 @@ describe('Lens glyphs', () => {
     return out;
   }
 
-  it.each(['face', 'lit', 'muted', 'rose'] as GlyphVariant[])('every glyph renders as %s glass (dark)', async (v) => {
+  it.each(['face', 'lit', 'muted', 'rose', 'ink'] as GlyphVariant[])('every glyph renders as %s glass (dark)', async (v) => {
     const r = await renderIn('dark', <>{GLYPH_NAMES.map((n) => <GlassGlyph key={n} name={n} variant={v} testID={n} />)}</>);
     const paths = pathsByTestId(r.toJSON());
     for (const n of GLYPH_NAMES) expect(paths.get(n)).toBeGreaterThan(0);
+  });
+
+  it('ink (on the primary fill) is the pale step and the dark face only: no cast, sheen or bevel masks', async () => {
+    const r = await renderIn('dark', <GlassGlyph name="record" variant="ink" testID="ink" />);
+    const { ids, refs } = svgRefs(r.toJSON());
+    expect(ids).toHaveLength(1); // the ink face gradient
+    expect(refs.every((ref) => ref === ids[0])).toBe(true);
+    // Two paths per part geometry (step + face): the ring tube and the core volume.
+    expect(svgRefs(r.toJSON()).paths).toBe(4);
+  });
+
+  it('round-4 aliases resolve to the one source name', async () => {
+    expect(ALIASES).toEqual({ ext: 'external', rocket: 'publish', arrow: 'forward', recIdle: 'recordIdle' });
+    expect(resolveGlyph('rocket')).toBe('publish');
+    expect(resolveGlyph('approve')).toBe('approve');
+    await renderIn('light', <><GlassGlyph name="rocket" testID="a" /><GlassGlyph name="publish" testID="b" /></>);
+    const paths = (id: string) => screen.getByTestId(id, HIDDEN).queryAll((n) => n.type === 'RNSVGPath').map((n) => n.props.d as string);
+    expect(paths('a').length).toBeGreaterThan(0);
+    expect(paths('a')).toEqual(paths('b'));
   });
 
   it('every glyph renders as a flat silhouette in light', async () => {

@@ -1,8 +1,9 @@
 import { useId } from 'react';
-import type { ViewStyle } from 'react-native';
-import { LinearGradient, RadialGradient, Stop } from 'react-native-svg';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { cssLinearVector, cssRadialGeometry } from '../theme/gradient';
-import type { GlassSurface as GlassRecipe, GradientSpec } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeProvider';
+import type { GlassSurface as GlassRecipe, GradientSpec, GradientStop } from '../theme/tokens';
 
 // Shared drawing helpers for the glass primitives. Recipes come from src/theme/tokens.ts as data;
 // these turn them into react-native-svg paint servers, rounded-rect paths and RN boxShadow lists.
@@ -169,3 +170,45 @@ export function flatRim(recipe: GlassRecipe): string | undefined {
 export const HIDDEN = { accessible: false, 'aria-hidden': true } as const;
 /** Decorative layers never take touches; style.pointerEvents (the prop form is deprecated on web). */
 export const PASS_THROUGH: ViewStyle = { pointerEvents: 'none' };
+
+/**
+ * The one fading 1dp rule (§8 list row, the stack header's divider, the section rule): a gradient
+ * line along `direction` (x: left → right, y: top → bottom) through `stops`. `length` sets its
+ * extent; without it the rule takes its size from `style` (stretched in a column, `flex: 1` in a
+ * row, or absolute left/right). Decorative: hidden from assistive tech, never takes touches.
+ * Light theme (glass disabled): a flat `colors.border` line at hairline width.
+ */
+export function GradientRule({ direction = 'x', length, stops, style }: {
+  direction?: 'x' | 'y';
+  length?: number | '100%';
+  stops: readonly GradientStop[];
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { glass, colors } = useTheme();
+  // Document-unique: on web every inline SVG shares one id namespace.
+  const id = useSvgId('gr');
+  const x = direction === 'x';
+  const box: ViewStyle = x ? { height: 1, width: length } : { width: 1, height: length };
+  if (!glass.enabled) {
+    const flat: ViewStyle = x ? { height: StyleSheet.hairlineWidth } : { width: StyleSheet.hairlineWidth, height: '100%' };
+    return (
+      <View {...HIDDEN} style={[box, PASS_THROUGH, style]}>
+        <View style={[flat, { backgroundColor: colors.border }]} />
+      </View>
+    );
+  }
+  return (
+    <View {...HIDDEN} style={[box, PASS_THROUGH, style]}>
+      <Svg width={x ? '100%' : 1} height={x ? 1 : '100%'}>
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2={x ? '1' : '0'} y2={x ? '0' : '1'}>
+            {stops.map((st, i) => (
+              <Stop key={i} offset={st.offset} stopColor={st.color} stopOpacity={st.opacity} />
+            ))}
+          </LinearGradient>
+        </Defs>
+        <Rect x={0} y={0} width="100%" height="100%" fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}

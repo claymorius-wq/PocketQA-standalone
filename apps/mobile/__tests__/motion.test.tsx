@@ -21,9 +21,13 @@ describe('motion tokens (Direction A §11)', () => {
       breathe: [0.37, 0, 0.63, 1],
     });
     expect(DUR).toEqual({ tick: 120, release: 180, swap: 240, enter: 320, sheet: 420, rise: 560, settle: 700 });
-    expect(CYCLE).toEqual({ breathe: 1400, drift: 5600 });
-    expect(SPRING.tab).toEqual({ damping: 18, stiffness: 220, mass: 1 });
-    expect(SPRING.sheet).toEqual({ damping: 26, stiffness: 280, mass: 1 });
+    expect(CYCLE).toEqual({ breathe: 1400, drift: 5600, spin: 800, spinReduced: 1600 });
+    // Round 4: near-critical springs (no tile overshoot, no sheet bounce).
+    expect(SPRING.tab).toEqual({ damping: 30, stiffness: 300, mass: 1 });
+    expect(SPRING.sheet).toEqual({ damping: 32, stiffness: 300, mass: 1 });
+    for (const sp of [SPRING.tab, SPRING.sheet]) expect(sp.damping / (2 * Math.sqrt(sp.stiffness * sp.mass))).toBeGreaterThan(0.85);
+    // No segment is longer than dur-settle (§11.1), motes included.
+    expect(UPLIGHT.moteDuration).toBe(DUR.settle);
     expect(UPLIGHT.commit.rise + UPLIGHT.commit.hold + UPLIGHT.commit.fall).toBe(1380);
   });
 

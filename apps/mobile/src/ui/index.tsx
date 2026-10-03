@@ -1,8 +1,7 @@
-import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { HeaderHeightContext, NavigationContext, NavigationRouteContext } from 'expo-router/react-navigation';
 import { BottomTabBarHeightContext } from 'expo-router/tabs';
-import { Children, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Children, isValidElement, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -10,86 +9,98 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text as RNText,
   TextInput,
-  useWindowDimensions,
   View,
   type LayoutChangeEvent,
   type StyleProp,
-  type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { AlertTriangle, Lock, RefreshCw, WifiOff } from 'lucide-react-native';
+import Svg, { Path } from 'react-native-svg';
 import { ApiError } from '../api/client';
-import { CausticSweep, FlutedLens, GlassBlur, GlassSurface, Ground, UplightFloor, useKeyLight, useSweepOnEnable, useUplight, Well } from '../glass';
-import { HIDDEN, useSvgId } from '../glass/paint';
+import { GlassBlur, GlassSurface, Ground, useKeyLight, useUplight, Well } from '../glass';
+import { GradientRule, HIDDEN, useSvgId } from '../glass/paint';
 import { GlassTile, type GlyphName } from '../icons';
-import { LiveLed, useCrossfade, usePressMotion, useSheetMotion, useTabTile } from '../motion';
-import { DUR, UPLIGHT } from '../theme/motion';
+import { useCrossfade, useSheetMotion, useTabTile } from '../motion';
+import { useArrival, type InitialArrival } from '../motion/entrance';
+import { useSheetFocus } from '../motion/sheet';
+import { DUR } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { layout, radius, space, touch, TOUCH, type GlassSurface as GlassRecipe, type TypeScale } from '../theme/tokens';
-import { KitIconView, type KitIcon } from './icon';
-import { Enter, EnterContext, ScreenContext, useMountedLate, useScreenFocused, useSwapFade, type ScreenInfo } from './screen';
+import { layout, radius, space, touch, TOUCH, type Tone as GlassTone } from '../theme/tokens';
+import { FocusPressable } from './focus';
+import { type KitIcon } from './icon';
+import { CommitUplight, useCommitUplight, type CommitStatus } from './patterns/light';
+import { SheetActions, SheetFailure } from './patterns/DecisionBar';
+import { EmptyPanel, ErrorPanel } from './patterns/EmptyPanel';
+import { LensShimmer } from './patterns/LensShimmer';
+import { SectionHeader } from './patterns/SectionHeader';
+import { ArrivalContext, arrivalOf, Enter, ScreenContext, type ScreenInfo } from './screen';
+import { Text } from './text';
 
 // The shared UI kit in the Lens visual system (docs/decisions/0005-lens-visual-system.md;
 // Direction A v2 §8). Every export keeps its pre-Lens props, testIDs, accessibility and copy;
 // only the drawing changed. Dark is the Lens look; light degrades every glass recipe to a flat
 // surface (TODO(light-lens): the light Lens theme replaces those recipes in tokens.ts).
+//
+// One implementation per shared element (CONSISTENCY): Text, Button, Card, StatusPill, Notice
+// and the spinner live in leaf modules (text, button, card, status, spinner) that the patterns
+// import too; the kit's states, Section, Divider and ConfirmSheet are thin wrappers over the
+// patterns (LensShimmer, EmptyPanel, ErrorPanel, SectionHeader, GradientRule, SheetActions,
+// useCommitUplight), so nothing here draws a second version of them.
 
 export { glyphNameFor, KitIconView, type KitIcon } from './icon';
 export { LensStackHeader, lensStackScreenOptions } from './StackHeader';
 export { LensTabBar } from './TabBar';
-
-type Variant = keyof TypeScale;
-type Tone = 'default' | 'muted' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
+export { FocusPressable, FocusRingStyles, focusRingCss, useFocusRing } from './focus';
+export { ArrivalContext, type ArrivalSpec } from './screen';
+export { Text } from './text';
+export { Button } from './button';
+export { Card } from './card';
+export { Notice, StatusPill } from './status';
+export { Spinner } from './spinner';
 
 const PASS: ViewStyle = { pointerEvents: 'none' };
+const WEB = Platform.OS === 'web';
 
-export function Text({ children, variant = 'body', tone = 'default', style, testID, numberOfLines }: {
-  children: ReactNode;
-  variant?: Variant;
-  tone?: Tone;
-  style?: StyleProp<TextStyle>;
-  testID?: string;
-  numberOfLines?: number;
-}) {
-  const { colors, type } = useTheme();
-  const screen = useContext(ScreenContext);
-  // Stack-screen titles are display-stack (32/36); tab roots and sign-in keep display (40/44).
-  const face = variant === 'display' && screen?.stack ? 'displayStack' : variant;
-  const numeral = variant === 'numeral' || variant === 'numeralXl';
-  const color = tone === 'default' ? (numeral ? colors.numeral : colors.text) : tone === 'muted' ? colors.textMuted : colors[tone];
-  return (
-    <RNText testID={testID} numberOfLines={numberOfLines} style={[type[face], { color }, style]} accessibilityRole={variant === 'display' || variant === 'title' ? 'header' : undefined}>
-      {children}
-    </RNText>
-  );
-}
-
-export function Screen({ children, title, subtitle, scroll = true, testID, right }: {
+export function Screen({ children, title, subtitle, scroll = true, testID, right, entrance }: {
   children: ReactNode;
   title?: string;
   subtitle?: string;
   scroll?: boolean;
   testID?: string;
   right?: ReactNode;
+  /**
+   * How this screen opens (§11.3, CONSISTENCY §M3). Default: the layout's ArrivalContext, else
+   * `tab` inside the role tabs and `push` anywhere else. `launch` (the light dip and the
+   * staggered steps) belongs to Sign in alone. Returns to the screen play `back` or `tab` by themselves.
+   */
+  entrance?: InitialArrival;
 }) {
   // A stack screen draws under the transparent Lens header (app/_layout.tsx), so the content starts
   // below it; tab screens sit above the floating tab bar, which reports its height.
   const headerHeight = useContext(HeaderHeightContext) ?? 0;
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
+  const tabBar = useContext(BottomTabBarHeightContext);
+  const tabBarHeight = tabBar ?? 0;
   const insets = useSafeAreaInsets();
   const { motion } = useTheme();
   const stack = headerHeight > 0;
+  const spec = useContext(ArrivalContext);
+  const layoutArrival = arrivalOf(spec);
+  const navigation = useContext(NavigationContext);
+  const route = useContext(NavigationRouteContext);
+  const arrival = useArrival(entrance ?? layoutArrival ?? (tabBar !== undefined ? 'tab' : 'push'), navigation, route?.key);
+  const { staggered, duration } = arrival.plan;
   const [mountedAt] = useState(() => Date.now());
-  const [wave] = useState(() => ({ start: mountedAt }));
-  const [commitPass, setCommitPass] = useState<{ key: number; x: number } | null>(null);
-  const commit = useCallback((x: number) => setCommitPass((p) => ({ key: (p?.key ?? 0) + 1, x })), []);
-  const endCommit = useCallback(() => setCommitPass(null), []);
-  const info = useMemo<ScreenInfo>(() => ({ wave, mountedAt, stack, commit }), [wave, mountedAt, stack, commit]);
+  // A root arrival leaves no wave open: the first step that mounts after it starts a fresh one.
+  const [wave] = useState(() => ({ start: staggered ? mountedAt : -Infinity }));
+  // U1's hand-off (§M3): the first tab after Sign in finishes the Commit tail Sign in started.
+  // Consumed once, on mount; nothing under reduced motion (Commit shows nothing there).
+  const [handoff, setHandoff] = useState(() => typeof spec === 'object' && spec?.handoff === 'u1' && motion.play.uplightCommit);
+  const info = useMemo<ScreenInfo>(
+    () => ({ wave, mountedAt, stack, staggered, settledAt: mountedAt + duration, causticAt: mountedAt + duration }),
+    [wave, mountedAt, stack, staggered, duration],
+  );
 
   const header = title ? (
     <View style={styles.header}>
@@ -106,7 +117,8 @@ export function Screen({ children, title, subtitle, scroll = true, testID, right
       {right ? <Enter step="title">{right}</Enter> : null}
     </View>
   ) : null;
-  // Content enters top to bottom from t=80, 40ms apart, at most five steps (§11.3). Each step
+  // Launch: content enters top to bottom from t=80, 40ms apart, at most five steps (§11.3); on
+  // every other arrival the steps stay still and the root below moves as one. Each step
   // wrapper is a column with the screen's gap, so a fragment (QueryState's content) keeps its
   // spacing; a step that lays out empty (a closed ConfirmSheet) gives back the gap it would take.
   const list = Children.toArray(children);
@@ -126,10 +138,12 @@ export function Screen({ children, title, subtitle, scroll = true, testID, right
   const pad = { paddingTop: top, paddingBottom: space.xxl * 2 + tabBarHeight };
   return (
     <ScreenContext.Provider value={info}>
-      <Ground>
-        {commitPass && motion.play.uplightCommit ? <CommitFloor key={commitPass.key} x={commitPass.x} onDone={endCommit} /> : null}
-        <SafeAreaView edges={stack ? ['left', 'right'] : ['top', 'left', 'right']} style={[styles.fill, stack ? { paddingTop: headerHeight } : null]} testID={testID}>
-          {scroll ? (
+      {/* The light dips only on a launch (Sign in); the ground never moves with an arrival. */}
+      <Ground enter={staggered}>
+        {handoff ? <HandoffTail onDone={() => setHandoff(false)} /> : null}
+        <Animated.View style={[styles.fill, arrival.style]}>
+          <SafeAreaView edges={stack ? ['left', 'right'] : ['top', 'left', 'right']} style={[styles.fill, stack ? { paddingTop: headerHeight } : null]} testID={testID}>
+            {scroll ? (
               <ScrollView contentContainerStyle={[styles.content, pad]} keyboardShouldPersistTaps="handled">
                 <View style={styles.column}>
                   {header}
@@ -144,188 +158,29 @@ export function Screen({ children, title, subtitle, scroll = true, testID, right
                 </View>
               </View>
             )}
-        </SafeAreaView>
+          </SafeAreaView>
+        </Animated.View>
       </Ground>
     </ScreenContext.Provider>
   );
 }
 
-/** One Commit pass (§10.4): rise 560, hold 120, fall 700; the motes finish inside it. */
-const COMMIT_PASS_MS = UPLIGHT.commit.rise + UPLIGHT.commit.hold + UPLIGHT.commit.fall;
-const COMMIT_FLOOR_HEIGHT = 160;
+/** The tail and its last mote are done by then (700ms fall; motes from +160, 40 apart, 700 each). */
+const TAIL_MS = 2 * DUR.settle;
 
 /**
- * U7's Commit pass on the screen's own floor (bottom edge, at the confirm's x). It belongs to the
- * screen, not the sheet: callers close the sheet as soon as the mutation succeeds (and web unmounts
- * it at once), which would otherwise cut the pass after a few frames and read as an abort.
+ * U1's tail on the first tab (§M3, CONSISTENCY U): a Mode B floor at the screen's bottom edge, x
+ * 50%, from u = 1 down to 0 over 700ms ease-lens with the motes, then it unmounts.
  */
-function CommitFloor({ x, onDone }: { x: number; onDone: () => void }) {
-  const light = useUplight('commit', true);
+function HandoffTail({ onDone }: { onDone: () => void }) {
+  const light = useUplight('tail', true);
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, COMMIT_PASS_MS);
+    const t = setTimeout(() => done.current(), TAIL_MS);
     return () => clearTimeout(t);
-  }, [onDone]);
-  return <UplightFloor light={light} x={x} height={COMMIT_FLOOR_HEIGHT} />;
-}
-
-/** L1 light distance down a screen (§2 cardK): rim and bloom × 1, 0.8, 0.64 by entrance step. */
-const CARD_K = [1, 0.8, 0.64] as const;
-
-export function Card({ children, style, testID, onPress, accessibilityLabel, k }: {
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-  testID?: string;
-  onPress?: () => void;
-  accessibilityLabel?: string;
-  /** Light distance (cardK). Default: by the screen step the card enters in (1, 0.8, then 0.64). */
-  k?: number;
-}) {
-  const press = usePressMotion();
-  const enter = useContext(EnterContext);
-  const distance = k ?? (enter && typeof enter.step === 'number' ? CARD_K[Math.min(enter.step, CARD_K.length - 1)] : 1);
-  if (!onPress) {
-    return (
-      <GlassSurface level="card" k={distance} style={[styles.card, style]} testID={testID}>
-        {children}
-      </GlassSurface>
-    );
-  }
-  // The whole card is the button; the glass sinks into the pressed recipe (§4 Pressed).
-  return (
-    <Pressable testID={testID} onPress={onPress} onPressIn={press.pressIn} onPressOut={press.pressOut} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.touch}>
-      <GlassSurface level="card" k={distance} pressed={press.progress} style={[styles.card, styles.touch, style]}>
-        {children}
-      </GlassSurface>
-    </Pressable>
-  );
-}
-
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
-
-export function Button(props: {
-  label: string;
-  onPress: () => void;
-  variant?: ButtonVariant;
-  icon?: KitIcon;
-  loading?: boolean;
-  disabled?: boolean;
-  testID?: string;
-  accessibilityHint?: string;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return <LensButton {...props} />;
-}
-
-/**
- * Button recipes (§8): primary is lit blue glass with the down-right caustic; disabled is unlit
- * glass (a 240ms crossfade of the two layers, never an opacity fade) and turning enabled plays
- * the caustic sweep, as does firing; busy keeps the label and swaps the icon for the spinner.
- * Secondary is raised glass, danger is dark rose glass (never lit from below), ghost is text.
- * `commit` adds the commit-sheet confirm's under-glow (§10.3).
- */
-function LensButton({ label, onPress, variant = 'primary', icon, loading, disabled, testID, accessibilityHint, style, commit = false }: {
-  label: string;
-  onPress: () => void;
-  variant?: ButtonVariant;
-  icon?: KitIcon;
-  loading?: boolean;
-  disabled?: boolean;
-  testID?: string;
-  accessibilityHint?: string;
-  style?: StyleProp<ViewStyle>;
-  commit?: boolean;
-}) {
-  const { colors, glass, motion } = useTheme();
-  const off = !!(disabled || loading);
-  const press = usePressMotion(off);
-  const primary = variant === 'primary';
-
-  const lit = useSharedValue(disabled ? 0 : 1);
-  useEffect(() => {
-    lit.value = withTiming(disabled ? 0 : 1, motion.timing.swap);
-  }, [disabled, lit, motion]);
-  const litStyle = useAnimatedStyle(() => ({ opacity: lit.value }));
-  // The unlit layer only shows while disabled, so a pressed (translated) lit layer never reveals it.
-  // It mounts the first time the button is disabled and then stays for the 240ms crossfades.
-  const unlitStyle = useAnimatedStyle(() => ({ opacity: 1 - lit.value }));
-  const [unlitMounted, setUnlitMounted] = useState(!!disabled);
-  if (disabled && !unlitMounted) setUnlitMounted(true);
-  const progress = press.progress;
-
-  // The caustic arrives last (§11.3.4): it fades in over dur-enter once the button's own entrance
-  // step has landed (120ms under reduced motion). Outside a screen entrance it is simply there.
-  const enter = useContext(EnterContext);
-  const [arrival] = useState(() => {
-    if (!enter?.causticAt) return null;
-    const wait = enter.causticAt - Date.now();
-    return wait < -DUR.enter ? null : Math.max(0, wait);
-  });
-  const arrive = useSharedValue(arrival === null ? 1 : 0);
-  useEffect(() => {
-    if (arrival !== null) arrive.value = withDelay(arrival, withTiming(1, motion.timing.enter));
-    // Mount only, like the entrance it follows.
   }, []);
-  // The caustic shrinks to 60% while pressed (§11.4); its layer fades with the lit glass.
-  const caustic = useDerivedValue(() => arrive.value * (1 - 0.4 * Math.min(1, Math.max(0, progress.value))));
-
-  const enabledSweep = useSweepOnEnable(!disabled);
-  const [fired, setFired] = useState(0);
-  const handlePress = () => {
-    if (primary) setFired((n) => n + 1);
-    onPress();
-  };
-
-  const recipes: Record<ButtonVariant, [GlassRecipe, GlassRecipe] | null> = {
-    primary: [commit ? { ...glass.primary, shadow: glass.uplight.commitConfirmShadow ?? glass.primary.shadow } : glass.primary, glass.primaryPressed],
-    secondary: [glass.secondary, glass.secondaryPressed],
-    danger: [glass.destructive, glass.secondaryPressed],
-    ghost: null,
-  };
-  const pair = recipes[variant];
-  const fg = {
-    primary: disabled ? colors.textDisabled : colors.onPrimary,
-    secondary: colors.text,
-    danger: colors.danger,
-    ghost: colors.primary,
-  }[variant];
-
-  return (
-    <Pressable
-      testID={testID}
-      onPress={off ? undefined : handlePress}
-      onPressIn={press.pressIn}
-      onPressOut={press.pressOut}
-      disabled={off}
-      aria-disabled={off}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: off, busy: !!loading }}
-      accessibilityHint={accessibilityHint}
-      style={[styles.button, !primary && disabled ? styles.dim : null, style]}
-    >
-      {primary && unlitMounted ? (
-        <Animated.View style={[styles.layer, PASS, unlitStyle]}>
-          <GlassSurface recipe={glass.primaryDisabled} grain={false} style={styles.layer} />
-        </Animated.View>
-      ) : null}
-      {pair ? (
-        <Animated.View style={[styles.layer, PASS, primary ? litStyle : null]}>
-          <GlassSurface recipe={pair[0]} pressedRecipe={pair[1]} pressed={progress} caustic={primary ? caustic : undefined} grain={false} style={styles.layer} />
-        </Animated.View>
-      ) : null}
-      {/* Mounted on its first sweep: most primaries never become enabled or fire on a screen. */}
-      {primary && enabledSweep + fired > 0 ? <CausticSweep playKey={enabledSweep + fired} radius={radius.button} /> : null}
-      <Animated.View style={[styles.buttonContent, press.motionStyle]}>
-        {loading ? (
-          <ActivityIndicator color={fg} />
-        ) : icon ? (
-          <KitIconView icon={icon} size={20} variant={primary ? 'lit' : 'face'} danger={variant === 'danger'} color={fg} />
-        ) : null}
-        <Text variant="button" style={{ color: fg }}>
-          {label}
-        </Text>
-      </Animated.View>
-    </Pressable>
-  );
+  return <CommitUplight light={light} x={0.5} />;
 }
 
 export function Field({ label, value, onChangeText, error, hint, secure, multiline, keyboardType, testID, placeholder, autoCapitalize }: {
@@ -390,158 +245,58 @@ export function Field({ label, value, onChangeText, error, hint, secure, multili
   );
 }
 
-const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
-  draft: 'neutral',
-  published: 'success',
-  paused: 'warning',
-  closed: 'neutral',
-  consented: 'info',
-  in_progress: 'info',
-  submitted: 'warning',
-  approved: 'success',
-  rejected: 'danger',
-  disputed: 'warning',
-  resolved: 'neutral',
-  withdrawn: 'neutral',
-  open: 'warning',
-  uploading: 'warning',
-  awaiting_signature: 'info',
-  pending: 'warning',
-  confirmed: 'success',
-  failed: 'danger',
-  expired: 'neutral',
-  suspended: 'danger',
-  ok: 'success',
-};
-/**
- * Statuses that carry the live LED (§8): only work genuinely happening now (IN PROGRESS,
- * UPLOADING). Never 'pending' (§14: pending never celebrates). Pills are never uplit.
- */
-const LIVE_STATUS = new Set(['in_progress', 'uploading']);
-
-export function StatusPill({ status, label, testID, live }: { status: string; label?: string; testID?: string; live?: boolean }) {
-  const { colors, glass } = useTheme();
-  // The LED loop runs only while its screen is focused: tab scenes stay mounted when unfocused.
-  const focused = useScreenFocused();
-  const tone = STATUS_TONE[status] ?? 'neutral';
-  const fg = colors[tone];
-  const text = label ?? status.replace(/_/g, ' ');
-  // A status change swaps the pill content in 120ms, no other motion (§14: pending never celebrates).
-  const swap = useSwapFade(`${status}|${text}`);
-  return (
-    <GlassSurface recipe={glass.pill(tone)} grain={false} style={styles.pill} testID={testID} accessibilityLabel={`Status: ${text}`}>
-      <Animated.View style={[styles.pillRow, swap]}>
-        {(live ?? LIVE_STATUS.has(status)) ? <LiveLed color={fg} shadow={glass.ledShadow(tone)} active={focused} /> : null}
-        <Text variant="label" style={{ color: fg }}>{text.toUpperCase()}</Text>
-      </Animated.View>
-    </GlassSurface>
-  );
-}
-
-/** Notice glyph per tone (§8: success uses Approve, not Info). */
-const NOTICE_GLYPH: Record<'info' | 'warning' | 'danger' | 'success', GlyphName> = { info: 'info', warning: 'warning', danger: 'alert', success: 'approve' };
-
-export function Notice({ tone = 'info', title, children, testID }: { tone?: 'info' | 'warning' | 'danger' | 'success'; title: string; children?: ReactNode; testID?: string }) {
-  const { colors, glass } = useTheme();
-  const late = useMountedLate();
-  // No side stripe: meaning rides on the tinted rim and the glyph tile's rim (§7.5, §8).
-  const notice = (
-      <GlassSurface recipe={glass.notice(tone)} grain={false} testID={testID} accessibilityRole="summary" style={styles.notice}>
-        <GlassTile name={NOTICE_GLYPH[tone]} size="notice" tint={tone} variant={tone === 'danger' ? 'rose' : undefined} />
-        <View style={styles.noticeText}>
-          <Text variant="headingNotice" style={{ color: colors[tone] }}>{title}</Text>
-          {typeof children === 'string' ? <Text variant="bodySm" tone="muted">{children}</Text> : children}
-        </View>
-      </GlassSurface>
-  );
-  // A notice that appears after the screen's entrance (an error after a mutation) enters by itself.
-  return late ? <Enter step={0} delay={0}>{notice}</Enter> : notice;
-}
-
 export function Row({ children, style, gap = space.sm }: { children: ReactNode; style?: StyleProp<ViewStyle>; gap?: number }) {
   return <View style={[{ flexDirection: 'row', alignItems: 'center', gap, flexWrap: 'wrap' }, style]}>{children}</View>;
 }
 
 export function Section({ title, children, right, testID }: { title: string; children: ReactNode; right?: ReactNode; testID?: string }) {
-  const { colors, type } = useTheme();
+  // The one section header (patterns/SectionHeader), then the section's content.
   return (
     <View style={styles.section} testID={testID}>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <RNText accessibilityRole="header" style={[type.heading, { color: colors.text }]}>{title}</RNText>
-        {right}
-      </Row>
+      <SectionHeader title={title} right={right} />
       {children}
     </View>
   );
 }
 
+/**
+ * The empty state is the one EmptyPanel (A-States 02, §8, §9): an L1 card at k = 0.8 with the 72dp
+ * fluted lens and the state's glyph, the text beside it, the action under them.
+ */
 export function EmptyState({ icon, title, body, action, testID }: { icon: KitIcon; title: string; body: string; action?: ReactNode; testID?: string }) {
-  const { colors } = useTheme();
-  // §8, §9 and the boards: an L1 card at k = 0.8 with the 72dp fluted lens on the left (the
-  // state's glyph floating in front of the refracted sphere) and the text beside it.
-  return (
-    <GlassSurface level="card" k={0.8} style={styles.emptyCard} testID={testID ?? 'empty-state'}>
-      <FlutedLens size={72}>
-        <KitIconView icon={icon} size={36} color={colors.rimLit} />
-      </FlutedLens>
-      <View style={styles.emptyText}>
-        <Text variant="heading">{title}</Text>
-        <Text variant="bodySm" tone="muted">{body}</Text>
-        {action ? <View style={styles.emptyAction}>{action}</View> : null}
-      </View>
-    </GlassSurface>
-  );
+  return <EmptyPanel icon={icon} title={title} body={body} action={action} variant="card" testID={testID ?? 'empty-state'} />;
 }
 
 /**
- * Loading is static unlit glass (§11.6, §13: no shimmer, no spinner): the label and, with
- * `skeleton`, placeholder cards where content will land. Only the app's start screen passes
- * `brand`, which resolves the brand lens once (S1); the lens is never twice on a screen (§9).
+ * Loading is the one LensShimmer (CONSISTENCY C7, §11.6): the 18dp spinner row with the label,
+ * `aria-busy`. No skeleton cards and no placeholder bars, ever. `brand` (the root "Starting Pocket
+ * QA…" alone) adds the 72dp fluted lens above the row, resolving once (S1); the lens is never twice
+ * on a screen (§9).
  */
-export function LoadingState({ label = 'Loading…', skeleton = false, brand = false }: { label?: string; skeleton?: boolean; brand?: boolean }) {
-  return (
-    <View testID="loading-state" accessibilityLabel={label} accessibilityRole="progressbar" accessibilityState={{ busy: true }}>
-      <View style={brand ? styles.brandLoading : styles.loadingLabel}>
-        {brand ? <FlutedLens size={54} /> : null}
-        <Text tone="muted">{label}</Text>
-      </View>
-      {skeleton ? (
-        <View style={styles.skeletons} accessible={false} importantForAccessibility="no-hide-descendants">
-          <SkeletonCard k={0.8} />
-          <SkeletonCard k={0.64} />
-        </View>
-      ) : null}
-    </View>
-  );
+export function LoadingState({ label = 'Loading…', brand = false }: { label?: string; brand?: boolean }) {
+  return <LensShimmer label={label} lens={brand} />;
 }
 
-function SkeletonCard({ k }: { k: number }) {
-  const { colors } = useTheme();
-  const bar = { backgroundColor: colors.surfaceAlt };
-  return (
-    <GlassSurface level="card" k={k} style={styles.card}>
-      <View style={[styles.bar, bar, { width: '62%' }]} />
-      <View style={[styles.bar, styles.barThin, bar, { width: '88%' }]} />
-      <View style={[styles.bar, styles.barThin, bar, { width: '40%' }]} />
-    </GlassSurface>
-  );
-}
-
+/**
+ * A failed load is the one ErrorPanel (A-States 04: "no lens for a failure"): the 54dp glyph tile
+ * with the danger rim, the title, the server's message, and Retry only where it can help.
+ */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const e = error instanceof ApiError ? error : null;
   const offline = e?.code === 'OFFLINE';
   const notFound = e?.code === 'NOT_FOUND';
   if (e?.code === 'FORBIDDEN_ROLE') {
     // Unauthorized: retrying can't help, so no Retry button.
-    return <EmptyState testID="forbidden-state" icon={Lock} title="Not allowed" body={e.message} />;
+    return <ErrorPanel testID="forbidden-state" glyph="lock" title="Not allowed" body={e.message} />;
   }
   return (
-    <EmptyState
+    <ErrorPanel
       testID={offline ? 'offline-state' : notFound ? 'not-found-state' : 'error-state'}
-      icon={offline ? WifiOff : AlertTriangle}
+      glyph={offline ? 'offline' : 'alert'}
       title={offline ? 'You’re offline' : notFound ? 'Not found' : 'Something went wrong'}
       body={offline ? 'Can’t reach the local Pocket QA server. Check that the API is running, then retry.' : notFound ? 'This item doesn’t exist or you don’t have access to it.' : (e?.message ?? 'Please try again.')}
-      action={onRetry && !notFound ? <Button label="Retry" icon={RefreshCw} variant="secondary" onPress={onRetry} testID="retry-button" /> : undefined}
+      onRetry={onRetry && !notFound ? onRetry : undefined}
+      retryTestID="retry-button"
     />
   );
 }
@@ -552,9 +307,9 @@ export function QueryState<T>({ query, empty, children }: {
   empty?: (data: T) => ReactNode | null;
   children: (data: T) => ReactNode;
 }) {
-  if (query.isLoading) return <LoadingState skeleton />;
+  if (query.isLoading) return <LoadingState />;
   if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />;
-  if (query.data === undefined) return <LoadingState skeleton />;
+  if (query.data === undefined) return <LoadingState />;
   const e = empty?.(query.data);
   return <>{e ?? children(query.data)}</>;
 }
@@ -590,8 +345,9 @@ export function Segmented<T extends string>({ options, value, onChange, testID }
         {options.map((o) => {
           const on = o.value === value;
           return (
-            <Pressable
+            <FocusPressable
               key={o.value}
+              ringRadius={radius.segment}
               testID={testID ? `${testID}-${o.value}` : undefined}
               onPress={() => onChange(o.value)}
               accessibilityRole="radio"
@@ -599,7 +355,7 @@ export function Segmented<T extends string>({ options, value, onChange, testID }
               style={styles.segment}
             >
               <Text variant="segment" style={{ color: on ? colors.text : colors.textMuted }}>{o.label}</Text>
-            </Pressable>
+            </FocusPressable>
           );
         })}
       </View>
@@ -612,7 +368,7 @@ export function Checkbox({ checked, onChange, label, testID }: { checked: boolea
   const { onStyle } = useCrossfade(checked);
   // §8: a 26dp well; checked fades in the primary-glass square with the on-primary check (120ms).
   return (
-    <Pressable testID={testID} onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} style={styles.checkbox}>
+    <FocusPressable ringRadius={radius.segment} testID={testID} onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} style={styles.checkbox}>
       <View style={styles.box}>
         <Well radius={radius.checkbox} style={[styles.layer, glass.enabled ? null : styles.flatEdge]} />
         <Animated.View style={[styles.layer, PASS, onStyle]}>
@@ -624,7 +380,7 @@ export function Checkbox({ checked, onChange, label, testID }: { checked: boolea
         </Animated.View>
       </View>
       <Text variant="bodySm" style={{ flex: 1 }}>{label}</Text>
-    </Pressable>
+    </FocusPressable>
   );
 }
 
@@ -636,7 +392,6 @@ function isCommitSheet(title: string, confirmLabel: string, destructive: boolean
 // The board's sheet: padding 10/24/24 (less the 1dp glass border), grabber at the very top.
 const SHEET_PAD = { top: 9, x: 23, bottom: 23 };
 const KEYBOARD_BEHAVIOR = Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined;
-const NOOP = () => undefined;
 
 /** Whether the software keyboard is up while `active` (JS events, not per frame). */
 function useKeyboardShown(active: boolean): boolean {
@@ -653,12 +408,74 @@ function useKeyboardShown(active: boolean): boolean {
   return active && shown;
 }
 
+/** The header tile per sheet (C4's table): the confirm's glyph and the tile's rim. Screens may pass their own. */
+function sheetTile(title: string, confirmLabel: string, destructive: boolean): { glyph: GlyphName; tint?: GlassTone } {
+  switch (confirmLabel) {
+    case 'Publish':
+      return { glyph: 'publish' };
+    case 'Approve':
+      return /stuck/i.test(title) ? { glyph: 'stuck', tint: 'success' } : { glyph: 'approve', tint: 'success' };
+    case 'Reject':
+      return { glyph: 'reject', tint: 'danger' };
+    case 'Close study':
+      return { glyph: 'ban', tint: 'danger' };
+    case 'Pause':
+      return { glyph: 'pause' };
+    case 'Resume':
+      return { glyph: 'play' };
+    case 'Withdraw':
+    case 'Delete forever':
+      return { glyph: 'remove', tint: 'danger' };
+    case 'Resolve':
+    case 'Send dispute':
+      return { glyph: 'disputes' };
+    case 'Suspend':
+      return { glyph: 'moderation', tint: 'danger' };
+    case 'Reinstate':
+      return { glyph: 'consent', tint: 'success' };
+    case 'Submit':
+      return { glyph: 'send' };
+    default:
+      return destructive ? { glyph: 'alert', tint: 'danger' } : { glyph: 'info' };
+  }
+}
+
 /**
- * In-app confirmation (native alerts don't exist on web, and block automation).
- * `moment` opts a sheet in or out of the U7 commit Uplight explicitly; without it, Publish and
- * "Approve and credit …" sheets are commit sheets. Destructive sheets are never lit.
+ * A request can hang (the API client sets no timeout), and a sheet never closes mid-request (C4).
+ * After this long pending, Cancel, Escape, back and the backdrop work again, so the user is never
+ * trapped in the Modal; the confirm keeps its spinner until the request settles.
  */
-export function ConfirmSheet({ visible, title, body, confirmLabel, destructive, onConfirm, onCancel, children, confirmDisabled, loading, moment }: {
+export const SHEET_PENDING_ESCAPE_MS = 15000;
+
+function usePendingEscape(pending: boolean): boolean {
+  const [escaped, setEscaped] = useState(false);
+  if (!pending && escaped) setEscaped(false);
+  useEffect(() => {
+    if (!pending) return;
+    const t = setTimeout(() => setEscaped(true), SHEET_PENDING_ESCAPE_MS);
+    return () => clearTimeout(t);
+  }, [pending]);
+  return pending && escaped;
+}
+
+/**
+ * In-app confirmation (native alerts don't exist on web, and block automation), built as C4: the
+ * grabber, a header row with the 54dp glyph tile beside the title, the body, the fields, the
+ * failure notice, and the one action row (SheetActions: Cancel left, the confirm right).
+ *
+ * Pending (`loading`, or `status` 'pending'): both actions are disabled and announced busy, the
+ * confirm shows the spinner, and nothing closes the sheet (SHEET_PENDING_ESCAPE_MS is the escape).
+ *
+ * U7 commit light (useCommitUplight, the one state machine): Publish and "Approve and credit …"
+ * sheets, or `moment="commit"` (`moment="none"` opts out; destructive sheets are never lit), show
+ * the pilot floor under the confirm while open. It holds while the request is pending and is cut
+ * on a failure. The Commit pass plays only when the screen reports `status` 'success' (from the
+ * mutation's onSuccess, never on press) and keeps the sheet open until `onLeave`. The tail is not
+ * handed to a screen floor: it belongs to the subject's uplit layer (the Budget card, the
+ * Decision notice), which the screen phase wires. A screen that passes no `status` closes the
+ * sheet on success itself and the light simply goes out with it.
+ */
+export function ConfirmSheet({ visible, title, body, confirmLabel, destructive = false, onConfirm, onCancel, children, confirmDisabled, loading, moment, status, error, onLeave, glyph, tint }: {
   visible: boolean;
   title: string;
   body?: string;
@@ -670,30 +487,40 @@ export function ConfirmSheet({ visible, title, body, confirmLabel, destructive, 
   confirmDisabled?: boolean;
   loading?: boolean;
   moment?: 'commit' | 'none';
+  /** The mutation's state (isPending / isError / isSuccess); drives the U7 light and the failure branch. */
+  status?: CommitStatus;
+  /** The server's brief error, shown as the C4 failure notice while `status` is 'error'. */
+  error?: string | null;
+  /** Commit sheets: called 680ms after the Commit pass starts, when the sheet should close. */
+  onLeave?: () => void;
+  /** The header tile's glyph and rim (default: C4's table, by the confirm). */
+  glyph?: GlyphName;
+  tint?: GlassTone;
 }) {
   const { glass, motion } = useTheme();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
   const keyLight = useKeyLight();
-  const screen = useContext(ScreenContext);
+  const titleId = useSvgId('sheet-title');
   // Web unmounts the moment it closes: react-native-web's Modal can stay mounted and visible over
   // the page after a closing animation (found by e2e/admin-dispute.spec.ts). Native plays the
   // 240ms exit; a Modal is its own window (an Android Dialog, an iOS presented controller), so
   // touches on the screen below stay blocked until it unmounts, and back is ignored meanwhile.
-  const sheet = useSheetMotion({ visible, animateExit: Platform.OS !== 'web' });
+  const sheet = useSheetMotion({ visible, animateExit: !WEB });
+  const pending = !!loading || status === 'pending';
+  const escaped = usePendingEscape(visible && pending);
+  const busy = pending && !escaped;
+  // C4: focus moves to the title; Escape, back, the backdrop and Cancel close, never while busy.
+  const sheetFocus = useSheetFocus({ visible, busy, closing: sheet.closing, onClose: onCancel });
   const keyboard = useKeyboardShown(sheet.mounted);
   const commit = !destructive && (moment ? moment === 'commit' : isCommitSheet(title, confirmLabel, destructive));
-  const [fired, setFired] = useState(false);
-  if (!visible && fired) setFired(false);
-  // U7: the pilot floor (0.55, +260ms) under the confirm while open; confirming plays a Commit pass
-  // here while the sheet is up, and on the screen's floor, which outlives the sheet's close.
-  const light = useUplight(fired ? 'commit' : 'pilot', visible && commit, { level: UPLIGHT.pilot.sheet, delay: UPLIGHT.pilot.delay });
+  const light = useCommitUplight({ open: visible && commit, status: status ?? (pending ? 'pending' : 'idle'), onLeave });
+  const tile = glyph ? { glyph, tint } : sheetTile(title, confirmLabel, destructive);
+  // The floor sits at the confirm's centre (Cancel left, confirm right: about 3/4 across). Its clip
+  // box is the panel inside the 1dp glass border; the action row starts at the sheet padding.
   const [panelWidth, setPanelWidth] = useState(0);
-  const [confirmBox, setConfirmBox] = useState<{ x: number; width: number } | null>(null);
-  // The floor sits at the confirm's centre (Cancel left, confirm right: about 3/4 across).
-  const confirmX = confirmBox ? layout.sheetPadding + confirmBox.x + confirmBox.width / 2 : null;
-  const floorX = panelWidth > 0 && confirmX !== null ? confirmX / panelWidth : 0.75;
-  const screenX = panelWidth > 0 && confirmX !== null && windowWidth > 0 ? ((windowWidth - panelWidth) / 2 + confirmX) / windowWidth : 0.75;
+  const [confirmCenter, setConfirmCenter] = useState<number | null>(null);
+  const inner = panelWidth - 2;
+  const floorX = inner > 0 && confirmCenter !== null ? (SHEET_PAD.x + confirmCenter) / inner : 0.75;
 
   // Behind any sheet the screen's key pool drops to 0.4 with the backdrop (§2, §11.4). Only an
   // open/close edge writes it, so a closed sheet mounting never resets one that is open.
@@ -711,19 +538,21 @@ export function ConfirmSheet({ visible, title, body, confirmLabel, destructive, 
   );
 
   if (!sheet.mounted) return null;
-  const confirm = () => {
-    if (commit) {
-      setFired(true);
-      if (motion.play.uplightCommit) screen?.commit?.(screenX);
-    }
-    onConfirm();
-  };
   const through = sheet.closing ? PASS : null;
+  // Web: react-native-web's Modal is the role="dialog" element and passes these props to it, so the
+  // title names the dialog (C4 aria-labelledby). Native announces the focused title instead.
+  const dialogName = WEB ? ({ 'aria-labelledby': titleId } as object) : null;
   return (
-    <Modal visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={sheet.closing ? NOOP : onCancel}>
+    <Modal visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={sheetFocus.requestClose} {...dialogName}>
       {/* The keyboard lifts the docked sheet so the focused field and the actions stay visible. */}
       <KeyboardAvoidingView behavior={KEYBOARD_BEHAVIOR} style={[styles.fill, styles.dockEnd]}>
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: glass.sheet.backdrop }, sheet.backdropStyle, through]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: glass.sheet.backdrop }, sheet.backdropStyle, through]}>
+          {/*
+           * Tapping the backdrop closes (C4). It is not an accessibility element and not a tab stop
+           * (react-native-web gives every enabled Pressable tabIndex 0): Cancel is the labelled close.
+           */}
+          <Pressable testID="confirm-backdrop" onPress={sheetFocus.requestClose} accessible={false} focusable={false} tabIndex={-1} importantForAccessibility="no" aria-hidden style={StyleSheet.absoluteFill} />
+        </Animated.View>
         <Animated.View style={[styles.sheetDock, sheet.sheetStyle, sheet.closing ? PASS : styles.boxNone]} onLayout={sheet.onSheetLayout}>
           <GlassBlur
             radius={radius.sheet}
@@ -738,22 +567,35 @@ export function ConfirmSheet({ visible, title, body, confirmLabel, destructive, 
               setPanelWidth((prev) => (prev === w ? prev : w));
             }}
           >
-            {commit ? <UplightFloor light={light} x={floorX} height={COMMIT_FLOOR_HEIGHT} /> : null}
+            {/* U7 Mode B: the 300dp floor anchored to the sheet's bottom edge, clipped to its corners. */}
+            {commit ? (
+              <View {...HIDDEN} style={[styles.floorClip, PASS]}>
+                <CommitUplight light={light} x={floorX} />
+              </View>
+            ) : null}
             <View style={[styles.grabber, { backgroundColor: glass.sheet.grabber }]} />
-            <Text variant="title" style={styles.sheetTitle}>{title}</Text>
+            <View style={styles.sheetHeader}>
+              <GlassTile name={tile.glyph} size="hero" tint={tile.tint} variant={destructive ? 'rose' : undefined} />
+              {/* The focus target (C4). Native groups the title into one heading; web keeps the inner heading. */}
+              <View ref={sheetFocus.titleRef} nativeID={titleId} accessible accessibilityRole={WEB ? undefined : 'header'} style={styles.sheetTitle}>
+                <Text variant="title">{title}</Text>
+              </View>
+            </View>
             {body ? <Text tone="muted" style={styles.sheetBody}>{body}</Text> : null}
             {children ? <View style={styles.sheetChildren}>{children}</View> : null}
+            {status === 'error' && error ? <SheetFailure message={error} /> : null}
             <View style={styles.sheetActions}>
-              <Button label="Cancel" variant="secondary" onPress={onCancel} testID="confirm-cancel" style={styles.fill} />
-              <View
-                style={styles.fill}
-                onLayout={(e) => {
-                  const { x, width } = e.nativeEvent.layout;
-                  setConfirmBox((b) => (b && b.x === x && b.width === width ? b : { x, width }));
-                }}
-              >
-                <LensButton label={confirmLabel} variant={destructive ? 'danger' : 'primary'} onPress={confirm} disabled={confirmDisabled} loading={loading} testID="confirm-ok" commit={commit} />
-              </View>
+              <SheetActions
+              confirmLabel={confirmLabel}
+              onConfirm={onConfirm}
+              onCancel={sheetFocus.requestClose}
+              destructive={destructive}
+              pending={pending}
+              cancelDisabled={busy}
+              confirmDisabled={confirmDisabled}
+              light={commit ? light : undefined}
+              onConfirmCenter={(x) => setConfirmCenter((prev) => (prev === x ? prev : x))}
+              />
             </View>
           </GlassBlur>
         </Animated.View>
@@ -763,26 +605,9 @@ export function ConfirmSheet({ visible, title, body, confirmLabel, destructive, 
 }
 
 export function Divider() {
-  const { glass, colors } = useTheme();
-  // Document-unique: on web every inline SVG shares one id namespace (glass/paint.tsx).
-  const id = useSvgId('dv');
-  if (!glass.enabled) return <View style={[styles.divider, { height: StyleSheet.hairlineWidth, backgroundColor: colors.border }]} />;
-  // The gradient divider fades out toward the far side, away from the light (§8 list row).
-  const stops = glass.divider.stops;
-  return (
-    <View style={styles.divider} {...HIDDEN}>
-      <Svg width="100%" height={1}>
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="0">
-            {stops.map((s, i) => (
-              <Stop key={i} offset={s.offset} stopColor={s.color} stopOpacity={s.opacity} />
-            ))}
-          </LinearGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height={1} fill={`url(#${id})`} />
-      </Svg>
-    </View>
-  );
+  const { glass } = useTheme();
+  // The one fading rule (GradientRule), in flow; it fades out toward the far side, away from the light (§8 list row).
+  return <GradientRule stops={glass.divider.stops} style={styles.divider} />;
 }
 
 const SEGMENT_GAP = 4;
@@ -799,17 +624,6 @@ const styles = StyleSheet.create({
   collapseBottom: { marginBottom: -layout.listGap },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginBottom: space.sm, paddingHorizontal: layout.headerGutter - layout.gutter },
   headerText: { flex: 1, gap: 6 },
-  card: {
-    borderRadius: radius.card,
-    paddingTop: layout.cardPadding.top,
-    paddingRight: layout.cardPadding.right,
-    paddingBottom: layout.cardPadding.bottom,
-    paddingLeft: layout.cardPadding.left,
-    gap: space.sm,
-  },
-  button: { minHeight: touch.button, borderRadius: radius.button, paddingHorizontal: 20, justifyContent: 'center' },
-  buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  dim: { opacity: 0.55 },
   field: { gap: 6 },
   inputBox: { minHeight: touch.input },
   inputBoxMultiline: { minHeight: touch.inputMultiline },
@@ -817,19 +631,7 @@ const styles = StyleSheet.create({
   inputMultiline: { minHeight: touch.inputMultiline, textAlignVertical: 'top' },
   flatEdge: { borderWidth: 1.5 },
   noOutline: { outlineWidth: 0 },
-  pill: { borderRadius: radius.pill, minHeight: 28, paddingHorizontal: 11, alignSelf: 'flex-start', justifyContent: 'center' },
-  pillRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  notice: { flexDirection: 'row', gap: space.md, paddingTop: 13, paddingRight: 15, paddingBottom: 14, paddingLeft: 13, alignItems: 'flex-start' },
-  noticeText: { flex: 1, gap: 3 },
   section: { gap: space.sm, marginTop: space.lg },
-  emptyCard: { flexDirection: 'row', alignItems: 'center', gap: 18, paddingTop: 19, paddingRight: 17, paddingBottom: 19, paddingLeft: 19, minHeight: 136, borderRadius: radius.card },
-  emptyText: { flex: 1, gap: 4 },
-  emptyAction: { marginTop: space.sm, alignSelf: 'flex-start' },
-  brandLoading: { alignItems: 'center', justifyContent: 'center', gap: space.sm, paddingVertical: space.xxl, paddingHorizontal: space.lg },
-  loadingLabel: { paddingVertical: space.xs },
-  skeletons: { gap: layout.listGap },
-  bar: { height: 14, borderRadius: 7 },
-  barThin: { height: 10, borderRadius: 5 },
   track: { padding: 4 },
   segments: { flexDirection: 'row', gap: SEGMENT_GAP },
   segmentTile: { position: 'absolute', top: 0, bottom: 0, left: 0 },
@@ -840,9 +642,13 @@ const styles = StyleSheet.create({
   sheetDock: { width: '100%', alignItems: 'center' },
   sheet: { width: '100%', maxWidth: 560, paddingTop: SHEET_PAD.top, paddingHorizontal: SHEET_PAD.x },
   grabber: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2 },
-  sheetTitle: { marginTop: 20 },
-  sheetBody: { marginTop: 8 },
+  // C4: a header row (the 54dp tile, 14, the title) 18 below the grabber; the body 12 under it.
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18 },
+  sheetTitle: { flex: 1, minWidth: 0 },
+  sheetBody: { marginTop: 12 },
   sheetChildren: { marginTop: space.md, gap: space.md },
-  sheetActions: { flexDirection: 'row', gap: 10, marginTop: 24 },
+  sheetActions: { marginTop: 24 },
+  // The board's floor wrapper: inset 0 inside the rim, the sheet's top corners, overflow hidden.
+  floorClip: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderTopLeftRadius: radius.sheet - 1, borderTopRightRadius: radius.sheet - 1, overflow: 'hidden' },
   divider: { height: 1, marginVertical: space.sm },
 });

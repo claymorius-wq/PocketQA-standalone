@@ -26,8 +26,10 @@ import { GradientDef, HIDDEN, PASS_THROUGH, useSvgId } from './paint';
  * Earned: 0 → 1 (560 ease-uplight), → 0.45 (700 ease-lens), then static. U5, U6, U8.
  * Live: 0.72 ↔ 1 on a 1400ms ease-breathe cycle until it stops, then the light cut (180 ease-exit). U3.
  * Pilot: static 0.35 (sign-in) or 0.55 (commit sheet), rising over 560ms after `delay`. U1 at rest, U7 open.
+ * Tail: a Commit pass handed off mid-way (U1 → the first tab, §M3): from 1 straight down to 0 over
+ * 700ms ease-lens, with the motes. Reduced motion: nothing (Commit shows nothing).
  */
-export type UplightGrade = 'commit' | 'earned' | 'live' | 'pilot';
+export type UplightGrade = 'commit' | 'earned' | 'live' | 'pilot' | 'tail';
 
 export type UplightOptions = {
   /** Pilot level: UPLIGHT.pilot.signIn (0.35, default) or UPLIGHT.pilot.sheet (0.55). */
@@ -115,6 +117,11 @@ export function useUplight(grade: UplightGrade, active: boolean, options: Upligh
         scaleY.value = grow;
         u.value = withDelay(delay, withTiming(rest, motion.timing.rise));
         break;
+      case 'tail':
+        scaleY.value = 1;
+        u.value = withSequence(withTiming(1, { duration: 0 }), withDelay(delay, withTiming(0, motion.timing.settle)));
+        setPass((p) => p + 1);
+        break;
       case 'live':
         // The floor itself does not scale while live (the board's recorder floor only breathes).
         scaleY.value = 1;
@@ -142,7 +149,10 @@ export type UplightFloorProps = {
   light: Uplight;
   /** The subject's centre as a fraction of the floor's width (default 0.5). */
   x?: number;
-  /** Floor height in dp (the boards use 160–300). Keep it in the bottom 42% of the screen. */
+  /**
+   * Mode B only: anchored to its surface's bottom edge at the subject's x; never shorter than 260
+   * (the pool's vertical radius; use MODE_B_HEIGHT 300). Smaller values are raised to 260.
+   */
   height?: number;
   /** Dust motes during a Commit pass (§10.3). Default true; they never loop. */
   motes?: boolean;
@@ -154,8 +164,9 @@ export type UplightFloorProps = {
  * the moment's container at the subject's x. Place it first inside a position-relative container so
  * it sits under the content; its opacity is u and it grows from the bottom edge.
  */
-export function UplightFloor({ light, x = 0.5, height = 300, motes = true, style }: UplightFloorProps) {
+export function UplightFloor({ light, x = 0.5, height: asked = 300, motes = true, style }: UplightFloorProps) {
   const { glass, colors, motion } = useTheme();
+  const height = Math.max(MIN_FLOOR_HEIGHT, asked);
   const id = useSvgId('uf');
   const [w, setW] = useState(0);
   const floorStyle = useAnimatedStyle(() => ({ opacity: light.u.value, transform: [{ scaleY: light.scaleY.value }] }));
@@ -185,6 +196,9 @@ export function UplightFloor({ light, x = 0.5, height = 300, motes = true, style
     </Animated.View>
   );
 }
+
+/** §U: a Mode B floor's pool has a 260dp vertical radius, so the floor is never shorter. */
+const MIN_FLOOR_HEIGHT = 260;
 
 const MOTE_START = 160; // the motes follow the rise by 160ms on the board
 const MOTE_STAGGER = 40;
