@@ -7,6 +7,7 @@ import type { ParsedTx } from '@pocket-qa/domain';
 import { buildApp, loggerOptions } from '../src/app';
 import type { DevnetRpc } from '../src/context';
 import { openDb } from '../src/db';
+import { FakeIdentity } from './fakeIdentity';
 
 export const START = Date.parse('2026-10-02T12:00:00.000Z');
 
@@ -31,13 +32,15 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
   const db = openDb(join(dir, 'test.sqlite'));
   const clock = { now: START };
   const rpc = new FakeRpc();
+  const authMode = opts.authMode ?? 'local';
+  const identity = new FakeIdentity('demo-pocketqa', () => clock.now);
   const logs: string[] = [];
   const stream = new Writable({
     write(chunk, _enc, cb) {
@@ -48,7 +51,18 @@ export async function makeApp(opts: { captureLogs?: boolean } = {}) {
   const app = await buildApp(
     {
       db,
-      config: { host: '127.0.0.1', port: 0, dataDir: dir, rpcUrl: 'http://fake', siwsDomain: 'pocketqa.local', aiProvider: null },
+      config: {
+        host: '127.0.0.1',
+        port: 0,
+        dataDir: dir,
+        rpcUrl: 'http://fake',
+        siwsDomain: 'pocketqa.local',
+        aiProvider: null,
+        authMode,
+        firebase: authMode === 'firebase' ? { projectId: 'demo-pocketqa', webApiKey: 'demo-web-api-key', authDomain: 'demo-pocketqa.firebaseapp.com', authEmulatorHost: null } : null, // check-secrets: allow (placeholder public Firebase web config in tests)
+        sharedDemo: false,
+      },
+      identity: authMode === 'firebase' ? identity : null,
       now: () => clock.now,
       rpc,
       mediaDir,
@@ -109,6 +123,7 @@ export async function makeApp(opts: { captureLogs?: boolean } = {}) {
     db,
     clock,
     rpc,
+    identity,
     logs,
     mediaDir,
     req,

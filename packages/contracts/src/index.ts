@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.3.0';
+export const CONTRACT_VERSION = '0.4.0';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 /** Bearer session token travels in this header; never in URLs, never logged. */
@@ -41,6 +41,8 @@ export const ErrorCode = z.enum([
   'CHAIN_UNAVAILABLE',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
+  'EMAIL_UNVERIFIED',
+  'PROVIDER_UNSUPPORTED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -453,12 +455,43 @@ export const Ok = z.object({ ok: z.literal(true) });
 export const Health = z.object({ ok: z.literal(true), contractVersion: z.string() });
 const list = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
+// ---------- cloud identity and client config (ADR 0005, v0.4.0) ----------
+export const AuthMode = z.enum(['local', 'firebase']);
+export type AuthMode = z.infer<typeof AuthMode>;
+export const StorageMode = z.enum(['local', 'r2']);
+export type StorageMode = z.infer<typeof StorageMode>;
+/**
+ * Public client configuration. Firebase *web* config values are public identifiers, not
+ * secrets; server credentials never appear here.
+ */
+export const ClientConfig = z.object({
+  authMode: AuthMode,
+  storage: StorageMode,
+  walletLogin: z.boolean(),
+  firebase: z
+    .object({
+      apiKey: z.string().min(1),
+      authDomain: z.string().min(1),
+      projectId: z.string().min(1),
+      /** Set only for local emulator testing, e.g. http://127.0.0.1:9099 */
+      authEmulatorUrl: z.string().url().nullable(),
+    })
+    .nullable(),
+});
+export type ClientConfig = z.infer<typeof ClientConfig>;
+/** First sign-in with a managed identity: map it, or explicitly create the account. */
+export const IdentitySessionBody = z.object({
+  newAccount: z.object({ role: SelfServeRole, displayName: DisplayName }).optional(),
+});
+export const IdentitySessionResponse = z.object({ user: User });
+
 // ---------- route table ----------
 /**
  * `auth`: who may call. `scope` documents the ownership rule the handler enforces
  * (non-owners get 404). The Phase 3 authorization-matrix test iterates this table.
  */
-export type RouteAuth = 'public' | 'user' | 'tester' | 'builder' | 'admin';
+/** `identity`: a verified managed identity (Firebase ID token) that may not have an account yet. */
+export type RouteAuth = 'public' | 'identity' | 'user' | 'tester' | 'builder' | 'admin';
 export type RouteScope =
   | 'none'
   | 'self'
@@ -482,6 +515,8 @@ export const routes = {
   register: r({ method: 'POST', path: '/auth/register', auth: 'public', scope: 'none', body: RegisterBody, response: AuthResponse }),
   login: r({ method: 'POST', path: '/auth/login', auth: 'public', scope: 'none', body: LoginBody, response: AuthResponse }),
   logout: r({ method: 'POST', path: '/auth/logout', auth: 'user', scope: 'self', body: null, response: Ok }),
+  clientConfig: r({ method: 'GET', path: '/config', auth: 'public', scope: 'none', body: null, response: ClientConfig }),
+  identitySession: r({ method: 'POST', path: '/auth/identity/session', auth: 'identity', scope: 'self', body: IdentitySessionBody, response: IdentitySessionResponse }),
   me: r({ method: 'GET', path: '/me', auth: 'user', scope: 'self', body: null, response: User }),
   putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfile, response: User }),
   credits: r({ method: 'GET', path: '/me/credits', auth: 'user', scope: 'self', body: null, response: CreditsView }),

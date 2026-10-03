@@ -3,16 +3,22 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import { signSession, verifyPassword, verifySession } from './preview/gate-server.mjs';
 
 const dir = import.meta.dirname;
 // State folders must live under the git-ignored .preview-test/ (see paths.mjs).
 const TEST_ROOT = join(dir, '..', '.preview-test');
 mkdirSync(TEST_ROOT, { recursive: true, mode: 0o700 });
-const tempState = () => mkdtempSync(join(TEST_ROOT, 'unit-'));
+const made = [];
+const tempState = () => {
+  const d = mkdtempSync(join(TEST_ROOT, 'unit-'));
+  made.push(d);
+  return d;
+};
+after(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
 const run = (script, args, input, env) => spawnSync(process.execPath, [join(dir, 'preview', script), ...args], { input, env: { ...process.env, ...env }, encoding: 'utf8' });
 
 test('state folder overrides are limited to .preview or .preview-test/ (review r1 P3)', () => {
@@ -77,4 +83,12 @@ test('enable-convenience: refuses a wrong password, writes a 0600 file of synthe
   assert.deepEqual(c.demoAccounts.map((a) => a.email), ['demo-tester@pocketqa.example', 'demo-builder@pocketqa.example', 'demo-admin@pocketqa.example']);
   assert.equal(run('enable-convenience.mjs', ['--off'], '', env).status, 0);
   assert.ok(!existsSync(f));
+});
+
+test('start.sh pins the shared demo to local auth and local storage (cloud review r1 P2)', () => {
+  // The API merges .env.local into its config; the process environment wins, so the
+  // preview launcher sets these explicitly on the API command.
+  const sh = readFileSync(join(dir, 'preview', 'start.sh'), 'utf8');
+  const api = sh.split('\n').find((l) => l.includes('POCKETQA_API_PORT=')) ?? '';
+  for (const kv of ['POCKETQA_SHARED_DEMO=1', 'POCKETQA_AUTH_MODE=local', 'POCKETQA_STORAGE=local']) assert.ok(api.includes(kv), kv);
 });

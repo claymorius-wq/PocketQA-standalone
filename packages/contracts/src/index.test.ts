@@ -68,12 +68,14 @@ describe('contracts', () => {
 
   it('binds every route to an auth level and schemas', () => {
     for (const [name, def] of Object.entries(routes)) {
-      expect(['public', 'user', 'tester', 'builder', 'admin'], name).toContain(def.auth);
+      expect(['public', 'identity', 'user', 'tester', 'builder', 'admin'], name).toContain(def.auth);
       expect(def.response, name).toBeTruthy();
     }
     // Only these routes are reachable without a session.
     const open = Object.entries(routes).filter(([, d]) => d.auth === 'public').map(([n]) => n).sort();
-    expect(open).toEqual(['health', 'login', 'media', 'register']);
+    // clientConfig returns only public configuration (ADR 0005); identitySession needs a
+    // verified provider token (auth 'identity'), so it is not open either.
+    expect(open).toEqual(['clientConfig', 'health', 'login', 'media', 'register']);
   });
 
   it('transfer intents take no client-chosen recipient or amount', () => {

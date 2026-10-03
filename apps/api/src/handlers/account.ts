@@ -1,9 +1,10 @@
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONTRACT_VERSION, CREDITS_DISCLAIMER } from '@pocket-qa/contracts';
+import { CONTRACT_VERSION, CREDITS_DISCLAIMER, Email } from '@pocket-qa/contracts';
 import { planTopUp, userAccount } from '@pocket-qa/domain';
 import { accountBalance, post } from '../ledger';
 import { me, type Ctx, type Handler } from '../context';
+import { RECOVERABLE_PROVIDERS } from '../identity/types';
 import { fail, hashPassword, iso, newId, newToken, sha256, verifyPassword } from '../util';
 import {
   disputeView,
@@ -37,6 +38,18 @@ function issueSession(ctx: Ctx, user: UserRow) {
   return { token, user: userView(ctx.deps.db, user) };
 }
 
+/** One account system per deployment: managed identity replaces local passwords (ADR 0005). */
+function assertLocalAuth(ctx: Ctx) {
+  if (ctx.deps.config.authMode !== 'local') {
+    throw fail('CONFLICT_STATE', 'This deployment uses managed sign-in (email, Google or wallet).');
+  }
+}
+
+/** Provider subjects (Firebase UIDs) mapped to this user. */
+function identitySubjects(ctx: Ctx, userId: string): string[] {
+  return (ctx.deps.db.prepare(`SELECT subject FROM identities WHERE provider = 'firebase' AND user_id = ?`).all(userId) as { subject: string }[]).map((r) => r.subject);
+}
+
 function creditsView(ctx: Ctx, userId: string) {
   const rows = ctx.deps.db
     .prepare('SELECT id, kind, amount, study_id, participation_id, created_at FROM ledger WHERE account = ? ORDER BY created_at DESC, rowid DESC')
@@ -51,7 +64,66 @@ function creditsView(ctx: Ctx, userId: string) {
 export const accountHandlers = {
   health: () => ({ ok: true as const, contractVersion: CONTRACT_VERSION }),
 
+  clientConfig: (ctx) => {
+    const { authMode, firebase } = ctx.deps.config;
+    return {
+      authMode,
+      storage: 'local' as const,
+      walletLogin: false,
+      firebase: firebase
+        ? {
+            apiKey: firebase.webApiKey,
+            authDomain: firebase.authDomain,
+            projectId: firebase.projectId,
+            authEmulatorUrl: firebase.authEmulatorHost ? `http://${firebase.authEmulatorHost}` : null,
+          }
+        : null,
+    };
+  },
+
+  /**
+   * First sign-in with a managed identity. Returns the mapped account, or creates one only
+   * when asked with a self-serve role. Never merges with an existing account by email.
+   */
+  identitySession: async (ctx) => {
+    const id = ctx.identity!;
+    const db = ctx.deps.db;
+    if (ctx.user) return { user: userView(db, ctx.user) };
+    const mapped = db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND subject = ?`).get(id.uid);
+    if (mapped) throw fail('CONFLICT_STATE', 'This sign-in belongs to a deleted account.');
+    if (!ctx.body.newAccount) throw fail('NOT_FOUND', 'No Pocket QA account uses this sign-in yet.');
+    // Custom-token identities come only from wallet login, which creates its own accounts.
+    if (id.signInProvider === 'custom') throw fail('CONFLICT_STATE', 'Use wallet sign-in to create a wallet account.');
+    // Every provider must prove the email, so nobody can claim someone else's address.
+    if (!id.emailVerified) throw fail('EMAIL_UNVERIFIED', 'Verify your email address, then sign in again.');
+    if (!RECOVERABLE_PROVIDERS.has(id.signInProvider)) throw fail('PROVIDER_UNSUPPORTED', 'This sign-in method is not supported. Use email or Google.');
+    const email = Email.safeParse(id.email ?? '');
+    if (!email.success) throw fail('VALIDATION', 'This sign-in has no usable email address.');
+    if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email.data)) {
+      throw fail('CONFLICT_STATE', 'An account with this email already exists. Accounts are never merged automatically.');
+    }
+    const now = iso(ctx.deps.now());
+    const row: UserRow = {
+      id: newId(),
+      email: email.data,
+      password_hash: null,
+      display_name: ctx.body.newAccount.displayName,
+      role: ctx.body.newAccount.role,
+      status: 'active',
+      device_json: null,
+      created_at: now,
+    };
+    db.transaction(() => {
+      db.prepare(
+        'INSERT INTO users (id, email, password_hash, display_name, role, status, device_json, created_at) VALUES (@id,@email,@password_hash,@display_name,@role,@status,@device_json,@created_at)',
+      ).run(row);
+      db.prepare(`INSERT INTO identities (provider, subject, user_id, has_recovery, created_at) VALUES ('firebase', ?, ?, 1, ?)`).run(id.uid, row.id, now);
+    })();
+    return { user: userView(db, row) };
+  },
+
   register: async (ctx) => {
+    assertLocalAuth(ctx);
     const { email, password, displayName, role } = ctx.body;
     const db = ctx.deps.db;
     if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) {
@@ -74,6 +146,7 @@ export const accountHandlers = {
   },
 
   login: async (ctx) => {
+    assertLocalAuth(ctx);
     const { email, password } = ctx.body;
     const now = ctx.deps.now();
     const f = failures.get(email);
@@ -95,13 +168,22 @@ export const accountHandlers = {
     return issueSession(ctx, row);
   },
 
-  logout: (ctx) => {
+  logout: async (ctx) => {
     const header = ctx.req.headers.authorization ?? '';
     const token = header.startsWith('Bearer ') ? header.slice(7) : '';
     const db = ctx.deps.db;
     db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));
     // Playback URLs handed out during this session stop working too.
     db.prepare('DELETE FROM playback_tokens WHERE user_id = ?').run(me(ctx).id);
+    // Managed identity: logout is global (every device). Refuse this and older ID tokens
+    // server-side at once, then revoke the provider's refresh tokens. A provider failure is
+    // logged, not surfaced: the server-side revocation is already in force.
+    if (ctx.deps.identity) {
+      db.prepare(`UPDATE identities SET valid_after_ms = ? WHERE provider = 'firebase' AND user_id = ?`).run(ctx.deps.now(), me(ctx).id);
+      for (const uid of identitySubjects(ctx, me(ctx).id)) {
+        await ctx.deps.identity.revokeSessions(uid).catch(() => ctx.req.log.warn('identity provider revocation failed; server-side revocation applied'));
+      }
+    }
     return { ok: true as const };
   },
 
@@ -153,9 +235,10 @@ export const accountHandlers = {
    * docs/decisions/0002-retention.md): ledger postings stay, keyed by the now-anonymous
    * user id, because deleting them would break other parties' budgets and balances.
    */
-  deleteMe: (ctx) => {
+  deleteMe: async (ctx) => {
     const user = me(ctx);
     const db = ctx.deps.db;
+    const subjects = identitySubjects(ctx, user.id);
     const live = db.prepare(`SELECT COUNT(*) AS n FROM studies WHERE builder_id = ? AND status IN ('published','paused')`).get(user.id) as { n: number };
     if (live.n > 0) throw fail('CONFLICT_STATE', 'Close your published or paused studies before deleting your account.');
     const active = db
@@ -195,11 +278,20 @@ export const accountHandlers = {
       ).run(user.id, user.id, user.id);
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM wallet_nonces WHERE user_id = ?').run(user.id);
+      db.prepare('DELETE FROM identities WHERE user_id = ?').run(user.id);
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${user.id}@deleted.invalid`, user.id);
     })();
     for (const key of media) rmSync(join(ctx.deps.mediaDir, key), { force: true });
+    // After commit: the local account is gone either way. A provider failure leaves an
+    // orphan provider user with no mapping (it can't reach this account); it is logged.
+    if (ctx.deps.identity) {
+      for (const uid of subjects) {
+        await ctx.deps.identity.revokeSessions(uid).catch(() => {});
+        await ctx.deps.identity.deleteUser(uid).catch(() => ctx.req.log.warn('identity provider user deletion failed; orphaned provider user'));
+      }
+    }
     return { ok: true as const };
   },
 

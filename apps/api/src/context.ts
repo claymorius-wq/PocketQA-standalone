@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ParsedTx } from '@pocket-qa/domain';
 import type { Config } from './config';
 import type { DB } from './db';
+import type { IdentityProvider, VerifiedIdentity } from './identity/types';
 import type { Clock } from './util';
 import type { UserRow } from './views';
 
@@ -12,11 +13,21 @@ export type DevnetRpc = {
   getLatestBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: number }>;
 };
 
-export type Deps = { db: DB; config: Config; now: Clock; rpc: DevnetRpc; mediaDir: string };
+export type Deps = {
+  db: DB;
+  config: Config;
+  now: Clock;
+  rpc: DevnetRpc;
+  mediaDir: string;
+  /** Managed identity provider; null in local auth mode. */
+  identity: IdentityProvider | null;
+};
 
 export type Ctx = {
   deps: Deps;
   user: UserRow | null;
+  /** Verified managed identity for `identity` routes (and firebase-mode requests). */
+  identity: VerifiedIdentity | null;
   params: Record<string, string>;
   // Already validated against the route's contract schema by the dispatcher.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

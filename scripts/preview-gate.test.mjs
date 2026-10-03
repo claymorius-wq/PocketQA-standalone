@@ -227,6 +227,7 @@ describe('preview gate: shared-preview policy (review r1 P2)', () => {
       ['POST', '/api/participations/p1/evidence/'],
       ['DELETE', '/api/me'],
       ['POST', '/api/auth/register'],
+      ['POST', '/api/auth/identity/session'],
       ['POST', '/api/admin/moderation/users/u1'],
       ['POST', '/api/admin/moderation/studies/s1'],
     ]) {

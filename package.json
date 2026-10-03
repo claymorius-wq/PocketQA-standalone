@@ -10,7 +10,8 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "test": "node --test \"scripts/*.test.mjs\" && pnpm -r --if-present test",
-    "verify": "pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test"
+    "verify": "pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test",
+    "test:emulator": "firebase emulators:exec --only auth --project demo-pocketqa \"pnpm --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts\""
   },
   "devDependencies": {
     "eslint": "10.11.0",

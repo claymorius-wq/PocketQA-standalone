@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN } from '@pocket-qa/contracts';
+import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, type AuthMode } from '@pocket-qa/contracts';
 
 export type Config = {
   host: '127.0.0.1' | '::1';
@@ -10,6 +10,15 @@ export type Config = {
   rpcUrl: string;
   siwsDomain: string;
   aiProvider: string | null;
+  /** ADR 0005: 'local' password sessions (default) or 'firebase' managed identity. */
+  authMode: AuthMode;
+  /**
+   * Firebase project settings. `webApiKey`/`authDomain` are public web config; the Admin
+   * credential comes only from GOOGLE_APPLICATION_CREDENTIALS (never read or logged here).
+   */
+  firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null } | null;
+  /** The shared synthetic demo (preview): never runs with real-data features. */
+  sharedDemo: boolean;
 };
 
 export class ConfigError extends Error {}
@@ -61,6 +70,29 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   const rpcUrl = env.POCKETQA_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
   if (!/^https?:\/\//.test(rpcUrl)) throw new ConfigError('POCKETQA_SOLANA_RPC_URL must be an http(s) URL.');
 
+  const authMode = (env.POCKETQA_AUTH_MODE ?? 'local') as AuthMode;
+  if (authMode !== 'local' && authMode !== 'firebase') throw new ConfigError('POCKETQA_AUTH_MODE must be local or firebase.');
+  let firebase: Config['firebase'] = null;
+  if (authMode === 'firebase') {
+    const projectId = env.POCKETQA_FIREBASE_PROJECT_ID ?? '';
+    const webApiKey = env.POCKETQA_FIREBASE_WEB_API_KEY ?? '';
+    const authDomain = env.POCKETQA_FIREBASE_AUTH_DOMAIN ?? `${projectId}.firebaseapp.com`;
+    const authEmulatorHost = env.POCKETQA_FIREBASE_AUTH_EMULATOR_HOST || null;
+    if (!/^[a-z0-9-]{4,40}$/.test(projectId)) throw new ConfigError('POCKETQA_FIREBASE_PROJECT_ID is required in firebase mode.');
+    if (!webApiKey) throw new ConfigError('POCKETQA_FIREBASE_WEB_API_KEY (public web config) is required in firebase mode.');
+    if (authEmulatorHost && !/^(127\.0\.0\.1|localhost):\d+$/.test(authEmulatorHost)) throw new ConfigError('POCKETQA_FIREBASE_AUTH_EMULATOR_HOST must be a loopback host:port.');
+    // The emulator accepts unsigned tokens, so it is only allowed with a demo- project.
+    if (authEmulatorHost && !projectId.startsWith('demo-')) throw new ConfigError('The Firebase Auth emulator may only be used with a demo- project id.');
+    firebase = { projectId, webApiKey, authDomain, authEmulatorHost };
+  }
+  // firebase-admin also honours the raw FIREBASE_AUTH_EMULATOR_HOST and then accepts
+  // unsigned tokens: refuse it unless this is an explicit demo- emulator setup.
+  if (env.FIREBASE_AUTH_EMULATOR_HOST && !(firebase?.authEmulatorHost && firebase.projectId.startsWith('demo-'))) {
+    throw new ConfigError('FIREBASE_AUTH_EMULATOR_HOST is set outside an explicit demo- emulator setup; refusing to start.');
+  }
+  const sharedDemo = env.POCKETQA_SHARED_DEMO === '1';
+  if (sharedDemo && authMode !== 'local') throw new ConfigError('The shared demo runs only with local auth (synthetic demo accounts).');
+
   return {
     host: host as Config['host'],
     port,
@@ -69,5 +101,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     // Fixed (not configurable) so it always matches the app's MWA identity URI.
     siwsDomain: DEFAULT_SIWS_DOMAIN,
     aiProvider: env.POCKETQA_AI_PROVIDER ? env.POCKETQA_AI_PROVIDER : null,
+    authMode,
+    firebase,
+    sharedDemo,
   };
 }

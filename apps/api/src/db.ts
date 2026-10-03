@@ -166,6 +166,22 @@ const MIGRATIONS: string[] = [
   CREATE UNIQUE INDEX one_open_transfer ON devnet_transfers(participation_id)
     WHERE status IN ('awaiting_signature','pending','confirmed');
   `,
+  // 1: managed identity (ADR 0005). One provider identity maps to exactly one internal
+  // user; `has_recovery` marks identities that can sign in without the wallet.
+  `
+  CREATE TABLE identities (
+    provider TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    has_recovery INTEGER NOT NULL DEFAULT 0,
+    -- ID tokens whose auth time is at or before this (ms) are refused. Provider revocation
+    -- has one-second granularity, so logout also records this server-side.
+    valid_after_ms INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (provider, subject)
+  );
+  CREATE UNIQUE INDEX identities_user_provider ON identities(user_id, provider);
+  `,
 ];
 
 export function openDb(file: string): DB {
