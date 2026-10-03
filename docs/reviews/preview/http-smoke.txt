@@ -1,0 +1,23 @@
+started 2026-10-03T09:33:35.952Z against http://127.0.0.1:57891
+PASS  GET / without gate → 303 /__gate/login
+bundle /_expo/static/js/web/entry-e965e8374fb3561840e9d505af863f40.js
+PASS  GET app bundle without gate → 303
+PASS  GET /api/health without gate → 401 (gate)
+PASS  POST /api/auth/login without gate → 401
+PASS  GET /__gate/login → 200 with identity marker
+PASS  wrong gate password → 401, no cookie
+PASS  unknown Host → 421
+PASS  gate login → 303 + HttpOnly Secure SameSite=Strict cookie
+PASS  GET / with gate → 200 app index
+PASS  GET app bundle with gate → 200
+PASS  GET /api/health via proxy → 200 ok
+PASS  demo tester app sign-in via proxy → 200
+PASS  tester sees the demo studies (bearer passes through the gate)
+PASS  app bearer without gate cookie → still 401 at the gate
+PASS  admin self-registration refused by the API
+PASS  evidence upload refused in the shared preview → 403
+PASS  deleting the shared demo account refused → 403
+PASS  encoded path spelling rejected → 400
+finished 2026-10-03T09:33:36.059Z
+all checks passed
+EXIT=0

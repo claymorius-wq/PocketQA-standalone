@@ -29,6 +29,21 @@ Hamza asked for the remaining local scope:
 
 **Access rule (Hamza, 2026-10-03):** never retry denied access through another tool or path. Global permissions and the denied plan docs stay untouched; status lives here.
 
+## Protected web preview (2026-10-03, branch `feat/preview-gate`, reviewed and merged)
+- **Authorized exposure.** Hamza approved a protected preview at `pocketqa.optijara.ai`, which supersedes local-only **for this isolated preview only** (ADR 0004; CLAUDE.md now carries the scoped exception).
+- **Project-local parts are built and verified on loopback:**
+  - password gate (HMAC `__Host-` cookie) on every path, a same-origin `/api` proxy, and a production web export with API base `/api`;
+  - isolated synthetic `preview-data/`, and credentials only in `.preview/access.txt` (0600, git-ignored);
+  - the shared preview refuses uploads, account deletion and moderation.
+- **Security review (pqa-qa, read-only):**
+  - r1 CHANGES_REQUIRED (1×P2, 6×P3);
+  - r2 APPROVE, then 3 P3s fixed;
+  - r3 APPROVE, then 1 P3 fixed;
+  - r4 APPROVE.
+  - After r4, only the smoke output format changed (per-run timestamps, as r4 suggested).
+- **Evidence:** 22 gate tests, with mutations G1–G15 caught; `pnpm verify`; local HTTP smoke 18/18; Chromium smoke 12/12 (0 foreign requests, 0 CSP violations). None of the 7 generated secret values appears in any repo file.
+- **Not exposed yet.** Port reservation, registry, ingress, DNS, tunnel reload and public TLS/DNS checks are the parent's steps: `docs/handoff/preview-activation.md`. Reads of the registry and the deployment skill were denied and not retried.
+
 ## Status board
 
 | Phase | Owner | State |

@@ -7,6 +7,9 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/dist-web/**',
+      '**/dist-preview/**',
+      'preview-data/**',
+      '.preview/**',
       '**/expo-env.d.ts',
       '**/.expo/**',
       '**/web-build/**',
@@ -22,7 +25,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     languageOptions: {
-      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly', fetch: 'readonly', TextEncoder: 'readonly' },
+      globals: { console: 'readonly', process: 'readonly', URL: 'readonly', Buffer: 'readonly', __dirname: 'readonly', fetch: 'readonly', TextEncoder: 'readonly', URLSearchParams: 'readonly', setInterval: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly', clearInterval: 'readonly' },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],

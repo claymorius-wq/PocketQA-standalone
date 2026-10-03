@@ -52,6 +52,9 @@ const FORBIDDEN_PATHS = [
   /(^|\/)GoogleService-Info\.plist$/,
   /\.(sqlite3?|db)(-[a-z]+)?$/,
   /(^|\/)\.data\//,
+  // Protected preview: generated gate secret, credentials and synthetic data (ADR 0004).
+  /(^|\/)\.preview\//,
+  /(^|\/)preview-data\//,
 ];
 
 export function scanText(text) {
