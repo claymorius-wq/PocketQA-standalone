@@ -2,16 +2,40 @@ import type { Deps } from '../context';
 
 const MAX_BACKOFF_MS = 3600_000;
 
-/** Delete an object now, or queue it in the retried outbox if the provider fails. */
-export async function deleteOrQueue(deps: Pick<Deps, 'db' | 'store' | 'now'>, key: string): Promise<boolean> {
+/**
+ * Why Pocket QA deletes a stored object. These are the only reasons it ever does (Hamza's
+ * scoped deletion policy, A5, 2026-10-04: its own objects in its own bucket, for failed-upload
+ * cleanup and user-requested deletion; no time-based expiry of evidence, no lifecycle rules):
+ * - failed_upload: an upload that was rejected, expired unfinished, or crashed mid-promotion;
+ * - upload_staging: the quarantine copy of an upload that was promoted to its final key;
+ * - account_deletion: the recordings of a user who deleted their account.
+ */
+export type DeletionPurpose = 'failed_upload' | 'upload_staging' | 'account_deletion';
+
+/** True only for keys this app registered when it created them (migration 4). */
+export function ownsObject(db: Deps['db'], key: string): boolean {
+  return db.prepare('SELECT 1 FROM storage_objects WHERE object_key = ?').get(key) !== undefined;
+}
+
+/** Records a key this app is about to create, before the write, so it is always deletable. */
+export function registerObject(db: Deps['db'], key: string, now: number) {
+  db.prepare('INSERT INTO storage_objects (object_key, created_at) VALUES (?, ?) ON CONFLICT (object_key) DO NOTHING').run(key, now);
+}
+
+/**
+ * Delete an object now, or queue it in the retried outbox if the provider fails. A key the app
+ * didn't create is never deleted or queued (returns false), whatever the caller passes.
+ */
+export async function deleteOrQueue(deps: Pick<Deps, 'db' | 'store' | 'now'>, key: string, purpose: DeletionPurpose): Promise<boolean> {
+  if (!ownsObject(deps.db, key)) return false;
   try {
     await deps.store.delete(key);
     return true;
   } catch {
     const now = deps.now();
     deps.db
-      .prepare('INSERT INTO storage_deletions (object_key, attempts, next_attempt_at, created_at) VALUES (?, 1, ?, ?) ON CONFLICT (object_key) DO NOTHING')
-      .run(key, now + 60_000, now);
+      .prepare('INSERT INTO storage_deletions (object_key, attempts, next_attempt_at, created_at, purpose) VALUES (?, 1, ?, ?, ?) ON CONFLICT (object_key) DO NOTHING')
+      .run(key, now + 60_000, now, purpose);
     return false;
   }
 }
@@ -31,18 +55,23 @@ export async function sweepStorage(deps: Pick<Deps, 'db' | 'store' | 'now'>) {
   // A completion normally takes seconds; one still 'completing' an hour past expiry crashed.
   const stuck = db.prepare(`SELECT id, evidence_id FROM upload_intents WHERE status = 'completing' AND expires_at <= ?`).all(now - 3600_000) as { id: string; evidence_id: string | null }[];
   for (const s of stuck) {
-    if (s.evidence_id && !db.prepare('SELECT 1 FROM evidence WHERE id = ?').get(s.evidence_id)) await deleteOrQueue(deps, `evidence/${s.evidence_id}`);
+    if (s.evidence_id && !db.prepare('SELECT 1 FROM evidence WHERE id = ?').get(s.evidence_id)) await deleteOrQueue(deps, `evidence/${s.evidence_id}`, 'failed_upload');
     db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE id = ?`).run(s.id);
   }
   const closed = db
-    .prepare(`SELECT id, object_key FROM upload_intents WHERE status IN ('completed','rejected','expired') AND expires_at <= ? AND quarantine_swept = 0 LIMIT 500`)
-    .all(now) as { id: string; object_key: string }[];
+    .prepare(`SELECT id, object_key, status FROM upload_intents WHERE status IN ('completed','rejected','expired') AND expires_at <= ? AND quarantine_swept = 0 LIMIT 500`)
+    .all(now) as { id: string; object_key: string; status: string }[];
   for (const c of closed) {
-    await deleteOrQueue(deps, c.object_key);
+    await deleteOrQueue(deps, c.object_key, c.status === 'completed' ? 'upload_staging' : 'failed_upload');
     db.prepare('UPDATE upload_intents SET quarantine_swept = 1 WHERE id = ?').run(c.id);
   }
   const due = db.prepare('SELECT object_key, attempts FROM storage_deletions WHERE next_attempt_at <= ? LIMIT 500').all(now) as { object_key: string; attempts: number }[];
   for (const d of due) {
+    // Defence in depth: the outbox only ever holds registered keys, but never act on one that isn't.
+    if (!ownsObject(db, d.object_key)) {
+      db.prepare('DELETE FROM storage_deletions WHERE object_key = ?').run(d.object_key);
+      continue;
+    }
     try {
       await deps.store.delete(d.object_key);
       db.prepare('DELETE FROM storage_deletions WHERE object_key = ?').run(d.object_key);

@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES, UPLOAD_INTENT_TTL_SECONDS, UploadIntent } from '@pocket-qa/contracts';
-import { sweepStorage } from '../src/storage/sweep';
+import { MIGRATION_COUNT, openDb } from '../src/db';
+import { deleteOrQueue, sweepStorage } from '../src/storage/sweep';
 import { makeApp, MP4, PNG, seeded, type TestApp } from './helpers';
 
 // ADR 0005 §3: private evidence storage with direct uploads. Uses the real R2 (S3) adapter
@@ -247,5 +250,102 @@ describe('R2 deletion guard (default off)', () => {
     expect(r.body.message).toMatch(/recordings can’t be erased/);
     expect((await t.req('GET', '/me', s.tester.token)).status).toBe(200);
     expect(t.s3.keys().sort()).toEqual(before);
+  });
+});
+
+// Hamza's scoped deletion policy (A5, 2026-10-04): Pocket QA deletes only objects it created
+// itself, only in its own bucket, only for failed-upload cleanup, upload staging and
+// user-requested account deletion. Nothing time-expires stored evidence; no lifecycle.
+describe('scoped deletion: only objects the app created', () => {
+  const FOREIGN = ['pqa-test/evidence/foreign-fixture-0001', 'pqa-test/quarantine/foreign-fixture-0002', 'pqa-test/blog/asset.png'];
+  const plant = () => {
+    for (const k of FOREIGN) t.s3.objects.set(k, { body: Buffer.from(`fixture ${k}`), contentType: 'application/octet-stream' });
+  };
+
+  it('objects the app did not create survive rejection, completion, the sweep and account deletion', async () => {
+    t = await makeApp({ storage: 'r2' });
+    plant();
+    const s = await seeded(t);
+    const spoof = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { sizeBytes: PNG.length })).body);
+    await put(spoof, PNG);
+    expect((await t.req('POST', `/evidence/upload-intents/${spoof.id}/complete`, s.tester.token)).status).toBe(400);
+    const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-ok' })).body);
+    await put(ok, MP4);
+    expect((await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).status).toBe(200);
+    t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
+    await sweepStorage(t.deps);
+    await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
+    expect((await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    // Every object the app created is gone; every other object is untouched.
+    expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
+    for (const k of FOREIGN) expect(t.s3.objects.get(k)!.body.toString()).toBe(`fixture ${k}`);
+  });
+
+  it('an unregistered key is never deleted or queued, even when a caller names it', async () => {
+    t = await makeApp({ storage: 'r2' });
+    plant();
+    for (const k of ['evidence/foreign-fixture-0001', 'quarantine/foreign-fixture-0002']) {
+      expect(await deleteOrQueue(t.deps, k, 'account_deletion')).toBe(false);
+    }
+    expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+    // A foreign key slipped into the outbox is dropped, not deleted.
+    t.db.prepare(`INSERT INTO storage_deletions (object_key, attempts, next_attempt_at, created_at, purpose) VALUES ('evidence/foreign-fixture-0001', 1, 0, 0, 'failed_upload')`).run();
+    await sweepStorage(t.deps);
+    expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+  });
+
+  it('records why each retried deletion happens', async () => {
+    t = await makeApp({ storage: 'r2' });
+    const s = await seeded(t);
+    t.s3.failDeletes = true;
+    const spoof = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { sizeBytes: PNG.length })).body);
+    await put(spoof, PNG);
+    await t.req('POST', `/evidence/upload-intents/${spoof.id}/complete`, s.tester.token);
+    const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-ok' })).body);
+    await put(ok, MP4);
+    const ev = (await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).body;
+    await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
+    await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' });
+    // Ordered by purpose: the keys hold random ids, so their order varies between runs.
+    expect(t.db.prepare('SELECT object_key, purpose FROM storage_deletions ORDER BY purpose').all()).toEqual([
+      { object_key: `evidence/${ev.id}`, purpose: 'account_deletion' },
+      { object_key: `quarantine/${spoof.id}`, purpose: 'failed_upload' },
+      { object_key: `quarantine/${ok.id}`, purpose: 'upload_staging' },
+    ]);
+  });
+
+  it('the R2 adapter refuses keys outside evidence/ and quarantine/ before any request', async () => {
+    t = await makeApp({ storage: 'r2' });
+    plant();
+    t.s3.objects.set('pqa-test/foreignbare0003', { body: Buffer.from('x'), contentType: 'text/plain' });
+    await expect(t.deps.store.delete('foreignbare0003')).rejects.toThrow(/outside evidence\/ and quarantine\//);
+    expect(t.s3.objects.has('pqa-test/foreignbare0003')).toBe(true);
+  });
+
+  it('the R2 adapter can only send single-object commands: no listing, batch delete or lifecycle', () => {
+    const src = readFileSync(join(import.meta.dirname, '../src/storage/r2.ts'), 'utf8');
+    const imported = /import \{([^}]+)\} from '@aws-sdk\/client-s3'/.exec(src)![1]!.split(',').map((x) => x.trim()).sort();
+    expect(imported).toEqual(['CopyObjectCommand', 'DeleteObjectCommand', 'GetObjectCommand', 'HeadObjectCommand', 'PutObjectCommand', 'S3Client']);
+    expect(src).not.toMatch(/Lifecycle|ListObjects|DeleteObjects|DeleteBucket/);
+  });
+
+  it('migration 4 registers the objects an existing database already created', async () => {
+    t = await makeApp({ storage: 'r2' });
+    const s = await seeded(t);
+    const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId)).body);
+    await put(ok, MP4);
+    const ev = (await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).body;
+    const file = t.db.name;
+    // Back to the pre-migration-4 schema, then reopen: the backfill must find both keys.
+    t.db.exec(`DROP TABLE storage_objects; ALTER TABLE storage_deletions DROP COLUMN purpose; DELETE FROM schema_migrations WHERE version = 4;`);
+    const db = openDb(file);
+    try {
+      expect((db.prepare('SELECT object_key FROM storage_objects ORDER BY object_key').all() as { object_key: string }[]).map((r) => r.object_key)).toEqual([`evidence/${ev.id}`, `quarantine/${ok.id}`]);
+      expect(db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get()).toEqual({ v: MIGRATION_COUNT - 1 });
+    } finally {
+      db.close();
+    }
   });
 });

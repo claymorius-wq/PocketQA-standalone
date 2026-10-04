@@ -1,7 +1,7 @@
 # Production runbook (Pocket QA API)
 
 > Not live yet. Production can't start until the acceptance ledger's gates are closed (`docs/production/acceptance-ledger.md`). In particular:
-> - **A5:** a real-user deletion policy. Production needs `POCKETQA_R2_ALLOW_DELETE=1`, and setting it is prohibited until Hamza decides.
+> - **A5 (decided 2026-10-04):** production runs with `POCKETQA_R2_ALLOW_DELETE=1`, which means Hamza's scoped policy: only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup, upload staging and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket.
 > - **A1/A2:** Firebase Auth and the service identity.
 > - **A3:** the bucket-scoped R2 token.
 > - **A4:** the production origin.
@@ -39,7 +39,7 @@ POCKETQA_R2_BUCKET=pocketqa-evidence
 POCKETQA_R2_ACCESS_KEY_ID=<bucket-scoped token id>
 # the bucket-scoped secret goes here (never in a document)
 POCKETQA_R2_SECRET_ACCESS_KEY=
-# ONLY after Hamza approves a deletion policy (A5)
+# the scoped deletion policy (A5, decided 2026-10-04); production refuses to start without it
 POCKETQA_R2_ALLOW_DELETE=1
 # POCKETQA_WALLET_LOGIN=1 and POCKETQA_WALLET_LOGIN_RISK_ACCEPTED=1 ONLY after A8 is recorded
 ```
@@ -66,17 +66,17 @@ With this file:
 `GET /health` answers 200 only if the database can answer a query, so it is a readiness check, not just a liveness check. Point the tunnel's or uptime monitor's health check at it through the proxy.
 
 ## 5. Backups and the restore drill
-- **Retention:** backups contain deleted users' data until they are removed. How long backups are kept is part of Hamza's A5 decision. Until then, nothing is pruned.
+- **Retention:** backups contain deleted users' data until they are removed. How long backups are kept is **still open** (not part of the A5 R2 decision). Until it is decided, nothing is pruned.
 - **Daily:** `ai.pocketqa.backup` runs `run-api.sh backup` at 03:15. It takes an online, consistent snapshot through SQLite's backup API while the API is serving. The snapshot is a single file at mode 600, integrity-checked, and the job prints its sha256. Backups are **never pruned automatically**.
 - **Ad hoc:** `pnpm --filter @pocket-qa/api db:backup -- --out <dir outside the repo>`.
 - **Restore drill** (run it before go-live and after each upgrade, and record it in `docs/verification.md`):
   1. Stop the API: `launchctl bootout gui/$(id -u)/ai.pocketqa.api`.
   2. `pnpm --filter @pocket-qa/api db:restore -- --from <backup file>`. This refuses while anything answers on the API port or while the API's pid file names a live process, and refuses a corrupt or foreign file. It renames the current database and its WAL/SHM to `.pre-restore-<stamp>` and keeps them.
-  3. **Re-apply account deletions made since the backup** (inc4 review P3-1). A restore brings back accounts deleted after the backup was taken. Deleted accounts remain as tombstones (`users.status = 'deleted'`). Compare `SELECT id FROM users WHERE status = 'deleted'` in the kept `.pre-restore-<stamp>` database with the restored one, and repeat the deletion for every account that is deleted there but not in the restored copy, before reopening the API to users. `pnpm --filter @pocket-qa/api db:deleted-since -- --pre-restore <kept file>` lists them, reading both files only. If restores repeat, compare against the **original** pre-restore file, the one from the first restore after the deletions, not only the latest one (inc5 review P3-1). This step and backup retention are part of the A5 deletion-policy decision.
+  3. **Re-apply account deletions made since the backup** (inc4 review P3-1). A restore brings back accounts deleted after the backup was taken. Deleted accounts remain as tombstones (`users.status = 'deleted'`). Compare `SELECT id FROM users WHERE status = 'deleted'` in the kept `.pre-restore-<stamp>` database with the restored one, and repeat the deletion for every account that is deleted there but not in the restored copy, before reopening the API to users. `pnpm --filter @pocket-qa/api db:deleted-since -- --pre-restore <kept file>` lists them, reading both files only. If restores repeat, compare against the **original** pre-restore file, the one from the first restore after the deletions, not only the latest one (inc5 review P3-1). This step and backup retention are still open decisions for Hamza; the A5 decision covers R2 objects only.
   4. Start the API, then check `/health` and a known record.
   
   The drill is tested in `apps/api/test/backup.test.ts` and `db-scripts.test.ts`.
-- R2 objects are not part of the database backup. Bucket objects are never deleted without the approved policy (A5), and no lifecycle rules are used.
+- R2 objects are not part of the database backup. Bucket objects are deleted only under the scoped policy (A5): objects this database registered, for failed uploads, upload staging and account deletion. There are no lifecycle rules and no bulk or admin purge. After a restore, objects registered only in the newer database are no longer known to the restored one, so they can't be deleted by it. List them for Hamza; don't delete them by hand.
 
 ## 6. Upgrades and migrations
 1. Take a backup (section 5).

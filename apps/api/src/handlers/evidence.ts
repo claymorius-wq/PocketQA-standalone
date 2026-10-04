@@ -13,7 +13,7 @@ import { canUploadEvidence } from '@pocket-qa/domain';
 import { partyParticipation, testerParticipation } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { fail, iso, newId, newToken, notFound, sha256 } from '../util';
-import { deleteOrQueue } from '../storage/sweep';
+import { deleteOrQueue, registerObject } from '../storage/sweep';
 import { readHead as storeHead, StorageChanged } from '../storage/types';
 import { evidenceView, type EvidenceRow, type UserRow } from '../views';
 
@@ -150,6 +150,7 @@ export const evidenceHandlers = {
           `INSERT INTO evidence (id, participation_id, kind, mime_type, size_bytes, duration_ms, task_id, captured_on, client_segment_id, storage_key, created_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         ).run(id, p.id, meta.data.kind, mime, size, meta.data.durationMs ?? null, meta.data.taskId ?? null, meta.data.capturedOn, meta.data.clientSegmentId, key, iso(ctx.deps.now()));
+        registerObject(db, key, ctx.deps.now());
       })();
       return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(id) as EvidenceRow);
     } catch (e) {
@@ -275,6 +276,8 @@ export const evidenceHandlers = {
           `INSERT INTO upload_intents (id, participation_id, tester_id, kind, mime_type, declared_size, duration_ms, task_id, captured_on, client_segment_id, object_key, status, expires_at, created_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,?, 'pending', ?, ?)`,
         ).run(intent.id, p.id, user.id, b.kind, b.mimeType, b.sizeBytes, intent.duration_ms, intent.task_id, b.capturedOn, b.clientSegmentId, intent.object_key, intent.expires_at, now);
+        // Registered before any URL that can create it is issued.
+        registerObject(db, intent.object_key, now);
       })();
     }
     const seconds = Math.max(1, Math.min(PRESIGN_SECONDS, Math.floor((intent.expires_at - now) / 1000)));
@@ -318,7 +321,7 @@ export const evidenceHandlers = {
     };
     const reject = async (message: string) => {
       setStatus('rejected');
-      await deleteOrQueue(ctx.deps, intent.object_key);
+      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
       return fail('VALIDATION', message);
     };
 
@@ -336,6 +339,8 @@ export const evidenceHandlers = {
     if (mime !== intent.mime_type) throw await reject('The uploaded file is not the declared type. Use MP4, WebM, PNG, JPEG or WebP.');
 
     const finalKey = `evidence/${evidenceId}`;
+    // Registered before the copy exists, so even a crash right after it leaves a deletable key.
+    registerObject(db, finalKey, now);
     try {
       await store.copy(intent.object_key, finalKey, { ifMatch: head.etag });
     } catch (e) {
@@ -363,11 +368,11 @@ export const evidenceHandlers = {
       })();
     } catch (e) {
       setStatus('rejected');
-      await deleteOrQueue(ctx.deps, finalKey);
-      await deleteOrQueue(ctx.deps, intent.object_key);
+      await deleteOrQueue(ctx.deps, finalKey, 'failed_upload');
+      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
       throw e;
     }
-    await deleteOrQueue(ctx.deps, intent.object_key);
+    await deleteOrQueue(ctx.deps, intent.object_key, 'upload_staging');
     return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(evidenceId) as EvidenceRow);
   },
 } satisfies Record<string, Handler>;

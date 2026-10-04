@@ -4,9 +4,8 @@
 
 **Status:**
 - The web path is proven end to end against the real providers, with a non-production API and synthetic data (§1).
-- **Live cutover has not happened and must not happen yet.**
-  - Production mode refuses to start until Hamza decides the deletion policy (A5).
-  - The cutover itself needs the reviewed candidate, the open decisions in §4, and the parent's tunnel change (§3).
+- **A5 is decided** (Hamza, 2026-10-04): scoped deletion, only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup, upload staging and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket. The implementation is in its own review (§4). The web-launch approvals (pqa-qa r1–r3, `184e0a2`) do **not** cover it.
+- **Live cutover has not happened and must not happen yet.** It needs the reviewed candidate, the open items in §4 (A9 and others), and the parent's tunnel change (§3).
 
 ## 1. What is proven (web, real providers, synthetic data)
 
@@ -53,9 +52,9 @@ The production guards are unchanged: production refuses this mode.
 - Google sign-in (not enabled);
 - wallets (no wallet is used, and no real-wallet claim is made);
 - native apps;
-- production mode itself, which can't start before A5.
+- the full flow in production mode: production builders can't publish until A9. Production mode itself starts on the real providers (`docs/reviews/production/live/prod-start-smoke.txt`).
 
-**Synthetic fixtures (kept, nothing deleted; on the A5 cleanup list):**
+**Synthetic fixtures** (kept; nothing deleted). Historical test fixtures are not deleted gratuitously. The scoped policy can't delete them anyway, because they were never registered by a production database:
 - Firebase users `pqa-weblive-*@example.test`;
 - R2 objects under `quarantine/` and `evidence/` in `pocketqa-evidence`. Retention-only mode copies an object to `evidence/` and keeps the quarantine copy.
 
@@ -96,7 +95,7 @@ Each step names who runs it. **The lead never changes the tunnel, DNS or the run
    - Write `production.env`, mode 600, outside the repo (runbook §2).
    - Set `POCKETQA_ENV=production` and the real Firebase and R2 values.
    - Set `POCKETQA_PUBLIC_ORIGIN=https://pocketqa.optijara.ai`.
-   - Set `POCKETQA_R2_ALLOW_DELETE=1` **only if A5 approves deletion**; otherwise production will not start, by design.
+   - Set `POCKETQA_R2_ALLOW_DELETE=1`: the scoped deletion policy (A5, §4). Production refuses to start without it.
    - Keep wallet login off unless A8 is recorded.
 4. **Build.** `PROD_API_URL=/api scripts/production/build-web.sh`.
 5. **Start on new loopback ports** (the preview keeps its ports):
@@ -128,8 +127,9 @@ Each step names who runs it. **The lead never changes the tunnel, DNS or the run
 | Gate | Owner | State |
 |---|---|---|
 | Web E2E on real Firebase and R2 from the production origin (I3 web part, S4 web part) | lead | ✅ §1, for the SHA named in `docs/reviews/production/web-launch/e2e-live.txt` |
-| Front door with production CSP | lead | 🔧 pqa-qa r1 APPROVE; r2 pending on the P3 fixes |
-| **A5: real-user deletion policy, including backup retention** | Hamza | ⛔ Production refuses to start without `ALLOW_DELETE=1`, and that is prohibited until decided |
+| Front door with production CSP | lead | ✅ pqa-qa web-launch r1–r3 APPROVE (`184e0a2`) |
+| **A5: R2 deletion policy** | Hamza | ✅ Decided 2026-10-04: scoped deletion (see Status). Enforced by the ownership registry plus a prefix check in the R2 adapter (`apps/api/test/storage.test.ts`). Live: `docs/reviews/production/live/r2-scoped-delete.txt` (only the run's 3 objects deleted; the other 26 identical before and after). The production start smoke passes. **Implementation: awaiting pqa-qa review** (`docs/reviews/production/scoped-delete/`) |
+| Backup retention, and re-applying deletions after a restore | Hamza | ⬜ Not part of this decision, and untouched. Backups are never pruned automatically (runbook §5) |
 | **A9: study funding without payments** (unpaid studies, or no publishing) | Hamza | ⛔ Production builders can't publish |
 | Firebase project state | Hamza (console) | ⚠️ Auth reports `subtype IDENTITY_PLATFORM` after the CLI auth deploy (see below), and the billing or plan state is unverified |
 | A7 production host and supervisor install | parent | ⬜ |

@@ -183,14 +183,17 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(env.POCKETQA_R2_ENDPOINT)) throw new ConfigError('POCKETQA_R2_ENDPOINT may only point at a loopback test server.');
       endpoint = env.POCKETQA_R2_ENDPOINT;
     }
-    // Hamza: no R2 object is deleted without explicit approval. Off by default, deletes are
-    // kept in the storage_deletions outbox (nothing is lost) until POCKETQA_R2_ALLOW_DELETE=1.
+    // Deletion is off by default: deletes wait in the storage_deletions outbox (nothing is lost).
+    // POCKETQA_R2_ALLOW_DELETE=1 turns on Hamza's scoped policy (A5, 2026-10-04): only objects
+    // this app created and registered (storage_objects), only in its own bucket, only for
+    // failed-upload cleanup, upload staging and account deletion (storage/sweep.ts). There is no
+    // time-based expiry of evidence and no lifecycle rule.
     const allowDelete = env.POCKETQA_R2_ALLOW_DELETE === '1';
     // Only Pocket QA's own bucket is ever a write target, so a mistyped name with wider
     // credentials can't reach another project's bucket. Loopback test servers are exempt.
     if (!testServer && !R2_BUCKETS.includes(bucket)) throw new ConfigError(`POCKETQA_R2_BUCKET must be Pocket QA's own bucket (${R2_BUCKETS.join(', ')}).`);
     // With deletion off, account deletion can't erase recordings (and is refused), so r2 runs
-    // only for synthetic, non-production data until Hamza approves a deletion policy.
+    // without the scoped policy only for synthetic, non-production data.
     if (!allowDelete && env.POCKETQA_R2_RETAIN_NONPROD !== '1') {
       throw new ConfigError('r2 storage needs a deletion policy: POCKETQA_R2_ALLOW_DELETE=1 (approved) or POCKETQA_R2_RETAIN_NONPROD=1 (synthetic data only, objects retained).');
     }

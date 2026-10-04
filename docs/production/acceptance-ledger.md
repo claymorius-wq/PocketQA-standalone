@@ -55,9 +55,9 @@
 | S2 | Bucket-scoped runtime token, not account-wide credentials | P | ⛔ A3 | | H-direct |
 | S3 | Exact-origin CORS on `pocketqa-evidence` (PUT from the production origin only, no wildcard) | P | ✅ | Applied on `pocketqa-evidence` only: one rule, PUT from `https://pocketqa.optijara.ai` with header `content-type`. Readback matches. Preflight: PUT from the origin gives 204; another origin gives 403; GET gives 403 (`docs/reviews/production/r2-cors-apply.txt`). No object touched | H-relayed |
 | S4 | Browser direct upload and playback with seeking against real R2 from the production origin | P | ✅ web | `pnpm test:e2e:live`: production web build behind the production front door, loaded as `https://pocketqa.optijara.ai`. The browser PUT to R2 gives 200 under the exact-origin CORS rule, playback gives 206 with `Content-Range`, and a seek to 2 s works (a mid-file range gives 206 for the exact bytes). There are 0 CSP violations. Real Firebase and R2, non-production API, synthetic data (`docs/production/web-launch.md` §1). A3 is accepted per Hamza (existing account-wide keys) | H-relayed |
-| S5 | **Real-user deletion policy.** Production plus r2 refuses to start until this is decided, because `ALLOW_DELETE=1` is prohibited and `RETAIN_NONPROD` is refused in production. | B | ⛔ A5 | | **open**: R2 deletion prohibited (H-direct) |
+| S5 | **Real-user deletion policy** for R2 | B | 🔧 policy decided; implementation awaiting pqa-qa | Scoped policy: only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup, upload staging and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket.<br>- Enforcement: the `storage_objects` registry (migration 4), `deleteOrQueue` refusing unregistered keys, and an R2 adapter limited to single-object commands under `evidence/` and `quarantine/` (`test/storage.test.ts`).<br>- Live: only the run's 3 objects deleted; the 26 others identical (`live/r2-scoped-delete.txt`).<br>- Production starts with it (`live/prod-start-smoke.txt`).<br>- Backup retention is a separate open item | H-relayed (2026-10-04) |
 | S6 | Real consented recording uploaded from Android (physical device) | H | ⛔ A6 | | H-direct |
-| S7 | Interrupted upload resumes (multipart/resumable) | C/B | ⛔ A5 | Blocked by the no-deletion rule. R2 multipart needs `AbortMultipartUpload` for abandoned uploads, and abort deletes the uploaded parts, which is R2 deletion. The lifecycle backstop was withdrawn. Without abort, abandoned uploads leave billed orphan parts forever. Build it only after A5, with abort routed through the `allowDelete`/outbox gate, after a design review. Single PUT up to 100 MB today | plan |
+| S7 | Interrupted upload resumes (multipart/resumable) | C/B | ⬜ | Policy now allows aborting the app's own failed uploads (A5); not built. Earlier note: blocked by the no-deletion rule. R2 multipart needs `AbortMultipartUpload` for abandoned uploads, and abort deletes the uploaded parts, which is R2 deletion. The lifecycle backstop was withdrawn. Without abort, abandoned uploads leave billed orphan parts forever. Build it only after A5, with abort routed through the `allowDelete`/outbox gate, after a design review. Single PUT up to 100 MB today | plan |
 
 ## Wallet
 
@@ -138,4 +138,10 @@
   - The real Firebase and R2 browser E2E passes from the production origin (sign-up through approval, role isolation, ranged playback).
   - New production front door `scripts/production/web-server.mjs`, with a CSP that names only Firebase Auth and the R2 endpoint.
   - The live run found and fixed a sign-up defect: a Firebase 503 on the verification email is now reported honestly.
-  - Live cutover still waits on A5, A9, the Firebase plan check (console), A7 and B4.
+  - Live cutover still waits on A9, the Firebase plan check (console), A7 and B4.
+- **A5 decided (2026-10-04): scoped R2 deletion.**
+  - Pocket QA deletes only objects it created and registered (`storage_objects`, migration 4), only in `pocketqa-evidence`.
+  - It deletes them only for failed-upload cleanup, upload staging and account deletion.
+  - There is no time-based expiry of evidence, no lifecycle rule and no bulk purge.
+  - Production now starts with `ALLOW_DELETE=1`.
+  - Backup retention remains open.

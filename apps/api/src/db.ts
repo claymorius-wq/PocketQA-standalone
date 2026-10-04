@@ -228,6 +228,23 @@ const MIGRATIONS: string[] = [
     created_at INTEGER NOT NULL
   );
   `,
+  // 4: scoped deletion (Hamza, A5, 2026-10-04): Pocket QA may delete only objects it created
+  // itself. Every key the app writes is registered here before the write and the row is never
+  // removed, so ownership stays provable (a still-valid presigned URL can recreate a deleted
+  // quarantine object, which the sweep must still be allowed to remove). Deletion of any key
+  // not registered here is refused (storage/sweep.ts deleteOrQueue). Backfilled from the rows
+  // that already reference objects this database created.
+  `
+  CREATE TABLE storage_objects (
+    object_key TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL
+  );
+  INSERT OR IGNORE INTO storage_objects (object_key, created_at) SELECT object_key, created_at FROM upload_intents;
+  INSERT OR IGNORE INTO storage_objects (object_key, created_at)
+    SELECT 'evidence/' || evidence_id, created_at FROM upload_intents WHERE evidence_id IS NOT NULL;
+  INSERT OR IGNORE INTO storage_objects (object_key, created_at) SELECT storage_key, 0 FROM evidence;
+  ALTER TABLE storage_deletions ADD COLUMN purpose TEXT NOT NULL DEFAULT 'unrecorded';
+  `,
 ];
 
 /** How many migrations this code ships; tools compare it with a live database's schema. */
