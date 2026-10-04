@@ -489,3 +489,8 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
 - **Playwright 14/14 and emulator 4/4:** these outputs are from `4f9ae9d`. `4f9ae9d..184e0a2` changes only `e2e-live/web-launch.spec.ts` and docs, which those suites don't load.
 - **Inventory after run 10:** 29 synthetic Firebase users and 26 R2 objects. Nothing deleted.
 
+## 2026-10-04 (night): scoped R2 deletion, A5, candidate `2adea53`
+- **`pnpm verify`:** EXIT=0. API 382 plus 2 skipped, including 6 new scoped-deletion tests; mobile 1021; scripts 57 (`docs/reviews/production/scoped-delete/pnpm-verify.txt`).
+- **Live scoped deletion on `pocketqa-evidence`:** EXIT=0. The run created 3 objects and deleted exactly those 3. The listing was 26 objects before and 26 after, identical in keys, ETags and sizes. Deleting a pre-existing key by name was refused (`docs/reviews/production/live/r2-scoped-delete.txt`).
+- **Production start smoke:** health 200; `/config` gives firebase, r2, `testCredits: false` and `devnetTransfers: false`. It was stopped afterwards and created no data (`docs/reviews/production/live/prod-start-smoke.txt`).
+

@@ -1,0 +1,33 @@
+Live scoped-deletion check (A5, Hamza 2026-10-04) on pocketqa-evidence. Lead, 2026-10-04T20:47:28Z.
+$ git rev-parse HEAD
+2adea53d649e97409e85bf63180548d5294f328e
+$ node run-live-r2-delete.cjs <worktree>   # loads ~/.config/pocketqa/r2.env into the child env only; redacts account id, key pair and signatures
+
+> @pocket-qa/api@0.1.0 test:live /Users/hamzadiaz/Projects/pocket-qa/.worktrees/web-launch/apps/api
+> vitest run --config vitest.live.config.ts -- test-live/r2-scoped-delete.live.test.ts
+
+
+ RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/web-launch/apps/api
+
+ ↓ test-live/r2.live.test.ts (5 tests | 5 skipped)
+ ↓ test-live/firebase.live.test.ts (1 test | 1 skipped)
+stdout | test-live/r2-scoped-delete.live.test.ts > live R2: scoped deletion of app-created objects only > staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged
+LIVE_R2_DELETE_BEFORE 26 objects
+
+stdout | test-live/r2-scoped-delete.live.test.ts > live R2: scoped deletion of app-created objects only > staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged
+LIVE_R2_DELETE_AFTER 26 objects
+
+stdout | test-live/r2-scoped-delete.live.test.ts > live R2: scoped deletion of app-created objects only
+LIVE_R2_DELETE_CREATED ["quarantine/d9ba47b4-3cc9-4831-be18-34959446ccc6","evidence/e1f3259b-6526-4ac6-a1a9-0e43e15a1472","quarantine/54c10729-47db-4369-b5da-8e86aa07af01"]
+LIVE_R2_DELETE_DELETED ["quarantine/d9ba47b4-3cc9-4831-be18-34959446ccc6","quarantine/54c10729-47db-4369-b5da-8e86aa07af01","evidence/e1f3259b-6526-4ac6-a1a9-0e43e15a1472"]
+
+ ✓ test-live/r2-scoped-delete.live.test.ts (1 test) 2443ms
+   ✓ live R2: scoped deletion of app-created objects only (1)
+     ✓ staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged 2438ms
+
+ Test Files  1 passed | 2 skipped (3)
+      Tests  1 passed | 6 skipped (7)
+   Start at  22:47:29
+   Duration  2.71s (tests 77%, import 14%, transform 9%)
+
+EXIT=0
