@@ -3,7 +3,7 @@
 export { causticDelay, entranceDelay, ENTRANCE_WINDOW, joinWave, type EntranceStep, type Wave } from './entrance';
 export { usePressMotion } from './press';
 // Integration-pending (not wired into a screen yet): NumberRoll (S3 credit roll), BreathingCore and
-// useLiveBreath (S2 recorder), jsStackScreenOptions (needs react-native-gesture-handler, ADR 0005).
+// useLiveBreath (S2 recorder), jsStackScreenOptions (needs react-native-gesture-handler, ADR 0006).
 export { canRoll, groupDigits, NumberRoll, planRoll, type RollColumn, type RollPart, type RollPlan } from './NumberRoll';
 export { BreathingCore, CORE_IDLE_OPACITY, LiveLed, liveLevels, useLiveBreath, type LiveBreath, type LiveLevels } from './BreathingCore';
 export { SHEET_CLEARANCE, useSheetMotion, type SheetMotion } from './sheet';

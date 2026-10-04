@@ -1,4 +1,4 @@
-// Screen-level Lens patterns (Direction A v2 boards, CONSISTENCY.md round 4; ADR 0005).
+// Screen-level Lens patterns (Direction A v2 boards, CONSISTENCY.md round 4; ADR 0006).
 //
 // Each pattern is the one implementation of an element that recurs across the screen boards,
 // composed from the glass, icons, motion and ui primitives. Patterns take the data the screens
@@ -13,14 +13,14 @@
 // status, spinner, icon, focus), never '../index', so the kit can compose them without a cycle.
 // Integration-pending: screens adopt the rest in the screen phase.
 
-export { Amount, Byline, Clauses, CLAUSE_SEPARATOR, DateText, Meta, MINUS, signedAmount } from './type';
+export { Amount, Byline, ClauseDot, Clauses, CLAUSE_SEPARATOR, DateText, Meta, MINUS, signedAmount } from './type';
 export { CommitUplight, MODE_B_HEIGHT, PASS_LEAVE_AFTER, PASS_MIN_AFTER_PRESS, UnderGlow, useCommitUplight, type CommitStatus } from './light';
-export { RewardWell, type RewardWellProps } from './RewardWell';
+export { RewardWell, rewardPhrase, type RewardWellProps } from './RewardWell';
 export { BalanceHero, creditsSuffix, type BalanceHeroProps } from './BalanceHero';
 export { plural, StudyCard, type StudyCardProps } from './StudyCard';
 export { Hairline, ListCard, ListRow, type ListRowProps } from './ListRow';
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader';
-export { KeyFigure, KeyValue, KeyValueList, type KeyValueProps } from './KeyValue';
+export { KeyFigure, KeyValue, KeyValueList, type KeyValueProps, type ValueStyle } from './KeyValue';
 export { TaskList, type TaskItem, type TaskListProps } from './TaskList';
 export {
   AuditGroove,
@@ -37,7 +37,7 @@ export {
   type TimelineGroup,
 } from './Timeline';
 export { MeterSwatch, PipCanvas, type MeterMaterial, type PipCell } from './meter';
-export { BAR_WIDTH, BudgetMeter, layoutPips, PIP_GAP, planBudgetMeter, planMeter, SlotMeter, type MeterPlan, type MeterStatus, type SlotMeterProps } from './SlotMeter';
+export { BAR_WIDTH, BudgetMeter, layoutPips, PIP_GAP, planBudgetBar, planBudgetMeter, planMeter, SlotMeter, type MeterPlan, type MeterStatus, type SlotMeterProps } from './SlotMeter';
 export { RecordControl, type RecordControlProps } from './RecordControl';
 export { ClipRow, clipPill, ReviewNotice, type ClipRowProps, type ClipState } from './ClipRow';
 export { GlideList } from './GlideList';

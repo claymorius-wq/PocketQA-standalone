@@ -24,6 +24,11 @@ test('email sign-up → verify → sign in → choose a role → app; the sessio
   await page.getByTestId('sign-up-password').fill(pw);
   await page.getByTestId('sign-up-submit').click();
   await expect(page.getByTestId('sign-up-verify')).toContainText('Check your email');
+  // The instructions are the notice's own body text: bare text in a View showed in the browser's
+  // default black (and is not drawn at all on native).
+  const verifyBody = page.getByTestId('sign-up-verify').getByText(/We sent a verification link to/);
+  await expect(verifyBody).toBeVisible();
+  expect(await verifyBody.evaluate((e) => getComputedStyle(e).color)).not.toBe('rgb(0, 0, 0)');
 
   // Not verified yet: signing in is refused with an actionable message.
   await page.goto('/sign-in');

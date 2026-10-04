@@ -4,7 +4,7 @@ import { DUR, EASE, MOTION_DISTANCE, MOTION_LEVEL, type EaseName, type Motion } 
 
 // Navigator presets (Direction A §11.3). The app's navigators run `animation: 'none'` and each
 // arriving screen plays its own push / back / tab / replace on the UI thread (src/motion/entrance.ts,
-// ADR 0005). This JS-stack preset is kept as the option should the app move to expo-router/js-stack.
+// ADR 0006). This JS-stack preset is kept as the option should the app move to expo-router/js-stack.
 // React Navigation animates JS-stack cards with React Native's Animated and the native driver, so
 // it uses React Native's own Easing.bezier with the same Lens curves, not Reanimated's.
 

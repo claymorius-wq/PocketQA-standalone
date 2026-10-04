@@ -28,8 +28,11 @@ import { GradientDef, HIDDEN, PASS_THROUGH, useSvgId } from './paint';
  * Pilot: static 0.35 (sign-in) or 0.55 (commit sheet), rising over 560ms after `delay`. U1 at rest, U7 open.
  * Tail: a Commit pass handed off mid-way (U1 → the first tab, §M3): from 1 straight down to 0 over
  * 700ms ease-lens, with the motes. Reduced motion: nothing (Commit shows nothing).
+ * Land: the tail of a pass that played elsewhere landing on its subject's uplit layer (C4 `lq-land`:
+ * the Budget card after Publish, the Decision notice after Approve, the consent card after U2):
+ * 0 → 0.6 over 240ms ease-lens, → 0 over 700ms ease-lens. No motes. Reduced motion: nothing.
  */
-export type UplightGrade = 'commit' | 'earned' | 'live' | 'pilot' | 'tail';
+export type UplightGrade = 'commit' | 'earned' | 'live' | 'pilot' | 'tail' | 'land';
 
 export type UplightOptions = {
   /** Pilot level: UPLIGHT.pilot.signIn (0.35, default) or UPLIGHT.pilot.sheet (0.55). */
@@ -38,6 +41,11 @@ export type UplightOptions = {
   delay?: number;
   /** Earned / pilot: start at the resting value with no rise (a screen that opens already approved). */
   startAtRest?: boolean;
+  /**
+   * A change replays the moment while it stays active (Commit, Tail, Land): pass a counter that the
+   * screen bumps once per hand-off, e.g. each in-session approval that lands on the same notice.
+   */
+  replay?: number;
 };
 
 export type Uplight = {
@@ -63,7 +71,7 @@ export function useUplight(grade: UplightGrade, active: boolean, options: Upligh
   const u = useSharedValue(0);
   const scaleY = useSharedValue(1);
   const [pass, setPass] = useState(0);
-  const { level = UPLIGHT.pilot.signIn, delay = 0, startAtRest = false } = options;
+  const { level = UPLIGHT.pilot.signIn, delay = 0, startAtRest = false, replay = 0 } = options;
   const first = useRef(true);
 
   // The ground dims for the brightest registered moment; a dark one (u = 0) never counts.
@@ -117,6 +125,14 @@ export function useUplight(grade: UplightGrade, active: boolean, options: Upligh
         scaleY.value = grow;
         u.value = withDelay(delay, withTiming(rest, motion.timing.rise));
         break;
+      case 'land':
+        scaleY.value = 1;
+        u.value = withSequence(
+          withTiming(0, { duration: 0 }),
+          withDelay(delay, withTiming(UPLIGHT.land.peak, { ...motion.timing.swap, duration: UPLIGHT.land.rise })),
+          withTiming(0, { ...motion.timing.settle, duration: UPLIGHT.land.fall }),
+        );
+        break;
       case 'tail':
         scaleY.value = 1;
         u.value = withSequence(withTiming(1, { duration: 0 }), withDelay(delay, withTiming(0, motion.timing.settle)));
@@ -132,7 +148,7 @@ export function useUplight(grade: UplightGrade, active: boolean, options: Upligh
         break;
     }
     // u and scaleY are stable shared values.
-  }, [active, grade, level, delay, enabled, motion, startAtRest, u, scaleY]);
+  }, [active, grade, level, delay, enabled, motion, startAtRest, replay, u, scaleY]);
 
   useEffect(
     () => () => {
@@ -165,7 +181,7 @@ export type UplightFloorProps = {
  * it sits under the content; its opacity is u and it grows from the bottom edge.
  */
 export function UplightFloor({ light, x = 0.5, height: asked = 300, motes = true, style }: UplightFloorProps) {
-  const { glass, colors, motion } = useTheme();
+  const { glass } = useTheme();
   const height = Math.max(MIN_FLOOR_HEIGHT, asked);
   const id = useSvgId('uf');
   const [w, setW] = useState(0);
@@ -190,10 +206,26 @@ export function UplightFloor({ light, x = 0.5, height: asked = 300, motes = true
           ))}
         </Svg>
       ) : null}
-      {motes && motion.play.motes
-        ? glass.uplight.motes.map(([mx, my, d], i) => <Mote key={i} index={i} pass={light.pass} x={mx} y={my} d={d} color={colors.upSource} />)
-        : null}
+      {motes ? <UplightMotes light={light} /> : null}
     </Animated.View>
+  );
+}
+
+/**
+ * The five Commit motes (§10.3, CONSISTENCY §U): each rises 6dp, 0 → 0.6 → 0 over 700ms ease-lens,
+ * from +160 + 40i, once per pass (`light.pass`). Never drawn at rest, never in Earned, Live or Pilot,
+ * never looping. Positions are fractions of the parent box: place it inside the floor (Mode B) or
+ * the under-glow (Mode A, U2). Off under reduced motion and in light.
+ */
+export function UplightMotes({ light }: { light: Uplight }) {
+  const { glass, colors, motion } = useTheme();
+  if (!light.enabled || !motion.play.motes) return null;
+  return (
+    <>
+      {glass.uplight.motes.map(([mx, my, d], i) => (
+        <Mote key={i} index={i} pass={light.pass} x={mx} y={my} d={d} color={colors.upSource} />
+      ))}
+    </>
   );
 }
 

@@ -35,7 +35,7 @@ export type TimelineEntry = {
   keyVerb?: string;
   /** A sans 600 title instead of the mono key (status timelines). */
   title?: string;
-  /** Right-aligned on the key line, the bare date (C6). */
+  /** Right-aligned on the key line, the bare date (C6); under a day label, the time alone. */
   iso?: string | null;
   /** The reason sentence, Instrument Sans 15/22. */
   body?: string;
@@ -103,6 +103,7 @@ export function Timeline({ groups, testID, draw = true }: { groups: readonly Tim
                   groove={last ? null : GROOVE_TOP + (nextHasLabel ? DAY_LABEL : 0)}
                   animate={play && i < DRAW_LIMIT}
                   lit={drawing && i < DRAW_LIMIT}
+                  timeOnly={!!g.label}
                 />
               );
             })}
@@ -122,7 +123,12 @@ function DayLabel({ text }: { text: string }) {
   );
 }
 
-function Entry({ entry: e, index, divided, groove, animate, lit }: { entry: TimelineEntry; index: number; divided: boolean; groove: number | null; animate: boolean; lit: boolean }) {
+/** The time of day alone ("2:05 PM"), for an entry under its day label (A-Audit). */
+export function timeOfDay(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function Entry({ entry: e, index, divided, groove, animate, lit, timeOnly }: { entry: TimelineEntry; index: number; divided: boolean; groove: number | null; animate: boolean; lit: boolean; timeOnly: boolean }) {
   const { colors, glass, type, motion } = useTheme();
   const delay = DRAW_FROM + STAGGER.step * Math.min(index, STAGGER.maxSteps - 1);
   const reveal = useSharedValue(animate ? 0 : 1);
@@ -170,7 +176,8 @@ function Entry({ entry: e, index, divided, groove, animate, lit }: { entry: Time
           ) : (
             <RNText style={[type.heading, styles.title, { color: colors.text }]}>{e.title}</RNText>
           )}
-          {e.iso ? <Meta style={styles.date}>{when(e.iso)}</Meta> : null}
+          {/* Under a day label the date is already said: the key row carries the time alone; the entry's accessibility label keeps the full date. */}
+          {e.iso ? <Meta style={styles.date}>{timeOnly ? timeOfDay(e.iso) : when(e.iso)}</Meta> : null}
         </View>
         {e.body || e.bodyTag ? (
           <RNText style={[type.body, styles.body, { color: colors.text }]}>

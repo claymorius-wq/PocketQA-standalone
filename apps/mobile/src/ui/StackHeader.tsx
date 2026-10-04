@@ -1,7 +1,7 @@
 import type { NativeStackHeaderProps, NativeStackNavigationOptions } from 'expo-router/native-stack';
 import { getHeaderTitle } from 'expo-router/react-navigation';
 import { useContext } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientRule } from '../glass/paint';
@@ -24,12 +24,17 @@ import { ArrivalContext, arrivalOf } from './screen';
 // it returns with `back`. Root-stack screens always push: no layout sets an ArrivalContext around
 // them and no screen passes Screen `entrance` (a screen that ever does must set the context too).
 // It paints nothing behind itself: the screen's own Ground runs under it to the top edge (one key
-// light; a sheet or an Uplight dims the pool under the header too), and Screen starts its scroll
-// view below it (HeaderHeightContext), so content never scrolls under it.
+// light; a sheet or an Uplight dims the pool under the header too). Screen starts its content
+// below it (HeaderHeightContext) and lets it scroll up under it, behind the HeaderScrim: a strip of
+// that same ground, opaque through the whole Back / title row and fading out only below it, so
+// nothing scrolled shows through the controls and content dissolves into the ground instead of
+// being cut.
 
 const ROW_HEIGHT = 44;
 const ROW_TOP = 6; // below the status band: the board's header top is 50 under a 44 reserve
 const ROW_BOTTOM = 4;
+/** The ground under the 44dp control row, inside the header's height (Screen's HeaderScrim is solid down to the row's bottom). */
+export const HEADER_ROW_BOTTOM = ROW_BOTTOM;
 const EDGE = 16;
 const BACK_RADIUS = 16; // the focus ring follows it (C1)
 const DIVIDER = { height: 22, color: '#D6E0FF', peak: 0.3 } as const;
@@ -46,34 +51,44 @@ export function LensStackHeader({ navigation, route, options, back }: NativeStac
   const press = usePressMotion();
   const arrival = useArrival(arrivalOf(useContext(ArrivalContext)) ?? 'push', navigation as unknown as ArrivalNavigation, route.key);
   const title = getHeaderTitle(options, route.name);
+  // Back shows only when there is history to return to (`back`), exactly as main's native header:
+  // a screen reached by a deep link or a web refresh shows the title alone. No new navigation path.
   // The same status-band rule as the tab roots' titles (Screen): the boards' 44 whatever the device inset.
   const top = Math.max(insets.top, layout.statusBarReserve) + ROW_TOP;
   return (
-    <View style={[styles.bar, { paddingTop: top, paddingLeft: EDGE + insets.left, paddingRight: EDGE + insets.right }]}>
-      <Animated.View style={[styles.row, arrival.style]}>
-        {back ? (
-          <>
-            <FocusPressable
-              ringRadius={BACK_RADIUS}
-              onPress={() => navigation.goBack()}
-              onPressIn={press.pressIn}
-              onPressOut={press.pressOut}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              style={styles.back}
-            >
-              <Animated.View style={[styles.backContent, press.motionStyle]}>
-                <GlassTile name="back" size="header" />
-                <Text style={[type.button, { color: colors.primary }]}>Back</Text>
-              </Animated.View>
-            </FocusPressable>
-            <HeaderDivider />
-          </>
-        ) : null}
-        <Text accessibilityRole="header" numberOfLines={1} style={[type.headerTitle, styles.title, { color: colors.text }]}>
-          {title}
-        </Text>
-      </Animated.View>
+    <View style={[styles.bar, { paddingTop: top, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      {/* The push arrival slides the row in from +24, past the right edge; on web this frame clips it
+          there, so mobile web never widens its layout viewport (that left a white strip after scrolling).
+          The frame spans the full width and reaches CLIP_SLACK above and below the row, so the focus ring
+          is not cut (the back tile's soft shadow tail, about 26 below it, is cut after 12 on web only);
+          its negative margins keep the header's height unchanged. Native has no viewport to widen and
+          does not clip. */}
+      <View style={styles.clip}>
+        <Animated.View style={[styles.row, arrival.style]}>
+          {back ? (
+            <>
+              <FocusPressable
+                ringRadius={BACK_RADIUS}
+                onPress={() => navigation.goBack()}
+                onPressIn={press.pressIn}
+                onPressOut={press.pressOut}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                style={styles.back}
+              >
+                <Animated.View style={[styles.backContent, press.motionStyle]}>
+                  <GlassTile name="back" size="header" />
+                  <Text style={[type.button, { color: colors.primary }]}>Back</Text>
+                </Animated.View>
+              </FocusPressable>
+              <HeaderDivider />
+            </>
+          ) : null}
+          <Text accessibilityRole="header" numberOfLines={1} style={[type.headerTitle, styles.title, { color: colors.text }]}>
+            {title}
+          </Text>
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -102,8 +117,12 @@ export function lensStackScreenOptions(colors: Palette): NativeStackNavigationOp
   };
 }
 
+/** Room the clip frame keeps above and below the row for the focus ring (web clips; native does not). */
+const CLIP_SLACK = 12;
+
 const styles = StyleSheet.create({
   bar: { paddingBottom: ROW_BOTTOM },
+  clip: { overflow: Platform.OS === 'web' ? 'hidden' : 'visible', paddingHorizontal: EDGE, paddingVertical: CLIP_SLACK, marginVertical: -CLIP_SLACK },
   row: { height: ROW_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { minHeight: ROW_HEIGHT, justifyContent: 'center', paddingRight: 8 },
   backContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },

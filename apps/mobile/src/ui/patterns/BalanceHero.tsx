@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text as RNText, View } from 'react-native';
+import { StyleSheet, Text as RNText, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { GlassSurface, useUplight } from '../../glass';
 import { HIDDEN, PASS_THROUGH } from '../../glass/paint';
@@ -33,6 +33,11 @@ export type BalanceHeroProps = {
   testID?: string;
   /** The numeral; its text is exactly "1,000 test credits" at rest (e2e `credit-balance`). */
   balanceTestID?: string;
+  /**
+   * The outer wrapper: e.g. `{ marginBottom }` where the next element is not History (Budget puts
+   * its top-up card 16 below). Default: the D1 clearance, 32 while lit and 24 otherwise.
+   */
+  style?: StyleProp<ViewStyle>;
 };
 
 /**
@@ -43,7 +48,7 @@ export type BalanceHeroProps = {
  * fades in with the light, so no text shadow animates per frame. Keep ≥ 32dp below it while lit.
  * Reduced motion: the light shows at its resting 0.45 and the value lands at once.
  */
-export function BalanceHero({ balance, label = 'Balance', disclaimer, earned = false, seen = false, play = true, testID = 'balance-card', balanceTestID = 'credit-balance' }: BalanceHeroProps) {
+export function BalanceHero({ balance, label = 'Balance', disclaimer, earned = false, seen = false, play = true, testID = 'balance-card', balanceTestID = 'credit-balance', style }: BalanceHeroProps) {
   const { colors, glass, type } = useTheme();
   const light = useUplight('earned', earned, { startAtRest: seen });
   const litStyle = useAnimatedStyle(() => ({ opacity: light.u.value }));
@@ -51,7 +56,7 @@ export function BalanceHero({ balance, label = 'Balance', disclaimer, earned = f
   return (
     // D1, §U: 32dp of ground below the card while it is lit (the under-glow spills 28 below it), 24
     // otherwise, before History; the screen's list gap already gives part of it.
-    <View style={[styles.wrap, (earned || seen) && glass.enabled ? styles.litClearance : styles.clearance]}>
+    <View style={[styles.wrap, (earned || seen) && glass.enabled ? styles.litClearance : styles.clearance, style]}>
       <UnderGlow light={light} />
       <GlassSurface level="card" k={1} uplight={light.enabled ? light.u : undefined} style={styles.card} testID={testID}>
         <Text variant="label" tone="muted">{label.toUpperCase()}</Text>

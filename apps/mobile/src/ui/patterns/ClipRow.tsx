@@ -59,7 +59,7 @@ export function ClipRow({ name, mimeType, size, state, error, preview, onKeep, o
   const canKeep = state === 'recorded' && !!onKeep;
   const canRemove = state !== 'uploading' && state !== 'uploaded' && state !== 'removed' && !!onRemove;
   return (
-    <GlassSurface level="card" k={0.8} testID={testID ?? `segment-${state}`} accessibilityLabel={name} style={styles.card}>
+    <GlassSurface level="card" k={0.8} testID={testID ?? `segment-${state}`} role="group" accessibilityLabel={name} style={styles.card}>
       <View style={styles.head}>
         <StatusPill status={pill.status} label={pill.label} />
         <Clauses parts={[<Meta key="t">{mimeType}</Meta>, size ? <Meta key="s">{bytes(size)}</Meta> : null]} style={styles.readout} numberOfLines={1} />

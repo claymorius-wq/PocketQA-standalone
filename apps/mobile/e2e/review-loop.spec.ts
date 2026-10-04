@@ -93,7 +93,10 @@ test('builder creates and funds a study, tester submits consented evidence, buil
   await expect(tester.getByTestId('reward-disclaimer')).toContainText('Not guaranteed');
   await expect(tester.getByTestId('recording-unavailable')).toBeVisible();
   await expect(tester.getByTestId('consent-submit')).toBeDisabled();
+  // The web build exposes the checkbox state to assistive tech (react-native-web maps no accessibilityState).
+  await expect(tester.getByTestId('consent-checkbox')).toHaveAttribute('aria-checked', 'false');
   await tester.getByTestId('consent-checkbox').click();
+  await expect(tester.getByTestId('consent-checkbox')).toHaveAttribute('aria-checked', 'true');
   await shot(tester, 'tester-consent-dark');
   await tester.getByTestId('consent-submit').click();
 
@@ -199,8 +202,10 @@ test('theme switch persists and unauthenticated users land on sign-in', async ({
   await expect(page.getByTestId('sign-in-screen')).toBeVisible();
   await signUp(page, 'builder', 'Theo');
   await page.getByTestId('tab-builder-settings').click();
+  // The light system scheme first, so the dark reading below is the override's.
   expect(await effectiveBackground(page)).toBe(LIGHT_GROUND);
   await page.getByTestId('theme-dark').click();
+  // The dark Lens ground, now and after a reload.
   await expect.poll(() => effectiveBackground(page)).toBe(DARK_GROUND);
   await shot(page, 'builder-settings-dark-override');
   await page.reload();
@@ -220,6 +225,9 @@ test('offline state when the API is unreachable', async ({ browser }) => {
   await shot(page, 'tester-offline-light');
   await ctx.unroute('http://127.0.0.1:8787/**');
   await page.getByTestId('retry-button').click();
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  // Scoped to My work: Discover stays mounted in its tab scene, and when the new tester matches no
+  // study it shows its own empty-state too (then an unscoped lookup finds two and fails, as it does
+  // on main whenever this test runs alone).
+  await expect(page.getByTestId('work-screen').getByTestId('empty-state')).toBeVisible();
   await ctx.close();
 });

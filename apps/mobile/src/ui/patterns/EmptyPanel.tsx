@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import type { Tone } from '../../theme/tokens';
 import { Button } from '../button';
 import { KitIconView, type KitIcon } from '../icon';
+import { PRETTY_BREAK, PRETTY_WRAP } from '../text';
 
 /** A glyph by name, or the Lucide/glyph component the screens already pass the kit. */
 export type StateIcon = GlyphName | KitIcon;
@@ -27,6 +28,8 @@ export type EmptyPanelProps = {
    * lens in a 64dp row. `page`: no card, the lens over the text (Session "You withdrew").
    */
   variant?: 'card' | 'row' | 'page';
+  /** The action fills the card's width (A-Work "Find studies") instead of sizing to its label. */
+  actionStretch?: boolean;
   testID?: string;
 };
 
@@ -36,13 +39,13 @@ export type EmptyPanelProps = {
  * body 14/20 muted. It resolves once (S1) on mount; empty is a fact, not an event, so it is never
  * lit and never loops. One lens per screen: the screen's header lens steps aside while it shows.
  */
-export function EmptyPanel({ icon, title, body, action, variant = 'card', testID = 'empty-state' }: EmptyPanelProps) {
+export function EmptyPanel({ icon, title, body, action, variant = 'card', actionStretch = false, testID = 'empty-state' }: EmptyPanelProps) {
   const { colors, type } = useTheme();
   const lens = variant === 'row' ? 54 : 72;
   const text = (
     <View style={[styles.text, variant === 'row' ? styles.rowText : null]}>
       <RNText accessibilityRole="header" style={[type.heading, { color: colors.text }]}>{title}</RNText>
-      <RNText style={[type.bodySm, { color: colors.textMuted }]}>{body}</RNText>
+      <RNText textBreakStrategy={PRETTY_BREAK} style={[type.bodySm, { color: colors.textMuted }, PRETTY_WRAP]}>{body}</RNText>
     </View>
   );
   const art = (
@@ -63,7 +66,7 @@ export function EmptyPanel({ icon, title, body, action, variant = 'card', testID
       <View testID={testID} style={styles.page}>
         {art}
         {text}
-        {action ? <View style={styles.action}>{action}</View> : null}
+        {action ? <View style={[styles.action, actionStretch ? styles.stretch : null]}>{action}</View> : null}
       </View>
     );
   }
@@ -73,7 +76,7 @@ export function EmptyPanel({ icon, title, body, action, variant = 'card', testID
         {art}
         {text}
       </View>
-      {action ? <View style={styles.action}>{action}</View> : null}
+      {action ? <View style={[styles.action, actionStretch ? styles.stretch : null]}>{action}</View> : null}
     </GlassSurface>
   );
 }
@@ -81,7 +84,10 @@ export function EmptyPanel({ icon, title, body, action, variant = 'card', testID
 export type ErrorPanelProps = {
   /** The failure's glyph: offline, lock, fileWarning, alert. */
   glyph: GlyphName;
-  /** The rim tint carries the meaning (danger by default); the glyph is never recoloured. */
+  /**
+   * The rim tint carries the meaning (danger by default; A-States 04: offline info, not allowed
+   * neutral, not found and other failures warning); the glyph is never recoloured.
+   */
   tint?: Tone;
   title: string;
   /** The server's message where there is one, verbatim. */
@@ -98,28 +104,32 @@ export type ErrorPanelProps = {
 /**
  * A failed load (A-States 04, "No lens for a failure"): the lens means looking, and an error means
  * the app could not look, so the card takes a 54dp glyph tile with a tinted rim instead and the
- * title steps up to 19/24. Retry is secondary, never primary. Never lit, never shaken: the tint
- * lives in the rim only.
+ * title steps up to 19/24. The tile tops the text (16 apart, the text 4 down); Retry is secondary,
+ * never primary, carries the refresh glyph and sits under the text column. Never lit, never
+ * shaken: the tint lives in the rim only.
  */
 export function ErrorPanel({ glyph, tint = 'danger', title, body, onRetry, retryLabel = 'Retry', retrying = false, retryTestID = 'retry-button', testID = 'error-state' }: ErrorPanelProps) {
   const { colors, type } = useTheme();
   return (
     <GlassSurface level="card" k={0.8} testID={testID} style={styles.card}>
-      <View style={styles.cardRow}>
+      <View style={styles.errorRow}>
         <GlassTile name={glyph} size="hero" tint={tint} />
-        <View style={styles.text}>
+        <View style={[styles.text, styles.errorText]}>
           <RNText accessibilityRole="header" style={[type.title, { color: colors.text }]}>{title}</RNText>
-          <RNText style={[type.bodySm, { color: colors.textMuted }]}>{body}</RNText>
+          <RNText textBreakStrategy={PRETTY_BREAK} style={[type.bodySm, { color: colors.textMuted }, PRETTY_WRAP]}>{body}</RNText>
         </View>
       </View>
       {onRetry ? (
         <View style={styles.retry}>
-          <Button label={retryLabel} variant="secondary" onPress={onRetry} loading={retrying} testID={retryTestID} />
+          <Button label={retryLabel} icon="refresh" variant="secondary" onPress={onRetry} loading={retrying} testID={retryTestID} />
         </View>
       ) : null}
     </GlassSurface>
   );
 }
+
+const ERROR_TILE = 54;
+const ERROR_GAP = 16;
 
 const styles = StyleSheet.create({
   // Board padding 20 18 20 20 inside the rim; 18 between lens and text; at least 136 tall.
@@ -130,5 +140,9 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 64, paddingVertical: 5, paddingHorizontal: 16 },
   page: { gap: 14, paddingVertical: 32, paddingHorizontal: 24 },
   action: { marginTop: 18, alignSelf: 'flex-start' },
-  retry: { marginTop: 16, alignSelf: 'flex-start' },
+  stretch: { alignSelf: 'stretch' },
+  // A-States 04: the tile row, then Retry under the text column (tile 54 + gap 16).
+  errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: ERROR_GAP },
+  errorText: { paddingTop: 4 },
+  retry: { marginTop: 16, marginLeft: ERROR_TILE + ERROR_GAP, alignSelf: 'flex-start' },
 });

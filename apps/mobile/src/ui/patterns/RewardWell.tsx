@@ -14,11 +14,18 @@ export type RewardWellProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+/** The reward as one spoken phrase ("50 test credits if approved"), for the hint of the card around a RewardWell. */
+export function rewardPhrase(amount: number, unit: RewardWellProps['unit'] = 'test credits'): string {
+  const lines = typeof unit === 'string' ? [unit] : unit;
+  return `${amount.toLocaleString('en-US')} ${lines.join(' ')}`;
+}
+
 /**
  * The reward numeral recessed in a lens well (A-Discover study card, A-Work session card;
  * Direction A §5 `numeral`, §4 L-1 Well): Red Hat Display 300 38/42 in `numeral` on the well
  * floor, the unit 13/18 muted. Numerals are recessed, never lit: only the U5/U6 balance is lit
- * (BalanceHero). Screen readers hear one phrase, "50 test credits if approved".
+ * (BalanceHero). The well always sits inside a pressable card, which is the one accessibility
+ * stop: the card's hint carries `rewardPhrase()`, so the well is never a second, inert stop.
  */
 export function RewardWell({ amount, unit = 'test credits', testID, style }: RewardWellProps) {
   const { colors, type } = useTheme();
@@ -26,13 +33,7 @@ export function RewardWell({ amount, unit = 'test credits', testID, style }: Rew
   const stacked = lines.length > 1;
   const value = amount.toLocaleString('en-US');
   return (
-    <Well
-      testID={testID}
-      accessible
-      accessibilityRole="text"
-      accessibilityLabel={`${value} ${lines.join(' ')}`}
-      style={[styles.well, style]}
-    >
+    <Well testID={testID} style={[styles.well, style]}>
       <View style={[styles.row, stacked ? styles.center : styles.baseline]}>
         <RNText style={[type.numeral, { color: colors.numeral }]}>{value}</RNText>
         {stacked ? (

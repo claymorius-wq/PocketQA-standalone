@@ -1,0 +1,55 @@
+# HEAD ad99009 (fix(ui): apply the r2 QA review (3 P3s)), 2026-10-04T11:21:21Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm --filter @pocket-qa/mobile test
+
+> @pocket-qa/mobile@0.1.0 test <repo>\apps\mobile
+> jest --ci
+
+PASS src/screens/__tests__/adminAudit.test.ts (59.178 s)
+PASS __tests__/auth-layout.test.tsx (62.336 s)
+PASS src/ui/__tests__/chrome.test.tsx (65.571 s)
+PASS src/ui/patterns/__tests__/patterns.test.tsx (66.905 s)
+PASS src/ui/__tests__/shared.test.tsx (67.18 s)
+PASS src/glass/__tests__/glass.test.tsx (5.929 s)
+PASS src/screens/__tests__/StuckQueue.test.tsx (69.006 s)
+PASS __tests__/work-screen.test.tsx (68.769 s)
+PASS __tests__/direct-upload.test.ts
+PASS __tests__/contrast.test.ts
+PASS __tests__/discover.test.tsx (70.096 s)
+PASS __tests__/study-detail.test.tsx (69.892 s)
+PASS __tests__/builder-studies.test.tsx (70.437 s)
+PASS __tests__/copy.test.ts
+PASS src/screens/__tests__/CreditsScreen.test.tsx (70.89 s)
+PASS __tests__/report-signature.test.ts
+PASS __tests__/signature.test.ts
+PASS src/motion/__tests__/motion-primitives.test.tsx
+PASS __tests__/upload-queue.test.ts
+PASS __tests__/focus-refetch.test.tsx
+PASS __tests__/wallet-web-flows.test.ts
+PASS src/ui/__tests__/ui.test.tsx (71.97 s)
+PASS __tests__/platform-modules.test.ts
+PASS __tests__/capability.test.ts
+PASS __tests__/wallet-errors.test.ts
+PASS src/motion/__tests__/arrival.test.tsx
+PASS __tests__/firebase-errors.test.ts
+PASS __tests__/managed-session.test.ts
+PASS __tests__/footer.test.ts
+PASS __tests__/token-refresh.test.ts
+PASS __tests__/wallet-standard.test.ts
+PASS __tests__/session-restore.test.ts
+PASS __tests__/demo-accounts.test.ts
+PASS __tests__/motion.test.tsx
+PASS src/screens/__tests__/settings.test.tsx (75.293 s)
+PASS src/icons/__tests__/icons.test.tsx (15.594 s)
+PASS __tests__/review-screen.test.tsx (76.702 s)
+PASS __tests__/builder-study.test.tsx (78.027 s)
+PASS __tests__/new-study.test.tsx (78.27 s)
+PASS __tests__/admin-screens.test.tsx (79.247 s)
+PASS __tests__/participation-session.test.tsx (83.055 s)
+PASS __tests__/auth-screens.test.tsx (85.592 s)
+
+Test Suites: 42 passed, 42 total
+Tests:       983 passed, 983 total
+Snapshots:   0 total
+Time:        88.893 s, estimated 119 s
+Ran all test suites.
+EXIT=0

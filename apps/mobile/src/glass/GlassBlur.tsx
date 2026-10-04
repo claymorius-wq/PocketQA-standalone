@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import { useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useContext, useState, type ReactNode, type RefObject } from 'react';
 import { Platform, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { RecipeBody, ShadowLayer } from './layers';
@@ -12,6 +12,13 @@ import { cornerStyle, flatColor, flatRim, opaqueOver, splitShadows, useSvgId, ty
 // the ground), never a see-through panel over busy content.
 
 const WEB_BACKDROP = 'blur(24px)'; // the spec's CSS value; expo-blur's web view would add saturate(180%)
+
+/**
+ * The BlurTargetView holding the content behind an overlay, for every GlassBlur below it that is
+ * given no `blurTarget` of its own. Screen provides it to its `dock` (the dock floats outside the
+ * target it blurs; a GlassBlur inside its own target would blur itself).
+ */
+export const BlurTargetContext = createContext<RefObject<View | null> | null>(null);
 
 /** Whether a real backdrop blur can be drawn here. */
 export function blurAvailable(hasTarget: boolean): boolean {
@@ -28,7 +35,7 @@ export type GlassBlurProps = Omit<ViewProps, 'style'> & {
   /** Default: the overlay radius (26). Sheets pass 28 with corners="top". */
   radius?: number;
   corners?: Corners;
-  /** Android blur target: the BlurTargetView holding the content behind the overlay. */
+  /** Android blur target: the BlurTargetView holding the content behind the overlay (default: BlurTargetContext). */
   blurTarget?: RefObject<View | null>;
   /** false forces the solid fallback (e.g. a sheet in a Modal, whose window cannot see the target). */
   blur?: boolean;
@@ -39,6 +46,7 @@ export type GlassBlurProps = Omit<ViewProps, 'style'> & {
 /** The L3 overlay surface: backdrop blur + translucent gradient fill + masked rim + shadows. */
 export function GlassBlur({ radius, corners = 'all', blurTarget, blur = true, style, children, onLayout, ...viewProps }: GlassBlurProps) {
   const { glass, colors } = useTheme();
+  const contextTarget = useContext(BlurTargetContext);
   const id = useSvgId('gb');
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const handleLayout = (e: LayoutChangeEvent) => {
@@ -57,7 +65,7 @@ export function GlassBlur({ radius, corners = 'all', blurTarget, blur = true, st
     );
   }
 
-  const target = blurTarget;
+  const target = blurTarget ?? contextTarget ?? undefined;
   const live = blur && blurAvailable(!!target);
   const fill = live ? recipe.fill : recipe.fill.map((g) => opaqueOver(g, colors.background));
   const body = { ...recipe, fill };

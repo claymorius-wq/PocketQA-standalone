@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text as RNText, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { GlassSurface } from '../../glass';
+import { GlassSurface, Well } from '../../glass';
 import { HIDDEN } from '../../glass/paint';
 import { useTheme } from '../../theme/ThemeProvider';
 import { PipCanvas, useMeterChange, type MeterMaterial, type PipCell } from './meter';
@@ -133,25 +133,50 @@ export function planBudgetMeter({ slots, awarded, committed, available }: { slot
   return Array.from({ length: Math.max(0, slots) }, (_, i) => (i < awarded ? 'awarded' : i < awarded + committed ? 'filled' : i >= slots - available ? 'socket' : 'bare'));
 }
 
+/** Over 10 slots the budget meter is one bar: the shares as fractions of `width`, never rounded to nothing (6dp each). */
+export function planBudgetBar({ slots, awarded, committed, width }: { slots: number; awarded: number; committed: number; width: number }): PipCell[] {
+  const share = (n: number) => (n > 0 && slots > 0 ? Math.max(6, Math.round((width * n) / slots)) : 0);
+  const aw = Math.min(width, share(awarded));
+  const cw = Math.min(width - aw, share(committed));
+  return [...(aw > 0 ? [{ x: 0, w: aw, material: 'awarded' as const }] : []), ...(cw > 0 ? [{ x: aw, w: cw, material: 'filled' as const }] : [])];
+}
+
 /**
- * The budget card's full-width meter (A-BStudy): one 12dp pip per slot, coloured by where its
- * credits are (awarded, committed, available; credits released at close leave a bare slot).
- * The KeyValue rows above it carry the same materials as legend swatches. Counts are slots.
+ * The budget card's full-width meter (A-BStudy): up to 10 slots, one 12dp pip per slot, coloured
+ * by where its credits are (awarded, committed, available; a slot holding no credits, a draft's or
+ * one released at close, is a bare socket). Over 10 slots, one 12dp track (the Available well)
+ * with the awarded and committed shares over it. The KeyValue rows above it carry the same
+ * materials as legend swatches. Counts are slots.
  */
 export function BudgetMeter({ slots, awarded, committed, available, testID }: { slots: number; awarded: number; committed: number; available: number; testID?: string }) {
   const [width, setWidth] = useState(0);
-  const materials = planBudgetMeter({ slots, awarded, committed, available });
-  const fade = useMeterChange(materials.join());
+  const bar = slots > 10;
+  const materials = planBudgetMeter({ slots: bar ? 0 : slots, awarded, committed, available });
+  const fade = useMeterChange(bar ? `${slots}/${awarded}/${committed}` : materials.join());
   const onLayout = (e: LayoutChangeEvent) => {
-    const w = Math.floor(e.nativeEvent.layout.width) - 1;
+    const w = Math.floor(e.nativeEvent.layout.width) - (bar ? 0 : 1);
     setWidth((prev) => (prev === w ? prev : w));
   };
+  if (bar) {
+    const cells = width > 0 ? planBudgetBar({ slots, awarded, committed, width }) : [];
+    return (
+      <Animated.View {...HIDDEN} testID={testID} onLayout={onLayout} style={[styles.budgetBar, fade]}>
+        <Well radius={BUDGET_BAR / 2} style={StyleSheet.absoluteFill} />
+        {cells.length ? (
+          <View style={styles.budgetShares}>
+            <PipCanvas cells={cells} width={width} h={BUDGET_BAR} />
+          </View>
+        ) : null}
+      </Animated.View>
+    );
+  }
   return (
     <Animated.View {...HIDDEN} testID={testID} onLayout={onLayout} style={[styles.budget, fade]}>
       {width > 0 ? <PipCanvas cells={layoutPips(materials, width)} width={width} h={12} /> : null}
     </Animated.View>
   );
 }
+const BUDGET_BAR = 12;
 
 const styles = StyleSheet.create({
   // Board padding 8 14 11 inside the 1dp rim; readout and pips 8 apart.
@@ -164,4 +189,6 @@ const styles = StyleSheet.create({
   barLayer: { position: 'absolute', top: -1, bottom: -1, left: -1, right: -1, borderRadius: 3, transformOrigin: 'left' },
   barFilled: { borderTopWidth: 1, borderTopColor: 'rgba(220,230,255,0.5)' },
   budget: { height: 14, alignSelf: 'stretch' },
+  budgetBar: { height: BUDGET_BAR, alignSelf: 'stretch' },
+  budgetShares: { position: 'absolute', top: 0, left: 0 },
 });

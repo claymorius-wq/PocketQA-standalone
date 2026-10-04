@@ -1,20 +1,46 @@
 import { Redirect, Stack } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from '../../src/auth/SessionProvider';
 import { stampArrival } from '../../src/motion/entrance';
+import { disarmU1, u1Armed, u1PassAt } from '../../src/screens/authParts';
+import { useTheme } from '../../src/theme/ThemeProvider';
 import { ArrivalContext } from '../../src/ui';
+import { PASS_LEAVE_AFTER } from '../../src/ui/patterns';
 import { LENS_STACK_ANIMATION } from '../../src/ui/StackHeader';
 
 export default function AuthLayout() {
   const { ready, user } = useSession();
+  const { glass, motion } = useTheme();
   const signedIn = ready && !!user;
-  // Signed in (or up): the role's first tab opens with `replace` and finishes U1's Commit tail
-  // (§M3), read once by RoleTabs. Stamped from an effect, never during render; the redirect below
-  // takes a few renders to reach the tabs, well inside the stamp's TTL.
+  // The account the redirect was released for once U1's pass peaked, so a later sign-in holds again.
+  const [released, setReleased] = useState<typeof user>(null);
+  // A Sign in press that succeeded plays U1's Commit pass on Sign in: the redirect waits for the
+  // pass peak (+680 after it starts) and Sign in follows the link there (CONSISTENCY §M3). Timing
+  // only: the session is already accepted. Reduced motion and the flat theme play no pass, so they
+  // (and Sign up, and a restored session) leave at once.
+  const holdU1 = signedIn && released !== user && u1Armed() && glass.enabled && motion.play.uplightCommit;
+
+  // The role's first tab opens with `replace`, read once by RoleTabs: after a held Sign in it also
+  // finishes U1's Commit tail (§M3 hand-off `u1`); Sign up gets the plain replace (no Uplight).
+  // Stamped from an effect or a timer, never during render; the redirect takes a few renders to
+  // reach the tabs, well inside the stamp's TTL.
   useEffect(() => {
-    if (signedIn) stampArrival('replace', { handoff: 'u1' });
-  }, [signedIn, user]);
-  if (signedIn) return <Redirect href="/" />;
+    if (!signedIn || released === user) return;
+    if (!holdU1) {
+      stampArrival('replace');
+      disarmU1();
+      return;
+    }
+    const leaveAt = (u1PassAt() ?? Date.now()) + PASS_LEAVE_AFTER;
+    const t = setTimeout(() => {
+      stampArrival('replace', { handoff: 'u1' });
+      disarmU1();
+      setReleased(user);
+    }, Math.max(0, leaveAt - Date.now()));
+    return () => clearTimeout(t);
+  }, [signedIn, holdU1, user, released]);
+
+  if (signedIn && !holdU1) return <Redirect href="/" />;
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
