@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { AccessibilityInfo } from 'react-native';
@@ -218,6 +218,40 @@ describe('Disputes (claim cards)', () => {
     expect(mockApi).toHaveBeenLastCalledWith('resolveDispute', { params: { id: 'd2' }, body: { outcome: 'upheld', note: 'Upholding the rejection.' } });
   });
 
+  it('binds a resolution to what was confirmed: held offline, it still resolves its own dispute with its own verdict and note', async () => {
+    mockData.disputes.data = { items: [dispute({}), dispute({ id: 'd2', reason: 'The second claim.' })] };
+    await render(tree(<Disputes />, client));
+    await flush();
+    // A browser that reports offline holds the request; it is sent on reconnect.
+    onlineManager.setOnline(false);
+    try {
+      await fireEvent.press(screen.getAllByTestId('dispute-resolve')[0]!);
+      await flush(500);
+      await fireEvent.press(screen.getByTestId('dispute-outcome-overturned'));
+      await fireEvent.changeText(screen.getByTestId('dispute-note'), 'Overturning: the note covers it.');
+      mockApi.mockResolvedValueOnce(dispute({ status: 'resolved', outcome: 'overturned', resolutionNote: 'Overturning: the note covers it.' }));
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+      await flush(10);
+      expect(mockApi).not.toHaveBeenCalledWith('resolveDispute', expect.anything());
+      // After the pending escape Cancel closes; the other dispute's Resolve reopens the held resolution, as it was sent.
+      await flush(15_100);
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+      await flush(500);
+      await fireEvent.press(screen.getAllByTestId('dispute-resolve')[1]!);
+      await flush(500);
+      expect(screen.getByTestId('dispute-outcome-overturned')).toBeSelected();
+      expect(screen.getByTestId('dispute-note').props.value).toBe('Overturning: the note covers it.');
+      // Text typed now was never confirmed, so it is not what goes out.
+      await fireEvent.changeText(screen.getByTestId('dispute-note'), 'Typed after the confirm.');
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await flush(10);
+    await flush(10);
+    expect(mockApi).toHaveBeenCalledWith('resolveDispute', { params: { id: 'd1' }, body: { outcome: 'overturned', note: 'Overturning: the note covers it.' } });
+    expect(mockApi).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the sheet’s balance pose while it animates out after Cancel', async () => {
     mockData.disputes.data = { items: [dispute({})] };
     await render(tree(<Disputes />, client));
@@ -333,6 +367,40 @@ describe('Moderation (visibility ledger)', () => {
     expect(screen.getByTestId('confirm-ok')).toBeDisabled();
   });
 
+  it('binds a decision to what was confirmed: held offline, it still moderates its own study with its own reason', async () => {
+    mockData.studies.data = { items: [study({}), study({ id: 's2', title: 'Checkout flow', moderation: 'suspended' })] };
+    await render(tree(<Moderation />, client));
+    await flush();
+    // A browser that reports offline holds the request; it is sent on reconnect.
+    onlineManager.setOnline(false);
+    try {
+      await fireEvent.press(within(screen.getByTestId('moderation-visible')).getByTestId('moderate-study'));
+      await flush(500);
+      await fireEvent.changeText(screen.getByTestId('moderation-reason'), 'Misleading payout claims');
+      mockApi.mockResolvedValueOnce(study({ moderation: 'suspended' }));
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+      await flush(10);
+      expect(mockApi).not.toHaveBeenCalledWith('moderateStudy', expect.anything());
+      // After the pending escape Cancel closes; the other study's Reinstate reopens the held Suspend, as it was sent.
+      await flush(15_100);
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+      await flush(500);
+      await fireEvent.press(within(screen.getByTestId('moderation-suspended')).getByTestId('moderate-study'));
+      await flush(500);
+      expect(screen.getByText('Suspend study?')).toBeTruthy();
+      expect(screen.queryByText('Reinstate study?')).toBeNull();
+      expect(screen.getByTestId('moderation-reason').props.value).toBe('Misleading payout claims');
+      // Text typed now was never confirmed, so it is not what goes out.
+      await fireEvent.changeText(screen.getByTestId('moderation-reason'), 'Typed after the confirm.');
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await flush(10);
+    await flush(10);
+    expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Misleading payout claims' } });
+    expect(mockApi).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the sheet’s title and confirm while it animates out after Cancel', async () => {
     mockData.studies.data = { items: [study({})] };
     await render(tree(<Moderation />, client));
@@ -408,6 +476,39 @@ describe('Stuck (triage queue)', () => {
     // The 10-character gate is closed again: the old reason cannot pass it.
     expect(screen.getByTestId('confirm-ok')).toBeDisabled();
     expect(screen.queryByTestId('stuck-error')).toBeNull();
+  });
+
+  it('binds a decision to what was confirmed: held offline, it still decides its own item with its own reason', async () => {
+    mockData.stuck.data = { items: [stuckItem('p1', 'Demo: checkout flow'), stuckItem('p2', 'Wallet onboarding')] };
+    await render(tree(<Stuck />, client));
+    await flush();
+    // A browser that reports offline holds the request; it is sent on reconnect.
+    onlineManager.setOnline(false);
+    try {
+      await fireEvent.press(within(item('Demo: checkout flow')).getByTestId('stuck-approve'));
+      await flush(500);
+      await fireEvent.changeText(screen.getByTestId('stuck-reason'), 'Notes cover the task; the builder is suspended.');
+      mockApi.mockResolvedValueOnce({ id: 'p1' });
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+      await flush(10);
+      expect(mockApi).not.toHaveBeenCalledWith('adminDecide', expect.anything());
+      // After the pending escape Cancel closes; another item's Reject reopens the held decision, as it was sent.
+      await flush(15_100);
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+      await flush(500);
+      await fireEvent.press(within(item('Wallet onboarding')).getByTestId('stuck-reject'));
+      await flush(500);
+      expect(screen.getByText('Approve stuck submission?')).toBeTruthy();
+      expect(screen.getByTestId('stuck-reason').props.value).toBe('Notes cover the task; the builder is suspended.');
+      // Text typed now was never confirmed, so it is not what goes out.
+      await fireEvent.changeText(screen.getByTestId('stuck-reason'), 'Something else, typed after the confirm.');
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await flush(10);
+    await flush(10);
+    expect(mockApi).toHaveBeenCalledWith('adminDecide', { params: { id: 'p1' }, body: { decision: 'approve', reason: 'Notes cover the task; the builder is suspended.' } });
+    expect(mockApi).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the Approve title, confirm and tile while the sheet animates out after a success', async () => {

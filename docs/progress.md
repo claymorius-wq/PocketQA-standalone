@@ -4,6 +4,15 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Lens follow-ups (2026-10-04, `fix/lens-followups`, contributor session)
+This fixes the two P3s that PR #3's review left open.
+- **Sheets are bound to what was confirmed.** Each request carries its own target and fields as `mutate()` variables. While a request is pending, any action reopens that request's own sheet. Before, a request the browser held while offline acted on a later row with a later draft.
+- **Web keyboard focus stays clear of the header scrim and docks.** `Screen` sets a web `scroll-padding`, and the new `e2e/focus-visible.spec.ts` tabs through New study in both themes.
+
+Verified on `fdb92e4`: app 989 tests, Playwright 13/13, plus the same Windows baselines. With the scroll-padding switched off, the focus test fails. Evidence and the verdict are in `docs/reviews/lens-followups/`.
+
+Still open: the native run on a Lens build (dev client, Maestro, iOS, Seeker).
+
 ## Lens screens, PR #3 (2026-10-04, `feat/lens-ui`, contributor session, updated against main after PR #2)
 The Lens redesign comes from a contributor (claymorius-wq), built in a separate Claude Code session (`claude-opus-5-5`), not by the lead pane. PR #1 (the foundation) merged on 2026-10-03; PR #3 rebuilds every screen. Hamza asked for it to be updated against main, its conflicts resolved, its tests rerun and a review done before merging.
 

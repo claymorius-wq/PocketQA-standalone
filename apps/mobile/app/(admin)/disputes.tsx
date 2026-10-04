@@ -25,6 +25,8 @@ import { Clauses, DateText, Hairline } from '../../src/ui/patterns';
 
 /** A dispute as the admin list returns it (contracts `Dispute`). */
 type Dispute = NonNullable<ReturnType<typeof useAdminDisputes>['data']>['items'][number];
+/** One resolution as it was confirmed: the request's variables. */
+type Resolution = { id: string; outcome: 'upheld' | 'overturned'; note: string };
 
 /** L1 light distance down the list (§2 cardK). */
 const CARD_K = [1, 0.8, 0.64] as const;
@@ -184,7 +186,9 @@ export default function Disputes() {
   if (target && outcome !== shownOutcome) setShownOutcome(outcome);
   const pose = target ? outcome : shownOutcome;
   const resolve = useMutation({
-    mutationFn: () => api('resolveDispute', { params: { id: target! }, body: { outcome, note } }),
+    // Bound to what was confirmed (the dispute, the verdict and the note), never to the sheet's
+    // latest state: a request the browser holds while offline still resolves the right dispute.
+    mutationFn: (r: Resolution) => api('resolveDispute', { params: { id: r.id }, body: { outcome: r.outcome, note: r.note } }),
     onSuccess: () => {
       // The note stays while the sheet animates out; the next open() clears it.
       setTarget(null);
@@ -195,11 +199,20 @@ export default function Disputes() {
   // A sheet opened for a new dispute starts from Uphold with an empty note and no earlier failure,
   // so the S6 weigh never starts from the last verdict's pose. Reset on open only: Cancel leaves the
   // body as it is, so nothing in the sheet changes while it animates out.
+  // While a resolution is still being sent (Cancel works again after the pending escape), any
+  // Resolve reopens that resolution's own sheet, as it was sent: it takes the result, and no
+  // second resolution can race it.
   const open = (id: string) => {
+    const sending = resolve.isPending ? resolve.variables : undefined;
+    if (sending) {
+      setOutcome(sending.outcome);
+      setNote(sending.note);
+      setTarget(sending.id);
+      return;
+    }
     setOutcome('upheld');
     setNote('');
-    // Never detach a request still running (Cancel works again after the pending escape).
-    if (!resolve.isPending) resolve.reset();
+    resolve.reset();
     setTarget(id);
   };
   const cancel = () => setTarget(null);
@@ -229,7 +242,7 @@ export default function Disputes() {
         error={resolve.error ? (resolve.error as ApiError).message : null}
         failureTitle="Not resolved"
         onCancel={cancel}
-        onConfirm={() => resolve.mutate()}
+        onConfirm={() => target && resolve.mutate({ id: target, outcome, note })}
       >
         <Segmented
           testID="dispute-outcome"

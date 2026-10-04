@@ -198,6 +198,11 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   // With a dock, the content ends `dockClearance` above the dock's top edge (never less than the usual bottom room).
   const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance : 0;
   const pad = { paddingTop: top, paddingBottom: Math.max(space.xxl * 2 + tabBarHeight, dockRoom) };
+  // Web: keyboard focus scrolls a control into view only when it is outside the scroll area, and
+  // that area runs under the header scrim and the dock or tab bar. The same room the content keeps
+  // becomes the area's scroll-padding, so a focused control never comes to rest under them (WCAG 2.2
+  // 2.4.11). Stack screens only at the top: a tab root has nothing over its title.
+  const focusRoom = WEB && scroll ? webScrollPadding(stack ? top : 0, pad.paddingBottom) : undefined;
   return (
     <ScreenContext.Provider value={info}>
       {/* The light dips only on a launch (Sign in); the ground never moves with an arrival. */}
@@ -210,6 +215,7 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
               {scroll ? (
                 <ScrollView
                   ref={scrollView}
+                  style={focusRoom}
                   contentContainerStyle={[styles.content, pad, fill ? styles.grow : null]}
                   keyboardShouldPersistTaps="handled"
                   scrollIndicatorInsets={stack ? { top: headerHeight } : undefined}
@@ -282,6 +288,15 @@ function HeaderScrim({ header }: { header: number }) {
   );
 }
 
+/**
+ * CSS scroll-padding for a web scroll container: the insets that keyboard focus and
+ * scrollIntoView keep clear. React Native's style types have no such keys, and react-native-web
+ * passes unknown keys through to the DOM as they are.
+ */
+export function webScrollPadding(top: number, bottom: number): ViewStyle {
+  return { scrollPaddingTop: top, scrollPaddingBottom: bottom } as unknown as ViewStyle;
+}
+
 /** The dark scrim for a header `header` tall: solid to the control row's bottom, faded out by the content's top (header + 8). */
 function headerScrimGeometry(header: number): { height: number; solid: number } {
   return { height: header + STACK_CONTENT_GAP, solid: Math.max(0, header - HEADER_ROW_BOTTOM) };
@@ -341,6 +356,7 @@ function ScreenDock({ placement, keyboard: mode, blurTarget, mountedAt, onHeight
   const body = float ? <View style={[styles.dockColumn, styles.boxNone]}>{children}</View> : children;
   const frame = (
     <Animated.View
+      testID="screen-dock"
       onLayout={(e) => onHeight(e.nativeEvent.layout.height)}
       style={[frameInset, hidden ? PASS : styles.boxNone, mode === 'hide' ? awayStyle : null]}
     >
@@ -479,9 +495,13 @@ export function Field({ label, value, onChangeText, error, hint, secure, multili
           testID={testID}
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => {
+          onFocus={(e) => {
             setFocused(true);
             setFocusArmed(true);
+            // Web: a browser brings only a focused text box's caret into view, so a tall multi-line
+            // field could keep its lower lines under a dock. Bring its whole box in instead; the
+            // scroll container's scroll-padding keeps it clear of the header scrim and the dock.
+            if (WEB && multiline) (e.target as unknown as { scrollIntoView?: (o: { block: 'nearest' }) => void }).scrollIntoView?.({ block: 'nearest' });
           }}
           onBlur={() => setFocused(false)}
           // A locked field (U4: submitted notes) takes no more text: nothing typed is silently dropped.

@@ -1,0 +1,23 @@
+# HEAD fdb92e4 (fix(ui): web multi-line fields come wholly into view; the focus test checks caus), 2026-10-04T12:37:35Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm exec playwright test -c artifacts/integ/playwright.config.ts   (mirror of playwright.config.ts on 8788/8091/8900)
+
+Running 13 tests using 1 worker
+
+  ok  1 artifacts\integ\e2e\account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.9s)
+
+  ok  2 artifacts\integ\e2e\admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (26.7s)
+  ok  3 artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (5.7s)
+  ok  4 artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (3.9s)
+  ok  5 artifacts\integ\e2e\remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (18.2s)
+  ok  6 artifacts\integ\e2e\remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (2.8s)
+
+  ok  7 artifacts\integ\e2e\remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (5.1s)
+  ok  8 artifacts\integ\e2e\review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (33.9s)
+  ok  9 artifacts\integ\e2e\review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (4.7s)
+  ok 10 artifacts\integ\e2e\review-loop.spec.ts:217:5 › offline state when the API is unreachable (3.7s)
+  ok 11 artifacts\integ\e2e\wallet-login.spec.ts:71:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (2.8s)
+  ok 12 artifacts\integ\e2e\wallet-login.spec.ts:101:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (976ms)
+  ok 13 artifacts\integ\e2e\wallet-login.spec.ts:110:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (1.8s)
+
+  13 passed (2.0m)
+EXIT=0

@@ -27,6 +27,8 @@ import { GlideList, ListRow, SectionHeader, SheetFailure } from '../../src/ui/pa
 /** A study as the admin list returns it (contracts `Study`). */
 type AdminStudy = NonNullable<ReturnType<typeof useAdminStudies>['data']>['items'][number];
 type Visibility = AdminStudy['moderation'];
+/** One moderation decision as it was confirmed: the request's variables. */
+type ModerationRequest = { id: string; action: 'suspend' | 'reinstate'; reason: string };
 
 /**
  * S7's beats after a confirmed decision: the sheet leaves (240), then the row sinks (120, ease-press)
@@ -142,7 +144,9 @@ export default function Moderation() {
   if (target && target !== shown) setShown(target);
   const action = (target ?? shown)?.action;
   const mod = useMutation({
-    mutationFn: () => api('moderateStudy', { params: { id: target!.id }, body: { action: target!.action, reason } }),
+    // Bound to what was confirmed (the study, the action and the reason), never to the sheet's
+    // latest state: a request the browser holds while offline still moderates the right study.
+    mutationFn: (m: ModerationRequest) => api('moderateStudy', { params: { id: m.id }, body: { action: m.action, reason: m.reason } }),
     onSuccess: (study) => {
       // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
@@ -172,10 +176,18 @@ export default function Moderation() {
   // A row is labelled by the section it sits in; while S7 holds it there, its action waits for the move.
   const open = (s: AdminStudy) => {
     if (move?.held && move.id === s.id) return;
-    // A new sheet starts clean: no reason from a cancelled sheet, no failure from an earlier attempt
-    // (a request still running, after the pending escape, is never detached).
+    // While a decision is still being sent (Cancel works again after the pending escape), any row's
+    // action reopens that decision's own sheet, as it was sent: it takes the result, and no second
+    // decision can race it.
+    const sending = mod.isPending ? mod.variables : undefined;
+    if (sending) {
+      setReason(sending.reason);
+      setTarget({ id: sending.id, action: sending.action });
+      return;
+    }
+    // A new sheet starts clean: no reason from a cancelled sheet, no failure from an earlier attempt.
     setReason('');
-    if (!mod.isPending) mod.reset();
+    mod.reset();
     setTarget({ id: s.id, action: s.moderation === 'ok' ? 'suspend' : 'reinstate' });
   };
   // Reset on open only (above): Cancel leaves the body alone so the sheet does not change as it leaves.
@@ -191,7 +203,7 @@ export default function Moderation() {
           </View>
         )}
       </QueryState>
-      <ConfirmSheet visible={!!target} title={action === 'suspend' ? 'Suspend study?' : 'Reinstate study?'} body="Every moderation action is recorded in the audit log with your reason." confirmLabel={action === 'suspend' ? 'Suspend' : 'Reinstate'} destructive={action === 'suspend'} moment="none" confirmDisabled={reason.trim().length < 5} loading={mod.isPending} onCancel={cancel} onConfirm={() => mod.mutate()}>
+      <ConfirmSheet visible={!!target} title={action === 'suspend' ? 'Suspend study?' : 'Reinstate study?'} body="Every moderation action is recorded in the audit log with your reason." confirmLabel={action === 'suspend' ? 'Suspend' : 'Reinstate'} destructive={action === 'suspend'} moment="none" confirmDisabled={reason.trim().length < 5} loading={mod.isPending} onCancel={cancel} onConfirm={() => target && mod.mutate({ ...target, reason })}>
         <Field label="Reason" value={reason} onChangeText={setReason} hint="At least 5 characters." multiline testID="moderation-reason" />
         {mod.error ? <SheetFailure title="Action failed" message={(mod.error as ApiError).message} /> : null}
       </ConfirmSheet>

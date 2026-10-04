@@ -11,7 +11,7 @@ import { stampArrival, takeArrival, takeHandoff } from '../../motion/entrance';
 import { UPLIGHT } from '../../theme/motion';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
 import { dark, glassDark } from '../../theme/tokens';
-import { Button, Checkbox, ConfirmSheet, EmptyState, Field, Notice, Screen, ScreenSpacer, Segmented, StatusPill, Text, useDockKeyboard } from '..';
+import { Button, Checkbox, ConfirmSheet, EmptyState, Field, Notice, Screen, ScreenSpacer, Segmented, StatusPill, Text, useDockKeyboard, webScrollPadding } from '..';
 import { clauseSpaceTracking } from '../text';
 import { fontFamilies } from '../../theme/tokens';
 import { BudgetMeter, Clauses, KeyValue, ListRow, planBudgetBar } from '../patterns';
@@ -141,6 +141,33 @@ describe('ConfirmSheet: the Commit pass lock, failure options, a custom tile', (
   it('takes a header tile of the screen’s own (S6 balance)', async () => {
     await renderIn('dark', <ConfirmSheet visible title="Resolve dispute" confirmLabel="Resolve" moment="none" tile={<BalanceTile pose="uphold" from="level" delay={380} testID="balance" />} onConfirm={jest.fn()} onCancel={jest.fn()} />);
     expect(screen.getByTestId('balance', HIDDEN_OK)).toBeTruthy();
+  });
+});
+
+describe('web focus room (WCAG 2.4.11)', () => {
+  it('webScrollPadding gives the scroll container the insets keyboard focus must keep clear', () => {
+    // react-native-web passes unknown style keys to the DOM unchanged (scroll-padding-top/-bottom).
+    expect(webScrollPadding(102, 160)).toEqual({ scrollPaddingTop: 102, scrollPaddingBottom: 160 });
+  });
+
+  it('native keeps its scroll view unstyled, and the dock frame is findable (screen-dock)', async () => {
+    await renderIn(
+      'dark',
+      <Screen title="Study" testID="scr" dock={<RNText testID="dock">Actions</RNText>}>
+        <RNText>Content</RNText>
+      </Screen>,
+    );
+    expect(screen.getByTestId('screen-dock')).toBeTruthy();
+    // The scroll view: the first node under the screen that takes a contentContainerStyle.
+    const queue = [screen.getByTestId('scr')];
+    let scroller: (typeof queue)[number] | undefined;
+    while (queue.length && !scroller) {
+      const n = queue.shift()!;
+      if (n.props.contentContainerStyle) scroller = n;
+      else queue.push(...(n.children.filter((c) => typeof c !== 'string') as (typeof n)[]));
+    }
+    expect(scroller).toBeTruthy();
+    expect(StyleSheet.flatten(scroller!.props.style) ?? {}).not.toHaveProperty('scrollPaddingTop');
   });
 });
 

@@ -13,6 +13,10 @@ import { SheetFailure } from '../../src/ui/patterns';
 // (CONSISTENCY C4: the Approve sheet's tile is the hourglass on a success rim, Reject the rose
 // reject tile). Each sheet starts clean (no earlier reason, no stale failure), and it keeps naming
 // the decision it was opened for while it plays its exit.
+
+/** One decision as it was confirmed: the request's variables. */
+type StuckRequest = { id: string; decision: StuckDecision; reason: string };
+
 export default function Stuck() {
   const q = useAdminStuck();
   useFocusRefetch(q);
@@ -27,7 +31,9 @@ export default function Stuck() {
   if (target && target !== shown) setShown(target);
   const decision = (target ?? shown)?.decision;
   const decide = useMutation({
-    mutationFn: () => api('adminDecide', { params: { id: target!.id }, body: { decision: target!.decision, reason } }),
+    // Bound to what was confirmed (the item, the decision and the reason), never to the sheet's
+    // latest state: a request the browser holds while offline still decides the right item.
+    mutationFn: (r: StuckRequest) => api('adminDecide', { params: { id: r.id }, body: { decision: r.decision, reason: r.reason } }),
     onSuccess: (p) => {
       // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
@@ -38,11 +44,19 @@ export default function Stuck() {
   });
   // A sheet opened for a new item starts clean: a reason typed in a cancelled sheet never pre-fills
   // the next one (it would pass the 10-character gate), and a stale failure never shows. Reset on
-  // open only, so the sheet body does not change while it animates out after Cancel.
+  // open only, so the sheet body does not change while it animates out after Cancel. While a
+  // decision is still being sent (Cancel works again after the pending escape), any item's action
+  // reopens that decision's own sheet, as it was sent: it takes the result, and no second decision
+  // can race it.
   const open = (id: string, d: StuckDecision) => {
+    const sending = decide.isPending ? decide.variables : undefined;
+    if (sending) {
+      setReason(sending.reason);
+      setTarget({ id: sending.id, decision: sending.decision });
+      return;
+    }
     setReason('');
-    // Never detach a request still running (Cancel works again after the pending escape).
-    if (!decide.isPending) decide.reset();
+    decide.reset();
     setTarget({ id, decision: d });
   };
   const cancel = () => setTarget(null);
@@ -60,7 +74,7 @@ export default function Stuck() {
         confirmDisabled={reason.trim().length < 10}
         loading={decide.isPending}
         onCancel={cancel}
-        onConfirm={() => decide.mutate()}
+        onConfirm={() => target && decide.mutate({ ...target, reason })}
       >
         <Field label="Reason (audited)" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="stuck-reason" />
         {/* C4's failure branch, with this sheet's own title and testID (the sheet stays open; the confirm retries). */}

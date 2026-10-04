@@ -385,3 +385,18 @@ $ the offline test alone                        origin/main: 1 failed (strict mo
 ```
 
 Not run here, because no device was attached: the Maestro native flows, the iOS flows and the Seeker performance check.
+
+## 2026-10-04: Lens follow-ups, sheet binding and web focus (contributor session, claymorius-wq; Windows 11 clone of `fix/lens-followups` at `fdb92e4`)
+
+Raw output is in `docs/reviews/lens-followups/`, made the same way as the PR #3 entry above.
+
+```
+$ pnpm verify                                   EXIT=1 at the root scripts tests: tests 37, pass 33, fail 4 (the same 4 POSIX 0600 checks)
+  check:secrets passed: 600 committable files scanned, no findings.   secret check: 18 values, 600 files, 0 occurrences
+$ pnpm -r --if-present test                     contracts 15 passed; domain 170 passed; API 1 failed | 341 passed | 2 skipped (the same config.bind path test)
+$ pnpm --filter @pocket-qa/mobile test          Test Suites: 42 passed, 42 total   Tests: 989 passed, 989 total
+$ playwright test (mirror of playwright.config.ts)            13 passed (1.9m)   (the 11 from PR #3, plus focus-visible in dark and light)
+$ firebase emulators:exec ... test/firebase-emulator.test.ts  Tests 2 passed (2); the file failed in afterAll: rmSync EPERM (Windows)
+$ firebase emulators:exec ... playwright.firebase.config.ts   2 passed
+$ focus-visible.spec.ts alone, scroll-padding switched off      2 failed: "scroll-padding-top covers the header scrim", Received 0 (expected >= 105 dark, >= 97 light)
+```

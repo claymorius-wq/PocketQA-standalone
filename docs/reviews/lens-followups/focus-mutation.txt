@@ -1,0 +1,69 @@
+# e2e/focus-visible.spec.ts alone, on fdb92e4 with the web scroll-padding switched off (src/ui/index.tsx: style={undefined})
+export EXIT=0
+
+Running 2 tests using 1 worker
+
+  x  1 artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (2.3s)
+  x  2 artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (2.1s)
+
+
+  1) artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) 
+
+    Error: scroll-padding-top covers the header scrim
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 105
+    Received:    0
+
+      75 |     // The cause: the scroll area keeps the scrim's and the dock's room clear for focus (1px for rounding).
+      76 |     const g = await geometry(page);
+    > 77 |     expect(g.paddingTop, 'scroll-padding-top covers the header scrim').toBeGreaterThanOrEqual(g.scrimBottom - g.scrollerTop - 1);
+         |                                                                        ^
+      78 |     expect(g.paddingBottom, 'scroll-padding-bottom covers the dock').toBeGreaterThanOrEqual(g.scrollerBottom - g.dockTop - 1);
+      79 |
+      80 |     // The effect, down the form and back up.
+        at <repo>\apps\mobile\artifacts\integ\e2e\focus-visible.spec.ts:77:72
+
+    Error Context: artifacts\integ\test-results\focus-visible-keyboard-foc-b299b-or-the-dock-New-study-dark-\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts\integ\test-results\focus-visible-keyboard-foc-b299b-or-the-dock-New-study-dark-\trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace artifacts\integ\test-results\focus-visible-keyboard-foc-b299b-or-the-dock-New-study-dark-\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, light) 
+
+    Error: scroll-padding-top covers the header scrim
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 97
+    Received:    0
+
+      75 |     // The cause: the scroll area keeps the scrim's and the dock's room clear for focus (1px for rounding).
+      76 |     const g = await geometry(page);
+    > 77 |     expect(g.paddingTop, 'scroll-padding-top covers the header scrim').toBeGreaterThanOrEqual(g.scrimBottom - g.scrollerTop - 1);
+         |                                                                        ^
+      78 |     expect(g.paddingBottom, 'scroll-padding-bottom covers the dock').toBeGreaterThanOrEqual(g.scrollerBottom - g.dockTop - 1);
+      79 |
+      80 |     // The effect, down the form and back up.
+        at <repo>\apps\mobile\artifacts\integ\e2e\focus-visible.spec.ts:77:72
+
+    Error Context: artifacts\integ\test-results\focus-visible-keyboard-foc-85d51-r-the-dock-New-study-light-\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts\integ\test-results\focus-visible-keyboard-foc-85d51-r-the-dock-New-study-light-\trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace artifacts\integ\test-results\focus-visible-keyboard-foc-85d51-r-the-dock-New-study-light-\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) 
+    artifacts\integ\e2e\focus-visible.spec.ts:66:7 › keyboard focus never rests under the header scrim or the dock (New study, light) 
+EXIT=1
