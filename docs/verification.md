@@ -465,3 +465,46 @@ $ focus-visible.spec.ts alone, scroll-padding switched off      2 failed: "scrol
   PUT preflight from https://pocketqa.optijara.ai → 204; from https://evil.example → 403; GET → 403
   ```
 
+## 2026-10-04 (evening): web launch closure, candidate `2f5cec4` (`feat/web-launch-e2e`)
+Full outputs are in `docs/reviews/production/web-launch/`; the live run log and fixture inventory are in `docs/reviews/production/live/web-live-e2e.txt`.
+- **`pnpm verify`:** EXIT=0. Secrets: 737 files, no findings. Tests: scripts 56, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1021.
+- **Browser:**
+  - Playwright 14/14, EXIT=0;
+  - Firebase emulator E2E 4/4, EXIT=0;
+  - `pnpm test:e2e:live` 1/1, EXIT=0 (real Firebase and R2, non-production API, production web build and front door).
+- **Live UIDs created by the passing run:** `RFi7fev9SWeNwFpcSvLwMhsHGxm1`, `ePOMhvhO5sYIN8F2nr0fk12nue13`, `VoI4XAAtX5XmIDlMvySefI1z5Ts1`.
+- **Inventory after all runs:** 17 synthetic Firebase users and 18 objects in `pocketqa-evidence`. Nothing deleted.
+- **Not run:** the billing read. A read-only Cloud Billing GET via the Firebase CLI login was **denied** by the session's permission system and not retried by any route.
+
+## 2026-10-04 (evening): web launch, review-fix candidate `4f9ae9d`
+This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted for tokens and are in `docs/reviews/production/web-launch/`. They replace the `2f5cec4` files.
+- **`pnpm verify`:** EXIT=0. Tests: scripts 57, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1021.
+- **Browser:** Playwright 14/14, Firebase emulator E2E 4/4, and `pnpm test:e2e:live` 1/1, all EXIT=0. The live run now also covers a seek to 2 s, a mid-file 206 for the exact bytes, and the CSP detector self-test.
+- **Inventory after run 9:** 26 synthetic Firebase users and 24 objects in `pocketqa-evidence`. Nothing deleted (`docs/reviews/production/live/web-live-e2e.txt`).
+- **Incident:** run 7 printed one synthetic user's 1-hour ID token to the lead's terminal, through Playwright's error output. It is not in the repo. Fixed in `4f9ae9d`.
+
+## 2026-10-04 (evening): web launch, final candidate `184e0a2` (pqa-qa r2 APPROVE, plus the r2 P3s)
+- **`pnpm verify`:** EXIT=0.
+- **`pnpm test:e2e:live`:** 1/1, EXIT=0. Quietly aborted routes are now asserted to be 0.
+- **Playwright 14/14 and emulator 4/4:** these outputs are from `4f9ae9d`. `4f9ae9d..184e0a2` changes only `e2e-live/web-launch.spec.ts` and docs, which those suites don't load.
+- **Inventory after run 10:** 29 synthetic Firebase users and 26 R2 objects. Nothing deleted.
+
+## 2026-10-04 (night): scoped R2 deletion, A5, candidate `2adea53`
+- **`pnpm verify`:** EXIT=0. API 382 plus 2 skipped, including 6 new scoped-deletion tests; mobile 1021; scripts 57 (`docs/reviews/production/scoped-delete/pnpm-verify.txt`).
+- **Live scoped deletion on `pocketqa-evidence`:** EXIT=0. The run created 3 objects and deleted exactly those 3. The listing was 26 objects before and 26 after, identical in keys, ETags and sizes. Deleting a pre-existing key by name was refused (`docs/reviews/production/live/r2-scoped-delete.txt`).
+- **Production start smoke:** health 200; `/config` gives firebase, r2, `testCredits: false` and `devnetTransfers: false`. It was stopped afterwards and created no data (`docs/reviews/production/live/prod-start-smoke.txt`).
+
+## 2026-10-04 (night): scoped deletion review-fix candidate `4fd0071` (pqa-qa scoped-delete-qa-r1 CHANGES_REQUIRED P2-1, fixed)
+- **`pnpm verify`:** EXIT=0. API 382 plus 2 skipped; mobile 1021; scripts 57.
+- **Live scoped deletion at `4fd0071`:** EXIT=0. Before 26 and after 26 objects, identical; only the run's 3 objects were deleted.
+- **Production start smoke at `4fd0071`:** EXIT=0. Firebase, r2, test credits and devnet transfers off.
+
+## 2026-10-04 (night): scoped deletion, literal A5 scope, candidate `ddb8b0d` (no `upload_staging`)
+- **`pnpm verify`:** EXIT=0. API 385 plus 2 skipped, including the regression tests; mobile 1021; scripts 57.
+- **Live, fresh synthetic objects only:** EXIT=0.
+  - The failed upload's object was deleted.
+  - The successful upload's quarantine copy was kept after completion.
+  - Account deletion then deleted the recording and that copy.
+  - 26 objects before and 26 after, identical (`live/r2-scoped-delete.txt`).
+- **Production start smoke:** EXIT=0 (`live/prod-start-smoke.txt`).
+

@@ -24,18 +24,19 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Managed sign-in: the account is created after the email address is verified.
-  const [verificationSent, setVerificationSent] = useState(false);
+  const [verification, setVerification] = useState<'sent' | 'unsent' | 'none'>('none');
   const pwError = password && password.length < 12 ? 'Use at least 12 characters.' : null;
 
   async function submit() {
     setBusy(true);
     setError(null);
+    setVerification('none');
     // A new account lands with the plain `replace` (no Uplight on Sign up), even if a Sign in press
     // under this screen is still waiting.
     disarmU1();
     try {
       const r = await signUp({ email: email.trim(), password, displayName: displayName.trim(), role });
-      setVerificationSent(r.verificationSent);
+      setVerification(r.verification);
     } catch (e) {
       // Show the real cause (e.g. this device couldn't store the session) instead of a generic line.
       setError(e instanceof Error && e.message ? e.message : 'Sign-up failed.');
@@ -64,10 +65,16 @@ export default function SignUp() {
         <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" testID="sign-up-email" />
         <Field label="Password" value={password} onChangeText={setPassword} secure error={pwError} hint="At least 12 characters." testID="sign-up-password" />
         {error ? <Notice tone="danger" title="Couldn’t create account" testID="sign-up-error">{error}</Notice> : null}
-        {verificationSent ? (
+        {verification === 'sent' ? (
           // One string: the notice sets it as its muted body text.
           <Notice tone="info" title="Check your email" testID="sign-up-verify">
             {`We sent a verification link to ${email.trim()}. Open it, then sign in to finish creating your account.`}
+          </Notice>
+        ) : null}
+        {verification === 'unsent' ? (
+          // The account exists, so "couldn't create" would be false; sign-in offers the resend.
+          <Notice tone="warning" title="Account created, email not sent" testID="sign-up-verify-unsent">
+            {`We couldn’t send the verification link to ${email.trim()}. Sign in with this email and password to send it again.`}
           </Notice>
         ) : null}
       </Card>

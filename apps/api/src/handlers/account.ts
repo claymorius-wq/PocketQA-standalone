@@ -271,6 +271,8 @@ export const accountHandlers = {
         .all(user.id, user.id) as { id: string; storage_key: string }[];
       for (const e of ev) {
         media.push(e.storage_key);
+        // The retained quarantine copy of the same recording (direct uploads), if any.
+        for (const r of db.prepare('SELECT object_key FROM upload_intents WHERE evidence_id = ?').all(e.id) as { object_key: string }[]) media.push(r.object_key);
         db.prepare('UPDATE findings SET evidence_id = NULL WHERE evidence_id = ?').run(e.id);
         db.prepare('DELETE FROM evidence WHERE id = ?').run(e.id);
       }
@@ -314,8 +316,8 @@ export const accountHandlers = {
       );
     })();
     // Stored objects: deleted now, or retried through the outbox if the provider fails.
-    for (const key of media) await deleteOrQueue(ctx.deps, key);
-    for (const q of quarantine) await deleteOrQueue(ctx.deps, q);
+    for (const key of media) await deleteOrQueue(ctx.deps, key, 'account_deletion');
+    for (const q of quarantine) await deleteOrQueue(ctx.deps, q, 'account_deletion');
     // After commit: the local account is gone either way. A provider failure leaves an
     // orphan provider user with no mapping (it can't reach this account); it is logged.
     if (ctx.deps.identity) {

@@ -29,7 +29,7 @@ jest.mock('expo-router', () => {
 
 type NewAccount = { role: 'tester' | 'builder'; displayName: string };
 const mockSignIn = jest.fn<Promise<void>, [string, string]>();
-const mockSignUp = jest.fn<Promise<{ verificationSent: boolean }>, [{ email: string; password: string; displayName: string; role: 'tester' | 'builder' }]>();
+const mockSignUp = jest.fn<Promise<{ verification: 'sent' | 'unsent' | 'none' }>, [{ email: string; password: string; displayName: string; role: 'tester' | 'builder' }]>();
 const mockCompleteAccount = jest.fn<Promise<void>, [NewAccount]>();
 const mockAuth = { signInWithGoogle: jest.fn<Promise<void>, []>(), signInWithWallet: jest.fn<Promise<void>, [NewAccount?]>() };
 // The session as SessionProvider serves the local build (local auth and storage, no wallet login,
@@ -557,7 +557,7 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   });
 
   it('flags a short password, enables Create account when valid and signs up with the chosen role', async () => {
-    mockSignUp.mockResolvedValue({ verificationSent: false });
+    mockSignUp.mockResolvedValue({ verification: 'none' });
     await renderIn(scheme, <SignUp />);
     await fireEvent.changeText(screen.getByTestId('sign-up-name'), ' Ana ');
     await fireEvent.changeText(screen.getByTestId('sign-up-email'), ' ana@example.test ');
@@ -577,7 +577,7 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   });
 
   it('managed sign-in: asks for the emailed verification link in the kit’s info notice', async () => {
-    mockSignUp.mockResolvedValue({ verificationSent: true });
+    mockSignUp.mockResolvedValue({ verification: 'sent' });
     await renderIn(scheme, <SignUp />);
     await fireEvent.changeText(screen.getByTestId('sign-up-name'), 'Fiona');
     await fireEvent.changeText(screen.getByTestId('sign-up-email'), ' fiona@example.test ');
@@ -588,6 +588,20 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
     // One body line in the notice's muted text (the kit sets a string child as its body).
     expect(screen.getByText('We sent a verification link to fiona@example.test. Open it, then sign in to finish creating your account.')).toBeTruthy();
     expect(screen.queryByTestId('sign-up-error')).toBeNull();
+  });
+
+  it('managed sign-in: an account created without its email says so and points to sign-in (live run: Firebase 503)', async () => {
+    mockSignUp.mockResolvedValue({ verification: 'unsent' });
+    await renderIn(scheme, <SignUp />);
+    await fireEvent.changeText(screen.getByTestId('sign-up-name'), 'Fiona');
+    await fireEvent.changeText(screen.getByTestId('sign-up-email'), 'fiona@example.test');
+    await fireEvent.changeText(screen.getByTestId('sign-up-password'), 'a-long-password');
+    await fireEvent.press(screen.getByTestId('sign-up-submit'));
+    expect(screen.getByText('Account created, email not sent')).toBeTruthy();
+    expect(screen.getByText('We couldn’t send the verification link to fiona@example.test. Sign in with this email and password to send it again.')).toBeTruthy();
+    // Not "couldn't create": the account exists.
+    expect(screen.queryByTestId('sign-up-error')).toBeNull();
+    expect(screen.queryByTestId('sign-up-verify')).toBeNull();
   });
 
   it('shows the server’s cause in the failure notice', async () => {

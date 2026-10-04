@@ -4,6 +4,27 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)
+- **Hamza's decision, through the parent's clarification:** Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other buckets, no bulk purge. Backup retention is not part of it.
+- **Implemented:**
+  - the `storage_objects` ownership registry (migration 4), so deletion of any key the app didn't register is refused;
+  - each deletion records its purpose;
+  - the R2 adapter is limited to single-object commands under `evidence/` and `quarantine/`.
+- **Live on the real bucket:** only the run's 3 new objects were deleted, and the 26 existing objects are identical (keys, ETags, sizes).
+- **Production start:** production mode now starts on the real providers.
+- **Literal scope (parent ruling):** a successful upload's quarantine copy is no longer deleted automatically. It is kept, and deleted with its owner's account; `upload_staging` is removed. pqa-qa's r2 APPROVE of `4fd0071` is superseded, and the delta is in re-review.
+- **Process note:** one log read was denied by the permission system (classified as a cloud mass delete). Work stopped until Hamza approved it. The read then showed the one failing test was order-dependent on random ids in the test itself, and that was fixed.
+
+## Current work (2026-10-04, evening): web launch closure (`feat/web-launch-e2e` from main `4b48a29`)
+- **Live web E2E on the real providers passes** (`pnpm test:e2e:live`).
+  - Real Firebase `pocketqa-optijara` and real R2 `pocketqa-evidence`, through the app UI, loaded as `https://pocketqa.optijara.ai` and answered by the local production front door.
+  - The API is explicitly non-production (development, retention-only, deletion off). Synthetic data only, nothing deleted.
+  - Covered: sign-up, verify, sign-in, publishing with test credits, consent, a browser PUT to R2 (200 under the real CORS rule), completion, 404 role isolation, 206 ranged playback, approval, and 0 CSP violations.
+- **New production front door** `scripts/production/web-server.mjs`, plus tests and a launchd unit. The preview gate's `connect-src 'self'` would have blocked Firebase Auth and R2 in production. A negative control (a wrong R2 origin) shows the CSP is enforced. The violation detector is self-tested in every run.
+- **Defect found live and fixed:** Firebase 503 on the verification email made sign-up falsely report failure.
+- **Plan:** `docs/production/web-launch.md` (acceptance, cutover and rollback, gates). No live cutover: A5, A9, the Firebase plan and Identity Platform console check, A7 and B4 are still open.
+- **Billing:** the read-only Cloud Billing GET with the Firebase CLI login was denied by the session's permission system and not retried. It stays a console check for Hamza.
+
 ## Current work (2026-10-04): production readiness (`feat/production-readiness`, base `9461db5`)
 Hamza's production request, relayed by the parent. Each increment was reviewed by pqa-qa (read-only) before its commit:
 

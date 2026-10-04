@@ -44,8 +44,9 @@ type Session = {
   discardUnverified: () => Promise<void>;
   /** Firebase mode: send a reset link. Resolves the same whether or not the account exists. */
   sendPasswordReset: (email: string) => Promise<void>;
-  /** Firebase mode returns `verificationSent`: the account is created after the email is verified. */
-  signUp: (input: { email: string; password: string; displayName: string; role: 'tester' | 'builder' }) => Promise<{ verificationSent: boolean }>;
+  // Firebase mode: the account is finished after the email is verified.
+  /** `verification`: 'sent', 'unsent' (account created, email failed; sign in to resend) or 'none' (local mode). */
+  signUp: (input: { email: string; password: string; displayName: string; role: 'tester' | 'builder' }) => Promise<{ verification: 'sent' | 'unsent' | 'none' }>;
   signInWithGoogle: () => Promise<void>;
   /** Web: the chosen Wallet Standard wallet; Android: Mobile Wallet Adapter (no choice here). */
   signInWithWallet: (newAccount?: NewAccount, wallet?: StandardWallet) => Promise<void>;
@@ -209,18 +210,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       signUp: async (input) => {
         if (authMode === 'firebase') {
+          let emailSent: boolean;
           try {
-            await firebaseSession.emailSignUp(fb.current!, input.email, input.password);
+            ({ emailSent } = await firebaseSession.emailSignUp(fb.current!, input.email, input.password));
           } catch (e) {
             throw new Error(firebaseErrorText(e, 'sign-up') ?? 'Sign-up failed.', { cause: e });
           }
-          await firebaseSession.signOut(fb.current!);
+          // The account exists from here on: a failing local sign-out must not turn it into
+          // "Couldn't create account" (web-launch review P3-5).
+          await firebaseSession.signOut(fb.current!).catch(() => {});
           // Remember the choices for "Finish your account" after the email is verified.
           await AsyncStorage.setItem(PENDING_PROFILE, JSON.stringify({ role: input.role, displayName: input.displayName })).catch(() => {});
-          return { verificationSent: true };
+          return { verification: emailSent ? 'sent' : 'unsent' };
         }
         await accept(await api('register', { body: input, token: null }));
-        return { verificationSent: false };
+        return { verification: 'none' };
       },
       resendVerification: async () => {
         try {

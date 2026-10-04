@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Pocket QA web front door under launchd (docs/production/web-launch.md): the production web
+  build plus the same-origin /api proxy, on loopback behind the TLS tunnel. Template: replace
+  __REPO__, __WEB_PORT__, __API_PORT__, __R2_ACCOUNT_ID__ (public identifier), __LOG_DIR__ and
+  __NODE_BIN_DIR__ before installing. It holds no secret.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.pocketqa.web</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__NODE_BIN_DIR__/node</string>
+    <string>__REPO__/scripts/production/web-server.mjs</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>WEB_PORT</key><string>__WEB_PORT__</string>
+    <key>WEB_API_PORT</key><string>__API_PORT__</string>
+    <key>WEB_PUBLIC_HOST</key><string>pocketqa.optijara.ai</string>
+    <key>WEB_ROOT</key><string>__REPO__/apps/mobile/dist-production</string>
+    <key>WEB_R2_ACCOUNT_ID</key><string>__R2_ACCOUNT_ID__</string>
+    <key>WEB_R2_BUCKET</key><string>pocketqa-evidence</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>__LOG_DIR__/web.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIR__/web.err.log</string>
+</dict>
+</plist>

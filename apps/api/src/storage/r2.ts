@@ -62,6 +62,9 @@ export function r2Store(r2: NonNullable<Config['r2']>): EvidenceStore {
       assertKey(key);
       // Refused before any request: the caller's deleteOrQueue keeps the key in the outbox.
       if (!r2.allowDelete) throw new Error('R2 deletion is disabled (POCKETQA_R2_ALLOW_DELETE is not set)');
+      // Only the app's own key shapes, one object per call (no batch delete, listing or
+      // lifecycle exists in this adapter); ownership itself is checked by deleteOrQueue.
+      if (!/^(evidence|quarantine)\//.test(key)) throw new Error('refusing to delete a key outside evidence/ and quarantine/');
       await client.send(new DeleteObjectCommand({ Bucket, Key: key }));
     },
     async presignPut(key, { contentType, contentLength, expiresInSeconds }) {
