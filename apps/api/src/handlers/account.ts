@@ -4,7 +4,8 @@ import { accountBalance, post } from '../ledger';
 import { me, type Ctx, type Handler } from '../context';
 import { RECOVERABLE_PROVIDERS } from '../identity/types';
 import { deleteOrQueue } from '../storage/sweep';
-import { authorizeRefund } from '../escrow';
+import { authorizeRefund, paymentsExport } from '../escrow';
+import { reputationExport } from '../reputation';
 import { fail, hashPassword, iso, newId, newToken, sha256, verifyPassword } from '../util';
 import {
   disputeView,
@@ -237,6 +238,8 @@ export const accountHandlers = {
       findings,
       ledger: creditsView(ctx, user.id).entries,
       disputes,
+      payments: paymentsExport(db, user.id),
+      reputation: reputationExport(db, user.id, ctx.deps.now()),
     };
   },
 

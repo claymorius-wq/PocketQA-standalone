@@ -1,0 +1,7 @@
+     × has their own rewards (exact string units, their frozen wallet) and their reputation, nothing of others 144ms
+     × records its fraud finding and withheld-points flags on its own work 62ms
+     × has their studies’ fundings, refunds and per-test payments, with no tester wallet, email or id 51ms
+     × includes the refund to their funding wallet, and nothing of another builder 40ms
+     × a test-credit-only account gets empty payment and reputation sections (the shape is stable) 22ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  5 failed (5)

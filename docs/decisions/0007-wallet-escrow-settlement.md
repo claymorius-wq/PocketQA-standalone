@@ -125,3 +125,22 @@ A transfer that someone sends to a vault but never submits for verification is n
 - **Independent network check:** the devnet reader takes the network the adapter observed, from the genesis hash, never the expectation's.
 - **One worker pass at a time:** the server runs one pass at once, and every send is idempotent per persisted attempt key.
 
+## 8. Fraud consequences, and the frozen payout wallet (parent decision, 2026-10-05)
+- **Reputation is reversible; settled money is not.** An upheld fraud finding appends reversals of the points for that work (append-only), and the work then counts as rejected for the quality score and badges.
+- **No clawback.** A settled transfer to a tester's own, non-custodial wallet can't be pulled back unilaterally, and Pocket QA adds **no clawback controls over user wallets**. The consequences for fraud are:
+  - the reputation reversal;
+  - account moderation (suspension), which ends future participation;
+  - removal from the leaderboard.
+  
+  Any recovery of money happens outside the platform.
+- **Fraud found before settlement** is also an outcome decision. This slice has no admin action that cancels a pending payment; it would be a reviewed addition before live settlement.
+- **The payout wallet stays frozen** at consent for the accepted task. This is safe because it's disclosed: the consent screen states that the reward goes only to that wallet and can't be changed after joining. No change or recovery flow is needed now.
+
+## 9. Account export (least data)
+`POST /me/export` includes `payments` and `reputation`.
+- **Amounts:** exact decimal strings of base units.
+- **Rows:** strict, with no provider-internal fields such as attempt or idempotency keys.
+- **Tester:** rewards for their own work, to their own frozen wallet; points, badges, the leaderboard alias, and fraud findings and withheld points on their own work. The deciding admin isn't named.
+- **Builder:** fundings and refunds of their own studies, to and from their own wallet, plus each approved test's reward and fee **without** the tester's identity, participation or wallet.
+- **After deletion:** records follow the existing deletion policy and nothing new is retained. Points and escrow postings stay under the anonymous id, like ledger postings (ADR 0002).
+

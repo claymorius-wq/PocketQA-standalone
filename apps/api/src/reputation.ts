@@ -83,6 +83,24 @@ export function leaderboardRows(db: DB, nowMs: number) {
   );
 }
 
+/** The reputation part of the user's own data export (least data; the deciding admin isn't named). */
+export function reputationExport(db: DB, userId: string, nowMs: number) {
+  const rows = eventsOf(db, userId);
+  const events = rows.map(toEvent);
+  const profile = db.prepare('SELECT opted_in, alias FROM leaderboard_profiles WHERE user_id = ?').get(userId) as { opted_in: 0 | 1; alias: string | null } | undefined;
+  const own = (table: 'fraud_findings' | 'points_flags') =>
+    db.prepare(`SELECT f.participation_id AS participationId, f.reason, f.created_at AS createdAt FROM ${table} f JOIN participations p ON p.id = f.participation_id WHERE p.tester_id = ? ORDER BY f.created_at`).all(userId) as { participationId: string; reason: string; createdAt: string }[];
+  return {
+    points: pointsTotal(events),
+    noCashValue: true as const,
+    events: rows.map((r) => ({ participationId: r.participation_id, kind: r.kind, points: r.points, createdAt: r.created_at })),
+    badges: badgesFor({ work: decidedWork(db, userId), events, nowMs }),
+    leaderboard: { optedIn: profile?.opted_in === 1, alias: profile?.alias ?? null },
+    fraudFindings: own('fraud_findings'),
+    withheldPoints: own('points_flags'),
+  };
+}
+
 export function reputationView(db: DB, userId: string, nowMs: number): Reputation {
   const rows = eventsOf(db, userId);
   const events = rows.map(toEvent);

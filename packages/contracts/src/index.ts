@@ -509,6 +509,41 @@ export const AuditEntry = z.object({
 });
 
 /** Everything the requester owns, and nothing anyone else owns. Media is listed, not inlined. */
+/** Token amounts in exports: exact decimal strings of base units (USDC: 6 decimals), never floats. */
+export const TokenUnitsString = z.string().regex(/^(0|[1-9]\d*)$/);
+const ExportAsset = { asset: z.literal('USDC'), decimals: z.literal(6), settlement: z.literal('simulated') };
+/**
+ * The money of wallet-funded studies, least data (ADR 0007). Rows are strict: no provider-internal
+ * fields (attempt keys, idempotency keys), and a builder's rows never carry a tester's identity,
+ * wallet or participation.
+ */
+export const ExportPayments = z.object({
+  /** Tester: rewards for their own approved work, to the wallet they froze at consent. */
+  received: z.array(
+    z.strictObject({ participationId: Id, studyId: Id, studyTitle: z.string(), amountUnits: TokenUnitsString, ...ExportAsset, destination: z.string(), status: SettlementStatus, signature: z.string().nullable(), authorizedAt: IsoDate, settledAt: IsoDate.nullable() }),
+  ),
+  /** Builder: funding transfers of their own studies, from their own wallet. */
+  fundings: z.array(
+    z.strictObject({ id: Id, studyId: Id, amountUnits: TokenUnitsString, ...ExportAsset, source: z.string().nullable(), status: EscrowFundingStatus, signature: z.string().nullable(), createdAt: IsoDate, confirmedAt: IsoDate.nullable() }),
+  ),
+  /** Builder: refunds of their own studies, to the wallet that funded them. */
+  refunds: z.array(z.strictObject({ studyId: Id, amountUnits: TokenUnitsString, ...ExportAsset, destination: z.string(), status: SettlementStatus, signature: z.string().nullable(), settledAt: IsoDate.nullable() })),
+  /** Builder: each approved test's reward and fee in their studies, with no tester identity or wallet. */
+  studyPayments: z.array(z.strictObject({ studyId: Id, amountUnits: TokenUnitsString, feeUnits: TokenUnitsString, status: SettlementStatus, authorizedAt: IsoDate, settledAt: IsoDate.nullable() })),
+});
+export const BadgeId = z.enum(['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist']);
+export const Badge = z.object({ id: BadgeId, label: z.string(), description: z.string() });
+export const ExportReputation = z.object({
+  points: z.number().int(),
+  noCashValue: z.literal(true),
+  events: z.array(z.strictObject({ participationId: Id, kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate })),
+  badges: z.array(Badge),
+  leaderboard: z.strictObject({ optedIn: z.boolean(), alias: z.string().nullable() }),
+  /** Upheld fraud findings on the user's own work (the deciding admin isn't named). */
+  fraudFindings: z.array(z.strictObject({ participationId: Id, reason: z.string(), createdAt: IsoDate })),
+  /** Own accepted work that earned no points because it looked like self-dealing. */
+  withheldPoints: z.array(z.strictObject({ participationId: Id, reason: z.string(), createdAt: IsoDate })),
+});
 export const ExportBundle = z.object({
   exportedAt: IsoDate,
   user: User,
@@ -518,6 +553,8 @@ export const ExportBundle = z.object({
   findings: z.array(Finding),
   ledger: z.array(LedgerEntry),
   disputes: z.array(Dispute),
+  payments: ExportPayments,
+  reputation: ExportReputation,
 });
 export const DeleteMeBody = z.object({ confirm: z.literal('DELETE MY ACCOUNT') });
 
@@ -642,8 +679,6 @@ export type DevnetTransfer = z.infer<typeof DevnetTransfer>;
 export const TransferBlockhash = z.object({ blockhash: Base58Address, lastValidBlockHeight: z.number().int().nonnegative() });
 
 // ---------- reputation: points, badges, leaderboard (no cash value, not tradeable) ----------
-export const BadgeId = z.enum(['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist']);
-export const Badge = z.object({ id: BadgeId, label: z.string(), description: z.string() });
 export const PointsEventView = z.object({ kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate, studyTitle: z.string() });
 export const LEADERBOARD_WINDOW_DAYS = 90;
 export const Reputation = z.object({

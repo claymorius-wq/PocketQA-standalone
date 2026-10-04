@@ -14,7 +14,8 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
   - **Reputation:** migration 6; points only for accepted work; a builder "helpful" mark; admin fraud reversal (append-only); self-dealing flags; an opt-in, pseudonymous leaderboard ranked by the Wilson quality score; badges.
   - **App:** escrow mode on New study; the escrow panel; payment states; consent wallet confirmation; reputation and leaderboard screens. Every money label says "simulation", and nothing says paid.
 - **Evidence:** `docs/reviews/wallet-rewards/README.md`. `pnpm verify` EXIT=0; Playwright 15/15, including the new wallet-rewards browser flow; emulator 4/4.
-- **Not done here** (later gates): live devnet evidence, real wallets on a device, an audited program or provider, mainnet, real funds, charged fees, a controlled payout-wallet recovery flow, clawback of settled rewards after fraud, and export of reputation data.
+- **Not done here** (later gates): live devnet evidence, real wallets on a device, an audited program or provider, mainnet, real funds and charged fees. By decision there is no clawback of settled transfers and no wallet change flow; the freeze is disclosed (ADR 0007 §8).
+- **Follow-up after pqa-qa r2:** the account export now includes payments and reputation, least data and as exact unit strings (ADR 0007 §9). Firebase E2E evidence logs are redacted.
 
 ## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)
 - **Hamza's decision, through the parent's clarification:** Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other buckets, no bulk purge. Backup retention is not part of it.

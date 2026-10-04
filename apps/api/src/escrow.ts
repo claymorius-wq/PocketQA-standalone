@@ -117,6 +117,71 @@ export function authorizePayout(db: DB, s: StudyRow, p: ParticipationRow, nowMs:
   audit(db, actorId, 'escrow.payout_authorized', 'participation', p.id, `${quote.rewardUnits} units to the frozen payout wallet (simulated settlement) · ${why}`, nowMs);
 }
 
+/**
+ * The money part of the user's own data export (ADR 0007), least data and own data only:
+ * a tester's rewards (to their own frozen wallet); a builder's fundings, refunds and per-test
+ * payments of their own studies, with no tester identity, participation or wallet. Amounts are
+ * exact decimal strings of base units. Provider-internal fields (attempt keys) never appear.
+ */
+export function paymentsExport(db: DB, userId: string) {
+  const units = (n: number) => String(n);
+  const asset = { asset: 'USDC' as const, decimals: 6 as const, settlement: 'simulated' as const };
+  const isoOrNull = (ms: number | null) => (ms === null ? null : iso(ms));
+  const received = (
+    db
+      .prepare(`SELECT x.*, s.title FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'payout' AND x.tester_id = ? ORDER BY x.created_at`)
+      .all(userId) as (SettlementRow & { title: string })[]
+  ).map((x) => ({
+    participationId: x.participation_id!,
+    studyId: x.study_id,
+    studyTitle: x.title,
+    amountUnits: units(x.amount_units),
+    ...asset,
+    destination: x.destination,
+    status: x.status,
+    signature: x.signature,
+    authorizedAt: iso(x.created_at),
+    settledAt: isoOrNull(x.settled_at),
+  }));
+  const fundings = (db.prepare(`SELECT f.* FROM escrow_fundings f JOIN studies s ON s.id = f.study_id WHERE s.builder_id = ? ORDER BY f.created_at`).all(userId) as FundingRow[]).map((f) => ({
+    id: f.id,
+    studyId: f.study_id,
+    amountUnits: units(f.amount_units),
+    ...asset,
+    source: f.source,
+    status: f.status,
+    signature: f.signature,
+    createdAt: iso(f.created_at),
+    confirmedAt: isoOrNull(f.confirmed_at),
+  }));
+  const refunds = (db.prepare(`SELECT x.* FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'refund' AND s.builder_id = ? ORDER BY x.created_at`).all(userId) as SettlementRow[]).map((x) => ({
+    studyId: x.study_id,
+    amountUnits: units(x.amount_units),
+    ...asset,
+    destination: x.destination,
+    status: x.status,
+    signature: x.signature,
+    settledAt: isoOrNull(x.settled_at),
+  }));
+  const studyPayments = (
+    db
+      .prepare(
+        `SELECT x.study_id, x.amount_units, x.status, x.created_at, x.settled_at, e.fee_bps, s.reward_credits, s.slots
+         FROM settlements x JOIN studies s ON s.id = x.study_id JOIN study_escrows e ON e.study_id = s.id
+         WHERE x.kind = 'payout' AND s.builder_id = ? ORDER BY x.created_at`,
+      )
+      .all(userId) as { study_id: string; amount_units: number; status: SettlementRow['status']; created_at: number; settled_at: number | null; fee_bps: number; reward_credits: number; slots: number }[]
+  ).map((x) => ({
+    studyId: x.study_id,
+    amountUnits: units(x.amount_units),
+    feeUnits: units(studyQuote({ reward_credits: x.reward_credits, slots: x.slots }, { fee_bps: x.fee_bps }).perTestFeeUnits),
+    status: x.status,
+    authorizedAt: iso(x.created_at),
+    settledAt: isoOrNull(x.settled_at),
+  }));
+  return { received, fundings, refunds, studyPayments };
+}
+
 /** On close: everything left in the vault is set aside for refund to the funding wallet. */
 export function authorizeRefund(db: DB, s: StudyRow, nowMs: number, actorId: string) {
   const esc = escrowOf(db, s.id)!;

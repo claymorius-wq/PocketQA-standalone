@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installWallet } from './testWallet';
 
@@ -146,6 +146,28 @@ test('builder funds a wallet escrow study (simulated); tester joins with a froze
   await builder.goto(studyUrl);
   await expect(builder.getByTestId('escrow-settled')).toHaveText('1.50 simulated USDC');
   await expect(builder.getByTestId('escrow-available')).toHaveText('1.65 simulated USDC');
+
+  // --- Exports: each side gets its own money and reputation, exact string units, nothing of the other ---
+  const exportJson = async (page: Page, settingsTab: string) => {
+    await page.getByTestId(settingsTab).click();
+    const download = page.waitForEvent('download');
+    await page.getByTestId('export-data').click();
+    const path = await (await download).path();
+    await expect(page.getByTestId('export-done')).toContainText('wallet escrow records (simulated)');
+    return { json: JSON.parse(readFileSync(path!, 'utf8')), raw: readFileSync(path!, 'utf8') };
+  };
+  await tester.goto('/discover');
+  const te = await exportJson(tester, 'tab-settings');
+  expect(te.json.payments.received).toEqual([expect.objectContaining({ amountUnits: '1500000', destination: tw.address, settlement: 'simulated', status: 'confirmed' })]);
+  expect(te.json.reputation).toMatchObject({ points: 15, noCashValue: true });
+  expect(te.raw).not.toContain(bw.address);
+  expect(te.raw).not.toContain(builderEmail);
+  await builder.goto('/studies');
+  const be = await exportJson(builder, 'tab-builder-settings');
+  expect(be.json.payments.fundings).toEqual([expect.objectContaining({ amountUnits: '3300000', source: bw.address, status: 'confirmed' })]);
+  expect(be.json.payments.studyPayments).toEqual([expect.objectContaining({ amountUnits: '1500000', feeUnits: '150000', status: 'confirmed' })]);
+  expect(be.raw).not.toContain(tw.address);
+  expect(be.raw).not.toContain(testerEmail);
 
   await builderCtx.close();
   await testerCtx.close();

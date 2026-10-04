@@ -33,9 +33,13 @@
 - `qa-local-slice-verdict-r2.md`: **APPROVE** of `0659ffb`, for the local simulated slice only.
 
 **Open before any release with real or devnet money:**
-- export of reputation and payment data;
 - provider gates B-2 and B-3 (audited program or provider, authorities and keys);
 - a sweep for unmatched deposits;
 - live devnet evidence;
 - real wallets on a device.
 
+
+## Release-gap follow-up (after r2)
+- **Account export of payments and reputation:** ADR 0007 §9. Tests: `apps/api/test/export-wallet.test.ts` and the browser download checks in `e2e/wallet-rewards.spec.ts`. RED/GREEN in `export-red.txt` and `export-green.txt`.
+- **Fraud consequences and the frozen payout wallet:** ADR 0007 §8. There is no clawback of settled transfers, and no wallet change flow; the freeze is disclosed at consent.
+- **Redaction:** emulator `oobCode` and `apiKey` query values in every checked-in Firebase E2E log are now `[REDACTED]`, with pass counts unchanged. `scripts/evidence-redaction.test.mjs` keeps them redacted.
