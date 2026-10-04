@@ -1,0 +1,218 @@
+$ pnpm verify
+
+> pocket-qa@ verify /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards
+> node scripts/check-node.mjs && pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 802 committable files scanned, no findings.
+secret check: 0 values, 802 files, 0 occurrences
+
+> pocket-qa@ typecheck /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards
+> eslint .
+
+
+> pocket-qa@ test /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (1.229625ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.080708ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.294042ms)
+✔ allow marker covers only its own line (0.093917ms)
+✔ forbidden paths (0.38075ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (242.878667ms)
+✔ CLI still runs when invoked through a symlink (68.528083ms)
+▶ preview gate: nothing is served without the gate cookie
+  ✔ rejects requests for any other Host (421) (10.521958ms)
+  ✔ redirects pages and assets to the login page, and returns 401 for the API (7.746292ms)
+  ✔ serves the login page with a strict CSP and an identity marker (2.130834ms)
+✔ preview gate: nothing is served without the gate cookie (85.21625ms)
+▶ preview gate: login
+  ✔ refuses a cross-site login POST (403) (3.548792ms)
+  ✔ rejects a wrong password, then rate-limits that client even with the right one (620.763042ms)
+  ✔ sets a __Host- cookie that is HttpOnly, Secure, SameSite=Strict, Path=/, no Domain (49.148333ms)
+  ✔ ignores an oversized login body (1.450542ms)
+✔ preview gate: login (675.295208ms)
+▶ preview gate: with a valid cookie
+  ✔ serves the app, with SPA fallback and no path traversal (53.907583ms)
+  ✔ proxies /api to the loopback API: path stripped, bearer kept, gate cookie and upstream cookies dropped (51.059875ms)
+  ✔ rejects tampered and expired cookies, and logout clears the cookie (51.896125ms)
+  ✔ returns 502 JSON when the API is down (139.192584ms)
+✔ preview gate: with a valid cookie (296.334667ms)
+▶ preview gate: shared-preview policy (review r1 P2)
+  ✔ refuses uploads, account deletion and admin moderation without reaching the API (69.471291ms)
+  ✔ rejects encoded, dot-segment and doubled-slash spellings instead of forwarding them (51.877792ms)
+  ✔ still forwards allowed calls on the same resources (45.44225ms)
+  ✔ strips headers named in Connection and sandboxes API responses (59.956708ms)
+✔ preview gate: shared-preview policy (review r1 P2) (226.974875ms)
+▶ preview gate: login under load (review r1 P3)
+  ✔ caps concurrent attempts so a burst cannot bypass the per-IP limit (48.95325ms)
+✔ preview gate: login under load (review r1 P3) (49.062084ms)
+▶ preview gate: slow logins (review r2 P3)
+  ✔ trickled login bodies do not hold the verification slots (149.296667ms)
+✔ preview gate: slow logins (review r2 P3) (149.406208ms)
+▶ preview gate: login timeout is per request (review r3 P3)
+  ✔ a slow proxied call on the same keep-alive connection after a login is not cut off (493.406167ms)
+✔ preview gate: login timeout is per request (review r3 P3) (493.590166ms)
+▶ preview gate: login body deadline is total, not idle (review r3 P3)
+  ✔ a body trickled faster than the timeout is still cut off at the deadline (357.627709ms)
+✔ preview gate: login body deadline is total, not idle (review r3 P3) (357.774583ms)
+▶ preview gate: shared-demo convenience (Hamza, 2026-10-03)
+  ✔ prefills the gate password (HTML-escaped) and says it is not access protection (144.279667ms)
+  ✔ serves demo sign-ins only behind the gate, GET only (92.929125ms)
+  ✔ is off by default: no prefill, no bootstrap (47.203084ms)
+  ✔ the convenience file must be 0600 and list only the synthetic demo accounts (1.146292ms)
+✔ preview gate: shared-demo convenience (Hamza, 2026-10-03) (285.772209ms)
+▶ preview gate: configuration guards
+  ✔ refuses a non-loopback API origin and a short cookie key (42.526208ms)
+  ✔ refuses a secret file readable by other users (43.134708ms)
+  ✔ session tokens verify only with the right key and before expiry (0.13875ms)
+✔ preview gate: configuration guards (85.890667ms)
+✔ state folder overrides are limited to .preview or .preview-test/ (review r1 P3) (224.940125ms)
+✔ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (530.260333ms)
+✔ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (324.938292ms)
+✔ start.sh pins the shared demo to local auth and local storage (cloud review r1 P2) (0.334709ms)
+✔ production web build refuses the demo preview switch (17.098625ms)
+✔ production web build refuses missing, plain-http and loopback API URLs (504.055583ms)
+✔ production web build refuses an output dir other than apps/mobile/dist-production (it rm -rf siblings) (596.759709ms)
+✔ check-url mirrors isPublicHost in packages/contracts (same cases) (0.473458ms)
+✔ check-url still checks when invoked through a symlink or a path with spaces (30.010625ms)
+✔ run-api.sh refuses a missing, in-repo, readable-by-others or non-production env file (56.037875ms)
+✔ run-api.sh backup runs one online backup with a production env file (646.649875ms)
+✔ run-api.sh reads the env file literally: shell in a value is never run, junk lines are refused (inc4 review P3-4) (129.348ms)
+✔ run-api.sh accepts only Pocket QA keys (inc4 r2 P3-3) (87.554334ms)
+✔ the runbook env example parses as data: no inline comments, only accepted keys (inc4 r2 P3-1) (0.51425ms)
+▶ production web server
+  ✔ refuses other Host headers (421) (8.504584ms)
+  ✔ serves the app with the exact CSP, security headers and an uncached index (3.925084ms)
+  ✔ never serves files outside the root and refuses non-GET static requests (1.484792ms)
+  ✔ has no preview gate, demo bootstrap or preview block list (1.932125ms)
+  ✔ proxies /api with the bearer token, without cookies either way, under the API CSP (2.001917ms)
+  ✔ states the client address itself and drops client-supplied forwarding headers (1.210667ms)
+  ✔ passes ranged media through (206 with Content-Range) (0.9235ms)
+  ✔ refuses non-canonical API paths (400) (4.678458ms)
+  ✔ answers 502 when the API is down (2.770875ms)
+  ✔ refuses a non-loopback API, a missing build, and loose connect-src values (0.969583ms)
+✔ production web server (35.221209ms)
+ℹ tests 57
+ℹ suites 11
+ℹ pass 57
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4118.467833
+Scope: 5 of 6 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  17 passed (17)
+packages/contracts test:    Start at  01:07:00
+packages/contracts test:    Duration  160ms (import 54%, transform 37%, tests 6%, worker 3%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  14 passed (14)
+packages/domain test:       Tests  215 passed (215)
+packages/domain test:    Start at  01:07:01
+packages/domain test:    Duration  381ms (transform 45%, import 30%, worker 14%, tests 11%)
+packages/domain test: [34m % [39m[2mCoverage report from [22m[33mv8[39m
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.43 |     95.8 |   99.13 |   99.38 |                   
+packages/domain test:  copy.ts          |   96.29 |    94.73 |     100 |     100 | 74                
+packages/domain test:  escrow.ts        |   98.92 |    97.18 |     100 |     100 | 61,94             
+packages/domain test:  reputation.ts    |   98.43 |     87.5 |   96.15 |     100 | 76,79-94          
+packages/domain test:  tokenTransfer.ts |   93.54 |    84.21 |     100 |     100 | 29,41,52-55       
+packages/domain test:  transferTx.ts    |   96.66 |      100 |     100 |      96 | 12                
+packages/domain test:  wallet.ts        |   97.77 |      100 |     100 |   96.55 | 40                
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.43% ( 439/446 )
+packages/domain test: Branches     : 95.8% ( 297/310 )
+packages/domain test: Functions    : 99.13% ( 115/116 )
+packages/domain test: Lines        : 99.38% ( 323/325 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/mobile test$ jest --ci
+apps/api test$ vitest run
+apps/api test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/apps/api
+apps/api test:  Test Files  24 passed | 1 skipped (25)
+apps/api test:       Tests  470 passed | 2 skipped (472)
+apps/api test:    Start at  01:07:01
+apps/api test:    Duration  8.91s (tests 75%, import 17%, transform 7%)
+apps/api test: Done
+apps/mobile test: PASS src/ui/__tests__/ui.test.tsx (10.737 s)
+apps/mobile test: PASS src/ui/patterns/__tests__/patterns.test.tsx (10.806 s)
+apps/mobile test: PASS __tests__/wallet-rewards-ui.test.tsx
+apps/mobile test: PASS src/screens/__tests__/settings.test.tsx (16.534 s)
+apps/mobile test: PASS __tests__/study-detail.test.tsx
+apps/mobile test: PASS __tests__/new-study.test.tsx (17.448 s)
+apps/mobile test: PASS __tests__/review-screen.test.tsx (18.3 s)
+apps/mobile test: PASS __tests__/builder-study.test.tsx (18.793 s)
+apps/mobile test: PASS __tests__/admin-screens.test.tsx (20.753 s)
+apps/mobile test: PASS src/screens/__tests__/CreditsScreen.test.tsx
+apps/mobile test: PASS __tests__/work-screen.test.tsx
+apps/mobile test: PASS src/ui/__tests__/shared.test.tsx
+apps/mobile test: PASS __tests__/discover.test.tsx
+apps/mobile test: PASS __tests__/participation-session.test.tsx (21.511 s)
+apps/mobile test: PASS src/icons/__tests__/icons.test.tsx (11.212 s)
+apps/mobile test: PASS __tests__/builder-studies.test.tsx
+apps/mobile test: PASS src/screens/__tests__/adminAudit.test.ts
+apps/mobile test: PASS __tests__/direct-upload.test.ts
+apps/mobile test: PASS __tests__/auth-layout.test.tsx
+apps/mobile test: PASS __tests__/money.test.ts
+apps/mobile test: PASS __tests__/platform-modules.test.ts
+apps/mobile test: PASS src/motion/__tests__/motion-primitives.test.tsx
+apps/mobile test: PASS __tests__/copy.test.ts
+apps/mobile test: PASS __tests__/managed-session.test.ts
+apps/mobile test: PASS src/glass/__tests__/glass.test.tsx
+apps/mobile test: PASS src/screens/__tests__/StuckQueue.test.tsx
+apps/mobile test: PASS __tests__/capability.test.ts
+apps/mobile test: PASS __tests__/signature.test.ts
+apps/mobile test: PASS __tests__/signed-out-navigation.test.tsx
+apps/mobile test: PASS __tests__/wallet-mwa-login.test.ts
+apps/mobile test: PASS __tests__/contrast.test.ts
+apps/mobile test: PASS __tests__/footer.test.ts
+apps/mobile test: PASS __tests__/token-refresh.test.ts
+apps/mobile test: PASS src/ui/__tests__/chrome.test.tsx
+apps/mobile test: PASS __tests__/wallet-errors.test.ts
+apps/mobile test: PASS src/motion/__tests__/arrival.test.tsx
+apps/mobile test: PASS __tests__/demo-accounts.test.ts
+apps/mobile test: PASS __tests__/deployment.test.ts
+apps/mobile test: PASS __tests__/report-signature.test.ts
+apps/mobile test: PASS __tests__/firebase-persistence.test.ts
+apps/mobile test: PASS __tests__/firebase-errors.test.ts
+apps/mobile test: PASS __tests__/motion.test.tsx
+apps/mobile test: PASS __tests__/upload-queue.test.ts
+apps/mobile test: PASS __tests__/session-unreachable.test.tsx
+apps/mobile test: PASS __tests__/wallet-web-flows.test.ts
+apps/mobile test: PASS __tests__/focus-refetch.test.tsx
+apps/mobile test: PASS __tests__/wallet-standard.test.ts
+apps/mobile test: PASS __tests__/worklets.test.ts
+apps/mobile test: PASS __tests__/session-restore.test.ts
+apps/mobile test: PASS __tests__/auth-screens.test.tsx (24.958 s)
+apps/mobile test: Test Suites: 50 passed, 50 total
+apps/mobile test: Tests:       1069 passed, 1069 total
+apps/mobile test: Snapshots:   0 total
+apps/mobile test: Time:        25.842 s
+apps/mobile test: Ran all test suites.
+apps/mobile test: Done
+EXIT=0

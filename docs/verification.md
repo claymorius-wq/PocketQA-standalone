@@ -508,3 +508,10 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
   - 26 objects before and 26 after, identical (`live/r2-scoped-delete.txt`).
 - **Production start smoke:** EXIT=0 (`live/prod-start-smoke.txt`).
 
+## 2026-10-05: wallet-funded escrow and reputation, local simulated slice (`feat/wallet-rewards`)
+Full outputs are in `docs/reviews/wallet-rewards/`.
+- **`pnpm verify`:** EXIT=0. Secrets: 802 files, no findings. Tests: scripts 57, contracts 17, domain 215, API 470 plus 2 skipped, mobile 1069.
+- **Playwright:** 15/15 EXIT=0, including `e2e/wallet-rewards.spec.ts` with the API on `POCKETQA_SETTLEMENT=simulated`. The wallet-rewards spec alone ran 5/5 after the navigation fix.
+- **Firebase emulator E2E:** 4/4, EXIT=0.
+- **No network, devnet, key or cloud access** was used by any of this.
+

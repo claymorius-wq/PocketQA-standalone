@@ -26,7 +26,7 @@ export default defineConfig({
     },
     {
       // Wallet login on, bound to this test origin (ADR 0005 §2).
-      command: `POCKETQA_DATA_DIR=${dataDir} POCKETQA_SOLANA_RPC_URL=http://127.0.0.1:8899 POCKETQA_WALLET_LOGIN=1 POCKETQA_PUBLIC_ORIGIN=http://localhost:8090 pnpm --filter @pocket-qa/api start`,
+      command: `POCKETQA_DATA_DIR=${dataDir} POCKETQA_SOLANA_RPC_URL=http://127.0.0.1:8899 POCKETQA_WALLET_LOGIN=1 POCKETQA_SETTLEMENT=simulated POCKETQA_PUBLIC_ORIGIN=http://localhost:8090 pnpm --filter @pocket-qa/api start`,
       url: 'http://127.0.0.1:8787/health',
       reuseExistingServer: false,
       timeout: 60_000,

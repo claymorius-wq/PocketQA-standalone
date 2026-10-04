@@ -1,0 +1,27 @@
+# Wallet-funded escrow and reputation: local slice evidence
+
+**Scope:** ADR 0007. This is local **simulated** settlement: no network, no keys, no assets, and no production activation. None of this evidence shows that real or devnet payments work. Those are a later release gate (B-2, B-3 and live devnet evidence).
+
+## Commands and output (in this folder)
+| File | What |
+|---|---|
+| `slice1-domain-red.txt` / `-green.txt` | Escrow money model: quote, postings, invariant, payout state machine, funding verification (RED first, then GREEN) |
+| `slice1-token-transfer-green.txt` | Network-free SPL funding reader: pre/post balance deltas, pinned mint, classic Token program |
+| `slice1-api-red.txt` / `-green.txt` | `apps/api/test/escrow.test.ts`: pqa-qa matrix rows A–G and I |
+| `slice2-reputation-red.txt` / `-green.txt`, `slice2-reputation-api-green.txt` | Points, reversals, badges, Wilson quality score, opt-in leaderboard (domain and API) |
+| `slice3-money-red.txt` / `-green.txt`, `slice3-ui-green.txt` | String-only money formatting, payment-state wording, escrow and reputation screens |
+| `pnpm-verify.txt` | The full gate: secrets scan, typecheck, lint, all unit suites |
+| `playwright.txt` | The web E2E suite, including `e2e/wallet-rewards.spec.ts` (real browser, real local API with `POCKETQA_SETTLEMENT=simulated`) |
+| `e2e-firebase.txt` | Firebase Auth emulator E2E (unchanged flows) |
+| `browser/*.png` | Screens from `e2e/wallet-rewards.spec.ts`, light (builder) and dark (tester) |
+
+## What the browser run covers
+1. A builder links a wallet through the real SIWS flow, with a test Wallet Standard wallet.
+2. The builder creates a wallet escrow study: 1.5 simulated USDC × 2.
+3. Publishing is refused until it's funded; the builder then funds it in one press (simulated) and sees the books.
+4. A tester saves a device and links a wallet. The tester can't join until both consents are checked, including the explicit payout-wallet confirmation, then submits.
+5. The builder approves with "helpful". The payment state goes from pending to "Settled · simulation, no funds moved" after the settlement worker runs, and is never shown as paid.
+6. The tester sees the settled state on the session and under Credits, 15 points and the First accepted test badge, opts into the leaderboard ("Not ranked yet": the minimum sample isn't reached), and opens the leaderboard.
+7. The builder's books show 1.50 settled and 1.65 available, consistent with the 10% illustrative fee.
+
+**Stability:** the spec was repeated 5/5 after a test-only navigation fix. `goBack()` after reloads was unreliable, so the spec now opens the study by its URL.

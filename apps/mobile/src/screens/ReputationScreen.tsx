@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Reputation } from '@pocket-qa/contracts';
 import { router } from 'expo-router';
-import { Award, BadgeCheck, Smartphone, Sparkles, Trophy } from 'lucide-react-native';
+import { Trophy } from 'lucide-react-native';
+import { GlassTile } from '../icons';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { api, ApiError } from '../api/client';
 import { useLeaderboard, useReputation } from '../lib/queries';
-import { useTheme } from '../theme/ThemeProvider';
 import { Button, Card, Checkbox, EmptyState, Field, Notice, QueryState, Screen, Text } from '../ui';
 import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
 
@@ -14,7 +14,8 @@ import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
 // leaderboard. Points have no cash value, aren't tradeable and aren't a token; the screen says so.
 // The badge glyphs are the visual proposal for this phase (Lucide; production assets come later).
 
-const BADGE_ICON = { first_accepted: BadgeCheck, reliable_tester: Award, helpful_feedback: Sparkles, device_specialist: Smartphone } as const;
+// Badge glyphs: the Lens glyph tiles stand in until dedicated badge assets are designed.
+const BADGE_GLYPH = { first_accepted: 'approve', reliable_tester: 'consent', helpful_feedback: 'info', device_specialist: 'device' } as const;
 const KIND_LABEL: Record<Reputation['events'][number]['kind'], string> = { accepted: 'Accepted test', helpful: 'Feedback marked helpful', reversal: 'Reversed after review' };
 
 export function ReputationScreen() {
@@ -27,7 +28,6 @@ export function ReputationScreen() {
 }
 
 function ReputationBody({ r }: { r: Reputation }) {
-  const { colors } = useTheme();
   return (
     <View style={styles.page}>
       <Card k={1} style={styles.card}>
@@ -45,10 +45,9 @@ function ReputationBody({ r }: { r: Reputation }) {
         {r.badges.length ? (
           <View style={styles.badges} testID="reputation-badges">
             {r.badges.map((b) => {
-              const Icon = BADGE_ICON[b.id];
               return (
                 <Card key={b.id} k={0.8} style={styles.badge} testID={`badge-${b.id}`}>
-                  <Icon size={22} color={colors.primary} />
+                  <GlassTile name={BADGE_GLYPH[b.id]} size="notice" />
                   <View style={styles.flex}>
                     <Text variant="heading">{b.label}</Text>
                     <Text variant="small" tone="muted">{b.description}</Text>

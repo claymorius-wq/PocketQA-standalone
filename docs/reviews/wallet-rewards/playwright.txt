@@ -1,0 +1,24 @@
+$ pnpm --filter @pocket-qa/mobile exec playwright test
+
+Running 15 tests using 1 worker
+
+  ✓   1 e2e/account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.4s)
+
+  ✓   2 e2e/admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (20.8s)
+  ✓   3 e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (2.2s)
+  ✓   4 e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (1.6s)
+  ✓   5 e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (13.7s)
+  ✓   6 e2e/remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (1.7s)
+
+  ✓   7 e2e/remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (3.5s)
+  ✓   8 e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (24.2s)
+  ✓   9 e2e/review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (2.6s)
+  ✓  10 e2e/review-loop.spec.ts:217:5 › offline state when the API is unreachable (2.7s)
+  ✓  11 e2e/wallet-login.spec.ts:9:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (908ms)
+  ✓  12 e2e/wallet-login.spec.ts:39:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (378ms)
+  ✓  13 e2e/wallet-login.spec.ts:48:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (769ms)
+  ✓  14 e2e/wallet-login.spec.ts:66:5 › wallet chooser: with two wallets installed, the user picks one; only that wallet signs, then it is disconnected (ledger W1) (1.2s)
+  ✓  15 e2e/wallet-rewards.spec.ts:27:5 › builder funds a wallet escrow study (simulated); tester joins with a frozen wallet; approval settles once; reputation updates (34.6s)
+
+  15 passed (2.1m)
+EXIT=0

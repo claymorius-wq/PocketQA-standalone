@@ -4,6 +4,18 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-05): wallet-funded escrow and reputation, local SIMULATED slice (`feat/wallet-rewards` from main `87e09d4`)
+- **Approval and scope.** Hamza approved implementation; the parent clarified the scope after pqa-qa's architecture review r1. ADR 0007 records the scope, the trust model and the authorities.
+  - Only local simulated settlement exists. A devnet or real provider is disabled until a verified provider or program is chosen and separately approved.
+  - Production refuses the simulator.
+- **Built test-first:**
+  - **Escrow money model:** whole base units; the quote with a per-test fee rounded up; double-entry postings; the invariant `funded = available + held + payable + settled + fees + pending refund + refunded`; the payout state machine; exact funding verification; an SPL balance-delta reader for a future devnet adapter.
+  - **API:** settlement config; migration 5; funding with a server-fixed amount, vault, mint and reference; publishing only once fully funded; consent freezes the payout wallet with explicit confirmation; one payout per approval, overturned dispute or admin stuck-work decision; an idempotent, crash-safe settlement worker with reconciliation alerts; refunds go only to the funding wallet; self-dealing is blocked.
+  - **Reputation:** migration 6; points only for accepted work; a builder "helpful" mark; admin fraud reversal (append-only); self-dealing flags; an opt-in, pseudonymous leaderboard ranked by the Wilson quality score; badges.
+  - **App:** escrow mode on New study; the escrow panel; payment states; consent wallet confirmation; reputation and leaderboard screens. Every money label says "simulation", and nothing says paid.
+- **Evidence:** `docs/reviews/wallet-rewards/README.md`. `pnpm verify` EXIT=0; Playwright 15/15, including the new wallet-rewards browser flow; emulator 4/4.
+- **Not done here** (later gates): live devnet evidence, real wallets on a device, an audited program or provider, mainnet, real funds, charged fees, a controlled payout-wallet recovery flow, clawback of settled rewards after fraud, and export of reputation data.
+
 ## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)
 - **Hamza's decision, through the parent's clarification:** Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other buckets, no bulk purge. Backup retention is not part of it.
 - **Implemented:**
