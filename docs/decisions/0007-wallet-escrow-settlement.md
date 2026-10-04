@@ -110,3 +110,18 @@ The UI and docs name the trust model in plain words:
 - **Who pays SOL fees and account rent:** not applicable to the simulation.
 - **Review timeout:** the existing stuck-work escalation to an admin; never auto-pay.
 - **Also open:** eligible countries, payout minimums and batching.
+
+## 6. Account deletion and escrow (pqa-qa local-slice r1 P2-1)
+A builder can delete their account while they own wallet-funded **drafts**. Published or paused studies already block deletion, and no new deletion refusal is added. The deletion closes those drafts so funds are never stranded:
+- unpaid funding requests expire;
+- a funded vault is set aside for refund to the funding wallet, and the worker settles it;
+- a funding transfer still in flight is credited when it confirms, then refunded at once, because its study is closed.
+
+A transfer that someone sends to a vault but never submits for verification is never credited. A live adapter needs a sweep for such unmatched deposits before activation (a provider gate).
+
+## 7. Operations (r1 P3)
+- **Retries and escalation:** failed payouts and refunds retry with exponential backoff, capped at 1 h. From 5 failed attempts they are also raised as operator alerts.
+- **No unknown source:** a funding transfer with no identifiable source wallet never confirms, because a refund would have nowhere to go.
+- **Independent network check:** the devnet reader takes the network the adapter observed, from the genesis hash, never the expectation's.
+- **One worker pass at a time:** the server runs one pass at once, and every send is idempotent per persisted attempt key.
+

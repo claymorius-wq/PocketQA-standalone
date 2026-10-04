@@ -152,6 +152,11 @@ export async function verifyFunding(db: DB, provider: SettlementProvider, f: Fun
     if (cur.signature && cur.signature !== signature) throw fail('CONFLICT_STATE', 'This funding request already has a different transfer.');
     const usedElsewhere = db.prepare('SELECT 1 FROM escrow_fundings WHERE signature = ? AND id != ?').get(signature, f.id);
     if (usedElsewhere) throw fail('CONFLICT_STATE', 'This transfer already funded another request.');
+    // A refund needs somewhere to go: never confirm a transfer whose funding wallet is unknown.
+    if (verdict.status === 'confirmed' && !seen?.source) {
+      verdict.status = 'failed';
+      verdict.reason = 'The transfer has no identifiable funding wallet, so a refund would have nowhere to go.';
+    }
     if (verdict.status === 'pending') {
       db.prepare(`UPDATE escrow_fundings SET status = 'pending', signature = ? WHERE id = ?`).run(signature, f.id);
     } else if (verdict.status === 'failed') {
@@ -161,6 +166,10 @@ export async function verifyFunding(db: DB, provider: SettlementProvider, f: Fun
       db.prepare('UPDATE study_escrows SET funding_wallet = ? WHERE study_id = ?').run(seen!.source, f.study_id);
       postEscrow(db, planFunding({ studyId: f.study_id, fundingId: f.id, amountUnits: f.amount_units }), nowMs, f.id);
       audit(db, actorId, 'escrow.funding_confirmed', 'study', f.study_id, `${f.amount_units} units from ${seen!.source} (simulated settlement)`, nowMs);
+      // A funding that lands after its study closed (its builder deleted the account while the
+      // transfer was in flight) is refunded at once to the wallet it came from.
+      const study = db.prepare('SELECT * FROM studies WHERE id = ?').get(f.study_id) as StudyRow;
+      if (study.status === 'closed') authorizeRefund(db, study, nowMs, actorId);
     }
   })();
   return db.prepare('SELECT * FROM escrow_fundings WHERE id = ?').get(f.id) as FundingRow;

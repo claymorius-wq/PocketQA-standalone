@@ -30,9 +30,15 @@ function baseUnits(amount: string): bigint {
   return BigInt(amount);
 }
 
+/**
+ * `observedNetwork` is what the adapter itself established (from the RPC's genesis hash), never
+ * the expectation, so the verifier compares two independent values. The mint is reported only
+ * when a credit under the pinned mint and the classic Token program was actually seen.
+ */
 export function observeTokenTransfer(
   tx: ParsedTokenTx,
-  expect: { vault: string; mint: string; reference: string; network: string },
+  expect: { vault: string; mint: string; reference: string },
+  observedNetwork: string,
 ): { transfer: ObservedTransfer; source: string | null } {
   const keys = tx.transaction.message.accountKeys.map((k) => k.pubkey);
   const vaultIndex = keys.indexOf(expect.vault);
@@ -61,8 +67,8 @@ export function observeTokenTransfer(
   return {
     transfer: {
       status: !tx.meta || tx.meta.err !== null ? 'failed' : 'finalized',
-      network: expect.network,
-      mint: expect.mint,
+      network: observedNetwork,
+      mint: credit > 0n ? expect.mint : '',
       destination: vaultIndex >= 0 ? expect.vault : '',
       amountUnits: Number(credit),
       reference: keys.includes(expect.reference) ? expect.reference : '',

@@ -386,6 +386,69 @@ describe('F: disputes, refunds and closure', () => {
   });
 });
 
+describe('F5b: a builder deleting their account never strands escrowed funds (pqa-qa r1 P2-1)', () => {
+  it('a funded draft is closed and refunded to the funding wallet; an unpaid request expires', async () => {
+    t = await makeApp({ settlement: 'simulated' });
+    const b = await builderWithWallet();
+    const funded = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY())).body);
+    const f = EscrowFunding.parse((await t.req('POST', `/studies/${funded.id}/escrow/fundings`, b.token)).body);
+    const pay = (await t.req('POST', `/escrow/fundings/${f.id}/simulated-wallet-payment`, b.token)).body;
+    await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: pay.signature });
+    const unpaid = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY({ title: 'Unpaid escrow study' }))).body);
+    const open = EscrowFunding.parse((await t.req('POST', `/studies/${unpaid.id}/escrow/fundings`, b.token)).body);
+    expect((await t.req('DELETE', '/me', b.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    expect(t.db.prepare('SELECT status FROM studies WHERE id = ?').get(funded.id)).toEqual({ status: 'closed' });
+    expect(t.db.prepare('SELECT status FROM escrow_fundings WHERE id = ?').get(open.id)).toEqual({ status: 'expired' });
+    await runSettlement(t.deps);
+    expect(books(funded.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, pendingRefundUnits: 0, refundedUnits: 3_300_000, ok: true });
+    expect(t.sim.refundsTo(b.wallet)).toBe(3_300_000);
+  });
+
+  it('a funding still in flight at deletion is credited and refunded once it confirms', async () => {
+    t = await makeApp({ settlement: 'simulated' });
+    const b = await builderWithWallet();
+    const s = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY())).body);
+    const f = EscrowFunding.parse((await t.req('POST', `/studies/${s.id}/escrow/fundings`, b.token)).body);
+    t.sim.holdProcessing = true;
+    const pay = (await t.req('POST', `/escrow/fundings/${f.id}/simulated-wallet-payment`, b.token)).body;
+    expect((await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: pay.signature })).body.status).toBe('pending');
+    expect((await t.req('DELETE', '/me', b.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    t.sim.holdProcessing = false;
+    await runSettlement(t.deps); // confirms the funding, refunds it (study closed)
+    await runSettlement(t.deps); // settles the refund
+    expect(books(s.id)).toMatchObject({ fundedUnits: 3_300_000, refundedUnits: 3_300_000, availableUnits: 0, ok: true });
+    expect(t.sim.refundsTo(b.wallet)).toBe(3_300_000);
+  });
+});
+
+describe('P3: repeated payment failures escalate; a funding without a source wallet never confirms', () => {
+  it('after 5 failed attempts the worker raises an operator alert and keeps retrying with backoff', async () => {
+    t = await makeApp({ settlement: 'simulated' });
+    const { b, study } = await fundedStudy();
+    const { pid } = await submitted(study.id);
+    await t.req('POST', `/participations/${pid}/approve`, b.token, {});
+    t.sim.payoutFault = 'relayer_underfunded';
+    let alerts: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      alerts = (await runSettlement(t.deps)).alerts;
+      t.clock.now += 2 * 3600_000;
+    }
+    expect(alerts.join('\n')).toMatch(/5\+ failed attempts/);
+    expect(books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
+  });
+
+  it('a transfer with no identifiable source wallet fails (refunds would have nowhere to go)', async () => {
+    t = await makeApp({ settlement: 'simulated' });
+    const b = await builderWithWallet();
+    const s = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY())).body);
+    const f = EscrowFunding.parse((await t.req('POST', `/studies/${s.id}/escrow/fundings`, b.token)).body);
+    const sig = t.sim.recordTransfer({ source: '', destination: f.vault, amountUnits: f.amountUnits, reference: f.reference });
+    const r = await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: sig });
+    expect(r.body).toMatchObject({ status: 'failed', failureReason: expect.stringMatching(/funding wallet/) });
+    expect(books(s.id).fundedUnits).toBe(0);
+  });
+});
+
 describe('G: admin powers and audit', () => {
   it('G1/G2: admins can list payouts but no route sets an amount or destination; money transitions are audited', async () => {
     t = await makeApp({ settlement: 'simulated' });

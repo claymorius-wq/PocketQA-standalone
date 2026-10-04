@@ -4,6 +4,7 @@ import { accountBalance, post } from '../ledger';
 import { me, type Ctx, type Handler } from '../context';
 import { RECOVERABLE_PROVIDERS } from '../identity/types';
 import { deleteOrQueue } from '../storage/sweep';
+import { authorizeRefund } from '../escrow';
 import { fail, hashPassword, iso, newId, newToken, sha256, verifyPassword } from '../util';
 import {
   disputeView,
@@ -295,6 +296,16 @@ export const accountHandlers = {
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM wallet_nonces WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM identities WHERE user_id = ?').run(user.id);
+      // Escrow (ADR 0007): a builder's wallet-funded drafts close with the account, so funds are
+      // never stranded. Unpaid funding requests expire; a funded vault is set aside for refund to
+      // the wallet that funded it; a funding still in flight is refunded once it confirms
+      // (escrow.ts verifyFunding). Published or paused studies already block deletion above.
+      for (const s of db.prepare(`SELECT * FROM studies WHERE builder_id = ? AND payment_mode = 'escrow' AND status = 'draft'`).all(user.id) as StudyRow[]) {
+        const now = ctx.deps.now();
+        db.prepare(`UPDATE escrow_fundings SET status = 'expired' WHERE study_id = ? AND status = 'awaiting_payment'`).run(s.id);
+        db.prepare(`UPDATE studies SET status = 'closed', closed_at = ? WHERE id = ?`).run(iso(now), s.id);
+        authorizeRefund(db, { ...s, status: 'closed' }, now, user.id);
+      }
       // The leaderboard pseudonym goes with the account; points stay append-only under the
       // now-anonymous id (like ledger postings, ADR 0002).
       db.prepare('DELETE FROM leaderboard_profiles WHERE user_id = ?').run(user.id);
