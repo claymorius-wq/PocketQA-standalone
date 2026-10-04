@@ -5,6 +5,7 @@ import type { Finding, Participation } from '@pocket-qa/contracts';
 import { FlutedLens, GlassSurface, useUplight, Well } from '../../glass';
 import { GradientRule } from '../../glass/paint';
 import { GlassTile } from '../../icons';
+import { formatUnits, tokenAmount } from '../../lib/money';
 import { credits, statusLabel } from '../../lib/format';
 import type { useStudyDisputes } from '../../lib/queries';
 import { DUR, UPLIGHT } from '../../theme/motion';
@@ -22,10 +23,12 @@ type Dispute = NonNullable<ReturnType<typeof useStudyDisputes>['data']>['items']
 /** The participant head (board: pill and name on the left, the reward well spanning both rows on the right, the consent line under them). */
 export function ReviewHead({ p }: { p: Participation }) {
   const { colors, type } = useTheme();
+  const token = p.reward.kind === 'token' ? p.reward : null;
   const n = p.rewardCredits;
   // "50 test credits on approval": the numeral and its unit lines are one phrase for screen readers.
-  const phrase = `${credits(n)} on approval`;
-  const unit = creditsSuffix(n).trim();
+  const phrase = `${token ? tokenAmount(token.units) : credits(n)} on approval`;
+  const unit = token ? 'simulated USDC' : creditsSuffix(n).trim();
+  const figure = token ? formatUnits(token.units) : n.toLocaleString('en-US');
   return (
     <View style={styles.head}>
       <View style={styles.headTop}>
@@ -36,7 +39,7 @@ export function ReviewHead({ p }: { p: Participation }) {
           <Text variant="display">{p.testerDisplayName ?? 'Tester'}</Text>
         </View>
         <Well accessible accessibilityRole="text" accessibilityLabel={phrase} style={styles.reward}>
-          <RNText style={[type.numeral, { color: colors.numeral }]}>{n.toLocaleString('en-US')}</RNText>
+          <RNText style={[type.numeral, { color: colors.numeral }]}>{figure}</RNText>
           <RNText numberOfLines={1} style={[type.disclaimer, { color: colors.textMuted }]}>{unit}</RNText>
           <RNText numberOfLines={1} style={[type.disclaimer, { color: colors.textMuted }]}>on approval</RNText>
         </Well>

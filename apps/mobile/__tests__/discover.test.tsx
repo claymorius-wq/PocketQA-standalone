@@ -21,15 +21,15 @@ jest.mock('expo-router', () => ({ router: { push: (path: string) => mockPush(pat
 let mockUser: { device: DeviceProfile | null } | null = null;
 jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser }) }));
 
-type Item = { id: string; title: string; objective: string; rewardCredits: number; taskCount: number; slotsRemaining: number };
+type Item = { id: string; title: string; objective: string; rewardCredits: number; reward: { kind: 'test_credits'; credits: number }; taskCount: number; slotsRemaining: number };
 type Query = { isLoading: boolean; error: unknown; data: { items: Item[] } | undefined; refetch: jest.Mock };
 let mockQuery: Query;
 jest.mock('../src/lib/queries', () => ({ useEligible: () => mockQuery, useFocusRefetch: () => undefined }));
 
 const WEB_DEVICE: DeviceProfile = { platform: 'web', osVersion: 'Browser', androidApiLevel: null, model: 'Web preview', languages: ['en'] };
 const STUDIES: Item[] = [
-  { id: 'a', title: 'Demo: onboarding screens', objective: 'Find where first-time users hesitate during sign-up.', rewardCredits: 30, taskCount: 1, slotsRemaining: 5 },
-  { id: 'b', title: 'Checkout flow', objective: 'Watch the payment step.', rewardCredits: 50, taskCount: 3, slotsRemaining: 1 },
+  { id: 'a', title: 'Demo: onboarding screens', objective: 'Find where first-time users hesitate during sign-up.', rewardCredits: 30, reward: { kind: 'test_credits', credits: 30 }, taskCount: 1, slotsRemaining: 5 },
+  { id: 'b', title: 'Checkout flow', objective: 'Watch the payment step.', rewardCredits: 50, reward: { kind: 'test_credits', credits: 50 }, taskCount: 3, slotsRemaining: 1 },
 ];
 /** The lens is decorative (hidden from assistive tech), so queries must include hidden elements. */
 const HIDDEN_OK = { includeHiddenElements: true };

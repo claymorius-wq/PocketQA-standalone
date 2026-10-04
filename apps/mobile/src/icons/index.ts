@@ -37,6 +37,10 @@ export type { GlyphVariant } from './material';
 export const LUCIDE_TO_GLYPH = {
   AlertTriangle: 'warning',
   ArrowRight: 'forward',
+  // Reputation (badge and leaderboard glyphs fall back to existing Lens glyphs until badge assets exist).
+  Award: 'approve',
+  BadgeCheck: 'approve',
+  Trophy: 'users',
   Ban: 'ban',
   Check: 'approve',
   CheckSquare: 'approve',

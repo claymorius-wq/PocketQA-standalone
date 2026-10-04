@@ -67,6 +67,8 @@ function study(over: Record<string, unknown> = {}) {
     status: 'draft',
     moderation: 'ok',
     rewardCredits: 50,
+    payment: { mode: 'test_credits' },
+    reward: { kind: 'test_credits', credits: 50 },
     slots: 5,
     slotsFilled: 0,
     budget: { reserved: 0, awarded: 0, committed: 0, available: 0 },

@@ -65,6 +65,8 @@ function ThemedStack() {
         <Stack.Screen name="builder/new-study" options={{ title: 'New study' }} />
         <Stack.Screen name="builder/study/[id]" options={{ title: 'Study' }} />
         <Stack.Screen name="builder/review/[id]" options={{ title: 'Review' }} />
+        <Stack.Screen name="reputation" options={{ title: 'Reputation' }} />
+        <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
       </Stack>
     </>
   );

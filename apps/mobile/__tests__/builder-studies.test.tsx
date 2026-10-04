@@ -61,6 +61,8 @@ function study(over: Partial<Study> & Pick<Study, 'id' | 'title'>): Study {
     tasks: [],
     deviceCriteria: { platforms: ['android'], minAndroidApi: null, languages: [] },
     rewardCredits: 30,
+    payment: { mode: 'test_credits' },
+    reward: { kind: 'test_credits', credits: 30 },
     slots: 5,
     consentText: 'You agree to record your screen for this study.',
     consentVersion: 1,

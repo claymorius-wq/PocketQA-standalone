@@ -20,7 +20,10 @@ jest.mock('expo-router', () => ({
   router: { replace: (...a: unknown[]) => mockReplace(...a) },
   Redirect: () => null,
 }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder' } }) }));
+let mockSettlement: 'off' | 'simulated' = 'off';
+jest.mock('../src/auth/SessionProvider', () => ({
+  useSession: () => ({ user: { id: 'b1', role: 'builder' }, features: { testCredits: true, devnetTransfers: true, settlement: mockSettlement } }),
+}));
 
 const mockApi = jest.fn();
 jest.mock('../src/api/client', () => {
@@ -35,6 +38,7 @@ jest.mock('../src/api/client', () => {
 });
 
 beforeEach(() => {
+  mockSettlement = 'off';
   jest.useFakeTimers();
   mockReplace.mockReset();
   mockApi.mockReset();
@@ -176,6 +180,32 @@ describe('New study', () => {
       },
     });
     expect(mockReplace).toHaveBeenCalledWith('/builder/study/study-9');
+  });
+
+  it('offers wallet escrow only where the server runs simulated settlement', async () => {
+    await renderScreen();
+    expect(screen.queryByTestId('payment-mode')).toBeNull();
+    expect(screen.queryByTestId('study-reward-usdc')).toBeNull();
+  });
+
+  it('wallet escrow: says it is a simulation, parses the reward exactly and saves it in base units', async () => {
+    mockSettlement = 'simulated';
+    mockApi.mockResolvedValue({ id: 'study-10' });
+    await renderScreen();
+    await fillValid();
+    await act(async () => fireEvent.press(screen.getByTestId('payment-mode-escrow')));
+    expect(screen.getByTestId('escrow-sim-notice')).toHaveTextContent(/simulated in this build: no wallet is charged and no funds move/);
+    expect(screen.queryByTestId('study-reward')).toBeNull();
+    await act(async () => fireEvent.changeText(screen.getByTestId('study-reward-usdc'), '0.3'));
+    expect(screen.getByTestId('study-pool')).toHaveTextContent('1.50 simulated USDC');
+    await act(async () => fireEvent.changeText(screen.getByTestId('study-reward-usdc'), '1.0000001'));
+    expect(screen.getByTestId('study-save')).toBeDisabled();
+    await act(async () => fireEvent.changeText(screen.getByTestId('study-reward-usdc'), '0.3'));
+    await act(async () => fireEvent.press(screen.getByTestId('study-save')));
+    await settle();
+    const body = mockApi.mock.calls[0]![1].body;
+    expect(body.payment).toEqual({ mode: 'escrow', rewardUnits: 300_000 });
+    expect(body).not.toHaveProperty('rewardCredits');
   });
 
   it('shows the server failure above the dock', async () => {

@@ -6,7 +6,8 @@ import type { CommitStatus } from '../../ui/patterns';
 export type DecisionKind = 'approve' | 'reject';
 
 /** One decision as it was confirmed: its kind and the text sent with it (the request's variables). */
-export type Decision = { kind: DecisionKind; note: string; reason: string };
+/** `helpful`: the builder marks the tester's feedback helpful (reputation points only). */
+export type Decision = { kind: DecisionKind; note: string; reason: string; helpful?: boolean };
 
 /** Findings can be written once the tester has submitted (unchanged rule). */
 export function canAddFinding(status: Participation['status']): boolean {

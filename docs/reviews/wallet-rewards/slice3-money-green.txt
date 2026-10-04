@@ -1,0 +1,27 @@
+    ✓ 1000000 units → 1.00
+    ✓ 1500000 units → 1.50
+    ✓ 1 units → 0.000001
+    ✓ 123456789 units → 123.456789
+    ✓ 0 units → 0.00
+    ✓ 100000000000 units → 100,000.00
+    ✓ 1 → 1000000 units, exactly (1 ms)
+    ✓ 1.5 → 1500000 units, exactly
+    ✓ 0.000001 → 1 units, exactly
+    ✓ 0.1 → 100000 units, exactly
+    ✓ 2.30 → 2300000 units, exactly
+    ✓ 100000 → 100000000000 units, exactly
+    ✓ rejects ""
+    ✓ rejects "0"
+    ✓ rejects "0.0"
+    ✓ rejects "-1"
+    ✓ rejects "1.0000001"
+    ✓ rejects "1e3" (1 ms)
+    ✓ rejects "1,5"
+    ✓ rejects "abc"
+    ✓ rejects "1."
+    ✓ rejects ".5"
+    ✓ rejects "1000001"
+    ✓ 0.1 + 0.2 style inputs stay exact
+    ✓ names the asset as simulated (8 ms)
+    ✓ every payment state is qualified and none says paid (1 ms)
+Tests:       26 passed, 26 total

@@ -22,7 +22,8 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'study-1' }),
   Redirect: () => null,
 }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'u1', role: 'tester' } }) }));
+let mockWallet: { address: string; linkedAt: string } | null = null;
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'u1', role: 'tester', wallet: mockWallet } }) }));
 jest.mock('../src/lib/capability', () => ({ recordingCapability: () => ({ available: false, reason: 'Screen recording is unavailable on this device.' }) }));
 
 const mockApi = jest.fn();
@@ -42,6 +43,7 @@ type Study = {
   title: string;
   objective: string;
   rewardCredits: number;
+  reward: { kind: 'test_credits'; credits: number } | { kind: 'token'; asset: 'USDC'; decimals: 6; units: number; settlement: 'simulated' };
   slotsRemaining: number;
   buildUnderTest: string | null;
   tasks: { id: string; instruction: string; successCriteria: string | null }[];
@@ -66,6 +68,7 @@ beforeEach(() => {
     title: 'Demo: onboarding screens',
     objective: 'Find where first-time users hesitate during sign-up.',
     rewardCredits: 30,
+    reward: { kind: 'test_credits', credits: 30 },
     slotsRemaining: 5,
     buildUnderTest: 'v1.4.2 (internal)',
     tasks: [{ id: 't1', instruction: 'Create an account and reach the home screen', successCriteria: 'The receipt screen is visible' }],
@@ -194,6 +197,32 @@ describe('Study detail', () => {
     expect(mockReplace).not.toHaveBeenCalled();
     expect(takeHandoff('u2')).toBe(false);
     expect(screen.getByTestId('consent-submit')).not.toBeDisabled();
+  });
+
+  it('wallet-funded study: the reward is simulated USDC, and joining needs the explicit wallet confirmation', async () => {
+    mockWallet = { address: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', linkedAt: '2026-10-05T00:00:00.000Z' };
+    mockStudy = { ...mockStudy, rewardCredits: 0, reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_500_000, settlement: 'simulated' } };
+    mockApi.mockReturnValue(new Promise(() => {}));
+    try {
+      await renderScreen();
+      expect(screen.getByTestId('reward-disclaimer')).toHaveTextContent(/Simulation in this build: no funds move/);
+      await fireEvent.press(screen.getByTestId('consent-checkbox'));
+      expect(screen.getByTestId('consent-submit')).toBeDisabled();
+      expect(screen.getByText(/only to my wallet 7EcD…FLtV\. It can’t be changed after I join\./, { includeHiddenElements: true })).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('consent-reward-wallet'));
+      await fireEvent.press(screen.getByTestId('consent-submit'));
+      expect(mockApi).toHaveBeenCalledWith('consent', { params: { id: 'study-1' }, body: { consentVersion: 1, accepted: true, payoutAddress: mockWallet.address } });
+    } finally {
+      mockWallet = null;
+    }
+  });
+
+  it('wallet-funded study without a linked wallet: asks to link one, and joining stays off', async () => {
+    mockStudy = { ...mockStudy, rewardCredits: 0, reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'simulated' } };
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('consent-checkbox'));
+    expect(screen.getByTestId('consent-needs-wallet')).toBeTruthy();
+    expect(screen.getByTestId('consent-submit')).toBeDisabled();
   });
 
   it('a joined study offers "Open your session" instead of the consent card', async () => {

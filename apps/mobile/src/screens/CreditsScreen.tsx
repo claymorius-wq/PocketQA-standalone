@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { CREDITS_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
+import { TesterRewards } from './TesterRewards';
 import { GlassSurface } from '../glass';
 import type { GlyphName } from '../icons';
 import { useCredits, useFocusRefetch } from '../lib/queries';
@@ -184,6 +185,7 @@ export function CreditsScreen({ title }: { title: string }) {
           />
         )}
       </QueryState>
+      {user?.role === 'tester' ? <TesterRewards /> : null}
     </Screen>
   );
 }

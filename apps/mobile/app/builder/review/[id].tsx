@@ -8,6 +8,8 @@ import type { Evidence } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../../src/api/client';
 import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
 import { credits } from '../../../src/lib/format';
+import { rewardText } from '../../../src/lib/money';
+import { PaymentStateCard } from '../../../src/screens/PaymentState';
 import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy, useStudyDisputes } from '../../../src/lib/queries';
 import { RequireRole } from '../../../src/screens/RequireRole';
 import { canAddFinding, commitStatus, decisionView, type Decision, type DecisionKind } from '../../../src/screens/review/decision';
@@ -15,7 +17,7 @@ import { EvidenceStrip } from '../../../src/screens/review/EvidenceStrip';
 import { AiPanel, DecisionNotice, DisputeCard, DockSlot, EvidenceEmpty, FindingsList, FormCard, ReviewHead, ReviewSection, TaskNotes } from '../../../src/screens/review/ReviewParts';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { layout } from '../../../src/theme/tokens';
-import { Button, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
+import { Button, Checkbox, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
 import { DecisionBar, SectionHeader } from '../../../src/ui/patterns';
 import { TransferCard } from '../../../src/wallet/TransferCard';
 import { useSession } from '../../../src/auth/SessionProvider';
@@ -101,6 +103,7 @@ function ReviewInner() {
   const [kind, setKind] = useState<DecisionKind>('approve');
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
+  const [helpful, setHelpful] = useState(false);
   // U7: the Commit pass is playing in the Approve sheet (the request has succeeded).
   const [passing, setPassing] = useState(false);
   // In-session approvals: each one lands the U7 tail on the Decision notice once.
@@ -110,7 +113,9 @@ function ReviewInner() {
     // The decision carries its own fields, so a request always sends what was confirmed, even one
     // the browser held while offline and sends later.
     mutationFn: (d: Decision) =>
-      d.kind === 'approve' ? api('approve', { params: { id }, body: d.note.trim() ? { note: d.note } : {} }) : api('reject', { params: { id }, body: { reason: d.reason } }),
+      d.kind === 'approve'
+        ? api('approve', { params: { id }, body: { ...(d.note.trim() ? { note: d.note } : {}), ...(d.helpful ? { helpful: true } : {}) } })
+        : api('reject', { params: { id }, body: { reason: d.reason } }),
     onSuccess: (p, d) => {
       // A lit Approve keeps its sheet for the Commit pass and the sheet's onLeave closes it; Reject,
       // reduced motion and the flat light theme close now.
@@ -130,6 +135,7 @@ function ReviewInner() {
       setKind(sending.kind);
       setNote(sending.note);
       setReason(sending.reason);
+      setHelpful(sending.helpful ?? false);
       setOpen(true);
       return;
     }
@@ -190,14 +196,21 @@ function ReviewInner() {
                 ) : null}
                 {canAddFinding(p.status) ? <FindingForm participationId={p.id} evidence={ev.data?.items ?? []} /> : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
+                {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
                 {features.devnetTransfers && !passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
                   <TransferCard participationId={p.id} role="builder" canStart />
                 ) : null}
                 <ConfirmSheet
                   visible={open}
-                  title={kind === 'approve' ? `Approve and credit ${credits(p.rewardCredits)}?` : 'Reject this submission?'}
-                  body={kind === 'approve' ? 'The tester is credited once. This can’t be undone.' : 'Give a clear reason. The tester can dispute within 7 days.'}
+                  title={kind === 'approve' ? (p.reward.kind === 'token' ? `Approve and release ${rewardText(p.reward)}?` : `Approve and credit ${credits(p.rewardCredits)}?`) : 'Reject this submission?'}
+                  body={
+                    kind === 'approve'
+                      ? p.reward.kind === 'token'
+                        ? 'The reward is sent once, from the study escrow to the tester’s saved wallet (simulated: no funds move). This can’t be undone.'
+                        : 'The tester is credited once. This can’t be undone.'
+                      : 'Give a clear reason. The tester can dispute within 7 days.'
+                  }
                   confirmLabel={kind === 'approve' ? 'Approve' : 'Reject'}
                   destructive={kind === 'reject'}
                   confirmDisabled={kind === 'reject' && reason.trim().length < 10}
@@ -210,9 +223,14 @@ function ReviewInner() {
                     setLanded((n) => n + 1);
                   }}
                   onCancel={() => setOpen(false)}
-                  onConfirm={() => decide.mutate({ kind, note, reason })}
+                  onConfirm={() => decide.mutate({ kind, note, reason, helpful })}
                 >
-                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." locked={decide.isPending} testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} locked={decide.isPending} testID="approve-note" />}
+                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." locked={decide.isPending} testID="reject-reason" /> : (
+                    <>
+                      <Field label="Note to tester (optional)" value={note} onChangeText={setNote} locked={decide.isPending} testID="approve-note" />
+                      <Checkbox checked={helpful} onChange={setHelpful} label="Mark the feedback helpful (adds reputation points)" testID="approve-helpful" />
+                    </>
+                  )}
                   {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
                 </ConfirmSheet>
               </>
