@@ -394,6 +394,20 @@ describe('Your session', () => {
     expect(mockApi).toHaveBeenCalledWith('openDispute', { body: { participationId: 'p1', reason: 'My note explains the checkout step.' } });
   });
 
+  it('rejected: the dispute reason locks while it is being sent (rc review P3-1)', async () => {
+    const decidedAt = new Date(Date.now() - 60_000).toISOString();
+    mockApi.mockImplementation(() => new Promise(() => {}));
+    await renderScreen(base('rejected', { decidedAt, decisionReason: 'The receipt screen was never reached.' }));
+    await press('dispute-open');
+    await act(async () => {
+      await fireEvent.changeText(screen.getByTestId('dispute-reason'), 'My note explains the checkout step.');
+    });
+    expect(screen.getByTestId('dispute-reason').props.editable).toBe(true);
+    await press('confirm-ok');
+    expect(screen.getByTestId('dispute-reason').props.editable).toBe(false);
+    mockApi.mockReset();
+  });
+
   it('disputed: the dispute card with its status', async () => {
     mockDisputes = [{ id: 'd1', participationId: 'p1', status: 'open', outcome: null, resolutionNote: null }];
     await renderScreen(base('disputed', { decidedAt: '2026-10-03T16:40:00.000Z' }));

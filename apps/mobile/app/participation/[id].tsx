@@ -538,7 +538,7 @@ function Decision({ p }: { p: Participation }) {
         error={dispute.error ? (dispute.error as ApiError).message : null}
         failureTitle="Couldn’t send"
       >
-        <Field label="Reason" value={reason} onChangeText={setReason} multiline testID="dispute-reason" hint="At least 10 characters." />
+        <Field label="Reason" value={reason} onChangeText={setReason} multiline locked={dispute.isPending} testID="dispute-reason" hint="At least 10 characters." />
       </ConfirmSheet>
       {features.devnetTransfers && (p.status === 'approved' || p.status === 'resolved') ? (
         <View style={styles.transfer}>

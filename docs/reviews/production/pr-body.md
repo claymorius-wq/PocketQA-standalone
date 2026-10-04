@@ -35,6 +35,17 @@ The real-provider, hardware and store gates below are also open. The live demo p
   
   No physical device and no real wallet were used.
 
+### Review of the integrated candidate
+- **`rc-verdict-qa-r1`: APPROVE** of the frozen `6c8bec0`, a fresh full review with no prior approval reused. pqa-qa re-ran:
+  - `pnpm verify`, Playwright 14/14, Firebase E2E 4/4 and the web export;
+  - four Android **emulator** flows on the installed APK `6f9208cd…`.
+- **Follow-up commit (this one):** the one new P3 is applied after the verdict: the tester's dispute reason is locked while sending, with a unit test. That's one `locked` prop in `app/participation/[id].tsx`.
+  - The native binaries in the evidence (APK `6f9208cd…`, iOS `a9f23a2f…`) were built from `6c8bec0`, not from this follow-up.
+- **Carried P3s, tied to A5:**
+  - `db:redelete`;
+  - a raw byte copy of a corrupt kept DB.
+- **At cutover:** re-run `r2:cors` as a read-only dry run.
+
 ### Evidence (details: `docs/verification.md`, 2026-10-04 production section)
 - **`pnpm verify`:** EXIT=0. Test counts: scripts 47, contracts 17, domain 170, API 369 plus 2 skipped, mobile 731.
 - **Playwright:** 12/12.
