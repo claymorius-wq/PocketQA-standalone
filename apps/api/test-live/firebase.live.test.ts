@@ -12,7 +12,8 @@ import { FakeRpc } from '../test/helpers';
 /**
  * LIVE Firebase Auth checks against the dedicated project (ADR 0005 §1 provider gate).
  * Skipped unless POCKETQA_LIVE_FIREBASE=1 with POCKETQA_FIREBASE_* and an Admin credential
- * (GOOGLE_APPLICATION_CREDENTIALS) in the environment; nothing is committed or printed.
+ * (GOOGLE_APPLICATION_CREDENTIALS = a key for the dedicated `pocketqa-api` service account, never a
+ * personal login token) in the environment; nothing is committed or printed.
  * Creates test users only; deletes nothing (UIDs are reported for later cleanup).
  */
 const LIVE = process.env.POCKETQA_LIVE_FIREBASE === '1';

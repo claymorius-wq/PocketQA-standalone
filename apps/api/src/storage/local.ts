@@ -17,6 +17,7 @@ export function localStore(mediaDir: string): EvidenceStore {
     if (ifMatch && tagOf(p) !== ifMatch) throw new StorageChanged('object changed');
   };
   return {
+    canDelete: true,
     kind: 'local',
     async head(key) {
       const p = path(key);

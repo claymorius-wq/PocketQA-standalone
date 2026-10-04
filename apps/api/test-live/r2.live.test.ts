@@ -31,6 +31,7 @@ function noDelete(store: EvidenceStore): EvidenceStore {
   return {
     ...store,
     kind: store.kind,
+    canDelete: false,
     head: store.head.bind(store),
     readRange: store.readRange.bind(store),
     copy: async (src, dst, opts) => {
@@ -52,7 +53,8 @@ d('live R2: dedicated bucket, create-only', () => {
   let store: EvidenceStore;
 
   beforeAll(() => {
-    config = loadConfig({ ...env, POCKETQA_DATA_DIR: dir, POCKETQA_STORAGE: 'r2' });
+    // Synthetic objects only, retained (Hamza: no R2 deletion); never POCKETQA_R2_ALLOW_DELETE here.
+    config = loadConfig({ ...env, POCKETQA_DATA_DIR: dir, POCKETQA_STORAGE: 'r2', POCKETQA_R2_RETAIN_NONPROD: '1', POCKETQA_R2_ALLOW_DELETE: '0' });
     // Never anything but the dedicated bucket (other buckets hold unrelated production assets).
     if (config.r2!.bucket !== 'pocketqa-evidence') throw new Error(`refusing to run against bucket ${config.r2!.bucket}`);
     if (createHash('sha256').update(config.r2!.accountId).digest('hex') !== EXPECTED_ACCOUNT_SHA256) throw new Error('refusing: not the expected Cloudflare account');

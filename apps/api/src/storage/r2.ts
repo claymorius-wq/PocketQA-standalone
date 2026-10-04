@@ -26,6 +26,7 @@ export function r2Store(r2: NonNullable<Config['r2']>): EvidenceStore {
     return err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404;
   };
   return {
+    canDelete: r2.allowDelete,
     kind: 'r2',
     async head(key) {
       assertKey(key);
@@ -59,6 +60,8 @@ export function r2Store(r2: NonNullable<Config['r2']>): EvidenceStore {
     },
     async delete(key) {
       assertKey(key);
+      // Refused before any request: the caller's deleteOrQueue keeps the key in the outbox.
+      if (!r2.allowDelete) throw new Error('R2 deletion is disabled (POCKETQA_R2_ALLOW_DELETE is not set)');
       await client.send(new DeleteObjectCommand({ Bucket, Key: key }));
     },
     async presignPut(key, { contentType, contentLength, expiresInSeconds }) {

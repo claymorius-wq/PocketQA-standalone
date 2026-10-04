@@ -41,4 +41,5 @@
 1. Firebase console → Authentication → **Get started**, then enable Email/Password (free plan).
 2. Server Admin credential: enable the IAM API and create a dedicated SA (`roles/firebaseauth.admin`, plus a token creator on itself), or re-authenticate the Optijara `gcloud` account so I can do it.
 3. A bucket-scoped R2 token for `pocketqa-evidence`.
-4. Approval for the bucket config changes (CORS for browser PUT from the exact origin; lifecycle on `quarantine/`).
+4. Approval for the bucket CORS change (browser PUT from the exact origin).
+5. A decision on R2 deletion. **Correction (post-approval):** the earlier lifecycle recommendation is withdrawn, because Hamza prohibits R2 deletion. The adapter now refuses deletes by default (see the post-approval safety fixes).

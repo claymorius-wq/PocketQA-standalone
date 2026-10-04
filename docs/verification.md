@@ -344,3 +344,18 @@ R2 live:        Tests 5 passed (5)                 objects created: 5 (listed in
 Firebase live:  Error: accounts:signUp: CONFIGURATION_NOT_FOUND   users created: 0
 Guards (fake credentials, no requests sent): wrong account → "refusing: not the expected Cloudflare account"; bucket blog-assets → "refusing to run against bucket blog-assets"
 ```
+
+### Post-approval safety corrections (2026-10-04, after `live-verdict-qa-r1` APPROVE; uncommitted)
+- **Personal Firebase token withdrawn.** The Firebase runner above used the CLI's personal login as a temporary credential. That's no longer allowed. The runners `run-live-fb.cjs` and `gapi.cjs` were deleted from the scratchpad. A by-name check found no `fb-adc.json` and no `authorized_user` file in the scratchpad, the worktree or `/tmp/*.json` (values not printed). Future Firebase server tests use only the dedicated `pocketqa-api` service account (`docs/deploy/cloud-backend.md`, user action 2).
+- **Firebase Auth is still not initialised.** A read-only `GET identitytoolkit v1/projects` (getProjectConfig) with the public web key was run twice:
+  ```
+  2026-10-04T01:44:39Z  400 CONFIGURATION_NOT_FOUND
+  2026-10-04T01:47:22Z  400 CONFIGURATION_NOT_FOUND
+  ```
+- **No R2 deletion.** All lifecycle and expiry recommendations were removed from the deploy guide, the PR body and the candidates. The r2 adapter now refuses every delete unless `POCKETQA_R2_ALLOW_DELETE=1`; refused deletes stay in the `storage_deletions` outbox. Tests: `test/identity-config.test.ts` (off by default) and `test/storage.test.ts` (deletion off: after completion and the sweep, both the quarantine and evidence objects remain and the outbox is non-empty).
+- **pqa-qa r1 fixes (`safety-verdict-qa-r1` CHANGES_REQUIRED, 2 P2s and 2 P3s).**
+  - r2 refuses to start without a deletion policy.
+  - Account deletion fails closed (409, nothing changed) while R2 deletion is off.
+  - The bucket is pinned to `pocketqa-evidence`.
+  - `pnpm verify` → EXIT=0 (`docs/reviews/cloud/live/safety-pnpm-verify.txt`): API 342 passed, 2 skipped.
+

@@ -3,6 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, type AuthMode, type StorageMode } from '@pocket-qa/contracts';
 
+/** Pocket QA's dedicated R2 bucket(s); add a staging bucket here only by decision (ADR 0005). */
+export const R2_BUCKETS: readonly string[] = ['pocketqa-evidence'];
+
 export type Config = {
   host: '127.0.0.1' | '::1';
   port: number;
@@ -32,7 +35,7 @@ export type Config = {
    * R2 (S3 API). The access key pair is server-only, read from the environment and never
    * logged or returned; `endpoint` is the account endpoint unless overridden for tests.
    */
-  r2: { accountId: string; bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string } | null;
+  r2: { accountId: string; bucket: string; endpoint: string; accessKeyId: string; secretAccessKey: string; allowDelete: boolean } | null;
 };
 
 export class ConfigError extends Error {}
@@ -137,6 +140,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     const secretAccessKey = env.POCKETQA_R2_SECRET_ACCESS_KEY ?? '';
     if (!/^[a-f0-9]{32}$/.test(accountId)) throw new ConfigError('POCKETQA_R2_ACCOUNT_ID (32 hex) is required for r2 storage.');
     if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket)) throw new ConfigError('POCKETQA_R2_BUCKET is required for r2 storage.');
+    const testServer = env.POCKETQA_R2_ENDPOINT !== undefined && env.POCKETQA_R2_ENDPOINT !== '';
     if (!accessKeyId || !secretAccessKey) throw new ConfigError('POCKETQA_R2_ACCESS_KEY_ID and POCKETQA_R2_SECRET_ACCESS_KEY are required for r2 storage.');
     let endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
     if (env.POCKETQA_R2_ENDPOINT) {
@@ -144,7 +148,18 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
       if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(env.POCKETQA_R2_ENDPOINT)) throw new ConfigError('POCKETQA_R2_ENDPOINT may only point at a loopback test server.');
       endpoint = env.POCKETQA_R2_ENDPOINT;
     }
-    r2 = { accountId, bucket, endpoint, accessKeyId, secretAccessKey };
+    // Hamza: no R2 object is deleted without explicit approval. Off by default, deletes are
+    // kept in the storage_deletions outbox (nothing is lost) until POCKETQA_R2_ALLOW_DELETE=1.
+    const allowDelete = env.POCKETQA_R2_ALLOW_DELETE === '1';
+    // Only Pocket QA's own bucket is ever a write target, so a mistyped name with wider
+    // credentials can't reach another project's bucket. Loopback test servers are exempt.
+    if (!testServer && !R2_BUCKETS.includes(bucket)) throw new ConfigError(`POCKETQA_R2_BUCKET must be Pocket QA's own bucket (${R2_BUCKETS.join(', ')}).`);
+    // With deletion off, account deletion can't erase recordings (and is refused), so r2 runs
+    // only for synthetic, non-production data until Hamza approves a deletion policy.
+    if (!allowDelete && env.POCKETQA_R2_RETAIN_NONPROD !== '1') {
+      throw new ConfigError('r2 storage needs a deletion policy: POCKETQA_R2_ALLOW_DELETE=1 (approved) or POCKETQA_R2_RETAIN_NONPROD=1 (synthetic data only, objects retained).');
+    }
+    r2 = { accountId, bucket, endpoint, accessKeyId, secretAccessKey, allowDelete };
   }
 
   return {

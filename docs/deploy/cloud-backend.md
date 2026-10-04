@@ -27,16 +27,21 @@ The credentials used for the run were the account-level ones from the authorized
 
 ### Remaining user actions, in order
 1. **Firebase console** → `pocketqa-optijara` → Authentication → **Get started**. Under Sign-in method, enable **Email/Password**; Google is optional (it needs a support email). This is free and needs no billing. Then the live Firebase test can run.
-2. **Server credential (Admin SDK)** for any hosted API:
-   - Enable the IAM API in `pocketqa-optijara` (it's off today).
-   - Create a dedicated service account (for example `pocketqa-api`) with `roles/firebaseauth.admin`, plus `roles/iam.serviceAccountTokenCreator` on itself so it can sign custom tokens for wallet login.
-   - Prefer workload identity; otherwise keep a key only in the host's secret store.
-   - The `gcloud` Optijara account needs interactive re-authentication first (`gcloud auth login <account> --no-activate`, which doesn't switch the global account).
+2. **Dedicated service identity (Admin SDK)**, for the hosted API and for future live server tests. Personal Firebase/`gcloud` login tokens are never used or written to credential files. Exact minimal setup, no billing change:
+   - Enable `iam.googleapis.com` and `iamcredentials.googleapis.com` in `pocketqa-optijara` (both are free; IAM is off today).
+   - Create the service account `pocketqa-api@pocketqa-optijara.iam.gserviceaccount.com`.
+   - Grant it `roles/firebaseauth.admin` on the project (verify ID tokens and revocation, `updateUser`, `revokeRefreshTokens`). No Owner, Editor or other roles.
+   - Only for workload identity (or ADC without a key): grant it `roles/iam.serviceAccountTokenCreator` **on itself only** (resource-level, not project-level), so it can sign custom tokens for wallet login. A host using a JSON key signs custom tokens locally and doesn't need this role or the IAM Credentials API. Not needed at all while wallet login is off.
+   - Credential: workload identity on the host if available. Otherwise one JSON key, kept only in the host's secret store; for local live tests, a key file outside the repo (`GOOGLE_APPLICATION_CREDENTIALS`), removed afterwards.
+   - Who runs it: Hamza in the console, or the Optijara `gcloud` account after interactive re-authentication with `gcloud auth login <account> --no-activate` and `--account` on each command (no global account switch).
 3. **R2 production token:** in the Cloudflare dashboard, create an R2 API token scoped to **`pocketqa-evidence` only**, with Object Read & Write.
-4. **R2 bucket settings** (each a change to the bucket's config, so approval is required):
-   - a CORS rule allowing `PUT` from the exact app origin, with header `content-type`;
-   - a lifecycle rule expiring `quarantine/` after 1 day.
-   - Browser direct uploads can't work until CORS is set; server-side and Node uploads already work.
+4. **R2 bucket CORS** (a change to the bucket's config, so approval is required): allow `PUT` from the exact app origin, with header `content-type`. Browser direct uploads can't work until CORS is set; server-side and Node uploads already work.
+5. **R2 deletion decision.** Hamza prohibits R2 deletion without approval, so **no lifecycle or expiry rule is set and none is recommended**, and the r2 adapter deletes nothing by default (`POCKETQA_R2_ALLOW_DELETE` off). The app's r2 mode is designed to delete in four places: the quarantine copy after a completed upload, abandoned or rejected uploads (sweep), a half-promoted object after a crash, and a user's media on **account deletion**. With deletion off, each is refused before any request and kept in the `storage_deletions` outbox, so the objects are retained and the keys stay listed for a later, approved cleanup. 
+   - **Real-user cloud mode is OFF until Hamza approves a deletion policy.** The API refuses to start in r2 mode unless one of two flags is set:
+     - `POCKETQA_R2_ALLOW_DELETE=1`: approved deletion;
+     - `POCKETQA_R2_RETAIN_NONPROD=1`: synthetic, non-production data only, with objects retained.
+   - With deletion off, **account deletion is refused** (`409`, "stored recordings can't be erased yet. Nothing was deleted"). It never reports a deletion that leaves recordings in storage.
+   - **Turning deletion on drains the backlog.** The next sweeps delete every key queued in `storage_deletions`, up to 500 per sweep. That includes quarantine copies that may be kept as dispute evidence. Before enabling it, export and review the outbox key list (`SELECT object_key FROM storage_deletions`) as part of the approval.
 
 ### Running the live tests (credentials only from the environment; excluded from `pnpm verify`/CI)
 ```sh
@@ -58,15 +63,17 @@ POCKETQA_LIVE_FIREBASE=1 POCKETQA_FIREBASE_PROJECT_ID=pocketqa-optijara POCKETQA
 | `POCKETQA_WALLET_LOGIN` | `0`/`1` | Wallet-first login. Needs `POCKETQA_PUBLIC_ORIGIN`. See its enabling conditions below. |
 | `POCKETQA_PUBLIC_ORIGIN` | e.g. `https://app.example` | The exact https origin of the web app (http only for localhost). It becomes the SIWS domain and URI. |
 | `POCKETQA_STORAGE` | `local`, `r2` | `r2`: direct uploads to a private bucket. |
-| `POCKETQA_R2_ACCOUNT_ID`, `POCKETQA_R2_BUCKET` | 32-hex id, bucket name | Required for r2. |
-| `POCKETQA_R2_ACCESS_KEY_ID`, `POCKETQA_R2_SECRET_ACCESS_KEY` | bucket-scoped token | Server-only secrets, set in the host's secret store. |
+| `POCKETQA_R2_ACCOUNT_ID`, `POCKETQA_R2_BUCKET` | 32-hex id, bucket name | Required for r2. The bucket is pinned to Pocket QA's own (`R2_BUCKETS` in `apps/api/src/config.ts`: `pocketqa-evidence`); any other name refuses startup. |
+| `POCKETQA_R2_ACCESS_KEY_ID`, `POCKETQA_R2_SECRET_ACCESS_KEY` | bucket-scoped token | Server-only secrets, set in the host's secret store. **Only** the token scoped to `pocketqa-evidence` (user action 3) is acceptable. Account-level or other-project R2 credentials must never be used for the app. |
+| `POCKETQA_R2_ALLOW_DELETE` | `0`/`1` | Off by default: the adapter refuses every delete and keeps it in the outbox. Set to `1` only with Hamza's explicit approval (see user action 5). |
+| `POCKETQA_R2_RETAIN_NONPROD` | `0`/`1` | r2 with deletion off is allowed only with this set, for synthetic non-production data. Objects are retained and account deletion is refused. Without it, or `ALLOW_DELETE=1`, r2 refuses to start. |
 | `POCKETQA_SHARED_DEMO` | `0`/`1` | The shared synthetic preview only. It refuses firebase mode, r2 and wallet login. `scripts/preview/start.sh` pins all four. |
 
 ## Firebase setup (gate 1: needs a verified Optijara project)
 1. The dedicated project `pocketqa-optijara` exists and the Firebase CLI lists it (verified 2026-10-04). Never print `firebase login:list --json` raw, because it contains tokens.
 2. Use separate staging and production projects. Enable the **Email/Password** and **Google** providers only, since the API refuses others. Require email verification (the API enforces it as well).
 3. Authorized domains: the exact app origins only.
-4. Give the API host a service account with the minimum role (Firebase Authentication Admin), or workload identity.
+4. Give the API host the dedicated service account from user action 2 (Firebase Authentication Admin only), or workload identity. Never a personal login token.
 5. Gate check: sign up, verify the email, choose a role, sign in, and log out on every device. A token from before logout must be refused. Run a Google sign-in on the real domain.
 
 ## Cloudflare R2 setup (gate 2: needs a verified Optijara account)
@@ -74,12 +81,13 @@ POCKETQA_LIVE_FIREBASE=1 POCKETQA_FIREBASE_PROJECT_ID=pocketqa-optijara POCKETQA
 2. Create **private** buckets for staging and production, with public access and the `r2.dev` URL off.
 3. Create an API token scoped to that one bucket with Object Read & Write. Store it in the host's secret store.
 4. Add a CORS rule on the bucket. It must allow `PUT` from the exact app origin(s) only, with request header `content-type`, and no wildcards.
-5. Add a lifecycle rule as a backstop to the API's sweep: abort incomplete uploads, and expire `quarantine/` objects after 1 day.
+5. **No lifecycle or expiry rules.** They delete objects, which is not authorised (user action 5).
 6. Gate check, recording the evidence:
    - a presigned PUT with a different length or type is refused;
    - only the exact origin passes CORS;
    - an anonymous GET of the object is refused;
-   - completion, playback with seeking, and account deletion all work against real objects;
+   - completion and playback with seeking work against real objects;
+   - account deletion: with deletion off, it's refused (409) and the objects are unchanged (real removal is tested only with approval);
    - object metadata is read back.
 
 ## Hosting (gate 3)

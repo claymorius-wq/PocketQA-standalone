@@ -246,6 +246,10 @@ export const accountHandlers = {
       .prepare(`SELECT COUNT(*) AS n FROM participations WHERE tester_id = ? AND status IN ('submitted','disputed')`)
       .get(user.id) as { n: number };
     if (active.n > 0) throw fail('CONFLICT_STATE', 'Wait until your submitted work is reviewed and disputes are resolved.');
+    // Fail closed: never report a deletion that leaves the user's recordings in storage.
+    if (!ctx.deps.store.canDelete) {
+      throw fail('CONFLICT_STATE', 'Account deletion is unavailable on this deployment: stored recordings can’t be erased yet. Nothing was deleted.');
+    }
 
     const media: string[] = [];
     const quarantine: string[] = [];

@@ -35,7 +35,7 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2' } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -46,7 +46,7 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
   const identity = new FakeIdentity('demo-pocketqa', () => clock.now);
   const storage = opts.storage ?? 'local';
   const s3 = new FakeS3();
-  const r2 = storage === 'r2' ? { accountId: '0'.repeat(32), bucket: 'pqa-test', endpoint: await s3.start(), accessKeyId: 'test-key-id', secretAccessKey: 'test-secret-key' } : null; // check-secrets: allow (fake S3 test credentials)
+  const r2 = storage === 'r2' ? { accountId: '0'.repeat(32), bucket: 'pqa-test', endpoint: await s3.start(), accessKeyId: 'test-key-id', secretAccessKey: 'test-secret-key', allowDelete: opts.r2AllowDelete ?? true } : null; // check-secrets: allow (fake S3 test credentials)
   const store = r2 ? r2Store(r2) : localStore(mediaDir);
   const logs: string[] = [];
   const stream = new Writable({

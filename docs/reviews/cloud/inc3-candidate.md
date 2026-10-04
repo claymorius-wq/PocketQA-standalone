@@ -76,7 +76,7 @@
 - **`pnpm verify`:** see `inc3-pnpm-verify.txt`.
 
 ## Gates and limits (documented)
-- **Real R2:** a verified Optijara account, a private bucket, a bucket-scoped token, exact-origin CORS for PUT, and lifecycle rules. The fake S3 doesn't verify signatures or the signed content-length; real R2 does.
+- **Real R2:** a verified Optijara account, a private bucket, a bucket-scoped token, exact-origin CORS for PUT. (Lifecycle rules were listed here; **withdrawn 2026-10-04**, because R2 deletion is not authorised.) The fake S3 doesn't verify signatures or the signed content-length; real R2 does.
 - **Uploads:** single PUT only, up to 100 MB per item (contract limit). Multipart/resumable uploads for larger recordings, and native background upload, are not built: a retry re-PUTs from the start.
 - **Sweep and outbox:** they run in the API process. Multi-instance hosting needs a single runner or a lock (hosting gate).
 

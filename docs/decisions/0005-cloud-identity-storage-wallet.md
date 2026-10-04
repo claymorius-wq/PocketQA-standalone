@@ -66,6 +66,10 @@
      - rejected uploads are deleted.
    - Playback keeps today's authenticated, permission-rechecked, `Range`-capable `/media/:token` stream, now read through the store. There are no direct public or long-lived URLs.
    - Deletions that fail are queued in `storage_deletions` and retried. Expired intents have their quarantine objects removed.
+   - **R2 deletion is off by default (2026-10-04).** Hamza prohibits R2 deletion without approval, so the r2 adapter refuses every delete unless `POCKETQA_R2_ALLOW_DELETE=1`. Every delete then stays in the outbox and the object is retained. No lifecycle or expiry rules are used.
+     - r2 starts only with an explicit deletion policy: `ALLOW_DELETE=1`, or `POCKETQA_R2_RETAIN_NONPROD=1` for synthetic data.
+     - Account deletion fails closed (409) while deletion is off.
+     - The bucket is pinned to `pocketqa-evidence` (`R2_BUCKETS`).
    - The shared demo can't run in `r2` mode: the config refuses `POCKETQA_SHARED_DEMO=1` together with `POCKETQA_STORAGE=r2`, and the preview gate still blocks uploads.
    - **Version pinning:** completion pins the object version seen by HEAD (ETag `If-Match` on the sniff read and `CopySourceIfMatch` on the copy). Bytes swapped in with the still-valid URL give a retryable 409, never unchecked evidence.
    - **Limits (review r1 P3):**

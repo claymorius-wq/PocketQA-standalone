@@ -12,6 +12,8 @@ export interface EvidenceStore {
   readRange(key: string, start: number, end: number, opts?: { ifMatch?: string }): Promise<Readable>;
   /** Server-side copy; `ifMatch` pins the source version (else StorageChanged). */
   copy(srcKey: string, dstKey: string, opts?: { ifMatch?: string }): Promise<void>;
+  /** False when deletion is switched off (R2 without approval): every delete() is refused. */
+  readonly canDelete: boolean;
   /** Deleting a missing object is not an error. */
   delete(key: string): Promise<void>;
   /**

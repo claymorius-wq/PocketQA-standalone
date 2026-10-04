@@ -44,16 +44,22 @@ Every verdict is in `docs/reviews/cloud/` (`inc*-verdict-qa-r*.md`), next to the
   - **Firebase Authentication is not initialised** (`CONFIGURATION_NOT_FOUND`). On the free plan only the console can initialise it, and the API route needs billing.
   - The live test is ready, and fails at exactly that point. No users were created.
 - Live suites are excluded from `pnpm verify` and CI (`pnpm --filter @pocket-qa/api test:live`). Review: `docs/reviews/cloud/live-verdict-qa-r1.md` (APPROVE).
+- **Post-approval safety fixes** (no R2 deletion, fail-closed account deletion, bucket pin, no personal tokens): `safety-verdict-qa-r1` CHANGES_REQUIRED, then `safety-verdict-qa-r2` APPROVE.
 
 ### Remaining user actions (exact)
 1. Firebase console → `pocketqa-optijara` → Authentication → **Get started**, then enable Email/Password.
-2. A server Admin credential: enable the IAM API and create a dedicated service account (`roles/firebaseauth.admin`, plus a token creator on itself), or re-authenticate the Optijara `gcloud` account so the lead can do it.
+2. A dedicated service identity for the Admin SDK (no billing change): enable the IAM and IAM Credentials APIs, create `pocketqa-api@pocketqa-optijara.iam.gserviceaccount.com` with `roles/firebaseauth.admin` on the project, plus `roles/iam.serviceAccountTokenCreator` on itself only (for wallet-login custom tokens). Exact steps: `docs/deploy/cloud-backend.md`. Personal login tokens are not used.
 3. A bucket-scoped R2 token for `pocketqa-evidence` (Object Read & Write).
-4. Approval for the bucket config changes: CORS (`PUT` from the exact app origin) and lifecycle (`quarantine/` after 1 day).
+4. Approval for the bucket CORS change (`PUT` from the exact app origin).
+5. **A decision on R2 deletion.** No lifecycle or expiry rule is set or recommended. By default the r2 adapter refuses every delete (`POCKETQA_R2_ALLOW_DELETE` off) and keeps it in the outbox. Quarantine copies are retained. **Real-user cloud mode is off until a deletion policy is approved:**
+   - r2 refuses to start without `POCKETQA_R2_ALLOW_DELETE=1` (approved), or `POCKETQA_R2_RETAIN_NONPROD=1` (synthetic data only).
+   - With deletion off, account deletion is refused, never reported as done.
+   - Enabling deletion drains the queued backlog.
+   - The app's bucket is pinned to `pocketqa-evidence`.
 
 ### Gates NOT passed (real providers and hardware)
 1. **Firebase:** Authentication isn't initialised in `pocketqa-optijara` (user action 1). Untested: real email/Google sign-in, and the Admin service account.
-2. **Cloudflare R2:** the bucket and the signed-header enforcement are verified live. Still open: a bucket-scoped token, CORS for browser PUT, lifecycle, and real-device uploads.
+2. **Cloudflare R2:** the bucket and the signed-header enforcement are verified live. Still open: a bucket-scoped token, CORS for browser PUT, the deletion decision (user action 5), and real-device uploads.
 3. **Hosting:** TLS endpoint, trusted proxies, CORS or same-origin `/api`, a single sweep runner, database choice.
 4. **Wallets:**
    - real Wallet Standard browser wallets have not been tested;
@@ -64,6 +70,7 @@ Every verdict is in `docs/reviews/cloud/` (`inc*-verdict-qa-r*.md`), next to the
 
 ### Known follow-ups
 - A wallet chooser when several wallets are installed.
+- Show that account deletion is unavailable (`canDelete`) before the confirmation sheet. This only matters in synthetic `RETAIN_NONPROD` mode.
 - MP4/WebM structural validation beyond the 16-byte signature check.
 - Multipart/resumable uploads over 100 MB.
 - A shared rate-limit store and a sweep lease for multi-instance hosting.

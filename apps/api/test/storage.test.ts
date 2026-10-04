@@ -219,3 +219,33 @@ describe('client config never exposes storage credentials', () => {
     expect(body).not.toMatch(/test-key-id|test-secret-key|pqa-test|r2\.cloudflarestorage|127\.0\.0\.1/);
   });
 });
+
+describe('R2 deletion guard (default off)', () => {
+  it('with deletion not allowed, no object is ever deleted: deletes are kept in the outbox', async () => {
+    t = await makeApp({ storage: 'r2', r2AllowDelete: false });
+    const s = await seeded(t);
+    const i = UploadIntent.parse((await intentFor(s.tester.token, s.participationId)).body);
+    await put(i, MP4);
+    expect((await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token)).status).toBe(200);
+    t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
+    await sweepStorage(t.deps);
+    // Quarantine and promoted objects both still exist; the quarantine delete waits in the outbox.
+    expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${(await t.req('GET', `/participations/${s.participationId}/evidence`, s.tester.token)).body.items[0].id}`, `pqa-test/quarantine/${i.id}`].sort());
+    expect((t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get() as { n: number }).n).toBeGreaterThan(0);
+  });
+
+  it('with deletion not allowed, account deletion fails closed: refused, nothing changed, objects kept', async () => {
+    t = await makeApp({ storage: 'r2', r2AllowDelete: false });
+    const s = await seeded(t);
+    const i = UploadIntent.parse((await intentFor(s.tester.token, s.participationId)).body);
+    await put(i, MP4);
+    await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token);
+    await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
+    const before = t.s3.keys().sort();
+    const r = await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' });
+    expect([r.status, r.body.code]).toEqual([409, 'CONFLICT_STATE']);
+    expect(r.body.message).toMatch(/recordings can’t be erased/);
+    expect((await t.req('GET', '/me', s.tester.token)).status).toBe(200);
+    expect(t.s3.keys().sort()).toEqual(before);
+  });
+});
