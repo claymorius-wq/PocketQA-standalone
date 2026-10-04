@@ -1,5 +1,5 @@
 $ git rev-parse HEAD
-2f5cec42c8cf94b1039e2a3c69362d63715847a5
+4f9ae9dbbc117fff69b83af4186c77047663e9f6
 $ pnpm test:e2e:live
 
 > pocket-qa@ test:e2e:live /Users/hamzadiaz/Projects/pocket-qa/.worktrees/web-launch
@@ -8,8 +8,8 @@ $ pnpm test:e2e:live
 
 Running 1 test using 1 worker
 
-WEB_LIVE_FIREBASE_UIDS ["RFi7fev9SWeNwFpcSvLwMhsHGxm1","ePOMhvhO5sYIN8F2nr0fk12nue13","VoI4XAAtX5XmIDlMvySefI1z5Ts1"] VERIFICATION_EMAIL ["sent","sent","sent"]
-  ✓  1 e2e-live/web-launch.spec.ts:92:5 › real Firebase + R2 from the production origin: sign-up → roles → upload → completion → ranged playback → approval; isolation holds (46.4s)
+WEB_LIVE_FIREBASE_UIDS ["v7yQRCCFeFblFpfhFG3pGb24Bfo1","DZtj3LLvL3W9uy8BNTXYQZavxIo2","3HdeO1qS7yOLtgWDgBvXGM2clI43"] VERIFICATION_EMAIL ["unsent","sent","sent"]
+  ✓  1 e2e-live/web-launch.spec.ts:99:5 › real Firebase + R2 from the production origin: sign-up → roles → upload → completion → ranged playback → approval; isolation holds (1.1m)
 
-  1 passed (58.8s)
+  1 passed (1.3m)
 EXIT=0

@@ -476,3 +476,10 @@ Full outputs are in `docs/reviews/production/web-launch/`; the live run log and 
 - **Inventory after all runs:** 17 synthetic Firebase users and 18 objects in `pocketqa-evidence`. Nothing deleted.
 - **Not run:** the billing read. A read-only Cloud Billing GET via the Firebase CLI login was **denied** by the session's permission system and not retried by any route.
 
+## 2026-10-04 (evening): web launch, review-fix candidate `4f9ae9d`
+This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted for tokens and are in `docs/reviews/production/web-launch/`. They replace the `2f5cec4` files.
+- **`pnpm verify`:** EXIT=0. Tests: scripts 57, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1021.
+- **Browser:** Playwright 14/14, Firebase emulator E2E 4/4, and `pnpm test:e2e:live` 1/1, all EXIT=0. The live run now also covers a seek to 2 s, a mid-file 206 for the exact bytes, and the CSP detector self-test.
+- **Inventory after run 9:** 26 synthetic Firebase users and 24 objects in `pocketqa-evidence`. Nothing deleted (`docs/reviews/production/live/web-live-e2e.txt`).
+- **Incident:** run 7 printed one synthetic user's 1-hour ID token to the lead's terminal, through Playwright's error output. It is not in the repo. Fixed in `4f9ae9d`.
+
