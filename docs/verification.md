@@ -483,3 +483,9 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
 - **Inventory after run 9:** 26 synthetic Firebase users and 24 objects in `pocketqa-evidence`. Nothing deleted (`docs/reviews/production/live/web-live-e2e.txt`).
 - **Incident:** run 7 printed one synthetic user's 1-hour ID token to the lead's terminal, through Playwright's error output. It is not in the repo. Fixed in `4f9ae9d`.
 
+## 2026-10-04 (evening): web launch, final candidate `184e0a2` (pqa-qa r2 APPROVE, plus the r2 P3s)
+- **`pnpm verify`:** EXIT=0.
+- **`pnpm test:e2e:live`:** 1/1, EXIT=0. Quietly aborted routes are now asserted to be 0.
+- **Playwright 14/14 and emulator 4/4:** these outputs are from `4f9ae9d`. `4f9ae9d..184e0a2` changes only `e2e-live/web-launch.spec.ts` and docs, which those suites don't load.
+- **Inventory after run 10:** 29 synthetic Firebase users and 26 R2 objects. Nothing deleted.
+

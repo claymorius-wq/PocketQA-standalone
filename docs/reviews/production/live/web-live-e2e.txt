@@ -18,11 +18,12 @@ Runs (all on this branch):
 8  pre-commit PASS (seek, mid-file 206, CSP detector self-test, bucket-scoped CSP, forwarding headers).
 9  PASS at 4f9ae9d (docs/reviews/production/web-launch/e2e-live.txt); VERIFICATION_EMAIL ["unsent","sent","sent"]:
    the 503 recurred for the builder and the honest path carried the run through.
+10 PASS at 184e0a2 (review r2 P3-8: quietly aborted routes are counted and must be 0) (docs/reviews/production/web-launch/e2e-live.txt).
 
-Read-only inventory after run 9 (scratch script; firebase-admin listUsers + R2 ListObjectsV2; prints no credentials):
+Read-only inventory after run 10 (scratch script; firebase-admin listUsers + R2 ListObjectsV2; prints no credentials):
 $ date -u; node inventory.cjs
-2026-10-04T19:56:20Z
-firebase users total 26; synthetic pqa-* 26
+2026-10-04T20:00:30Z
+firebase users total 29; synthetic pqa-* 29
   0Pfj1oClaZf4OI5TXVjDnt1fvoS2	pqa-weblive-tara-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:29 GMT
   1wr6xje806Ps8KenOfW2S2eA5ua2	pqa-weblive-bea-muu81te5@example.test	verified=true	created=Sun, 04 Oct 2026 19:36:29 GMT
   2x1bXt4gRjcgmLyeO2JftvUTDh23	pqa-weblive-omar-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:46 GMT
@@ -32,7 +33,9 @@ firebase users total 26; synthetic pqa-* 26
   DZtj3LLvL3W9uy8BNTXYQZavxIo2	pqa-weblive-tara-muu8poq8@example.test	verified=true	created=Sun, 04 Oct 2026 19:55:23 GMT
   FZPQMQhdwTU2ntsXVSd51bpkxVy2	pqa-weblive-bea-muu8i6ru@example.test	verified=true	created=Sun, 04 Oct 2026 19:49:13 GMT
   K79727t6QdfFIxKu393GWwQf7QR2	pqa-weblive-tara-muu8i6ru@example.test	verified=true	created=Sun, 04 Oct 2026 19:49:25 GMT
+  OLMVKz8CGaOODurw5KeppmZQP8K2	pqa-weblive-omar-muu8ujya@example.test	verified=true	created=Sun, 04 Oct 2026 19:59:32 GMT
   RFi7fev9SWeNwFpcSvLwMhsHGxm1	pqa-weblive-bea-muu898z5@example.test	verified=true	created=Sun, 04 Oct 2026 19:42:15 GMT
+  Vkd7H4NjIrSoVH474lIWOhWKlzD3	pqa-weblive-tara-muu8ujya@example.test	verified=true	created=Sun, 04 Oct 2026 19:59:10 GMT
   VoI4XAAtX5XmIDlMvySefI1z5Ts1	pqa-weblive-omar-muu898z5@example.test	verified=true	created=Sun, 04 Oct 2026 19:42:47 GMT
   av6THvhJZdV0VgdcvMyYFN1g96z2	pqa-weblive-bea-muu7r7tm@example.test	verified=true	created=Sun, 04 Oct 2026 19:28:14 GMT
   bCoPMTtrVparTSHzwzV751VBhQh2	pqa-weblive-tara-muu81te5@example.test	verified=true	created=Sun, 04 Oct 2026 19:36:42 GMT
@@ -43,6 +46,7 @@ firebase users total 26; synthetic pqa-* 26
   iPfKORy96vYB1SsFK8wvNOujfbT2	pqa-live-1791139611817@example.test	verified=true	created=Sun, 04 Oct 2026 18:46:52 GMT
   jfIMLwtlnFR7ZfYfZavhYkHZyqz2	pqa-weblive-omar-muu8i6ru@example.test	verified=true	created=Sun, 04 Oct 2026 19:49:43 GMT
   kdSb0SeGuebPxYE7lbLAIn6mkL43	pqa-weblive-omar-muu7r7tm@example.test	verified=true	created=Sun, 04 Oct 2026 19:28:44 GMT
+  kwFM6Mygvnfgm6RDXCKsW956P8P2	pqa-weblive-bea-muu8ujya@example.test	verified=true	created=Sun, 04 Oct 2026 19:58:50 GMT
   nGdSFU8nUINU9vbo5qbRM4E4vha2	pqa-weblive-omar-muu8k3ie@example.test	verified=true	created=Sun, 04 Oct 2026 19:51:25 GMT
   t6Y7kNTX5ja90szNvpD8rIpHGQd2	pqa-weblive-tara-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:42 GMT
   udP4fK794rUVhz2ekhN9Ng1OL5m2	pqa-weblive-bea-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:14 GMT
@@ -50,6 +54,7 @@ firebase users total 26; synthetic pqa-* 26
   y50tR2xvnuRYurI6tVJdidFvm7Q2	pqa-weblive-omar-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:57 GMT
   z4f4HJ1noMTjmCyJ9B5qqCACM512	pqa-weblive-bea-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:28 GMT
   r2 evidence/0002514d-c0ea-499b-9a85-82de64098ff3	35145	2026-10-04T19:55:40.516Z
+  r2 evidence/01aa3b73-03dd-4c84-88f8-a0e0ccb0b13d	35145	2026-10-04T19:59:27.826Z
   r2 evidence/0d997720-1ba0-4fe8-94f8-8f1dd77f3ed8	35145	2026-10-04T19:35:41.695Z
   r2 evidence/52559507-fb26-421e-b391-ffb160e1957a	35145	2026-10-04T19:23:53.018Z
   r2 evidence/5aba38f2-8b2a-470e-aff1-49e47f7195ac	35145	2026-10-04T19:49:37.790Z
@@ -60,6 +65,7 @@ firebase users total 26; synthetic pqa-* 26
   r2 evidence/ec685a79-1fa4-429c-9c1d-f10756c0c596	268	2026-10-04T18:47:17.955Z
   r2 evidence/livemut5dotfa5e0fca	268	2026-10-04T01:33:56.995Z
   r2 evidence/livemuu6ajsd7428faa	268	2026-10-04T18:47:16.637Z
+  r2 quarantine/0c61036f-0818-477c-b6d2-bfc76246882a	35145	2026-10-04T19:59:25.663Z
   r2 quarantine/231922aa-5ade-4722-8568-0b33ce943c6a	35145	2026-10-04T19:51:18.843Z
   r2 quarantine/26f65e83-45e2-4430-973d-8f4ac470a8b7	72	2026-10-04T01:33:58.601Z
   r2 quarantine/97701c8b-92fe-452b-a9ff-ab536f746707	35145	2026-10-04T19:42:41.576Z
@@ -73,7 +79,7 @@ firebase users total 26; synthetic pqa-* 26
   r2 quarantine/f70456ff-0d2a-4c18-85fe-9d90c6bd3a58	268	2026-10-04T01:33:57.581Z
   r2 quarantine/livemut5dotfa5e0fca	268	2026-10-04T01:33:56.279Z
   r2 quarantine/livemuu6ajsd7428faa	268	2026-10-04T18:47:15.652Z
-r2 pocketqa-evidence objects 24
+r2 pocketqa-evidence objects 26
 
 Notes:
 - pqa-weblive-tara-muu7niaf (run 2) stays unverified: its verification email was never sent (503) and the run stopped there.
