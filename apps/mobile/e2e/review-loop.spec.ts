@@ -222,6 +222,9 @@ test('offline state when the API is unreachable', async ({ browser }) => {
   await shot(page, 'tester-offline-light');
   await ctx.unroute('http://127.0.0.1:8787/**');
   await page.getByTestId('retry-button').click();
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  // Scoped to My work: Discover stays mounted in its tab scene, and when the new tester matches no
+  // study it shows its own empty-state too (then an unscoped lookup finds two and fails, as it does
+  // on main whenever this test runs alone).
+  await expect(page.getByTestId('work-screen').getByTestId('empty-state')).toBeVisible();
   await ctx.close();
 });
