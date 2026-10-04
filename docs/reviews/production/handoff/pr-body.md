@@ -21,7 +21,7 @@ Branch `feat/web-launch-e2e` from `main` `4b48a29`. Every candidate was reviewed
 
 ## Reviews
 - **Web launch:** `docs/reviews/production/web-launch/verdict-qa-r1..r3.md`, APPROVE ×3, final code `184e0a2`.
-- **Scoped deletion:** `docs/reviews/production/scoped-delete/verdict-qa-r1.md` (CHANGES_REQUIRED, P2 wording) → `verdict-qa-r2.md` APPROVE of `4fd0071`, **superseded** by the parent's literal-scope ruling. The literal-scope delta is in re-review (r3).
+- **Scoped deletion:** `docs/reviews/production/scoped-delete/verdict-qa-r1.md` (CHANGES_REQUIRED, P2 wording) → `verdict-qa-r2.md` APPROVE of `4fd0071`, **superseded** by the parent's literal-scope ruling → `verdict-qa-r3.md` **APPROVE of `ddb8b0d`** (evidence `6f19816`). Parent awareness (pqa-qa r3 P3-1, existing design): a builder's account deletion also deletes testers' recordings, and their kept copies, in that builder's studies (ADR 0002).
 
 ## Evidence
 - `docs/reviews/production/web-launch/*.txt`
