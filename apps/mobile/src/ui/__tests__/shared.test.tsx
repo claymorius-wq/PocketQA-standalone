@@ -111,12 +111,20 @@ describe('Button: size, sweepOnFire, locked, accessibilityLabel', () => {
 describe('ConfirmSheet: the Commit pass lock, failure options, a custom tile', () => {
   it('locks both actions through a success pass, without a spinner', async () => {
     const onCancel = jest.fn();
-    const r = await renderIn('dark', <ConfirmSheet visible title="Publish this study?" confirmLabel="Publish" status="success" onConfirm={jest.fn()} onCancel={onCancel} />);
+    const r = await renderIn('dark', <ConfirmSheet visible title="Publish this study?" confirmLabel="Publish" status="success" onLeave={jest.fn()} onConfirm={jest.fn()} onCancel={onCancel} />);
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true, busy: true });
     expect(screen.getByTestId('confirm-cancel').props.accessibilityState).toMatchObject({ disabled: true });
     expect(count(r, SPINNER)).toBe(0);
     await fireEvent.press(screen.getByTestId('confirm-cancel'));
     expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('never locks a success it could not release: no onLeave, no Commit-pass lock', async () => {
+    const onCancel = jest.fn();
+    await renderIn('dark', <ConfirmSheet visible title="Publish this study?" confirmLabel="Publish" status="success" onConfirm={jest.fn()} onCancel={onCancel} />);
+    expect(screen.getByTestId('confirm-cancel').props.accessibilityState).toMatchObject({ disabled: false });
+    await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('a non-commit sheet is not locked by success; the failure takes its title and testID', async () => {
@@ -313,6 +321,13 @@ describe('Notice uplight (Mode A)', () => {
     const danger = await renderIn('dark', <Lit tone="danger" />);
     expect(count(danger, GLOW)).toBe(0);
   });
+
+  it('sets text-only children as its body text, interpolated pieces and numbers included', async () => {
+    const name = 'clip.mp4';
+    await renderIn('dark', <Notice tone="danger" title="Not saved" testID="n">Couldn’t save {name} after {3} tries.</Notice>);
+    // One Text holds the whole body: no bare strings in a View (React Native throws on those).
+    expect(screen.getByText('Couldn’t save clip.mp4 after 3 tries.')).toBeTruthy();
+  });
 });
 
 describe('Field, Segmented and Checkbox options', () => {
@@ -322,6 +337,18 @@ describe('Field, Segmented and Checkbox options', () => {
     expect(screen.queryByTestId('slots-error')).toBeNull();
     expect(StyleSheet.flatten(screen.getByTestId('slots').props.style)).toMatchObject({ fontSize: 28, lineHeight: 32 });
     expect(JSON.stringify(r.toJSON())).toContain('rgba(8,7,26,0.36)');
+    // Locked takes no more text.
+    expect(screen.getByTestId('slots').props.editable).toBe(false);
+  });
+
+  it('Field: the return key label and action reach the input', async () => {
+    const onSubmit = jest.fn();
+    await renderIn('dark', <Field label="Password" value="x" onChangeText={jest.fn()} secure returnKeyType="go" onSubmitEditing={onSubmit} testID="pw" />);
+    const input = screen.getByTestId('pw');
+    expect(input.props.returnKeyType).toBe('go');
+    expect(input.props.editable).toBe(true);
+    await fireEvent(input, 'submitEditing');
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('Segmented: a glyph per option and the numeral label', async () => {

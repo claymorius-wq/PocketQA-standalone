@@ -1,7 +1,7 @@
 import type { NativeStackHeaderProps, NativeStackNavigationOptions } from 'expo-router/native-stack';
 import { getHeaderTitle } from 'expo-router/react-navigation';
 import { useContext } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientRule } from '../glass/paint';
@@ -57,10 +57,12 @@ export function LensStackHeader({ navigation, route, options, back }: NativeStac
   const top = Math.max(insets.top, layout.statusBarReserve) + ROW_TOP;
   return (
     <View style={[styles.bar, { paddingTop: top, paddingLeft: insets.left, paddingRight: insets.right }]}>
-      {/* The push arrival slides the row in from +24, past the right edge; this frame clips it there, so
-          mobile web never widens its layout viewport (that left a white strip after scrolling). The frame
-          spans the full width and reaches CLIP_SLACK above and below the row, so the back tile's cast
-          shadow and focus ring are not cut; its negative margins keep the header's height unchanged. */}
+      {/* The push arrival slides the row in from +24, past the right edge; on web this frame clips it
+          there, so mobile web never widens its layout viewport (that left a white strip after scrolling).
+          The frame spans the full width and reaches CLIP_SLACK above and below the row, so the focus ring
+          is not cut (the back tile's soft shadow tail, about 26 below it, is cut after 12 on web only);
+          its negative margins keep the header's height unchanged. Native has no viewport to widen and
+          does not clip. */}
       <View style={styles.clip}>
         <Animated.View style={[styles.row, arrival.style]}>
           {back ? (
@@ -115,12 +117,12 @@ export function lensStackScreenOptions(colors: Palette): NativeStackNavigationOp
   };
 }
 
-/** Room the clip frame keeps above and below the row for the back tile's shadow and focus ring. */
+/** Room the clip frame keeps above and below the row for the focus ring (web clips; native does not). */
 const CLIP_SLACK = 12;
 
 const styles = StyleSheet.create({
   bar: { paddingBottom: ROW_BOTTOM },
-  clip: { overflow: 'hidden', paddingHorizontal: EDGE, paddingVertical: CLIP_SLACK, marginVertical: -CLIP_SLACK },
+  clip: { overflow: Platform.OS === 'web' ? 'hidden' : 'visible', paddingHorizontal: EDGE, paddingVertical: CLIP_SLACK, marginVertical: -CLIP_SLACK },
   row: { height: ROW_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: 12 },
   back: { minHeight: ROW_HEIGHT, justifyContent: 'center', paddingRight: 8 },
   backContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },

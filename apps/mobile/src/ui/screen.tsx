@@ -1,5 +1,5 @@
 import { NavigationContext } from 'expo-router/react-navigation';
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { causticDelay, ENTRANCE_WINDOW, entranceDelay, joinWave, type EntranceStep, type Wave } from '../motion';
@@ -119,20 +119,6 @@ export function useMountedLate(): boolean {
   const screen = useContext(ScreenContext);
   const [late] = useState(() => !!screen && Date.now() - screen.mountedAt > ENTRANCE_WINDOW);
   return late;
-}
-
-/** Opacity style that fades 0 → 1 over dur-tick whenever `key` changes after mount (a pill swap). */
-export function useSwapFade(key: string) {
-  const motion = useMotion();
-  const opacity = useSharedValue(1);
-  const last = useRef(key);
-  useEffect(() => {
-    if (last.current === key) return;
-    last.current = key;
-    opacity.value = 0;
-    opacity.value = withTiming(1, motion.timing.tick);
-  }, [key, opacity, motion]);
-  return useAnimatedStyle(() => ({ opacity: opacity.value }));
 }
 
 /**

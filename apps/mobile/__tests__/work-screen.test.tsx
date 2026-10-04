@@ -97,9 +97,10 @@ describe.each<ThemePreference>(['dark', 'light'])('My work in %s', (scheme) => {
     expect(screen.getByText('IN PROGRESS')).toBeTruthy();
     expect(screen.getByText('AWAITING REVIEW')).toBeTruthy();
     expect(screen.getAllByText(/^Joined /)).toHaveLength(2);
-    // The reward reads as one phrase, the same words as before ("30 test credits if approved").
-    expect(screen.getByLabelText('30 test credits if approved')).toBeTruthy();
-    expect(screen.getByLabelText('1 test credit if approved')).toBeTruthy();
+    // One stop per card: the hint reads the status, the joined date and the reward as one phrase
+    // (the same words as before, "30 test credits if approved").
+    expect(card.props.accessibilityHint).toMatch(/^In progress\. Joined .+\. 30 test credits if approved\.$/);
+    expect(screen.getByTestId('participation-card-p2').props.accessibilityHint).toMatch(/\. 1 test credit if approved\.$/);
 
     fireEvent.press(card);
     expect(mockPush).toHaveBeenCalledWith('/participation/p1');

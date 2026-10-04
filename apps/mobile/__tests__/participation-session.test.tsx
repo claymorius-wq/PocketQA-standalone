@@ -323,6 +323,10 @@ describe('Your session', () => {
     expect(client.getQueryData<Participation>(['participation', 'p1'])?.status).toBe('submitted');
     expect(screen.getByTestId('session-status')).toHaveTextContent(/IN PROGRESS/);
     expect(screen.getByTestId('session-submit')).toBeTruthy();
+    // Held, not live: Submit and Withdraw are announced busy and take no press, and the notes take no text.
+    expect(screen.getByTestId('session-submit').props.accessibilityState).toEqual({ disabled: true, busy: true });
+    expect(screen.getByTestId('session-withdraw').props.accessibilityState).toEqual({ disabled: true, busy: true });
+    expect(screen.getByTestId('task-note-0').props.editable).toBe(false);
     await advance(1000);
     expect(screen.queryByTestId('awaiting-review')).toBeNull();
     await advance(700);
@@ -404,12 +408,14 @@ describe('Your session', () => {
     expect(screen.getByTestId('transfer-card')).toBeTruthy();
   });
 
-  it('withdrawn: the closed panel only', async () => {
-    await renderScreen(base('withdrawn'));
+  it('withdrawn: the closed panel, then the read-only recap of the tasks and saved notes (as on main)', async () => {
+    await renderScreen(base('withdrawn', { taskNotes: [{ taskId: 't1', note: 'Below the fold.' } as Participation['taskNotes'][number]] }));
     expect(screen.getByText('You withdrew')).toBeTruthy();
     expect(screen.getByText('This session is closed. Nothing more is needed from you.')).toBeTruthy();
     expect(screen.queryByTestId('session-withdraw')).toBeNull();
-    expect(screen.queryByTestId('task-0')).toBeNull();
+    expect(screen.getByTestId('task-0')).toBeTruthy();
+    expect(screen.getByText('Your notes: Below the fold.')).toBeTruthy();
+    expect(screen.queryByTestId('task-note-0')).toBeNull();
   });
 
   it.each<ThemePreference>(['light', 'dark'])('renders every live control in %s', async (scheme) => {

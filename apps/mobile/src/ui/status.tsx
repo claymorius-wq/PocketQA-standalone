@@ -116,6 +116,12 @@ function PillBody({ pill, testID, hidden = false }: { pill: PillState; testID?: 
 /** Notice glyph per tone (§8: success uses Approve, not Info). */
 const NOTICE_GLYPH: Record<'info' | 'warning' | 'danger' | 'success', GlyphName> = { info: 'info', warning: 'warning', danger: 'alert', success: 'approve' };
 
+/** True for a string or number, or a list of only those (JSX text with interpolations). */
+function isTextOnly(children: ReactNode): boolean {
+  if (typeof children === 'string' || typeof children === 'number') return true;
+  return Array.isArray(children) && children.length > 0 && children.every((c) => typeof c === 'string' || typeof c === 'number');
+}
+
 export function Notice({ tone = 'info', title, children, testID, uplight }: {
   tone?: 'info' | 'warning' | 'danger' | 'success';
   title: string;
@@ -138,7 +144,9 @@ export function Notice({ tone = 'info', title, children, testID, uplight }: {
       <GlassTile name={NOTICE_GLYPH[tone]} size="notice" tint={tone} variant={tone === 'danger' ? 'rose' : undefined} />
       <View style={styles.noticeText}>
         <Text variant="headingNotice" style={{ color: colors[tone] }}>{title}</Text>
-        {typeof children === 'string' ? <Text variant="bodySm" tone="muted">{children}</Text> : children}
+        {/* Text-only children (one string, or several strings and numbers such as `Couldn’t save {name}`)
+            are the body text; React Native throws on bare strings in a View. Elements render as given. */}
+        {isTextOnly(children) ? <Text variant="bodySm" tone="muted">{children}</Text> : children}
       </View>
     </GlassSurface>
   );

@@ -31,6 +31,9 @@ import { DateText, Hairline, SectionHeader, TaskList } from '../../../src/ui/pat
 // 680ms after it starts, and the Budget card takes the tail (Mode A) while its two changed figures
 // cross-fade. Pause, Resume and Close stay unlit. Reduced motion or the flat light theme: the
 // sheet closes as soon as the request succeeds, and nothing is lit.
+//
+// Each sheet opens clean (no failure from an earlier attempt shows, or is announced, in it) and
+// keeps naming its action while it plays its exit, as the admin sheets do.
 
 type Action = 'publish' | 'pause' | 'resume' | 'close';
 const ROUTE = { publish: 'publishStudy', pause: 'pauseStudy', resume: 'resumeStudy', close: 'closeStudy' } as const;
@@ -63,6 +66,11 @@ function BuilderStudyInner() {
   const disputes = useStudyDisputes(id);
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<Action | null>(null);
+  // The sheet keeps the last action's copy, confirm and tone while it animates out (confirm is
+  // already null then), so Close never blanks or turns into a primary confirm as it leaves.
+  const [shown, setShown] = useState(confirm);
+  if (confirm && confirm !== shown) setShown(confirm);
+  const sheetAction = confirm ?? shown;
   // U7: the Commit pass is playing in the Publish sheet (the request has succeeded).
   const [passing, setPassing] = useState(false);
   // Bumped when the Publish sheet leaves: the Budget card takes the tail, the figures cross-fade, the dock fades in.
@@ -85,6 +93,11 @@ function BuilderStudyInner() {
     setConfirm(null);
     setLanded((n) => n + 1);
   };
+  // A sheet starts clean: an earlier failure (shown over the dock until now) never reappears in it.
+  const open = (a: Action) => {
+    act.reset();
+    setConfirm(a);
+  };
   const copy: Record<Action, { title: string; body: string; label: string }> = {
     publish: { title: 'Publish this study?', body: 'Reward × slots is reserved from your test credits, and matching testers can join.', label: 'Publish' },
     pause: { title: 'Pause this study?', body: 'No new testers can join. Testers already in progress can finish.', label: 'Pause' },
@@ -95,7 +108,9 @@ function BuilderStudyInner() {
   // The commit sheet's light follows the request (C4, U7); the other sheets pass no status and stay unlit.
   const commitStatus = passing ? 'success' : act.isPending ? 'pending' : act.isError ? 'error' : 'idle';
   const study = q.data;
-  const docked = !!study && study.status !== 'closed';
+  // No dock while QueryState shows the error panel (cached data and a failed refetch): the sheet
+  // lives inside QueryState, so an action tapped then would open nothing until Retry succeeds.
+  const docked = !!study && study.status !== 'closed' && !q.error;
 
   return (
     <Screen
@@ -114,10 +129,10 @@ function BuilderStudyInner() {
               </Notice>
             ) : null}
             <View style={styles.actions}>
-              <Button label="Close" icon={Ban} variant="danger" onPress={() => setConfirm('close')} testID="study-close" style={styles.negative} />
-              {study.status === 'draft' ? <Button label="Publish" icon={Rocket} onPress={() => setConfirm('publish')} testID="study-publish" style={styles.positive} /> : null}
-              {study.status === 'published' ? <Button label="Pause" icon={Pause} variant="secondary" onPress={() => setConfirm('pause')} testID="study-pause" style={styles.positive} /> : null}
-              {study.status === 'paused' ? <Button label="Resume" icon={Play} onPress={() => setConfirm('resume')} testID="study-resume" style={styles.positive} /> : null}
+              <Button label="Close" icon={Ban} variant="danger" onPress={() => open('close')} testID="study-close" style={styles.negative} />
+              {study.status === 'draft' ? <Button label="Publish" icon={Rocket} onPress={() => open('publish')} testID="study-publish" style={styles.positive} /> : null}
+              {study.status === 'published' ? <Button label="Pause" icon={Pause} variant="secondary" onPress={() => open('pause')} testID="study-pause" style={styles.positive} /> : null}
+              {study.status === 'paused' ? <Button label="Resume" icon={Play} onPress={() => open('resume')} testID="study-resume" style={styles.positive} /> : null}
             </View>
           </StudyDock>
         ) : null
@@ -202,13 +217,13 @@ function BuilderStudyInner() {
                 </View>
                 <ConfirmSheet
                   visible={confirm !== null}
-                  title={confirm ? copy[confirm].title : ''}
-                  body={confirm ? copy[confirm].body : ''}
-                  confirmLabel={confirm ? copy[confirm].label : ''}
-                  destructive={confirm === 'close'}
+                  title={sheetAction ? copy[sheetAction].title : ''}
+                  body={sheetAction ? copy[sheetAction].body : ''}
+                  confirmLabel={sheetAction ? copy[sheetAction].label : ''}
+                  destructive={sheetAction === 'close'}
                   // The sheet locks both actions through the Commit pass itself (C4), without a spinner.
                   loading={act.isPending}
-                  status={confirm === 'publish' ? commitStatus : act.isError ? 'error' : undefined}
+                  status={sheetAction === 'publish' ? commitStatus : act.isError ? 'error' : undefined}
                   error={errorMessage}
                   errorTestID="study-action-sheet-error"
                   onLeave={onLeave}

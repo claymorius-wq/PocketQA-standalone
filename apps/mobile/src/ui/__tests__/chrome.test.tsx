@@ -195,10 +195,11 @@ describe('stack header (C2)', () => {
     expect(json).toContain('"gradient":[0,14082303,0.5,1305927935,1,14082303]'); // #D6E0FF: 0, 0.30 (0x4D), 0
     const back = screen.getByLabelText('Back');
     expect(StyleSheet.flatten(back.props.style)).toMatchObject({ borderRadius: 16, minHeight: 44 });
-    // The row sits in a full-width clip frame (16 in from both edges, clipping the push arrival so it
-    // never overflows the screen on mobile web) inside the bar, which holds the 44 band + 6 top.
+    // The row sits in a full-width frame (16 in from both edges; on web it clips the push arrival so
+    // it never overflows the screen, while native keeps the back tile's whole shadow) inside the bar,
+    // which holds the 44 band + 6 top.
     const clip = hostParent(hostParent(back) as unknown as { parent: unknown }) as unknown as { props: { style: unknown }; parent: unknown };
-    expect(StyleSheet.flatten(clip.props.style as never)).toMatchObject({ overflow: 'hidden', paddingHorizontal: 16 });
+    expect(StyleSheet.flatten(clip.props.style as never)).toMatchObject({ overflow: 'visible', paddingHorizontal: 16 });
     const bar = hostParent(clip as never) as unknown as { props: { style: unknown } };
     expect(StyleSheet.flatten(bar.props.style as never)).toMatchObject({ paddingTop: 50, paddingLeft: 0, paddingRight: 0 });
   });

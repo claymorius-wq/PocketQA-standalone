@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Keyboard, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Keyboard, StyleSheet, View } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { disarmU1, signInMoment, u1Armed } from '../src/screens/authParts';
+import { disarmU1, SignInDock, signInMoment, u1Armed } from '../src/screens/authParts';
+import { Ground, useUplight } from '../src/glass';
 import { ThemeProvider, useTheme, type ThemePreference } from '../src/theme/ThemeProvider';
 import { ArrivalContext } from '../src/ui';
 import SignIn from '../app/(auth)/sign-in';
@@ -124,6 +125,18 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign in in %s', (scheme) => {
     await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'a-long-password');
     expect(disabled('sign-in-submit')).toBe(false);
     await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(mockSignIn).toHaveBeenCalledWith('ana@example.test', 'a-long-password');
+  });
+
+  it('the password field’s return key signs in too, once both fields are filled', async () => {
+    mockSignIn.mockResolvedValue(undefined);
+    await renderIn(scheme, <SignIn />);
+    expect(screen.getByTestId('sign-in-password').props.returnKeyType).toBe('go');
+    await fireEvent(screen.getByTestId('sign-in-password'), 'submitEditing');
+    expect(mockSignIn).not.toHaveBeenCalled();
+    await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'ana@example.test');
+    await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'a-long-password');
+    await fireEvent(screen.getByTestId('sign-in-password'), 'submitEditing');
     expect(mockSignIn).toHaveBeenCalledWith('ana@example.test', 'a-long-password');
   });
 
@@ -589,5 +602,33 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
     expect(screen.getByText('An account with this email already exists.')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('sign-up-submit'));
     expect(screen.getByText('Sign-up failed.')).toBeTruthy();
+  });
+});
+
+describe('U1 and the key light (ADR 0006: every Uplight moment dims its screen’s pool)', () => {
+  // Sign in drives U1 from above its Screen's Ground; the dock inside the Ground registers it.
+  function Dock({ lit }: { lit: boolean }) {
+    const light = useUplight('pilot', lit);
+    return (
+      <Ground testID="ground">
+        <SignInDock light={light}>
+          <View />
+        </SignInDock>
+      </Ground>
+    );
+  }
+  const pool = () => getAnimatedStyle(screen.getByTestId('ground-pool', { includeHiddenElements: true })).opacity as number;
+
+  it('the pool dims to 0.72 while the pilot is up under Sign in, and comes back when it goes', async () => {
+    const r = await renderIn('dark', <Dock lit={false} />);
+    await fireEvent(screen.getByTestId('ground'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 844 } } });
+    await advance(1000);
+    expect(pool()).toBeCloseTo(1, 2);
+    await r.rerender(tree(<Dock lit />));
+    await advance(1000);
+    expect(pool()).toBeCloseTo(0.72, 2);
+    await r.rerender(tree(<Dock lit={false} />));
+    await advance(1000);
+    expect(pool()).toBeCloseTo(1, 2);
   });
 });

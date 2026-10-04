@@ -110,7 +110,7 @@ function EvidenceTile({ e, index, width, onError }: { e: Evidence; index: number
               <EvidenceMedia uri={url} mimeType={e.mimeType} />
             </Reveal>
           ) : (
-            <ViewButton busy={open.isPending} onPress={() => open.mutate()} />
+            <ViewButton busy={open.isPending} onPress={() => open.mutate()} name={`${label.toLowerCase()} ${index + 1}`} />
           )}
         </Well>
       </GlassSurface>
@@ -129,8 +129,12 @@ function EvidenceTile({ e, index, width, onError }: { e: Evidence; index: number
 
 const HIDDEN_TEXT = { accessible: false, importantForAccessibility: 'no-hide-descendants' as const, 'aria-hidden': true };
 
-/** The whole well is the View button: the 54dp eye tile over the label; busy swaps the tile for the spinner. */
-function ViewButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
+/**
+ * The whole well is the View button: the 54dp eye tile over the label; busy swaps the tile for the
+ * spinner. It reads before its caption, so its accessible name says which item it opens
+ * ("View screen recording 1").
+ */
+function ViewButton({ busy, onPress, name }: { busy: boolean; onPress: () => void; name: string }) {
   const { colors, type, glass } = useTheme();
   const press = usePressMotion(busy);
   const [rest, down] = useMemo<[GlassRecipe, GlassRecipe]>(
@@ -142,7 +146,7 @@ function ViewButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
       ringRadius={MEDIA_RADIUS}
       testID="evidence-view"
       accessibilityRole="button"
-      accessibilityLabel="View"
+      accessibilityLabel={`View ${name}`}
       accessibilityState={{ busy, disabled: busy }}
       disabled={busy}
       onPress={onPress}

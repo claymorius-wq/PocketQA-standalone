@@ -4,7 +4,7 @@ import { GlassTile } from '../../icons';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Card } from '../card';
 import { Text } from '../text';
-import { RewardWell } from './RewardWell';
+import { RewardWell, rewardPhrase } from './RewardWell';
 import { Clauses, Meta } from './type';
 
 export type StudyCardProps = {
@@ -32,11 +32,13 @@ export const plural = (n: number, one: string, many: string) => `${n} ${n === 1 
  * button that sinks into the pressed recipe. Title 19/24 (two lines) beside the 32dp chevron
  * glyph tile; the objective 14/20 muted (two lines); the reward numeral in its lens well with the
  * DM Mono meta ("1 task", "5 slots left") right-aligned on its baseline; the 12/16 disclaimer.
+ * The card is one accessibility stop: its label opens the study and its hint reads the facts on it.
  */
 export function StudyCard({ title, objective, rewardCredits, taskCount, slotsRemaining, disclaimer = REWARD_DISCLAIMER, onPress, testID, accessibilityLabel, k }: StudyCardProps) {
   const { type } = useTheme();
+  const hint = `${rewardPhrase(rewardCredits)}. ${disclaimer.split(' · ').join('. ')}. ${plural(taskCount, 'task', 'tasks')}, ${plural(slotsRemaining, 'slot', 'slots')} left.`;
   return (
-    <Card onPress={onPress} testID={testID} accessibilityLabel={accessibilityLabel ?? `Open study ${title}`} k={k} style={styles.card}>
+    <Card onPress={onPress} testID={testID} accessibilityLabel={accessibilityLabel ?? `Open study ${title}`} accessibilityHint={hint} k={k} style={styles.card}>
       <View style={styles.titleRow}>
         <Text variant="title" numberOfLines={2} style={styles.title}>{title}</Text>
         <GlassTile name="chevron" size="chip" style={styles.chevron} />

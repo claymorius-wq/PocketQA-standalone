@@ -4,13 +4,13 @@ import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Participation } from '@pocket-qa/contracts';
-import { statusLabel } from '../../src/lib/format';
+import { statusLabel, when } from '../../src/lib/format';
 import { useFocusRefetch, useMyParticipations } from '../../src/lib/queries';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { layout } from '../../src/theme/tokens';
 import { GlassTile } from '../../src/icons';
 import { Button, Card, EmptyState, QueryState, Screen, StatusPill } from '../../src/ui';
-import { DateText, RewardWell } from '../../src/ui/patterns';
+import { DateText, RewardWell, rewardPhrase } from '../../src/ui/patterns';
 import { ScreenContext } from '../../src/ui/screen';
 
 // My work (A-Work, Direction A §13): the tester's sessions as L1 cards, in the order the server
@@ -59,8 +59,10 @@ function rewardUnit(n: number): readonly [string, string] {
 }
 
 function SessionCard({ p }: { p: Participation }) {
+  // One accessibility stop: the label opens the session, the hint reads what the card shows.
+  const hint = `${statusLabel[p.status] ?? p.status}. Joined ${when(p.consentedAt)}. ${rewardPhrase(p.rewardCredits, rewardUnit(p.rewardCredits))}.`;
   return (
-    <Card onPress={() => router.push(`/participation/${p.id}`)} testID={`participation-card-${p.id}`} accessibilityLabel="Open session" style={styles.card}>
+    <Card onPress={() => router.push(`/participation/${p.id}`)} testID={`participation-card-${p.id}`} accessibilityLabel="Open session" accessibilityHint={hint} style={styles.card}>
       <View style={styles.top}>
         <StatusPill status={p.status} label={statusLabel[p.status]} testID={`participation-status-${p.id}`} />
         <GlassTile name="chevron" size="chip" style={styles.chevron} />

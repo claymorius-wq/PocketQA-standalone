@@ -89,7 +89,7 @@ describe.each<ThemePreference>(['dark', 'light'])('Discover in %s', (scheme) => 
 
     const card = screen.getByTestId('study-card-a');
     expect(card.props.accessibilityLabel).toBe('Open study Demo: onboarding screens');
-    expect(screen.getByLabelText('30 test credits')).toBeTruthy();
+    expect(card.props.accessibilityHint).toMatch(/^30 test credits\. Reward if approved\. Not guaranteed\./);
     expect(screen.getByText('5 slots left')).toBeTruthy();
     expect(screen.getByText('1 slot left')).toBeTruthy();
     expect(screen.getAllByText(/Reward if approved/)).toHaveLength(2);

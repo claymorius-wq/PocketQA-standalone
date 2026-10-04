@@ -92,7 +92,7 @@ export function RecordControl({
   return (
     <View style={styles.wrap}>
       <UnderGlow light={light} />
-      <GlassSurface level="card" k={0.86} uplight={light.enabled ? light.u : undefined} testID={testID} accessibilityLabel="Screen recording" style={styles.card}>
+      <GlassSurface level="card" k={0.86} uplight={light.enabled ? light.u : undefined} testID={testID} role="group" accessibilityLabel="Screen recording" style={styles.card}>
         <View style={styles.top}>
           <View style={styles.bay} {...HIDDEN}>
             <Well radius={24} style={StyleSheet.absoluteFill} />

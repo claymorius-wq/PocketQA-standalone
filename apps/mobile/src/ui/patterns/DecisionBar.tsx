@@ -54,7 +54,7 @@ export function DecisionBar({ negative, positive, ratio = 'even', title, docked 
     </View>
   );
   const heading = title ? (
-    <Text variant="heading" style={docked ? styles.dockTitle : styles.title}>
+    <Text variant="heading" header style={docked ? styles.dockTitle : styles.title}>
       {title}
     </Text>
   ) : null;

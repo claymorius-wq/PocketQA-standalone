@@ -250,7 +250,8 @@ export default function SignIn() {
           ) : null}
           <View style={styles.fields}>
             <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" testID="sign-in-email" />
-            <Field label="Password" value={password} onChangeText={setPassword} secure testID="sign-in-password" />
+            {/* Return submits too: Sign in lives in the bottom dock, which a phone browser's keyboard can cover. */}
+            <Field label="Password" value={password} onChangeText={setPassword} secure returnKeyType="go" onSubmitEditing={() => (ready && !busy ? submit() : undefined)} testID="sign-in-password" />
           </View>
           {canGoogle || canWallet ? (
             // Secondary glass under the fields, behind the card's divider: never lit (U1 is Sign in's).

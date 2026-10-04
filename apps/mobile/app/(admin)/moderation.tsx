@@ -144,8 +144,8 @@ export default function Moderation() {
   const mod = useMutation({
     mutationFn: () => api('moderateStudy', { params: { id: target!.id }, body: { action: target!.action, reason } }),
     onSuccess: (study) => {
+      // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
-      setReason('');
       qc.invalidateQueries({ queryKey: ['adminStudies'] });
       qc.invalidateQueries({ queryKey: ['audit'] });
       // S7 (UI only): hold the decided row in the section it leaves while it sinks or lifts.

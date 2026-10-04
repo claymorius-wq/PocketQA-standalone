@@ -416,9 +416,10 @@ describe('Stuck (triage queue)', () => {
     mockApi.mockResolvedValueOnce({ id: 'p1' });
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await flush(10);
-    // target is null now; the leaving sheet still reads Approve, never Reject.
+    // target is null now; the leaving sheet still reads Approve, never Reject, and keeps its reason.
     expect(sheetText('Approve stuck submission?')).toBeTruthy();
     expect(sheetText('Reject stuck submission?')).toBeNull();
     expect(screen.getByTestId('confirm-ok', { includeHiddenElements: true })).toHaveTextContent('Approve');
+    expect(screen.getByTestId('stuck-reason', { includeHiddenElements: true }).props.value).toBe('Notes cover the task; the builder is suspended.');
   });
 });

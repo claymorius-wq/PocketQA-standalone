@@ -65,7 +65,7 @@ export default function SignUp() {
         <Field label="Password" value={password} onChangeText={setPassword} secure error={pwError} hint="At least 12 characters." testID="sign-up-password" />
         {error ? <Notice tone="danger" title="Couldn’t create account" testID="sign-up-error">{error}</Notice> : null}
         {verificationSent ? (
-          // One string, so the notice sets it as its muted body text (the kit only wraps a string).
+          // One string: the notice sets it as its muted body text.
           <Notice tone="info" title="Check your email" testID="sign-up-verify">
             {`We sent a verification link to ${email.trim()}. Open it, then sign in to finish creating your account.`}
           </Notice>

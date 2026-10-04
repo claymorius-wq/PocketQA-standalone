@@ -186,8 +186,8 @@ export default function Disputes() {
   const resolve = useMutation({
     mutationFn: () => api('resolveDispute', { params: { id: target! }, body: { outcome, note } }),
     onSuccess: () => {
+      // The note stays while the sheet animates out; the next open() clears it.
       setTarget(null);
-      setNote('');
       qc.invalidateQueries({ queryKey: ['adminDisputes'] });
       qc.invalidateQueries({ queryKey: ['audit'] });
     },

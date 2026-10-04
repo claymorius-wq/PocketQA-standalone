@@ -100,7 +100,7 @@ function withClauseDots(children: ReactNode, style: TextStyle | undefined): Reac
  * clause, ClauseDot), so a subtitle like "Test credits · no cash value" spaces its dot like the
  * boards without the caller building Clauses; the characters are unchanged.
  */
-export function Text({ children, variant = 'body', tone = 'default', style, testID, numberOfLines, pretty = false }: {
+export function Text({ children, variant = 'body', tone = 'default', style, testID, numberOfLines, pretty = false, header = false }: {
   children: ReactNode;
   variant?: TextVariant;
   tone?: TextTone;
@@ -109,6 +109,8 @@ export function Text({ children, variant = 'body', tone = 'default', style, test
   numberOfLines?: number;
   /** Prose wrapping (PRETTY_WRAP): no orphaned last word. */
   pretty?: boolean;
+  /** The header role for a section title in another variant (display and title always have it). */
+  header?: boolean;
 }) {
   const { colors, type } = useTheme();
   const screen = useContext(ScreenContext);
@@ -123,7 +125,7 @@ export function Text({ children, variant = 'body', tone = 'default', style, test
       numberOfLines={numberOfLines}
       textBreakStrategy={pretty ? PRETTY_BREAK : undefined}
       style={textStyle}
-      accessibilityRole={variant === 'display' || variant === 'title' ? 'header' : undefined}
+      accessibilityRole={header || variant === 'display' || variant === 'title' ? 'header' : undefined}
     >
       {withClauseDots(children, StyleSheet.flatten(textStyle))}
     </RNText>

@@ -15,7 +15,7 @@
 
 export { Amount, Byline, ClauseDot, Clauses, CLAUSE_SEPARATOR, DateText, Meta, MINUS, signedAmount } from './type';
 export { CommitUplight, MODE_B_HEIGHT, PASS_LEAVE_AFTER, PASS_MIN_AFTER_PRESS, UnderGlow, useCommitUplight, type CommitStatus } from './light';
-export { RewardWell, type RewardWellProps } from './RewardWell';
+export { RewardWell, rewardPhrase, type RewardWellProps } from './RewardWell';
 export { BalanceHero, creditsSuffix, type BalanceHeroProps } from './BalanceHero';
 export { plural, StudyCard, type StudyCardProps } from './StudyCard';
 export { Hairline, ListCard, ListRow, type ListRowProps } from './ListRow';

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState, type Ref } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { CausticSweep, GlassSurface, useSweepOnEnable } from '../glass';
 import { PASS_THROUGH } from '../glass/paint';
@@ -148,6 +148,8 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
       aria-disabled={off}
       accessibilityRole="button"
       accessibilityState={{ disabled: off, busy: !!loading || locked }}
+      // react-native-web maps no accessibilityState: busy reaches the DOM as aria-busy.
+      {...(Platform.OS === 'web' ? { 'aria-busy': !!loading || locked } : null)}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       style={[styles.button, compact ? styles.compact : null, !primary && disabled ? styles.dim : null, style]}

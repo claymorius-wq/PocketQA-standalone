@@ -29,8 +29,8 @@ export default function Stuck() {
   const decide = useMutation({
     mutationFn: () => api('adminDecide', { params: { id: target!.id }, body: { decision: target!.decision, reason } }),
     onSuccess: (p) => {
+      // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
-      setReason('');
       setDecided((prev) => ({ id: p.id, n: (prev?.n ?? 0) + 1 }));
       qc.invalidateQueries({ queryKey: ['adminStuck'] });
       qc.invalidateQueries({ queryKey: ['audit'] });

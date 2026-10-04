@@ -135,7 +135,8 @@ function ReviewInner() {
       dockPlacement="edge"
       dockClearance={DOCK_CLEARANCE}
       dock={
-        <DockSlot shown={view.dock} style={styles.boxNone}>
+        // Hidden while QueryState shows the error panel: the sheet lives inside it (as Builder study).
+        <DockSlot shown={view.dock && !pq.error} style={styles.boxNone}>
           <DockScrim />
           {/* The gutters sit on an outer View and the capped column inside it (as Builder study's
               dock): width '100%' on the View that carries the margins would overflow them. */}

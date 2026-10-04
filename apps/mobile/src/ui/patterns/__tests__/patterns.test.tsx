@@ -34,6 +34,7 @@ import {
   RecordControl,
   ReviewNotice,
   RewardWell,
+  rewardPhrase,
   SectionHeader,
   SheetActions,
   SheetFailure,
@@ -45,6 +46,7 @@ import {
   useCommitUplight,
   type CommitStatus,
 } from '..';
+import { webFigureSize } from '../KeyValue';
 
 // Jest resolves lucide's "react-native" export to an ES-module build the jest-expo transform does
 // not compile; its CommonJS build is the same set of components (as in ui.test.tsx).
@@ -180,15 +182,19 @@ describe.each(SCHEMES)('patterns in %s', (scheme) => {
     expect(card.props.accessibilityLabel).toBe('Open study Demo: onboarding screens');
     expect(screen.getByText('1 task')).toBeTruthy();
     expect(screen.getByText('5 slots left')).toBeTruthy();
-    expect(screen.getByLabelText('30 test credits')).toBeTruthy();
+    // One stop: the hint reads the reward, the disclaimer and the meta.
+    expect(card.props.accessibilityHint).toBe('30 test credits. Reward if approved. Not guaranteed. 1 task, 5 slots left.');
     expect(screen.getByText(/Reward if approved/)).toBeTruthy();
     await fireEvent.press(card);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('RewardWell reads as one phrase, stacked units included', async () => {
+  it('RewardWell is no stop of its own; rewardPhrase reads it as one phrase, stacked units included', async () => {
     await renderIn(scheme, <RewardWell amount={1500} unit={['test credits', 'if approved']} testID="rw" />);
-    expect(screen.getByTestId('rw').props.accessibilityLabel).toBe('1,500 test credits if approved');
+    // It sits inside a pressable card, which carries the phrase in its hint (no inert second stop on Android).
+    expect(screen.getByTestId('rw').props.accessible).toBeFalsy();
+    expect(screen.getByTestId('rw').props.accessibilityLabel).toBeUndefined();
+    expect(rewardPhrase(1500, ['test credits', 'if approved'])).toBe('1,500 test credits if approved');
     expect(screen.getByText('1,500')).toBeTruthy();
   });
 
@@ -248,6 +254,18 @@ describe.each(SCHEMES)('patterns in %s', (scheme) => {
     expect(screen.getByTestId('budget-awarded')).toHaveTextContent('1,000');
     expect(screen.getByLabelText('Awarded: 1,000')).toBeTruthy();
     expect(screen.getByLabelText('Reserved: 150')).toBeTruthy();
+  });
+
+  it('the lead figure fits its 104dp column on web (no adjustsFontSizeToFit there): 44 while it fits, smaller after, never below 16', () => {
+    expect(webFigureSize('250', 104)).toBe(44);
+    expect(webFigureSize('250', 0)).toBe(44);
+    const tenThousands = webFigureSize('12,500', 104);
+    expect(tenThousands).toBeLessThan(44);
+    expect(tenThousands).toBeGreaterThan(30);
+    // 0.6em per figure and 0.27em per comma, less the −1.4 tracking: the text fits the column.
+    expect(5 * 0.6 * tenThousands + 0.27 * tenThousands - 1.4 * 5).toBeLessThanOrEqual(104);
+    expect(webFigureSize('500,000,000', 104)).toBeGreaterThanOrEqual(16);
+    expect(webFigureSize('500,000,000', 104)).toBeLessThan(tenThousands);
   });
 
   it('TaskList keeps per-step ids, labels the steps and renders step content', async () => {

@@ -37,7 +37,7 @@ import { Enter, useMountedLate } from '../../src/ui/screen';
 //   sections leave, and "Awaiting review" takes their place.
 // - Decided: the outcome leads (Awaiting review; Approved with U5 Earned; Rejected and the dispute
 //   with U6 Earned on an overturn), then the devnet transfer, the findings and a recap of the tasks.
-// - Withdrawn: the empty panel.
+// - Withdrawn: the empty panel, then the recap of the tasks (as on main: saved notes stay readable).
 //
 // RN adaptation: the board floats "Submit for review" in the dock too. Here Submit sits at the end
 // of the Finish section instead: the Screen's dock floats over the scrolled content (it ends the
@@ -635,7 +635,7 @@ function Session({ p, study, actions, landing, onLanded }: { p: Participation; s
       ) : null}
       {p.status === 'withdrawn' ? <EmptyState icon={Circle} title="You withdrew" body={p.decisionReason ?? 'This session is closed. Nothing more is needed from you.'} /> : null}
       {decided ? <Decision p={p} /> : null}
-      {decided ? (
+      {decided || p.status === 'withdrawn' ? (
         <Arrive delay={80}>
           <TaskRecap p={p} study={study} />
         </Arrive>
@@ -664,9 +664,10 @@ function Session({ p, study, actions, landing, onLanded }: { p: Participation; s
                   plus the 10dp block gap keep 32dp of ground before Withdraw (§U). */}
               <View style={styles.submitWrap}>
                 <UnderGlow light={u4} motes />
-                <Button label="Submit for review" icon={Send} onPress={() => (locked ? undefined : ask('submit'))} disabled={pendingEvidence > 0} testID="session-submit" />
+                {/* `locked` through the U4 hold: presses are ignored and the button is announced busy, its look unchanged. */}
+                <Button label="Submit for review" icon={Send} onPress={() => ask('submit')} disabled={pendingEvidence > 0} locked={locked} testID="session-submit" />
               </View>
-              <Button label="Withdraw from study" icon={X} variant="ghost" onPress={() => (locked ? undefined : ask('withdraw'))} testID="session-withdraw" style={styles.withdraw} />
+              <Button label="Withdraw from study" icon={X} variant="ghost" onPress={() => ask('withdraw')} locked={locked} testID="session-withdraw" style={styles.withdraw} />
             </Block>
           </Arrive>
         </Animated.View>

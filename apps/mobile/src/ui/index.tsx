@@ -245,9 +245,8 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
 /**
  * Free room in a `fill` Screen: a direct child of Screen that grows to take the room left below
  * the content (several split it evenly), never shorter than `minHeight`. It pushes what follows it
- * to the bottom of the viewport (A-SignIn: a spacer between the hero and the card holds the card
- * above the footer; the inline Notice takes the spacer's room instead of moving the card). Outside
- * a `fill` Screen it is just `minHeight` of ground.
+ * to the bottom of the viewport. No screen uses it yet: Sign in relies on the default instead (the
+ * last step takes the free room). Outside a `fill` Screen it is just `minHeight` of ground.
  */
 export function ScreenSpacer({ minHeight = 0, testID }: { minHeight?: number; testID?: string }) {
   return <View testID={testID} style={[styles.grow, { minHeight }, PASS]} />;
@@ -408,7 +407,7 @@ function HandoffTail({ onDone }: { onDone: () => void }) {
   return <CommitUplight light={light} x={0.5} />;
 }
 
-export function Field({ label, value, onChangeText, error, hint, secure, multiline, rows, keyboardType, testID, placeholder, autoCapitalize, invalid = false, numeral = false, locked = false, lockDelay = 0, ref }: {
+export function Field({ label, value, onChangeText, error, hint, secure, multiline, rows, keyboardType, testID, placeholder, autoCapitalize, invalid = false, numeral = false, locked = false, lockDelay = 0, returnKeyType, onSubmitEditing, ref }: {
   label: string;
   value: string;
   onChangeText: (v: string) => void;
@@ -432,11 +431,14 @@ export function Field({ label, value, onChangeText, error, hint, secure, multili
   numeral?: boolean;
   /**
    * The Lock (U4, §11.5): the well sinks into the pressed look, 120ms ease-press after `lockDelay`
-   * (1dp down-right, not under reduced motion, and the pressed shade over it). Drawing only: it
-   * never changes what the field accepts.
+   * (1dp down-right, not under reduced motion, and the pressed shade over it), and the field takes
+   * no more text (its value is already final).
    */
   locked?: boolean;
   lockDelay?: number;
+  /** The keyboard's return key: its label and what it does (Sign in submits from the password field). */
+  returnKeyType?: 'done' | 'go' | 'next' | 'send';
+  onSubmitEditing?: () => void;
   /** The TextInput, so a screen can move focus to the field (React 19 ref prop). */
   ref?: Ref<TextInput>;
 }) {
@@ -482,6 +484,10 @@ export function Field({ label, value, onChangeText, error, hint, secure, multili
             setFocusArmed(true);
           }}
           onBlur={() => setFocused(false)}
+          // A locked field (U4: submitted notes) takes no more text: nothing typed is silently dropped.
+          editable={!locked}
+          returnKeyType={returnKeyType}
+          onSubmitEditing={onSubmitEditing}
           secureTextEntry={secure}
           multiline={multiline}
           keyboardType={keyboardType}
@@ -633,6 +639,8 @@ export function Segmented<T extends string>({ options, value, onChange, testID, 
               onPress={() => onChange(o.value)}
               accessibilityRole="radio"
               accessibilityState={{ selected: on }}
+              // react-native-web maps no accessibilityState: the radio's state reaches the DOM as aria-checked.
+              {...(WEB ? { 'aria-checked': on } : null)}
               style={[styles.segment, o.glyph ? styles.segmentWithGlyph : null]}
             >
               {o.glyph ? <TabGlyph name={o.glyph} focused={on} size={SEGMENT_GLYPH} /> : null}
@@ -682,7 +690,8 @@ export function Checkbox({ checked, onChange, label, testID, invalid = false, la
   const { onStyle } = useCrossfade(checked);
   // §8: a 26dp well; checked fades in the primary-glass square with the on-primary check (120ms).
   return (
-    <FocusPressable ringRadius={radius.segment} testID={testID} onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} style={styles.checkbox}>
+    // Web: aria-checked as well (react-native-web maps no accessibilityState).
+    <FocusPressable ringRadius={radius.segment} testID={testID} onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} {...(WEB ? { 'aria-checked': checked } : null)} style={styles.checkbox}>
       <View style={styles.box}>
         <Well radius={radius.checkbox} state={invalid && !checked ? 'error' : 'rest'} style={[styles.layer, glass.enabled ? null : styles.flatEdge]} />
         <Animated.View style={[styles.layer, PASS, onStyle]}>
@@ -843,8 +852,9 @@ export function ConfirmSheet({ visible, title, body, confirmLabel, destructive =
   const escaped = usePendingEscape(visible && pending);
   const commit = !destructive && (moment ? moment === 'commit' : isCommitSheet(title, confirmLabel, destructive));
   // U7: after success the Commit pass plays in the open sheet until `onLeave`; both actions are
-  // locked meanwhile, without the spinner (C4: a sheet never closes or re-fires mid-pass).
-  const passing = visible && commit && status === 'success' && glass.enabled && motion.play.uplightCommit;
+  // locked meanwhile, without the spinner (C4: a sheet never closes or re-fires mid-pass). Only a
+  // caller that passes `onLeave` gets the lock: without it nothing would ever release the sheet.
+  const passing = visible && commit && status === 'success' && glass.enabled && motion.play.uplightCommit && !!onLeave;
   const busy = (pending && !escaped) || passing;
   // C4: focus moves to the title; Escape, back, the backdrop and Cancel close, never while busy.
   const sheetFocus = useSheetFocus({ visible, busy, closing: sheet.closing, onClose: onCancel });

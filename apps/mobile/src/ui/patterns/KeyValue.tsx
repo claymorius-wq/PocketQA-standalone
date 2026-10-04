@@ -1,5 +1,5 @@
-import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
-import { StyleSheet, Text as RNText, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Children, isValidElement, useState, type ReactElement, type ReactNode } from 'react';
+import { Platform, StyleSheet, Text as RNText, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { Well } from '../../glass';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -50,17 +50,47 @@ export function KeyValueList({ children, style, testID }: { children: ReactNode;
   );
 }
 
+/** The lead numeral: Red Hat Display 300 44/44, letter-spacing −1.4 (A-BStudy "Reserved"). */
+const FIGURE_SIZE = 44;
+const FIGURE_TRACKING = -1.4;
+const WEB = Platform.OS === 'web';
+
+/**
+ * The lead numeral's size on web, where react-native-web ignores `adjustsFontSizeToFit`: the
+ * largest size up to 44 at which `text` fits `width`, never below 16. Red Hat Display figures are
+ * taken as 0.6em and a group comma as 0.27em (rounded up), so a large reserve shrinks to fit instead
+ * of ending in an ellipsis. Native keeps `adjustsFontSizeToFit`.
+ */
+export function webFigureSize(text: string, width: number): number {
+  if (width <= 0) return FIGURE_SIZE;
+  const separators = text.replace(/[0-9]/g, '').length;
+  const ems = (text.length - separators) * 0.6 + separators * 0.27;
+  const fit = (width - FIGURE_TRACKING * (text.length - 1)) / ems;
+  return Math.max(16, Math.min(FIGURE_SIZE, Math.floor(fit)));
+}
+
 /**
  * The lead figure of a group (A-BStudy "Reserved"): the term over a Red Hat Display 300 44/44
  * numeral, recessed in a lens well. The KeyValue rows beside it break the total down.
  */
 export function KeyFigure({ label, value, testID, valueTestID, style, valueStyle }: { label: string; value: string | number; testID?: string; valueTestID?: string; style?: StyleProp<ViewStyle>; valueStyle?: ValueStyle }) {
   const { colors, type } = useTheme();
+  const text = show(value);
+  // Web: the numeral's column width, measured, sets its size (it stretches across the well, so the
+  // width never depends on the size).
+  const [width, setWidth] = useState(0);
+  const size = WEB ? webFigureSize(text, width) : FIGURE_SIZE;
   return (
-    <Well testID={testID} accessible accessibilityLabel={`${label}: ${show(value)}`} style={[styles.figure, style]}>
+    <Well testID={testID} accessible accessibilityLabel={`${label}: ${text}`} style={[styles.figure, style]}>
       <RNText style={[type.small, { color: colors.textMuted }]}>{label}</RNText>
-      <Animated.Text testID={valueTestID} adjustsFontSizeToFit numberOfLines={1} style={[type.numeralXl, styles.figureValue, { color: colors.numeral }, valueStyle]}>
-        {show(value)}
+      <Animated.Text
+        testID={valueTestID}
+        adjustsFontSizeToFit
+        numberOfLines={1}
+        onLayout={WEB ? (e) => setWidth(e.nativeEvent.layout.width) : undefined}
+        style={[type.numeralXl, styles.figureValue, size < FIGURE_SIZE ? { fontSize: size } : null, { color: colors.numeral }, valueStyle]}
+      >
+        {text}
       </Animated.Text>
     </Well>
   );
@@ -74,5 +104,5 @@ const styles = StyleSheet.create({
   figure: { gap: 8, minHeight: 108, paddingVertical: 12, paddingHorizontal: 14 },
   // Red Hat Display 300 at 44/44 (between numeral 38 and numeral-xl 56 in the scale).
   // A-BStudy "Reserved": Red Hat Display 300 44/44, letter-spacing −1.4.
-  figureValue: { fontSize: 44, lineHeight: 44, letterSpacing: -1.4 },
+  figureValue: { fontSize: FIGURE_SIZE, lineHeight: FIGURE_SIZE, letterSpacing: FIGURE_TRACKING },
 });

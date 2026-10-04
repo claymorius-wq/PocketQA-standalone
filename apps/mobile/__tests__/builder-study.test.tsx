@@ -310,6 +310,49 @@ describe('builder study (A-BStudy)', () => {
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
   });
 
+  it('opens each sheet clean: a failed Close never shows (or announces) its error in the next sheet', async () => {
+    mockStudy = study(PUBLISHED);
+    const { ApiError } = jest.requireMock<{ ApiError: new (code: string, message: string) => Error }>('../src/api/client');
+    mockApi.mockImplementation(async () => {
+      throw new ApiError('CONFLICT', 'A rejected tester can still dispute (7-day dispute window). Close the study after the window ends.');
+    });
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('study-close'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+    });
+    await settle();
+    await advance(50);
+    expect(screen.getByTestId('study-action-sheet-error')).toHaveTextContent(/dispute window/);
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    });
+    await advance(400);
+    // The failure stays over the dock until the next sheet opens; that sheet starts clean.
+    expect(screen.getByTestId('study-action-error')).toHaveTextContent(/dispute window/);
+    await fireEvent.press(screen.getByTestId('study-pause'));
+    expect(screen.getByText('Pause this study?')).toBeTruthy();
+    expect(screen.queryByTestId('study-action-sheet-error')).toBeNull();
+    expect(screen.queryByTestId('study-action-error')).toBeNull();
+  });
+
+  it('keeps the Close title and confirm while the sheet animates out after Cancel', async () => {
+    mockStudy = study(PUBLISHED);
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('study-close'));
+    await advance(500);
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    });
+    await advance(10);
+    // Still leaving (240ms): nothing is selected any more, and the sheet still reads Close.
+    expect(screen.getByTestId('confirm-sheet', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByText('Close this study?', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('confirm-ok', { includeHiddenElements: true })).toHaveTextContent('Close study');
+    await advance(400);
+    expect(screen.queryByTestId('confirm-sheet', { includeHiddenElements: true })).toBeNull();
+  });
+
   it('light theme renders the same screen flat', async () => {
     mockStudy = study(PUBLISHED);
     await renderScreen('light');

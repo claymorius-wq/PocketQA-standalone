@@ -186,7 +186,7 @@ describe('review screen', () => {
     expect(screen.getByText('Playback links expire after 5 minutes.')).toBeTruthy();
     expect(screen.getByTestId('finding-form')).toBeTruthy();
     expect(screen.getByTestId('finding-evidence')).toBeTruthy();
-    expect(screen.getByText('Decision')).toBeTruthy();
+    expect(screen.getByText('Decision').props.accessibilityRole).toBe('header');
     expect(screen.getByTestId('review-approve')).toBeTruthy();
     expect(screen.getByTestId('review-reject')).toBeTruthy();
     expect(screen.queryByTestId('review-decided')).toBeNull();
@@ -207,6 +207,8 @@ describe('review screen', () => {
     expect(screen.getAllByTestId('evidence-item')).toHaveLength(2);
     expect(screen.getByText('Screen recording')).toBeTruthy();
     expect(screen.getByText('android · 3.2 MB')).toBeTruthy();
+    // Each View reads before its caption, so its name says which item it opens.
+    expect(screen.getAllByTestId('evidence-view').map((v) => v.props.accessibilityLabel)).toEqual(['View screen recording 1', 'View screenshot 2']);
     await fireEvent.press(screen.getAllByTestId('evidence-view')[1]!);
     await settle();
     expect(mockApi).toHaveBeenCalledWith('playbackToken', { params: { id: 'e2' } });

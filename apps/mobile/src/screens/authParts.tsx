@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent, type ViewStyle } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FlutedLens, GroundFade, type Uplight, type UplightGrade } from '../glass';
+import { FlutedLens, GroundFade, useKeyLight, type Uplight, type UplightGrade } from '../glass';
 import { GradientRule, HIDDEN, PASS_THROUGH } from '../glass/paint';
 import { DUR, useMotion } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
@@ -121,6 +121,11 @@ const DOCK_SCRIM_FADE = layout.listGap;
 export function SignInDock({ footer, children, light }: { footer?: ReactNode; children: ReactNode; light?: Uplight }) {
   const insets = useSafeAreaInsets();
   const keyboard = useDockKeyboard();
+  // Sign in drives U1 from above its Screen's Ground, where no key light is in reach; the dock is
+  // inside the Ground, so the moment registers here and the pool dims while it is lit (ADR 0006).
+  const keyLight = useKeyLight();
+  const u = light?.u;
+  useEffect(() => (u ? keyLight?.register(u) : undefined), [keyLight, u]);
   const [height, setHeight] = useState(0);
   const paddingBottom = keyboard ? DOCK_INSET_GAP : Math.max(DOCK_BOTTOM, insets.bottom + DOCK_INSET_GAP);
   const onLayout = (e: LayoutChangeEvent) => {
