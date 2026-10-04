@@ -63,9 +63,9 @@
 
 | ID | Gate | Class | Status | Evidence or blocker | Authorization |
 |---|---|---|---|---|---|
-| W1 | Web wallet chooser (several Wallet Standard wallets), `solana:signIn` only | C | ⬜ | | H-relayed |
-| W2 | Web connect, login, link and unlink; the last sign-in method stays protected | C | ⬜ | | H-relayed |
-| W3 | Android MWA login (sign-in payload), with an explicit domain-binding design per client surface | C | ⬜ | | H-relayed |
+| W1 | Web wallet chooser (several Wallet Standard wallets), `solana:signIn` only | C | 🔧 | One button per installed Wallet Standard wallet, for login and linking. The chosen wallet signs, and it is disconnected after every flow: `e2e/wallet-login.spec.ts` "wallet chooser" (inc3)
+| W2 | Web connect, login, link and unlink; the last sign-in method stays protected | C | 🔧 | Web connect, `solana:signIn` login, link and unlink, with the last sign-in method protected (E2E, inc3). Disconnect via `standard:disconnect`
+| W3 | Android MWA login (sign-in payload), with an explicit domain-binding design per client surface | C | 🔧 emulator | `surface: mwa` challenges bound to the app identity (`wallet-login.test.ts`). `walletLogin.android.ts` runs one MWA session. Maestro `wallet-login-mwa.yaml` and `-decline.yaml` pass on the **emulator** with the mock wallet (inc3)
 | W4 | Wallet login enabled in production only after Hamza's explicit acceptance of the residual raw-`signMessage` phishing risk is recorded in ADR 0005 §2 | B | ⛔ A8 | | **open** |
 | W5 | Real browser wallet (Phantom/Solflare extension) sign-in on the production origin; a wrong origin is refused or warned | H | ⬜ | | H-relayed |
 | W6 | Real-device MWA login and link with a devnet wallet (physical) | H | ⛔ A6 | Earlier MWA linking evidence exists (PR #1 era) | H-relayed |
@@ -116,3 +116,5 @@
 - **Admin accounts (inc2 review P3-3).** `admin:grant` trusts the verified identity behind the email. The operator must confirm the person out of band before granting. Admins should use Google sign-in with 2-step verification. Admin MFA in Pocket QA itself needs Identity Platform (billing, not approved), so **admin MFA is a residual risk**.
 - **Keystore value size (inc2 review P3-2).** Firebase's persisted user JSON is typically over 2 KB. Android's keystore-backed `expo-secure-store` handled it (emulator proof). iOS Keychain may reject values over 2048 bytes, so **iOS managed sign-in stays an open gate**, with chunking as the fix if iOS becomes a target.
 - **Native proof scope (inc2 review P3-4).** I8 was proven with a **development prebuild on an emulator**. A production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`) on a physical Android or Seeker device stays open under N1 and N2.
+- **Wallet login (inc3 review P3-1, P3-4).** The MWA identity `pocketqa.local` is a placeholder and can't be verified. Moving it to an owned domain with `assetlinks.json` is a precondition for W4 and W6. Not yet tested: Android in firebase mode (the custom-token exchange on a device), a real browser wallet (W5), and a physical device with a real wallet (W6).
+

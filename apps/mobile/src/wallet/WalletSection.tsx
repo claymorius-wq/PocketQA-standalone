@@ -6,6 +6,8 @@ import { GlassTile, glyphIcon } from '../icons';
 import { Button, Card, Notice, Row, StatusPill, Text } from '../ui';
 import { walletErrorText } from './errors';
 import { linkWalletWithMwa } from './link';
+import type { StandardWallet } from './standard';
+import { useWallets } from './useWallets';
 
 // Linking is "not a payment" (§14): secondary glass only, no Uplight and no caustic sweep.
 const LINK = glyphIcon('link');
@@ -15,7 +17,9 @@ export function WalletSection() {
   const { user, refreshUser } = useSession();
   const cap = walletCapability();
   const unlink = useMutation({ mutationFn: () => api('walletUnlink'), onSuccess: () => refreshUser() });
-  const link = useMutation({ mutationFn: () => linkWalletWithMwa(), onSuccess: () => refreshUser() });
+  // Web: one button per installed Wallet Standard wallet (ledger W1); Android: MWA.
+  const wallets = useWallets();
+  const link = useMutation({ mutationFn: (wallet?: StandardWallet) => linkWalletWithMwa(wallet ? { wallet } : {}), onSuccess: () => refreshUser() });
   const wallet = user?.wallet;
   return (
     <Card testID="wallet-section">
@@ -33,7 +37,18 @@ export function WalletSection() {
           <Button label="Unlink wallet" icon={UNLINK} variant="secondary" onPress={() => unlink.mutate()} loading={unlink.isPending} testID="wallet-unlink" />
         </>
       ) : cap.available ? (
-        <Button label="Link devnet wallet" icon={LINK} variant="secondary" onPress={() => link.mutate()} loading={link.isPending} testID="wallet-link" />
+        (wallets.length > 1 ? wallets : [undefined]).map((w, i) => (
+          <Button
+            key={w?.name ?? 'default'}
+            label={w ? `Link ${w.name}` : 'Link devnet wallet'}
+            icon={LINK}
+            variant="secondary"
+            onPress={() => link.mutate(w)}
+            loading={link.isPending && link.variables === w}
+            disabled={link.isPending}
+            testID={i === 0 ? 'wallet-link' : `wallet-link-${i}`}
+          />
+        ))
       ) : (
         <Notice tone="info" title="Unavailable on this device" testID="wallet-unavailable">{cap.reason}</Notice>
       )}

@@ -1,4 +1,4 @@
-import { SOLANA_DEVNET_CHAIN, WALLET_NONCE_TTL_SECONDS, type SiwsInput } from '@pocket-qa/contracts';
+import { appIdentityUri, SOLANA_DEVNET_CHAIN, WALLET_NONCE_TTL_SECONDS, type SiwsInput } from '@pocket-qa/contracts';
 import { type DomainError, verifyWalletLogin, type LoginChallengeRecord } from '@pocket-qa/domain';
 import type { Ctx, Handler } from '../context';
 import { RateLimiter } from '../rateLimit';
@@ -45,15 +45,22 @@ export const walletLoginHandlers = {
     const db = ctx.deps.db;
     const now = ctx.deps.now();
     const nonce = newNonce();
-    // Bound to the deployment's real origin (not the fixed link domain), so a wallet using
-    // solana:signIn can compare it with the page it is asked from (ADR 0005 §2).
+    // Web: bound to the deployment's real origin, so a solana:signIn wallet can compare it
+    // with the page it is asked from (ADR 0005 §2). MWA (Android): bound to the app identity
+    // the app declares to the wallet (docs/production/wallet-login-design.md). The stored
+    // input is what verification rebuilds, so a signature for one surface fails the other.
     const origin = ctx.deps.config.publicOrigin!;
-    const domain = new URL(origin).host;
+    const mwa = ctx.body.surface === 'mwa';
+    const domain = mwa ? ctx.deps.config.siwsDomain : new URL(origin).host;
+    const uri = mwa ? appIdentityUri(domain) : origin;
+    const statement = mwa
+      ? 'Sign in to Pocket QA in the Pocket QA Android app with this devnet wallet. Only sign this in the Pocket QA Android app, never on a website. This is not a payment and sends nothing.'
+      : `Sign in to Pocket QA at ${origin} with this devnet wallet. Only sign this on ${domain}. This is not a payment and sends nothing.`;
     const input: SiwsInput = {
       domain,
       address,
-      statement: `Sign in to Pocket QA at ${origin} with this devnet wallet. Only sign this on ${domain}. This is not a payment and sends nothing.`,
-      uri: origin,
+      statement,
+      uri,
       version: '1',
       chainId: SOLANA_DEVNET_CHAIN,
       nonce,

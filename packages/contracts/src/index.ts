@@ -470,7 +470,12 @@ export const WalletLinkBody = z.object({
  * statement ("Sign in … not a payment") and store, single use, rate limited. The wallet
  * resolves only to the account it is linked to; `newAccount` creates one only if none is.
  */
-export const WalletLoginChallengeBody = z.object({ address: Base58Address });
+/**
+ * `surface`: where the sign-in is signed. `web` (default) binds the deployment's public
+ * origin, which a `solana:signIn` wallet compares with the page; `mwa` (Android) binds the
+ * fixed app identity domain and URI the app declares to Mobile Wallet Adapter.
+ */
+export const WalletLoginChallengeBody = z.object({ address: Base58Address, surface: z.enum(['web', 'mwa']).optional() });
 export const WalletLoginBody = WalletLinkBody.extend({
   newAccount: z.object({ role: SelfServeRole, displayName: DisplayName }).optional(),
 });

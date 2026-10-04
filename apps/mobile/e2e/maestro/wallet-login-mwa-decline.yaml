@@ -1,0 +1,26 @@
+# Ledger W3 (EMULATOR): declining the MWA sign-in signature is reported honestly and signs
+# nobody in. Needs the API with POCKETQA_WALLET_LOGIN=1 and -e WALLET_PIN=<test AVD pin>.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _fresh-wallet.yaml
+- launchApp:
+    appId: com.reshareai.pocketqa
+    clearState: true
+- tapOn:
+    id: sign-in-wallet
+- extendedWaitUntil:
+    visible: "wants to connect"
+    timeout: 20000
+- tapOn: "Connect"
+- extendedWaitUntil:
+    visible: ".*pocketqa.local wants you to sign in with your Solana account.*"
+    timeout: 20000
+- tapOn: "Cancel"
+- extendedWaitUntil:
+    visible:
+      id: sign-in-error
+    timeout: 20000
+- assertVisible: ".*declined or closed. You are not signed in.*"
+- assertNotVisible:
+    id: discover-screen
+- takeScreenshot: mwa-login-declined

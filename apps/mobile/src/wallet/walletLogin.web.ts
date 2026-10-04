@@ -1,7 +1,7 @@
 import type { WalletLoginResponse } from '@pocket-qa/contracts';
 import { api } from '../api/client';
 import { availableWallets } from './registry';
-import { connectWallet, signInWithWallet, type StandardWallet } from './standard';
+import { connectWallet, disconnectWallet, signInWithWallet, type StandardWallet } from './standard';
 
 const b64 = (u: Uint8Array) => {
   let s = '';
@@ -17,11 +17,18 @@ const b64 = (u: Uint8Array) => {
 export async function walletLoginFlow(opts: { wallet?: StandardWallet; newAccount?: { role: 'tester' | 'builder'; displayName: string } } = {}): Promise<WalletLoginResponse> {
   const wallet = opts.wallet ?? availableWallets()[0];
   if (!wallet) throw new Error('No Solana wallet extension found. Install one that supports Sign In With Solana, or use email or Google.');
-  const account = await connectWallet(wallet);
-  const { input } = await api('walletLoginChallenge', { body: { address: account.address }, token: null });
-  const signed = await signInWithWallet(wallet, input);
+  let signed: Awaited<ReturnType<typeof signInWithWallet>>;
+  let nonce: string;
+  try {
+    const account = await connectWallet(wallet);
+    const { input } = await api('walletLoginChallenge', { body: { address: account.address, surface: 'web' }, token: null });
+    nonce = input.nonce;
+    signed = await signInWithWallet(wallet, input);
+  } finally {
+    await disconnectWallet(wallet);
+  }
   return api('walletLogin', {
-    body: { address: signed.address, nonce: input.nonce, signedMessage: b64(signed.signedMessage), signature: b64(signed.signature), ...(opts.newAccount ? { newAccount: opts.newAccount } : {}) },
+    body: { address: signed.address, nonce, signedMessage: b64(signed.signedMessage), signature: b64(signed.signature), ...(opts.newAccount ? { newAccount: opts.newAccount } : {}) },
     token: null,
   });
 }

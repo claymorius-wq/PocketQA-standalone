@@ -30,3 +30,11 @@ describe('walletErrorText: send failures', () => {
     }
   });
 });
+
+it('sign-in errors never talk about transactions (inc3 review P3-2)', () => {
+  for (const code of [-2, -4]) {
+    expect(walletErrorText({ code }, 'sign-in')).toBe('The wallet couldn’t sign the sign-in message. You are not signed in.');
+    expect(walletErrorText({ code }, 'link')).toMatch(/transaction/);
+  }
+  expect(walletErrorText({ code: -3 }, 'sign-in')).toMatch(/You are not signed in/);
+});

@@ -14,25 +14,27 @@ const address = 'AddrA111111111111111111111111111111111111111';
 const input = { domain: 'app.pocketqa.example', address, statement: 'Sign in …', uri: 'https://app.pocketqa.example', version: '1', chainId: 'solana:devnet', nonce: 'abcDEF1234567890xyz', issuedAt: '2026-10-04T00:00:00.000Z', expirationTime: '2026-10-04T00:05:00.000Z' };
 const account = { address, publicKey: new Uint8Array(32), chains: ['solana:devnet'], features: [] };
 const signIn = jest.fn(async () => [{ account, signedMessage: new Uint8Array([104, 105]), signature: new Uint8Array(64).fill(1) }]);
+const disconnect = jest.fn(async () => {});
 const signMessage = jest.fn(async () => [{ signedMessage: new Uint8Array([7]), signature: new Uint8Array(64).fill(2) }]);
 const wallet = {
   name: 'Fake',
   icon: 'data:image/svg+xml,',
   chains: ['solana:devnet'],
   accounts: [],
-  features: { 'standard:connect': { connect: async () => ({ accounts: [account] }) }, 'solana:signIn': { signIn }, 'solana:signMessage': { signMessage } },
+  features: { 'standard:connect': { connect: async () => ({ accounts: [account] }) }, 'standard:disconnect': { disconnect: () => disconnect() }, 'solana:signIn': { signIn }, 'solana:signMessage': { signMessage } },
 } as unknown as StandardWallet;
 
 beforeEach(() => {
   mockApi.mockReset();
   signIn.mockClear();
   signMessage.mockClear();
+  disconnect.mockClear();
 });
 
 it('login: challenge for the connected address → signIn with exactly that challenge → submit the wallet output', async () => {
   mockApi.mockImplementation(async (name: string) => (name === 'walletLoginChallenge' ? { input } : { user: { id: 'u' }, session: { kind: 'local', token: 't'.repeat(43) } }));
   await walletLoginFlow({ wallet, newAccount: { role: 'tester', displayName: 'W' } });
-  expect(mockApi.mock.calls[0]).toEqual(['walletLoginChallenge', { body: { address }, token: null }]);
+  expect(mockApi.mock.calls[0]).toEqual(['walletLoginChallenge', { body: { address, surface: 'web' }, token: null }]);
   expect(signIn).toHaveBeenCalledWith(input);
   expect(signMessage).not.toHaveBeenCalled();
   expect(mockApi.mock.calls[1]).toEqual([
@@ -56,4 +58,23 @@ it('link: signs the server’s exact link message with signMessage, then links',
   expect(signIn).not.toHaveBeenCalled();
   expect(mockApi.mock.calls[1]![0]).toBe('walletLink');
   expect(mockApi.mock.calls[0]).toEqual(['walletNonce', { body: { address, surface: 'web' } }]);
+});
+
+it('every web flow disconnects the wallet afterwards, also when the user declines (no lingering connection)', async () => {
+  mockApi.mockImplementation(async (name: string) => (name === 'walletLoginChallenge' ? { input } : { user: { id: 'u' }, session: { kind: 'local', token: 't'.repeat(43) } }));
+  await walletLoginFlow({ wallet });
+  expect(disconnect).toHaveBeenCalledTimes(1);
+  signIn.mockRejectedValueOnce(Object.assign(new Error('User rejected the request.'), { code: 4001 }));
+  await expect(walletLoginFlow({ wallet })).rejects.toThrow(/rejected/);
+  expect(disconnect).toHaveBeenCalledTimes(2);
+  // The login was never submitted for the declined attempt.
+  expect(mockApi.mock.calls.filter(([n]) => n === 'walletLogin')).toHaveLength(1);
+});
+
+it('uses the wallet the user chose, not the first installed one (ledger W1)', async () => {
+  const other = { ...wallet, name: 'Other', features: { ...wallet.features, 'solana:signIn': { signIn: jest.fn() } } } as unknown as StandardWallet;
+  mockApi.mockImplementation(async (name: string) => (name === 'walletLoginChallenge' ? { input } : { user: { id: 'u' }, session: { kind: 'local', token: 't'.repeat(43) } }));
+  await walletLoginFlow({ wallet });
+  expect(signIn).toHaveBeenCalledTimes(1);
+  expect((other.features['solana:signIn'] as { signIn: jest.Mock }).signIn).not.toHaveBeenCalled();
 });

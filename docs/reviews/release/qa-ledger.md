@@ -49,6 +49,13 @@ The criteria are A1–A10. Status values are open, source-checked, verified, gat
 | inc1 r1 | staged set, 30 files, base `9461db5` | CHANGES_REQUIRED: P2-1, an unset `POCKETQA_ENV` fails open to development (test top-ups on, with real providers) | `docs/reviews/production/inc1-verdict-qa-r1.md` |
 | inc1 r2 | staged set, 39 files, base `9461db5` | APPROVE. P2-1 is fixed and verified. New P3s: `check-url.mjs` exits 0 without checking when invoked through a symlink or a path with spaces; document explicit development mode | `docs/reviews/production/inc1-verdict-qa-r2.md` |
 | inc2 r1 | staged set, 30 files, base `a350118` | APPROVE. P3s: an abandoned unverified Firebase session persists; keystore value size; admin MFA is procedural; native proof is emulator and development only | `docs/reviews/production/inc2-verdict-qa-r1.md` |
+| inc3 r1 | staged set, 36 files, base `90a5ddd` | APPROVE. P3s: the `pocketqa.local` MWA identity can't be verified (broken icon, no Digital Asset Links); transaction wording on login errors; the MWA statement lacks "only sign in the app"; Android firebase mode, W5 and W6 untested | `docs/reviews/production/inc3-verdict-qa-r1.md` |
+
+### inc3 r1: executable evidence
+- **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 603 files; scripts 42; contracts 17; domain 170; API 360 plus 2 skipped; mobile 728.
+- **Playwright:** 12/12, PW_EXIT=0, including the two-wallet chooser. Screenshots restored.
+- **MWA native artifacts:** inspected, not rerun (shared emulator). The login reaches Discover; a decline shows "not signed in"; the wallet shows the exact server text.
+- **A4 (wallet UX):** web and Android flows verified on an emulator and in Playwright. Real wallets and A8 remain gated.
 
 ### inc2 r1: executable evidence
 - **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 585 files; scripts 42; contracts 17; domain 170; API 358 plus 2 skipped; mobile 721.

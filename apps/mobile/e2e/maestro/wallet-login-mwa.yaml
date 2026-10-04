@@ -1,0 +1,51 @@
+# Ledger W3 (EMULATOR): wallet-first sign-in over Mobile Wallet Adapter with Solana Mobile's
+# mock wallet. First sign-in finds no account and asks to create one (a second MWA session),
+# then the account opens. The wallet shows the app-identity SIWS text, never a transaction.
+# Needs the API with POCKETQA_WALLET_LOGIN=1 (adb reverse 8787) and -e WALLET_PIN=<test AVD pin>.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _fresh-wallet.yaml
+- launchApp:
+    appId: com.reshareai.pocketqa
+    clearState: true
+- tapOn:
+    id: sign-in-wallet
+- extendedWaitUntil:
+    visible: "wants to connect"
+    timeout: 20000
+- takeScreenshot: mwa-login-1-connect
+- tapOn: "Connect"
+- extendedWaitUntil:
+    visible: ".*pocketqa.local wants you to sign in with your Solana account.*"
+    timeout: 20000
+- assertVisible: ".*Pocket QA Android app.*"
+- assertVisible: ".*never on a website.*"
+- takeScreenshot: mwa-login-2-siws
+- tapOn: "Approve"
+- extendedWaitUntil:
+    visible:
+      id: finish-account
+    timeout: 20000
+- tapOn:
+    id: finish-name
+- inputText: Mila Mwa
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: finish-submit
+- tapOn:
+    id: finish-submit
+- runFlow:
+    when:
+      visible: "wants to connect"
+    commands:
+      - tapOn: "Connect"
+- extendedWaitUntil:
+    visible: ".*pocketqa.local wants you to sign in with your Solana account.*"
+    timeout: 20000
+- tapOn: "Approve"
+- extendedWaitUntil:
+    visible:
+      id: discover-screen
+    timeout: 20000
+- takeScreenshot: mwa-login-3-signed-in

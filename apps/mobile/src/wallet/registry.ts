@@ -4,3 +4,7 @@ import type { StandardWallet } from './standard';
 export function availableWallets(): StandardWallet[] {
   return [];
 }
+
+export function watchWallets(_onChange: () => void): () => void {
+  return () => {};
+}

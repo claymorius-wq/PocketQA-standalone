@@ -8,16 +8,22 @@ import { useSession } from '../../src/auth/SessionProvider';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { space } from '../../src/theme/tokens';
 import { loadDemoAccounts, PREVIEW_BUILD, type DemoAccount, type DemoRole } from '../../src/preview/demoAccounts';
-import { availableWallets } from '../../src/wallet/registry';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text } from '../../src/ui';
+import type { StandardWallet } from '../../src/wallet/standard';
+import { useWallets } from '../../src/wallet/useWallets';
 
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
 
 export default function SignIn() {
   const { signIn, authMode, storage, walletLogin, features, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount, unverifiedEmail, resendVerification, discardUnverified, sendPasswordReset } = useSession();
   const web = Platform.OS === 'web';
-  // Wallet sign-in: web with a Solana Wallet Standard extension, when the server enables it.
-  const canWallet = walletLogin && web && availableWallets().length > 0;
+  // Wallet sign-in when the server enables it: web with Wallet Standard extensions (one button
+  // per wallet, ledger W1), or Android through Mobile Wallet Adapter (ledger W3). Never on the
+  // shared preview. iOS has no wallet path.
+  const wallets = useWallets();
+  const android = Platform.OS === 'android';
+  const canWallet = walletLogin && !PREVIEW_BUILD && ((web && wallets.length > 0) || android);
+  const [chosenWallet, setChosenWallet] = useState<StandardWallet | undefined>(undefined);
   const [role, setRole] = useState<'tester' | 'builder'>('tester');
   const [displayName, setDisplayName] = useState('');
   // Wallet sign-in found no account for this wallet: offer to create one (a second signature).
@@ -156,26 +162,30 @@ export default function SignIn() {
         ) : null}
         {resetOpen ? <Text variant="small" tone="muted" testID="reset-hint">Enter your email above, then send the link.</Text> : null}
         {authMode === 'firebase' && web ? <Button label="Continue with Google" variant="secondary" onPress={() => run(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
-        {canWallet ? (
-          // Sign In With Solana: the wallet shows this site's address; nothing is paid or sent.
-          <Button
-            label="Continue with wallet"
-            icon={Wallet}
-            variant="secondary"
-            onPress={() =>
-              run(async () => {
-                try {
-                  await signInWithWallet();
-                } catch (e) {
-                  if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
-                  throw e;
+        {canWallet
+          ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
+            (android ? [undefined] : wallets).map((w, i) => (
+              <Button
+                key={w?.name ?? 'mwa'}
+                label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
+                icon={Wallet}
+                variant="secondary"
+                onPress={() =>
+                  run(async () => {
+                    setChosenWallet(w);
+                    try {
+                      await signInWithWallet(undefined, w);
+                    } catch (e) {
+                      if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
+                      throw e;
+                    }
+                  })
                 }
-              })
-            }
-            disabled={busy}
-            testID="sign-in-wallet"
-          />
-        ) : null}
+                disabled={busy}
+                testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
+              />
+            ))
+          : null}
       </Card>
       {needsAccount || walletNew ? (
         <Card testID="finish-account">
@@ -198,7 +208,7 @@ export default function SignIn() {
           <Button
             label="Create account"
             icon={UserPlus}
-            onPress={() => run(() => (walletNew ? signInWithWallet({ role, displayName: displayName.trim() }) : completeAccount({ role, displayName: displayName.trim() })))}
+            onPress={() => run(() => (walletNew ? signInWithWallet({ role, displayName: displayName.trim() }, chosenWallet) : completeAccount({ role, displayName: displayName.trim() })))}
             loading={busy}
             disabled={!displayName.trim()}
             testID="finish-submit"

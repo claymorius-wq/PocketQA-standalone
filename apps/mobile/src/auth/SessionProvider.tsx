@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Auth } from 'firebase/auth';
 import { api, ApiError, configureClient, getClientConfig } from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { walletErrorText } from '../wallet/errors';
+import type { StandardWallet } from '../wallet/standard';
 import { walletLoginFlow } from '../wallet/walletLogin';
 import { firebaseAuth, firebaseSession } from './firebaseClient';
 import { firebaseErrorText } from './firebaseErrors';
@@ -38,7 +40,8 @@ type Session = {
   /** Firebase mode returns `verificationSent`: the account is created after the email is verified. */
   signUp: (input: { email: string; password: string; displayName: string; role: 'tester' | 'builder' }) => Promise<{ verificationSent: boolean }>;
   signInWithGoogle: () => Promise<void>;
-  signInWithWallet: (newAccount?: NewAccount) => Promise<void>;
+  /** Web: the chosen Wallet Standard wallet; Android: Mobile Wallet Adapter (no choice here). */
+  signInWithWallet: (newAccount?: NewAccount, wallet?: StandardWallet) => Promise<void>;
   completeAccount: (input: NewAccount) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -231,7 +234,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         await afterFirebaseSignIn();
       },
-      signInWithWallet: async (newAccount) => acceptWallet(await walletLoginFlow(newAccount ? { newAccount } : {})),
+      signInWithWallet: async (newAccount, wallet) => {
+        let res: WalletLoginResponse;
+        try {
+          res = await walletLoginFlow({ ...(newAccount ? { newAccount } : {}), ...(wallet ? { wallet } : {}) });
+        } catch (e) {
+          // API errors keep their code (NOT_FOUND asks to create an account); wallet errors read plainly.
+          if (e instanceof ApiError) throw e;
+          throw new Error(walletErrorText(e, 'sign-in'), { cause: e });
+        }
+        await acceptWallet(res);
+      },
       completeAccount: async (input) => {
         const r = await api('identitySession', { body: { newAccount: input } });
         setNeedsAccount(false);

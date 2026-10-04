@@ -18,6 +18,7 @@ export type StandardWallet = {
 };
 type ConnectFeature = { connect(input?: { silent?: boolean }): Promise<{ accounts: readonly StandardAccount[] }> };
 type SignInFeature = { signIn(...inputs: SiwsInput[]): Promise<readonly { account: StandardAccount; signedMessage: Uint8Array; signature: Uint8Array }[]> };
+type DisconnectFeature = { disconnect(): Promise<void> };
 type SignMessageFeature = { signMessage(...inputs: { account: StandardAccount; message: Uint8Array }[]): Promise<readonly { signedMessage: Uint8Array; signature: Uint8Array }[]> };
 
 const DEVNET = 'solana:devnet';
@@ -34,6 +35,14 @@ export async function connectWallet(w: StandardWallet): Promise<StandardAccount>
   const account = accounts.find((a) => a.chains.includes(DEVNET)) ?? accounts[0];
   if (!account) throw new Error('The wallet did not share an account.');
   return account;
+}
+
+/**
+ * Pocket QA keeps no wallet connection: each flow connects, asks for one signature and
+ * disconnects. A wallet without `standard:disconnect` is simply left as it is.
+ */
+export async function disconnectWallet(w: StandardWallet): Promise<void> {
+  await (w.features['standard:disconnect'] as DisconnectFeature | undefined)?.disconnect().catch(() => {});
 }
 
 export async function signInWithWallet(w: StandardWallet, input: SiwsInput) {
