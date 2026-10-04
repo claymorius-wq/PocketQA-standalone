@@ -40,8 +40,9 @@ describe('direct uploads to private storage (r2 mode)', () => {
     const done = await t.req('POST', `/evidence/upload-intents/${intent.id}/complete`, s.tester.token);
     expect(done.status).toBe(200);
     expect(done.body).toMatchObject({ mimeType: 'video/mp4', sizeBytes: MP4.length, kind: 'screen_recording' });
-    // Promoted to an immutable final key; the quarantine copy is gone.
-    expect(t.s3.keys()).toEqual([`pqa-test/evidence/${done.body.id}`]);
+    // Promoted to an immutable final key; the quarantine copy is kept (A5: only failed uploads
+    // and user-requested deletion remove objects).
+    expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${done.body.id}`, `pqa-test/quarantine/${intent.id}`].sort());
 
     const list = await t.req('GET', `/participations/${s.participationId}/evidence`, s.builder.token);
     expect(list.body.items.map((e: { id: string }) => e.id)).toEqual([done.body.id]);
@@ -134,7 +135,9 @@ describe('direct uploads to private storage (r2 mode)', () => {
     t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 1;
     expect((await t.req('POST', `/evidence/upload-intents/${stale.id}/complete`, s.tester.token)).status).toBe(409);
     await sweepStorage(t.deps);
-    expect(t.s3.keys()).toEqual([`pqa-test/evidence/${ev.id}`]);
+    // The expired upload's object is removed (failed upload); the successful upload's quarantine
+    // copy is kept, and the evidence object is untouched by the re-PUT.
+    expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${ev.id}`, `pqa-test/quarantine/${done.id}`].sort());
     const pt = await t.req('POST', `/evidence/${ev.id}/playback-token`, s.tester.token);
     expect(Buffer.compare((await t.req('GET', `/media/${pt.body.token}`)).raw, MP4)).toBe(0);
   });
@@ -205,8 +208,9 @@ describe('direct uploads to private storage (r2 mode)', () => {
     await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
     t.s3.failDeletes = true;
     expect((await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
-    expect(t.s3.keys()).toHaveLength(1);
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 1 });
+    // The recording and its kept quarantine copy both wait in the outbox.
+    expect(t.s3.keys()).toHaveLength(2);
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 2 });
     t.s3.failDeletes = false;
     t.clock.now += 120_000;
     await sweepStorage(t.deps);
@@ -227,14 +231,14 @@ describe('R2 deletion guard (default off)', () => {
   it('with deletion not allowed, no object is ever deleted: deletes are kept in the outbox', async () => {
     t = await makeApp({ storage: 'r2', r2AllowDelete: false });
     const s = await seeded(t);
-    const i = UploadIntent.parse((await intentFor(s.tester.token, s.participationId)).body);
-    await put(i, MP4);
-    expect((await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token)).status).toBe(200);
+    // A rejected upload would be deleted (failed upload); with deletion off it waits in the outbox.
+    const i = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { sizeBytes: PNG.length })).body);
+    await put(i, PNG);
+    expect((await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token)).status).toBe(400);
     t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
     await sweepStorage(t.deps);
-    // Quarantine and promoted objects both still exist; the quarantine delete waits in the outbox.
-    expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${(await t.req('GET', `/participations/${s.participationId}/evidence`, s.tester.token)).body.items[0].id}`, `pqa-test/quarantine/${i.id}`].sort());
-    expect((t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get() as { n: number }).n).toBeGreaterThan(0);
+    expect(t.s3.keys()).toEqual([`pqa-test/quarantine/${i.id}`]);
+    expect(t.db.prepare('SELECT object_key, purpose FROM storage_deletions').all()).toEqual([{ object_key: `quarantine/${i.id}`, purpose: 'failed_upload' }]);
   });
 
   it('with deletion not allowed, account deletion fails closed: refused, nothing changed, objects kept', async () => {
@@ -308,12 +312,62 @@ describe('scoped deletion: only objects the app created', () => {
     const ev = (await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).body;
     await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
     await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' });
-    // Ordered by purpose: the keys hold random ids, so their order varies between runs.
-    expect(t.db.prepare('SELECT object_key, purpose FROM storage_deletions ORDER BY purpose').all()).toEqual([
-      { object_key: `evidence/${ev.id}`, purpose: 'account_deletion' },
-      { object_key: `quarantine/${spoof.id}`, purpose: 'failed_upload' },
-      { object_key: `quarantine/${ok.id}`, purpose: 'upload_staging' },
-    ]);
+    // Sorted here: the keys hold random ids, so the database order varies between runs.
+    const rows = t.db.prepare('SELECT object_key, purpose FROM storage_deletions').all() as { object_key: string; purpose: string }[];
+    expect(rows.sort((a, b) => a.object_key.localeCompare(b.object_key))).toEqual(
+      [
+        { object_key: `evidence/${ev.id}`, purpose: 'account_deletion' },
+        // The successful upload's kept quarantine copy goes with the account, never before.
+        { object_key: `quarantine/${ok.id}`, purpose: 'account_deletion' },
+        { object_key: `quarantine/${spoof.id}`, purpose: 'failed_upload' },
+      ].sort((a, b) => a.object_key.localeCompare(b.object_key)),
+    );
+  });
+
+  it('a successful upload keeps its quarantine copy through every sweep; failed ones are removed (literal A5 scope)', async () => {
+    t = await makeApp({ storage: 'r2' });
+    const s = await seeded(t);
+    const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-ok' })).body);
+    await put(ok, MP4);
+    const ev = (await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).body;
+    const bad = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-bad', sizeBytes: PNG.length })).body);
+    await put(bad, PNG);
+    expect((await t.req('POST', `/evidence/upload-intents/${bad.id}/complete`, s.tester.token)).status).toBe(400);
+    const late = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-late' })).body);
+    await put(late, MP4); // bytes arrived, never completed
+    expect(t.s3.keys()).toContain(`pqa-test/quarantine/${ok.id}`);
+    for (let i = 0; i < 3; i++) {
+      t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
+      await sweepStorage(t.deps);
+    }
+    expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${ev.id}`, `pqa-test/quarantine/${ok.id}`].sort());
+    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+  });
+
+  it('account deletion removes the recording, its kept quarantine copy and open uploads; a late re-PUT is swept', async () => {
+    t = await makeApp({ storage: 'r2' });
+    plant();
+    const s = await seeded(t);
+    const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-ok' })).body);
+    await put(ok, MP4);
+    expect((await t.req('POST', `/evidence/upload-intents/${ok.id}/complete`, s.tester.token)).status).toBe(200);
+    const open = UploadIntent.parse((await intentFor(s.tester.token, s.participationId, { clientSegmentId: 'seg-open' })).body);
+    await put(open, MP4);
+    await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
+    expect((await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
+    // The completed upload's URL is still valid: a re-PUT after the deletion recreates the copy,
+    // and the sweep removes it once the URL has expired (its evidence is gone).
+    await put(ok, MP4);
+    t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
+    await sweepStorage(t.deps);
+    expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
+  });
+
+  it('no server module names an upload-staging deletion', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith('.ts') ? [join(dir, e.name)] : []));
+    for (const f of walk(join(import.meta.dirname, '../src'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/upload_staging/);
   });
 
   it('the R2 adapter refuses keys outside evidence/ and quarantine/ before any request', async () => {

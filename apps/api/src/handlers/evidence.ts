@@ -373,7 +373,8 @@ export const evidenceHandlers = {
       await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
       throw e;
     }
-    await deleteOrQueue(ctx.deps, intent.object_key, 'upload_staging');
+    // The quarantine copy of a successful upload is kept (not a failed upload); it is deleted
+    // with its owner's account (account.ts) under the ownership registry.
     return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(evidenceId) as EvidenceRow);
   },
 } satisfies Record<string, Handler>;

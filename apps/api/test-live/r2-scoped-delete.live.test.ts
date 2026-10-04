@@ -16,8 +16,8 @@ import { FakeRpc, MP4, PNG } from '../test/helpers';
 /**
  * LIVE check of Hamza's scoped deletion policy (A5, 2026-10-04) on the real bucket. Skipped
  * unless POCKETQA_LIVE_R2_DELETE=1 with POCKETQA_R2_* in the environment (never printed).
- * Only objects THIS run creates are deleted, through the app's own paths (upload staging,
- * failed upload, account deletion). Every object already in the bucket must be exactly
+ * Only objects THIS run creates are deleted, through the app's own paths (failed upload and
+ * account deletion; a successful upload's quarantine copy is kept until account deletion). Every object already in the bucket must be exactly
  * unchanged afterwards (same keys, ETags and sizes); a listing (read-only, test-side only)
  * is compared before and after. The app adapter itself has no listing.
  */
@@ -63,7 +63,7 @@ d('live R2: scoped deletion of app-created objects only', () => {
     console.log(`LIVE_R2_DELETE_DELETED ${JSON.stringify(deleted)}`);
   });
 
-  it('staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged', async () => {
+  it('failed-upload and account-deletion paths delete exactly the run’s objects; a successful upload’s copy is kept until then; everything else is unchanged', async () => {
     const before = await snapshot();
     console.log(`LIVE_R2_DELETE_BEFORE ${before.size} objects`);
     mkdirSync(join(dir, 'media'), { recursive: true });
@@ -98,15 +98,16 @@ d('live R2: scoped deletion of app-created objects only', () => {
     const intent = async (seg: string, sizeBytes: number) =>
       UploadIntent.parse((await req('POST', `/participations/${p.id}/evidence/upload-intents`, tester, { kind: 'screen_recording', mimeType: 'video/mp4', sizeBytes, capturedOn: 'android', clientSegmentId: `${RUN}-${seg}` })).body);
 
-    // 1. A good upload: promoted, then its staging copy is deleted (upload_staging).
+    // 1. A good upload: promoted; its quarantine copy is KEPT (not a failed upload).
     const ok = await intent('ok', MP4.length);
     expect((await fetch(ok.uploadUrl, { method: 'PUT', headers: ok.headers, body: MP4 })).status).toBe(200);
     created.push(`quarantine/${ok.id}`);
     const ev = await req('POST', `/evidence/upload-intents/${ok.id}/complete`, tester);
     expect(ev.status).toBe(200);
     created.push(`evidence/${ev.body.id}`);
-    expect(await store.head(`quarantine/${ok.id}`)).toBeNull();
+    expect((await store.head(`quarantine/${ok.id}`))?.size).toBe(MP4.length);
     expect((await store.head(`evidence/${ev.body.id}`))?.size).toBe(MP4.length);
+    expect(deleted).toEqual([]);
 
     // 2. A spoofed upload: rejected, and its quarantine object deleted (failed_upload).
     const bad = await intent('bad', PNG.length);
@@ -119,10 +120,11 @@ d('live R2: scoped deletion of app-created objects only', () => {
     const foreign = [...before.keys()].find((k) => /^(evidence|quarantine)\//.test(k));
     if (foreign) expect(await deleteOrQueue(deps, foreign, 'account_deletion')).toBe(false);
 
-    // 4. The tester deletes their account: their recording is deleted (account_deletion).
+    // 4. The tester deletes their account: the recording and its kept quarantine copy are deleted.
     await req('POST', `/participations/${p.id}/withdraw`, tester, {});
     expect((await req('DELETE', '/me', tester, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
     expect(await store.head(`evidence/${ev.body.id}`)).toBeNull();
+    expect(await store.head(`quarantine/${ok.id}`)).toBeNull();
     expect(db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
     await app.close();
     db.close();

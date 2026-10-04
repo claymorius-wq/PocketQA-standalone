@@ -8,12 +8,12 @@ const MAX_BACKOFF_MS = 3600_000;
  * cleanup and user-requested deletion; no time-based expiry of evidence, no lifecycle rules.
  * - failed_upload: an upload that was rejected, expired before completion (even if its bytes
  *   arrived; the app retries with a new intent), or crashed mid-promotion;
- * - account_deletion: the recordings of a user who deleted their account;
- * - upload_staging: the quarantine duplicate of an upload that was promoted to its final key.
- *   This one is the lead's interpretation (a temporary app-made copy; the recording stays as
- *   evidence/<id>), pending Hamza's confirmation (docs/production/web-launch.md §4).
+ * - account_deletion: a user's recordings, including the quarantine copy of each successful
+ *   upload, when that user deletes their account.
+ * The quarantine copy of a SUCCESSFUL upload is never deleted automatically: it is kept until
+ * its owner's account deletion (parent review of A5: literal scope, 2026-10-04).
  */
-export type DeletionPurpose = 'failed_upload' | 'upload_staging' | 'account_deletion';
+export type DeletionPurpose = 'failed_upload' | 'account_deletion';
 
 /** True only for keys this app registered when it created them (migration 4). */
 export function ownsObject(db: Deps['db'], key: string): boolean {
@@ -65,7 +65,12 @@ export async function sweepStorage(deps: Pick<Deps, 'db' | 'store' | 'now'>) {
     .prepare(`SELECT id, object_key, status FROM upload_intents WHERE status IN ('completed','rejected','expired') AND expires_at <= ? AND quarantine_swept = 0 LIMIT 500`)
     .all(now) as { id: string; object_key: string; status: string }[];
   for (const c of closed) {
-    await deleteOrQueue(deps, c.object_key, c.status === 'completed' ? 'upload_staging' : 'failed_upload');
+    if (c.status !== 'completed') await deleteOrQueue(deps, c.object_key, 'failed_upload');
+    // A successful upload's quarantine copy is kept, unless its evidence is already gone: only
+    // account deletion removes evidence, and a re-PUT with the then still-valid URL could have
+    // recreated the copy after that deletion ran.
+    else if (!db.prepare(`SELECT 1 FROM evidence WHERE id = (SELECT evidence_id FROM upload_intents WHERE id = ?)`).get(c.id)) await deleteOrQueue(deps, c.object_key, 'account_deletion');
+    // Marked either way (`quarantine_swept` = handled), so kept copies don't fill every pass.
     db.prepare('UPDATE upload_intents SET quarantine_swept = 1 WHERE id = ?').run(c.id);
   }
   const due = db.prepare('SELECT object_key, attempts FROM storage_deletions WHERE next_attempt_at <= ? LIMIT 500').all(now) as { object_key: string; attempts: number }[];

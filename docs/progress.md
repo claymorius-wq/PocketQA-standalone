@@ -12,6 +12,7 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
   - the R2 adapter is limited to single-object commands under `evidence/` and `quarantine/`.
 - **Live on the real bucket:** only the run's 3 new objects were deleted, and the 26 existing objects are identical (keys, ETags, sizes).
 - **Production start:** production mode now starts on the real providers.
+- **Literal scope (parent ruling):** a successful upload's quarantine copy is no longer deleted automatically. It is kept, and deleted with its owner's account; `upload_staging` is removed. pqa-qa's r2 APPROVE of `4fd0071` is superseded, and the delta is in re-review.
 - **Process note:** one log read was denied by the permission system (classified as a cloud mass delete). Work stopped until Hamza approved it. The read then showed the one failing test was order-dependent on random ids in the test itself, and that was fixed.
 
 ## Current work (2026-10-04, evening): web launch closure (`feat/web-launch-e2e` from main `4b48a29`)

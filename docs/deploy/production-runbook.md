@@ -1,7 +1,7 @@
 # Production runbook (Pocket QA API)
 
 > Not live yet. Production can't start until the acceptance ledger's gates are closed (`docs/production/acceptance-ledger.md`). In particular:
-> - **A5 (decided 2026-10-04):** production runs with `POCKETQA_R2_ALLOW_DELETE=1`, which means Hamza's scoped policy: only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket. Removing the temporary quarantine copy of an upload that succeeded (`upload_staging`; the recording stays as `evidence/<id>`) is the **lead's interpretation** of that decision, a temporary app-made duplicate. pqa-qa considers it inside the decision's spirit. It is **pending Hamza's or the parent's confirmation**; if the decision is read literally, stop the two `upload_staging` calls and keep those copies.
+> - **A5 (decided 2026-10-04):** production runs with `POCKETQA_R2_ALLOW_DELETE=1`, which means Hamza's scoped policy: only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket. A successful upload's quarantine copy is **kept** (never deleted automatically) and is deleted with its owner's account.
 > - **A1/A2:** Firebase Auth and the service identity.
 > - **A3:** the bucket-scoped R2 token.
 > - **A4:** the production origin.
@@ -76,7 +76,7 @@ With this file:
   4. Start the API, then check `/health` and a known record.
   
   The drill is tested in `apps/api/test/backup.test.ts` and `db-scripts.test.ts`.
-- R2 objects are not part of the database backup. Bucket objects are deleted only under the scoped policy (A5): objects this database registered, for failed uploads and account deletion, plus staging copies (the lead's interpretation, pending confirmation; see the top of this runbook). There are no lifecycle rules and no bulk or admin purge. After a restore, objects registered only in the newer database are no longer known to the restored one, so they can't be deleted by it. List them for Hamza; don't delete them by hand.
+- R2 objects are not part of the database backup. Bucket objects are deleted only under the scoped policy (A5): objects this database registered, for failed uploads and account deletion. A successful upload's quarantine copy is kept until its owner's account is deleted. There are no lifecycle rules and no bulk or admin purge. After a restore, objects registered only in the newer database are no longer known to the restored one, so they can't be deleted by it. List them for Hamza; don't delete them by hand.
 
 - **Turning deletion on over an older database** (scoped-delete review P3-1): a database that ran retention-only may hold outbox rows (purpose `unrecorded`) for its own registered keys. The first sweeps after `POCKETQA_R2_ALLOW_DELETE=1` delete them. Review `SELECT object_key, purpose FROM storage_deletions` before switching. The production database starts fresh, so this doesn't apply at launch.
 - **Uploads never completed** (review P3-2): an intent that expires before `complete` is failed-upload cleanup, even if its bytes arrived. The app's retry starts a new intent and uploads again.

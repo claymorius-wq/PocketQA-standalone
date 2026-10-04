@@ -271,6 +271,8 @@ export const accountHandlers = {
         .all(user.id, user.id) as { id: string; storage_key: string }[];
       for (const e of ev) {
         media.push(e.storage_key);
+        // The retained quarantine copy of the same recording (direct uploads), if any.
+        for (const r of db.prepare('SELECT object_key FROM upload_intents WHERE evidence_id = ?').all(e.id) as { object_key: string }[]) media.push(r.object_key);
         db.prepare('UPDATE findings SET evidence_id = NULL WHERE evidence_id = ?').run(e.id);
         db.prepare('DELETE FROM evidence WHERE id = ?').run(e.id);
       }

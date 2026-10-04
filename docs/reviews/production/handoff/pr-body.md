@@ -16,24 +16,23 @@ Branch `feat/web-launch-e2e` from `main` `4b48a29`. Every candidate was reviewed
    - The app deletes only objects it created: the `storage_objects` registry, migration 4.
    - Only in `pocketqa-evidence`, only for failed-upload cleanup and account deletion.
    - There is no expiry of evidence, no lifecycle rule and no bulk path; the R2 adapter only issues single-object commands under `evidence/` and `quarantine/`.
-   - **Needs confirmation:** removing the quarantine copy of a successful upload (`upload_staging`) is the lead's interpretation.
+   - A successful upload's quarantine copy is **kept** (never deleted automatically) and is deleted with its owner's account.
    - Production mode now starts on the real providers.
 
 ## Reviews
 - **Web launch:** `docs/reviews/production/web-launch/verdict-qa-r1..r3.md`, APPROVE ×3, final code `184e0a2`.
-- **Scoped deletion:** `docs/reviews/production/scoped-delete/verdict-qa-r1.md` (CHANGES_REQUIRED, P2 wording) → `verdict-qa-r2.md` APPROVE of `4fd0071`.
+- **Scoped deletion:** `docs/reviews/production/scoped-delete/verdict-qa-r1.md` (CHANGES_REQUIRED, P2 wording) → `verdict-qa-r2.md` APPROVE of `4fd0071`, **superseded** by the parent's literal-scope ruling. The literal-scope delta is in re-review (r3).
 
 ## Evidence
 - `docs/reviews/production/web-launch/*.txt`
 - `docs/reviews/production/scoped-delete/pnpm-verify.txt`
 - `docs/reviews/production/live/{web-live-e2e,r2-scoped-delete,prod-start-smoke}.txt`
 
-All outputs are redacted. The live deletion run shows 26 objects before and 26 after, identical, with only the run's own 3 deleted.
+All outputs are redacted. The live deletion run shows the bucket identical before and after, apart from the run's own objects.
 
 ## Not in this PR (no cutover)
 **Web launch decisions:**
 - A9: funding without payments; production builders can't publish today.
-- The `upload_staging` confirmation.
 - The Firebase plan and Identity Platform console check (billing unverified).
 - A7: host and supervisor install.
 - B4: privacy policy and terms.
