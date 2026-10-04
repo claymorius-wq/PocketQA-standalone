@@ -3,6 +3,7 @@ import { getParticipationRow, getStudyRow } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { post } from '../ledger';
 import { fail, iso, newId, notFound } from '../util';
+import { authorizePayout } from '../escrow';
 import { auditView, budgetOf, disputeView, participationView, studyView, tasksOf, type ParticipationRow, type StudyRow } from '../views';
 
 function audit(ctx: Ctx, action: string, targetType: 'study' | 'user' | 'dispute' | 'participation', targetId: string, reason: string) {
@@ -31,7 +32,10 @@ export const adminHandlers = {
       const p = getParticipationRow(db, d.participation_id)!;
       const s = getStudyRow(db, p.study_id)!;
       const next = transitionParticipation(p.status, 'resolve');
-      if (outcome === 'overturned') {
+      if (outcome === 'overturned' && s.payment_mode === 'escrow') {
+        // The admin decides the outcome only; the amount and wallet were fixed earlier.
+        authorizePayout(db, s, p, now, me(ctx).id, `dispute ${d.id} overturned`);
+      } else if (outcome === 'overturned') {
         // The disputed participation still holds its reward, so add that hold back.
         const available = budgetOf(db, s, now).available + p.reward_credits;
         post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'dispute_credit' }), now);
@@ -115,7 +119,9 @@ export const adminHandlers = {
       const why = stuckReason({ status: p.status, submittedAtMs: p.submitted_at ? Date.parse(p.submitted_at) : null, builderStatus: builder.status }, now);
       if (!why) throw fail('CONFLICT_STATE', 'Only stuck submissions can be decided by an admin; the study owner reviews the rest.');
       const next = transitionParticipation(p.status, decision);
-      if (decision === 'approve') {
+      if (decision === 'approve' && s.payment_mode === 'escrow') {
+        authorizePayout(db, s, p, now, me(ctx).id, `admin decision on stuck work (${why})`);
+      } else if (decision === 'approve') {
         const available = budgetOf(db, s, now).available + p.reward_credits;
         post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'reward_credit' }), now);
       }

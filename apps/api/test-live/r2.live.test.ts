@@ -106,7 +106,7 @@ d('live R2: dedicated bucket, create-only', () => {
   it('full API flow against the real bucket: intent → presigned PUT → verified completion → ranged playback', async () => {
     mkdirSync(join(dir, 'media'), { recursive: true });
     const db = openDb(join(dir, 'live.sqlite'));
-    const app = await buildApp({ db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: null, store });
+    const app = await buildApp({ db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: null, store, settlement: null });
     await app.ready();
     const req = async (method: string, url: string, token?: string, payload?: unknown, headers: Record<string, string> = {}) => {
       const r = await app.inject({ method: method as 'GET', url, headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers }, ...(payload !== undefined ? { payload: payload as object } : {}) });

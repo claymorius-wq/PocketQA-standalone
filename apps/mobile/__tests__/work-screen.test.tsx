@@ -38,6 +38,9 @@ function participation(id: string, over: Partial<Participation> = {}): Participa
     decidedBy: null,
     decisionReason: null,
     rewardCredits: 50,
+    reward: { kind: 'test_credits', credits: 50 },
+    payoutAddress: null,
+    payout: null,
     taskNotes: [],
     ...over,
   };

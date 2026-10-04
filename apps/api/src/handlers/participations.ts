@@ -1,6 +1,7 @@
 import { assertCleanCopy, canEditTaskNotes, canOpenDispute, planReward, transitionParticipation, validateDecision } from '@pocket-qa/domain';
 import { getParticipationRow, ownerParticipation, partyParticipation, testerParticipation } from '../access';
 import { me, type Ctx, type Handler } from '../context';
+import { authorizePayout } from '../escrow';
 import { post } from '../ledger';
 import { fail, iso, newId } from '../util';
 import { budgetOf, disputeView, findingView, participationView, tasksOf, type ParticipationRow } from '../views';
@@ -19,7 +20,9 @@ function decide(decision: 'approve' | 'reject') {
       const d = validateDecision({ decision, reviewerId: user.id, reason: ctx.body?.reason });
       assertCleanCopy({ reason: d.reason ?? undefined, note: ctx.body?.note });
       const next = transitionParticipation(p.status, decision);
-      if (decision === 'approve') {
+      if (decision === 'approve' && s.payment_mode === 'escrow') {
+        authorizePayout(db, s, p, now, user.id, 'approved by the builder');
+      } else if (decision === 'approve') {
         // This participation is still counted as committed, so add its own hold back.
         const available = budgetOf(db, s, now).available + p.reward_credits;
         post(

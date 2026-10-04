@@ -3,15 +3,21 @@ import type {
   DeviceProfile,
   Dispute,
   Evidence,
+  EscrowFunding,
   Finding,
   Participation,
+  Payout,
   Study,
+  StudyPayment,
+  StudyReward,
   StudySummary,
   User,
 } from '@pocket-qa/contracts';
 import type { z } from 'zod';
 import { holdsBudget, studyAccount, studyBudget, type Kind } from '@pocket-qa/domain';
 import type { DB } from './db';
+import { iso } from './util';
+import { escrowOf, studyEscrowBooks, studyQuote, type FundingRow, type SettlementRow } from './escrow';
 
 export type UserRow = {
   id: string;
@@ -30,7 +36,9 @@ export type StudyRow = {
   objective: string;
   build_under_test: string | null;
   device_criteria_json: string;
+  /** Test credits, or token base units for escrow studies (see payment_mode). */
   reward_credits: number;
+  payment_mode: 'test_credits' | 'escrow';
   slots: number;
   consent_text: string;
   consent_version: number;
@@ -53,6 +61,7 @@ export type ParticipationRow = {
   decided_by: string | null;
   decision_reason: string | null;
   reward_credits: number;
+  payout_address: string | null;
 };
 export type EvidenceRow = {
   id: string;
@@ -115,6 +124,8 @@ export function participationStatuses(db: DB, studyId: string): { id: string; st
 }
 
 export function budgetOf(db: DB, row: StudyRow, nowMs: number) {
+  // Escrow studies never use test credits; their books are in `payment.balances`.
+  if (row.payment_mode === 'escrow') return { reserved: 0, awarded: 0, committed: 0, available: 0 };
   const sums = db
     .prepare(
       `SELECT kind, COALESCE(SUM(amount),0) AS s FROM ledger WHERE account = ? GROUP BY kind`,
@@ -148,7 +159,9 @@ export function studyView(db: DB, row: StudyRow, nowMs: number): Study {
     ...(row.build_under_test ? { buildUnderTest: row.build_under_test } : {}),
     tasks: tasksOf(db, row.id),
     deviceCriteria: JSON.parse(row.device_criteria_json),
-    rewardCredits: row.reward_credits,
+    rewardCredits: row.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    payment: paymentView(db, row, nowMs),
+    reward: rewardView(db, row),
     slots: row.slots,
     consentText: row.consent_text,
     consentVersion: row.consent_version,
@@ -167,7 +180,8 @@ export function studySummary(db: DB, row: StudyRow): StudySummary {
     id: row.id,
     title: row.title,
     objective: row.objective,
-    rewardCredits: row.reward_credits,
+    rewardCredits: row.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    reward: rewardView(db, row),
     deviceCriteria: JSON.parse(row.device_criteria_json),
     status: row.status,
     publishedAt: row.published_at,
@@ -185,6 +199,8 @@ export function participationView(db: DB, row: ParticipationRow, opts: { withTes
     const u = db.prepare('SELECT display_name FROM users WHERE id = ?').get(row.tester_id) as { display_name: string } | undefined;
     testerDisplayName = u?.display_name ?? null;
   }
+  const study = db.prepare('SELECT * FROM studies WHERE id = ?').get(row.study_id) as StudyRow;
+  const payout = db.prepare(`SELECT * FROM settlements WHERE kind = 'payout' AND participation_id = ?`).get(row.id) as SettlementRow | undefined;
   return {
     id: row.id,
     studyId: row.study_id,
@@ -198,7 +214,10 @@ export function participationView(db: DB, row: ParticipationRow, opts: { withTes
     decidedAt: row.decided_at,
     decidedBy: row.decided_by,
     decisionReason: row.decision_reason,
-    rewardCredits: row.reward_credits,
+    rewardCredits: study.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    reward: rewardView(db, study),
+    payoutAddress: row.payout_address,
+    payout: payout ? payoutView(db, payout) : null,
     taskNotes: notes.map((n) => ({ taskId: n.task_id, note: n.note })),
   };
 }
@@ -273,4 +292,76 @@ export function disputeView(row: DisputeRow): z.infer<typeof Dispute> {
 type AuditRow = { id: string; actor_id: string; action: string; target_type: 'study' | 'user' | 'dispute'; target_id: string; reason: string; created_at: string };
 export function auditView(row: AuditRow): z.infer<typeof AuditEntry> {
   return { id: row.id, actorId: row.actor_id, action: row.action, targetType: row.target_type, targetId: row.target_id, reason: row.reason, createdAt: row.created_at };
+}
+
+/** What a tester is offered: test credits, or a (simulated-settlement) token reward. */
+export function rewardView(db: DB, row: StudyRow): StudyReward {
+  if (row.payment_mode !== 'escrow') return { kind: 'test_credits', credits: row.reward_credits };
+  return { kind: 'token', asset: 'USDC', decimals: 6, units: row.reward_credits, settlement: 'simulated' };
+}
+
+/** Builder view of how a study is paid for; escrow books only for the owner (views are owner-scoped). */
+export function paymentView(db: DB, row: StudyRow, nowMs: number): StudyPayment {
+  if (row.payment_mode !== 'escrow') return { mode: 'test_credits' };
+  const esc = escrowOf(db, row.id)!;
+  const funded = db.prepare(`SELECT 1 FROM escrow_fundings WHERE study_id = ? AND status = 'confirmed'`).get(row.id) !== undefined;
+  const { ok: _ok, ...balances } = studyEscrowBooks(db, row.id, nowMs);
+  const refund = db.prepare(`SELECT status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(row.id) as { status: SettlementRow['status']; amount_units: number } | undefined;
+  return {
+    mode: 'escrow',
+    settlement: 'simulated',
+    asset: 'USDC',
+    decimals: 6,
+    network: esc.network,
+    mint: esc.mint,
+    quote: studyQuote(row, esc),
+    funded,
+    balances,
+    fundingWallet: esc.funding_wallet,
+    refund: refund ? { status: refund.status, amountUnits: refund.amount_units } : null,
+  };
+}
+
+export function payoutView(db: DB, s: SettlementRow): Payout {
+  const title = (db.prepare('SELECT title FROM studies WHERE id = ?').get(s.study_id) as { title: string }).title;
+  return {
+    id: s.id,
+    participationId: s.participation_id!,
+    studyId: s.study_id,
+    studyTitle: title,
+    amountUnits: s.amount_units,
+    asset: 'USDC',
+    decimals: 6,
+    destination: s.destination,
+    settlement: 'simulated',
+    status: s.status,
+    signature: s.signature,
+    failureReason: s.failure_reason,
+    attempts: s.attempt,
+    authorizedAt: iso(s.created_at),
+    settledAt: s.settled_at ? iso(s.settled_at) : null,
+  };
+}
+
+export function fundingView(db: DB, f: FundingRow): EscrowFunding {
+  const esc = escrowOf(db, f.study_id)!;
+  return {
+    id: f.id,
+    studyId: f.study_id,
+    amountUnits: f.amount_units,
+    asset: 'USDC',
+    decimals: 6,
+    network: esc.network,
+    mint: esc.mint,
+    vault: esc.vault,
+    reference: f.reference,
+    settlement: 'simulated',
+    status: f.status,
+    signature: f.signature,
+    source: f.source,
+    failureReason: f.failure_reason,
+    createdAt: iso(f.created_at),
+    expiresAt: iso(f.expires_at),
+    confirmedAt: f.confirmed_at ? iso(f.confirmed_at) : null,
+  };
 }

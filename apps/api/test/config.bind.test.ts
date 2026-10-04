@@ -28,7 +28,7 @@ describe('local-only configuration', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pqa-bind-'));
     const config = loadConfig({ POCKETQA_DATA_DIR: dir, POCKETQA_API_PORT: '0' });
     const db = openDb(join(dir, 'x.sqlite'));
-    const app = await buildApp({ db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: dir, identity: null, store: localStore(dir) });
+    const app = await buildApp({ db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: dir, identity: null, store: localStore(dir), settlement: null });
     await app.listen({ host: config.host, port: config.port });
     const addrs = app.addresses();
     expect(addrs.length).toBeGreaterThan(0);

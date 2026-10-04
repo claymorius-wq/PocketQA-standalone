@@ -68,7 +68,7 @@ d('live R2: scoped deletion of app-created objects only', () => {
     console.log(`LIVE_R2_DELETE_BEFORE ${before.size} objects`);
     mkdirSync(join(dir, 'media'), { recursive: true });
     const db = openDb(join(dir, 'live.sqlite'));
-    const deps = { db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: null, store };
+    const deps = { db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: null, store, settlement: null };
     const app = await buildApp(deps);
     await app.ready();
     const req = async (method: string, url: string, token?: string, payload?: unknown) => {

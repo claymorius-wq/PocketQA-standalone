@@ -47,7 +47,7 @@ d('Firebase Admin adapter against the Auth emulator', () => {
 
   beforeAll(async () => {
     mkdirSync(join(dir, 'media'));
-    app = await buildApp({ db: openDb(join(dir, 'e.sqlite')), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity, store: localStore(join(dir, 'media')) });
+    app = await buildApp({ db: openDb(join(dir, 'e.sqlite')), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity, store: localStore(join(dir, 'media')), settlement: null });
     await app.ready();
   });
   afterAll(async () => {

@@ -102,6 +102,9 @@ const base = (status: Participation['status'], extra: Partial<Participation> = {
   decidedBy: null,
   decisionReason: null,
   rewardCredits: 50,
+  reward: { kind: 'test_credits', credits: 50 },
+  payoutAddress: null,
+  payout: null,
   taskNotes: [],
   ...extra,
 });

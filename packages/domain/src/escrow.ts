@@ -123,7 +123,7 @@ export function planSettleRefund(input: { studyId: string; funder: string; amoun
 export function escrowInvariant(input: { studyId: string; postings: readonly EscrowPosting[]; quote: EscrowQuote; holdingCount: number }) {
   const mine = input.postings.filter((p) => p.studyId === input.studyId);
   const sumWhere = (f: (a: string) => boolean) => mine.filter((p) => f(p.account)).reduce((s, p) => s + p.amount, 0);
-  const fundedUnits = -sumWhere((a) => a === 'in:funding');
+  const fundedUnits = 0 - sumWhere((a) => a === 'in:funding');
   const vault = sumWhere((a) => a === vaultAccount(input.studyId));
   const heldUnits = input.quote.perTestTotalUnits * input.holdingCount;
   const buckets = {

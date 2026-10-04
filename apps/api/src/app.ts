@@ -6,6 +6,7 @@ import { DomainError } from '@pocket-qa/domain';
 import type { Ctx, Deps, Handler } from './context';
 import { accountHandlers } from './handlers/account';
 import { adminHandlers } from './handlers/admin';
+import { escrowHandlers } from './handlers/escrow';
 import { evidenceHandlers } from './handlers/evidence';
 import { participationHandlers } from './handlers/participations';
 import { studyHandlers } from './handlers/studies';
@@ -24,6 +25,7 @@ const handlers: Record<RouteName, Handler> = {
   ...adminHandlers,
   ...walletHandlers,
   ...walletLoginHandlers,
+  ...escrowHandlers,
 };
 
 /** Routes a suspended account may still use: see itself, leave, export or delete its data. */
