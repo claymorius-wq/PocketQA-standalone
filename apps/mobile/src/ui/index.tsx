@@ -40,7 +40,7 @@ import { SectionHeader } from './patterns/SectionHeader';
 import { ArrivalContext, arrivalOf, Enter, ScreenContext, type ScreenInfo } from './screen';
 import { Text } from './text';
 
-// The shared UI kit in the Lens visual system (docs/decisions/0005-lens-visual-system.md;
+// The shared UI kit in the Lens visual system (docs/decisions/0006-lens-visual-system.md;
 // Direction A v2 §8). Every export keeps its pre-Lens props, testIDs, accessibility and copy;
 // only the drawing changed. Dark is the Lens look; light degrades every glass recipe to a flat
 // surface (TODO(light-lens): the light Lens theme replaces those recipes in tokens.ts).

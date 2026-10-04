@@ -9,7 +9,7 @@ import {
   type WithTimingConfig,
 } from 'react-native-reanimated';
 
-// Lens motion system (Direction A v2 §11; docs/decisions/0005-lens-visual-system.md).
+// Lens motion system (Direction A v2 §11; docs/decisions/0006-lens-visual-system.md).
 // Light is constant; glass moves under it. Everything here runs on the UI thread through
 // Reanimated: only transform, opacity and shadow-layer opacity animate, never gradients, blur or
 // shadow radii.

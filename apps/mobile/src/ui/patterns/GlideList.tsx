@@ -11,7 +11,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 // RN adaptation: the board measures every row before and after the change (FLIP). Here each item
 // remembers its last laid-out y and, when a new layout moves it, starts from the old position
 // with a translateY that settles to 0 on the UI thread. Only transform and opacity animate; the
-// list container never runs a layout animation (ADR 0005 budget). The glide starts on the item's
+// list container never runs a layout animation (ADR 0006 budget). The glide starts on the item's
 // first layout after the move, so the first frame at the new place can show before it runs on
 // slow devices: verify on the Seeker. Reduced motion: items leave at once and nothing glides.
 

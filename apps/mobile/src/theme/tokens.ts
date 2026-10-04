@@ -1,6 +1,6 @@
 import { Platform, type TextStyle } from 'react-native';
 
-// Lens visual system (docs/decisions/0005-lens-visual-system.md). The dark palette and glass
+// Lens visual system (docs/decisions/0006-lens-visual-system.md). The dark palette and glass
 // recipes are the values of the Direction A "Lens" v2 spec, translated to React Native.
 // Every text/background pair the UI uses is pinned by __tests__/contrast.test.ts: ≥ 4.5:1 for
 // text, ≥ 3:1 for meaningful non-text UI.

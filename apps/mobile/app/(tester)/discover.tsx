@@ -14,7 +14,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { Button, EmptyState, Notice, QueryState, Screen } from '../../src/ui';
 import { Clauses, SectionHeader, StudyCard } from '../../src/ui/patterns';
 
-// Discover (A-Discover, Direction A v2; ADR 0005). The header carries the 46dp fluted lens mark
+// Discover (A-Discover, Direction A v2; ADR 0006). The header carries the 46dp fluted lens mark
 // while studies are listed (the brand mark; the empty panel's lens replaces it, never two lenses
 // on a screen). S1, the refraction shimmer, plays when the lens mounts: the first load, or a
 // refetch that brings studies back; never on a tab hop or Back (tab scenes stay mounted).

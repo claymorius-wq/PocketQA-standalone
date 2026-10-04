@@ -33,7 +33,7 @@ import { Byline, DateText, DecisionBar, GlideList, Hairline, ListRow, Meta, plur
 // rises 48dp over 240ms ease-lens and fades in over 120ms at +120, while its queue item fades out
 // and the items below glide up (GlideList). A decided queue item fades out in place and the items
 // below glide up. RN adaptations: the slot's height jumps to the new content (no height animation on
-// layout, ADR 0005 budget), and the last card gives way to the EmptyState as soon as the refetch
+// layout, ADR 0006 budget), and the last card gives way to the EmptyState as soon as the refetch
 // returns it. Reduced motion: the final state at once.
 
 /** The pill on a stuck item: who can't review it. */

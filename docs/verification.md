@@ -325,7 +325,7 @@ layout-animation `Entrance`/`LensPressable` tests with that API and adding the r
 static loading, sheet padding and commit opt-out, commit pass outliving the sheet, key light following the brightest moment,
 light press feedback).
 
-Not run here (no device attached): `e2e/maestro/sheet-keyboard.yaml` (new), the Playwright web suite, and the ADR 0005 Seeker
+Not run here (no device attached): `e2e/maestro/sheet-keyboard.yaml` (new), the Playwright web suite, and the ADR 0006 Seeker
 budget (SVG canvases per screen, Perf Monitor UI/JS fps). Run them on the Seeker before the freeze candidate.
 
 

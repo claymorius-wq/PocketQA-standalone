@@ -1,4 +1,4 @@
-// Lens material primitives (Direction A v2 §2, §4, §9, §10, §11; docs/decisions/0005-lens-visual-system.md).
+// Lens material primitives (Direction A v2 §2, §4, §9, §10, §11; docs/decisions/0006-lens-visual-system.md).
 // Every primitive reads its recipe from useTheme().glass and degrades to flat token surfaces in the
 // light theme (glass.enabled === false). TODO(light-lens): light Lens recipes land in tokens.ts.
 export { CausticSweep, useSweepOnEnable, type CausticSweepProps } from './CausticSweep';

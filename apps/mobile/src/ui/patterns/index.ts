@@ -1,4 +1,4 @@
-// Screen-level Lens patterns (Direction A v2 boards, CONSISTENCY.md round 4; ADR 0005).
+// Screen-level Lens patterns (Direction A v2 boards, CONSISTENCY.md round 4; ADR 0006).
 //
 // Each pattern is the one implementation of an element that recurs across the screen boards,
 // composed from the glass, icons, motion and ui primitives. Patterns take the data the screens

@@ -8,7 +8,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { Button } from '../button';
 import { UnderGlow } from './light';
 
-/** The recorder bay: 104dp, the lens size on screens (flute ≤ 104, ADR 0005 budget). */
+/** The recorder bay: 104dp, the lens size on screens (flute ≤ 104, ADR 0006 budget). */
 const BAY = 104;
 /** The lens grows into the bay from this scale as recording starts (transform only, no reflow). */
 const LENS_FROM = 0.52;

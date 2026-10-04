@@ -1,6 +1,8 @@
-# ADR 0005: Lens visual system (Direction A v2)
+# ADR 0006: Lens visual system (Direction A v2)
 
 Status: proposed for review (2026-10-03), branch `feat/lens-ui`. Scope: UI only. No API, contract, domain, route or data-flow change.
+
+Numbering: this record landed as 0005 with PR #1. It is 0006 since 2026-10-04: the cloud identity, storage and wallet record from PR #2 (`0005-cloud-identity-storage-wallet.md`) is cited as ADR 0005 throughout the code and its reviews.
 
 Source of truth: the Direction A "Lens" v2 spec (`DIRECTION-A.md`, with the system board `Main.dc.html` and the motion board `A-Motion.dc.html`). The spec is HTML/CSS. This ADR records how its values reach React Native, and where React Native forced an adaptation.
 

@@ -61,7 +61,7 @@ export function joinWave(wave: Wave, now: number): number {
 // identical grounds at partial opacity) and Android ignores its duration; react-native-screens has
 // no 24dp push. The outgoing screen's 0.85 / −12 drift is not visible: the native swap is instant.
 // iOS: with `animation: 'none'` the interactive swipe-back gesture still pops, but without its
-// sliding animation (verify on a device; ADR 0005).
+// sliding animation (verify on a device; ADR 0006).
 
 export type Arrival = 'launch' | 'push' | 'back' | 'tab' | 'replace';
 /** The arrivals a screen can open with ('back' only ever happens on a return). */
