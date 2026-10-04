@@ -117,7 +117,8 @@ function ReviewInner() {
     },
   });
   const openSheet = (k: DecisionKind) => {
-    decide.reset();
+    // Never detach a request still running (Cancel works again after the pending escape).
+    if (!decide.isPending) decide.reset();
     setKind(k);
     setOpen(true);
   };

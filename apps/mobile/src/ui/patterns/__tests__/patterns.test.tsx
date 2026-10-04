@@ -351,6 +351,9 @@ describe.each(SCHEMES)('patterns in %s', (scheme) => {
     }
     await renderIn(scheme, <Harness />);
     expect(screen.getByTestId('recorder-card')).toBeTruthy();
+    // Its label names a group (on web an aria-label needs a role to be allowed).
+    expect(screen.getByTestId('recorder-card').props.role).toBe('group');
+    expect(screen.getByTestId('recorder-card').props.accessibilityLabel).toBe('Screen recording');
     expect(screen.queryByTestId('record-stop')).toBeNull();
     await fireEvent.press(screen.getByTestId('record-start'));
     expect(onStart).toHaveBeenCalledTimes(1);
@@ -374,6 +377,8 @@ describe.each(SCHEMES)('patterns in %s', (scheme) => {
       <ClipRow name="recording-1.mp4" mimeType="video/mp4" size={2_400_000} state="recorded" onKeep={onKeep} onRemove={onRemove} preview={<RNText>preview</RNText>} />,
     );
     expect(screen.getByTestId('segment-recorded')).toBeTruthy();
+    expect(screen.getByTestId('segment-recorded').props.role).toBe('group');
+    expect(screen.getByTestId('segment-recorded').props.accessibilityLabel).toBe('recording-1.mp4');
     expect(screen.getByText('NOT REVIEWED')).toBeTruthy();
     expect(screen.getByText('2.3 MB')).toBeTruthy();
     expect(screen.getByText('preview')).toBeTruthy();

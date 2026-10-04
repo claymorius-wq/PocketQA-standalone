@@ -198,7 +198,8 @@ export default function Disputes() {
   const open = (id: string) => {
     setOutcome('upheld');
     setNote('');
-    resolve.reset();
+    // Never detach a request still running (Cancel works again after the pending escape).
+    if (!resolve.isPending) resolve.reset();
     setTarget(id);
   };
   const cancel = () => setTarget(null);

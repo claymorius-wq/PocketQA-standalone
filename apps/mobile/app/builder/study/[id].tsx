@@ -94,8 +94,10 @@ function BuilderStudyInner() {
     setLanded((n) => n + 1);
   };
   // A sheet starts clean: an earlier failure (shown over the dock until now) never reappears in it.
+  // A request still running (Cancel works again after the pending escape) is never detached: the
+  // sheet reopens pending, as before, rather than letting a second action race the first.
   const open = (a: Action) => {
-    act.reset();
+    if (!act.isPending) act.reset();
     setConfirm(a);
   };
   const copy: Record<Action, { title: string; body: string; label: string }> = {

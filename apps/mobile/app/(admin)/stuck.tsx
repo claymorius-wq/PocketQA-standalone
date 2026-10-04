@@ -41,7 +41,8 @@ export default function Stuck() {
   // open only, so the sheet body does not change while it animates out after Cancel.
   const open = (id: string, d: StuckDecision) => {
     setReason('');
-    decide.reset();
+    // Never detach a request still running (Cancel works again after the pending escape).
+    if (!decide.isPending) decide.reset();
     setTarget({ id, decision: d });
   };
   const cancel = () => setTarget(null);

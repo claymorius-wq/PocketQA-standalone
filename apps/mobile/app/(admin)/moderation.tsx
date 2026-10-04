@@ -172,9 +172,10 @@ export default function Moderation() {
   // A row is labelled by the section it sits in; while S7 holds it there, its action waits for the move.
   const open = (s: AdminStudy) => {
     if (move?.held && move.id === s.id) return;
-    // A new sheet starts clean: no reason from a cancelled sheet, no failure from an earlier attempt.
+    // A new sheet starts clean: no reason from a cancelled sheet, no failure from an earlier attempt
+    // (a request still running, after the pending escape, is never detached).
     setReason('');
-    mod.reset();
+    if (!mod.isPending) mod.reset();
     setTarget({ id: s.id, action: s.moderation === 'ok' ? 'suspend' : 'reinstate' });
   };
   // Reset on open only (above): Cancel leaves the body alone so the sheet does not change as it leaves.

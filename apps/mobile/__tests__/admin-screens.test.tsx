@@ -165,6 +165,8 @@ describe('Disputes (claim cards)', () => {
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await flush(10);
     expect(mockApi).toHaveBeenCalledWith('resolveDispute', { params: { id: 'd1' }, body: { outcome: 'overturned', note: 'The note documents the wallet step.' } });
+    // The leaving sheet keeps its note (the next open() clears it), so nothing in it changes as it goes.
+    expect(screen.getByTestId('dispute-note', { includeHiddenElements: true }).props.value).toBe('The note documents the wallet step.');
     // The refetched list: the same card (same key) turns resolved and its verdict row enters.
     mockData.disputes.data = { items: [dispute({ status: 'resolved', outcome: 'overturned', resolutionNote: 'The note documents the wallet step.' })] };
     await r.rerender(tree(<Disputes />, client));
@@ -282,6 +284,8 @@ describe('Moderation (visibility ledger)', () => {
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await flush(10);
     expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Checking moderation audit trail' } });
+    // The leaving sheet keeps its reason (the next open() clears it).
+    expect(screen.getByTestId('moderation-reason', { includeHiddenElements: true }).props.value).toBe('Checking moderation audit trail');
     // The list refetches at once, but the row is held in Visible while it sinks.
     mockData.studies.data = { items: [study({ moderation: 'suspended' })] };
     await r.rerender(tree(<Moderation />, client));

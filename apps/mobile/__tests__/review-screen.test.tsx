@@ -48,12 +48,17 @@ let mockEvidence: Item[];
 let mockFindings: Item[];
 let mockDisputes: Item[];
 let mockAi = false;
+/** A failed background refetch: the participation keeps its cached data and carries the error. */
+let mockPartError: Error | null = null;
 jest.mock('../src/lib/queries', () => {
   const { useQuery } = jest.requireActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
   const ok = (data: unknown) => ({ isLoading: false, error: null, data, refetch: jest.fn() });
   return {
     // A real query, seeded, so the decision's setQueryData shows on screen as it does in the app.
-    useParticipation: (id: string) => useQuery({ queryKey: ['participation', id], queryFn: async () => mockPart, initialData: mockPart, staleTime: Infinity }),
+    useParticipation: (id: string) => {
+      const q = useQuery({ queryKey: ['participation', id], queryFn: async () => mockPart, initialData: mockPart, staleTime: Infinity });
+      return mockPartError ? { ...q, error: mockPartError, isError: true } : q;
+    },
     useStudy: () => ok({ id: 's1', tasks: [{ id: 't1', instruction: 'Add any item to the cart and open checkout' }, { id: 't2', instruction: 'Reach the receipt screen' }] }),
     useEvidence: () => ok({ items: mockEvidence }),
     useFindings: () => ok({ items: mockFindings }),
@@ -93,6 +98,7 @@ beforeEach(() => {
   mockFindings = [];
   mockDisputes = [];
   mockAi = false;
+  mockPartError = null;
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(() => Promise.resolve(reduced));
   jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((() => ({ remove: jest.fn() })) as unknown as typeof AccessibilityInfo.addEventListener);
   jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
@@ -192,6 +198,14 @@ describe('review screen', () => {
     expect(screen.queryByTestId('review-decided')).toBeNull();
     // Nothing is uploaded or written yet, so no Findings list.
     expect(screen.queryByTestId('finding-item')).toBeNull();
+  });
+
+  it('no Decision dock while the error panel replaces the screen (cached data, failed refetch)', async () => {
+    mockPartError = new Error('Network request failed');
+    await renderIn(<Review />);
+    expect(screen.getByTestId('error-state')).toBeTruthy();
+    expect(screen.queryByTestId('review-approve')).toBeNull();
+    expect(screen.queryByTestId('review-reject')).toBeNull();
   });
 
   it('the AI panel names an available provider but never invents an analysis', async () => {

@@ -93,7 +93,10 @@ test('builder creates and funds a study, tester submits consented evidence, buil
   await expect(tester.getByTestId('reward-disclaimer')).toContainText('Not guaranteed');
   await expect(tester.getByTestId('recording-unavailable')).toBeVisible();
   await expect(tester.getByTestId('consent-submit')).toBeDisabled();
+  // The web build exposes the checkbox state to assistive tech (react-native-web maps no accessibilityState).
+  await expect(tester.getByTestId('consent-checkbox')).toHaveAttribute('aria-checked', 'false');
   await tester.getByTestId('consent-checkbox').click();
+  await expect(tester.getByTestId('consent-checkbox')).toHaveAttribute('aria-checked', 'true');
   await shot(tester, 'tester-consent-dark');
   await tester.getByTestId('consent-submit').click();
 

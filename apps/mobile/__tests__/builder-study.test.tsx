@@ -43,11 +43,16 @@ type Dispute = { id: string; participationId: string; status: string; reason: st
 let mockStudy: Record<string, unknown>;
 let mockParts: Participation[];
 let mockDisputes: Dispute[];
+/** A failed background refetch: the query keeps its cached data and carries the error. */
+let mockStudyError: Error | null = null;
 // The study is a real query (seeded), so the mutation's setQueryData shows on screen as in the app.
 jest.mock('../src/lib/queries', () => {
   const { useQuery } = jest.requireActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
   return {
-    useStudy: (id: string) => useQuery({ queryKey: ['study', id], queryFn: async () => mockStudy, initialData: mockStudy, staleTime: Infinity }),
+    useStudy: (id: string) => {
+      const q = useQuery({ queryKey: ['study', id], queryFn: async () => mockStudy, initialData: mockStudy, staleTime: Infinity });
+      return mockStudyError ? { ...q, error: mockStudyError, isError: true } : q;
+    },
     useStudyParticipations: () => ({ isLoading: false, error: null, data: { items: mockParts }, refetch: jest.fn() }),
     useStudyDisputes: () => ({ isLoading: false, error: null, data: { items: mockDisputes }, refetch: jest.fn() }),
   };
@@ -83,6 +88,7 @@ beforeEach(() => {
   mockStudy = study();
   mockParts = [];
   mockDisputes = [];
+  mockStudyError = null;
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(() => Promise.resolve(reduced));
   jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((() => ({ remove: jest.fn() })) as unknown as typeof AccessibilityInfo.addEventListener);
   jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
@@ -334,6 +340,36 @@ describe('builder study (A-BStudy)', () => {
     expect(screen.getByText('Pause this study?')).toBeTruthy();
     expect(screen.queryByTestId('study-action-sheet-error')).toBeNull();
     expect(screen.queryByTestId('study-action-error')).toBeNull();
+  });
+
+  it('no dock while the error panel replaces the screen (cached data, failed refetch): no action can open a sheet that is not there', async () => {
+    mockStudy = study(PUBLISHED);
+    mockStudyError = new Error('Network request failed');
+    await renderScreen();
+    expect(screen.getByTestId('error-state')).toBeTruthy();
+    expect(screen.queryByTestId('study-close')).toBeNull();
+    expect(screen.queryByTestId('study-pause')).toBeNull();
+  });
+
+  it('never detaches a request still running: after the pending escape, the next sheet opens on it, busy', async () => {
+    mockStudy = study(PUBLISHED);
+    mockApi.mockImplementation(() => new Promise(() => undefined));
+    await renderScreen();
+    await fireEvent.press(screen.getByTestId('study-pause'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+    });
+    // SHEET_PENDING_ESCAPE_MS (15 s): Cancel closes again while the request still hangs.
+    await advance(15_100);
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    });
+    await advance(400);
+    expect(screen.queryByTestId('confirm-sheet')).toBeNull();
+    await fireEvent.press(screen.getByTestId('study-close'));
+    // The first request is still the sheet's: its confirm is busy, so no second change can race it.
+    expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true, busy: true });
+    expect(mockApi).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the Close title and confirm while the sheet animates out after Cancel', async () => {
