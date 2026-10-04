@@ -233,7 +233,9 @@ export const accountHandlers = {
       exportedAt: iso(ctx.deps.now()),
       user: userView(db, user),
       studies,
-      participations: parts.map((p) => participationView(db, p, { withTesterName: false })),
+      // The reward record lives once, in `payments.received` (exact string units, no retry
+      // internals); the participation copy drops it (pqa-qa export r3 P3-1).
+      participations: parts.map((p) => ({ ...participationView(db, p, { withTesterName: false }), payout: null })),
       evidence,
       findings,
       ledger: creditsView(ctx, user.id).entries,

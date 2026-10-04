@@ -43,3 +43,7 @@
 - **Account export of payments and reputation:** ADR 0007 §9. Tests: `apps/api/test/export-wallet.test.ts` and the browser download checks in `e2e/wallet-rewards.spec.ts`. RED/GREEN in `export-red.txt` and `export-green.txt`.
 - **Fraud consequences and the frozen payout wallet:** ADR 0007 §8. There is no clawback of settled transfers, and no wallet change flow; the freeze is disclosed at consent.
 - **Redaction:** emulator `oobCode` and `apiKey` query values in every checked-in Firebase E2E log are now `[REDACTED]`, with pass counts unchanged. `scripts/evidence-redaction.test.mjs` keeps them redacted.
+- **Export review:** `qa-wallet-rewards-export-verdict-r3.md`, APPROVE of `90506e9` with two P3s, both fixed after it:
+  - the reward appears once, in `payments.received`, as string units (`participations[].payout` is null in the export);
+  - the builder test includes a builder finding and states what may appear: the builder's own findings keep their participation id, and money rows carry none.
+

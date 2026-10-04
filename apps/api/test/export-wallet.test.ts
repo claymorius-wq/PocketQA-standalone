@@ -58,7 +58,10 @@ describe('tester export', () => {
     expect(raw).not.toContain(other!.wallet);
     expect(raw).not.toContain(other!.email);
     expect(raw).not.toContain(other!.pid);
-    expect(raw).not.toMatch(/attempt_?key|idempotency|attempt"/i);
+    expect(raw).not.toMatch(/attempt_?key|idempotency|attempts?"/i);
+    // Every token amount in the export is an exact string; the reward appears once.
+    expect(raw).not.toMatch(/"(amountUnits|feeUnits)":\s*\d/);
+    expect(bundle.participations.every((p) => p.payout === null)).toBe(true);
   });
 
   it('records its fraud finding and withheld-points flags on its own work', async () => {
@@ -73,8 +76,11 @@ describe('tester export', () => {
 });
 
 describe('builder export', () => {
-  it('has their studies’ fundings, refunds and per-test payments, with no tester wallet, email or id', async () => {
+  // The builder's own findings keep the participation id they were written on (pre-existing,
+  // the builder's own record); a tester's wallet, email and user id never appear.
+  it('has their studies’ fundings, refunds and per-test payments, with no tester wallet, email or user id', async () => {
     const { b, bw, s, testers } = await setup();
+    await t.req('POST', `/participations/${testers[0]!.pid}/findings`, b.token, { title: 'OTP confusing', severity: 'major', description: 'The code destination was unclear.' });
     await t.req('POST', `/studies/${s.id}/close`, b.token);
     await runSettlement(t.deps);
     const { bundle, raw } = await exportOf(b.token);
@@ -85,11 +91,13 @@ describe('builder export', () => {
       expect(p).toEqual({ studyId: s.id, amountUnits: '1000000', feeUnits: '100000', status: 'confirmed', authorizedAt: expect.any(String), settledAt: expect.any(String) });
     }
     expect(bundle.payments.received).toEqual([]);
+    expect(bundle.findings).toHaveLength(1);
     for (const u of testers) {
       expect(raw).not.toContain(u.wallet);
       expect(raw).not.toContain(u.email);
       expect(raw).not.toContain(u.id);
-      expect(raw).not.toContain(u.pid);
+      // Money rows never carry a participation id.
+      expect(JSON.stringify(bundle.payments)).not.toContain(u.pid);
     }
   });
 
