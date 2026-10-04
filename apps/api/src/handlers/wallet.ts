@@ -95,6 +95,11 @@ async function reverify(ctx: Ctx, row: TransferRow): Promise<TransferRow> {
   return db.prepare('SELECT * FROM devnet_transfers WHERE id = ?').get(row.id) as TransferRow;
 }
 
+/** Devnet demo transfers are a development feature; production never offers them. */
+function devnetTransfersOn(ctx: Ctx) {
+  if (!ctx.deps.config.features.devnetTransfers) throw fail('FEATURE_UNAVAILABLE', 'Devnet demo transfers aren’t available on this deployment.');
+}
+
 export const walletHandlers = {
   walletNonce: (ctx) => {
     const user = me(ctx);
@@ -178,6 +183,7 @@ export const walletHandlers = {
   },
 
   createTransfer: async (ctx) => {
+    devnetTransfersOn(ctx);
     const user = me(ctx);
     const db = ctx.deps.db;
     await assertDevnet(ctx);
@@ -201,6 +207,7 @@ export const walletHandlers = {
   },
 
   submitTransferSignature: async (ctx) => {
+    devnetTransfersOn(ctx);
     const user = me(ctx);
     const db = ctx.deps.db;
     const row = db.prepare('SELECT * FROM devnet_transfers WHERE id = ? AND builder_id = ?').get(ctx.params.id!, user.id) as TransferRow | undefined;
@@ -234,6 +241,7 @@ export const walletHandlers = {
   },
 
   transferBlockhash: async (ctx) => {
+    devnetTransfersOn(ctx);
     const user = me(ctx);
     const row = ctx.deps.db.prepare('SELECT * FROM devnet_transfers WHERE id = ? AND builder_id = ?').get(ctx.params.id!, user.id) as TransferRow | undefined;
     if (!row) throw notFound('Transfer');

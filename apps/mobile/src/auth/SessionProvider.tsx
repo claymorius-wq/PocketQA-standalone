@@ -1,4 +1,4 @@
-import type { AuthMode, StorageMode, User, WalletLoginResponse } from '@pocket-qa/contracts';
+import type { AuthMode, ClientConfig, StorageMode, User, WalletLoginResponse } from '@pocket-qa/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Auth } from 'firebase/auth';
@@ -20,6 +20,8 @@ type Session = {
   /** Evidence storage from the server's public config, for honest copy about where data lives. */
   storage: StorageMode;
   walletLogin: boolean;
+  /** Deployment features from /config; off unless the server says on (never a fake success). */
+  features: ClientConfig['features'];
   /** Signed in with a managed identity that has no Pocket QA account yet: ask for a role. */
   needsAccount: boolean;
   /** Role and name typed at sign-up (firebase mode), to prefill "Finish your account". */
@@ -35,6 +37,7 @@ type Session = {
 };
 const Ctx = createContext<Session | null>(null);
 const PENDING_PROFILE = 'pocketqa.pendingProfile';
+const NO_FEATURES: ClientConfig['features'] = { testCredits: false, devnetTransfers: false };
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
@@ -45,6 +48,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [authMode, setAuthMode] = useState<AuthMode>('local');
   const [walletLogin, setWalletLogin] = useState(false);
   const [storage, setStorage] = useState<StorageMode>('local');
+  const [features, setFeatures] = useState<ClientConfig['features']>(NO_FEATURES);
   const [needsAccount, setNeedsAccount] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<NewAccount | null>(null);
 
@@ -77,6 +81,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const cfg = await getClientConfig().catch(() => null);
       setWalletLogin(cfg?.walletLogin ?? false);
       setStorage(cfg?.storage ?? 'local');
+      setFeatures(cfg?.features ?? NO_FEATURES);
       if (cfg?.authMode === 'firebase' && cfg.firebase) {
         setAuthMode('firebase');
         const a = firebaseAuth(cfg.firebase);
@@ -147,6 +152,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       authMode,
       storage,
       walletLogin,
+      features,
       needsAccount,
       pendingProfile,
       signIn: async (email, password) => {
@@ -197,7 +203,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       refreshUser: async () => setUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, needsAccount, pendingProfile, accept, acceptWallet, afterFirebaseSignIn, clear],
+    [ready, user, authMode, storage, walletLogin, features, needsAccount, pendingProfile, accept, acceptWallet, afterFirebaseSignIn, clear],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

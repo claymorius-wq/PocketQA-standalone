@@ -6,8 +6,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '../src/api/client';
 import { SessionProvider, useSession } from '../src/auth/SessionProvider';
-import { FocusRingStyles, LoadingState, lensStackScreenOptions } from '../src/ui';
-import { StyleSheet, View } from 'react-native';
+import { FocusRingStyles, LoadingState, Notice, lensStackScreenOptions } from '../src/ui';
+import { Platform, StyleSheet, View } from 'react-native';
+import { deploymentProblem } from '../src/lib/deployment';
+import { PREVIEW_BUILD } from '../src/preview/demoAccounts';
 import { Ground } from '../src/glass';
 import { LENS_FONTS } from '../src/theme/fonts';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
@@ -67,7 +69,11 @@ function ThemedStack() {
 
 const styles = StyleSheet.create({
   starting: { flex: 1, justifyContent: 'center' },
+  blocked: { flex: 1, justifyContent: 'center', padding: 24 },
 });
+
+// Checked once per bundle: a misbuilt production app shows why, and never talks to a local API.
+const DEPLOYMENT_PROBLEM = deploymentProblem({ env: process.env.EXPO_PUBLIC_POCKETQA_ENV, apiUrl: process.env.EXPO_PUBLIC_API_URL, preview: PREVIEW_BUILD, platform: Platform.OS });
 
 export default function RootLayout() {
   const [qc] = useState(
@@ -95,9 +101,17 @@ export default function RootLayout() {
         <ThemeProvider fonts={fontsLoaded ? 'lens' : 'system'}>
           {/* Web: the one focus ring for every focusable (CONSISTENCY C1). */}
           <FocusRingStyles />
-          <SessionProvider>
-            <ThemedStack />
-          </SessionProvider>
+          {DEPLOYMENT_PROBLEM ? (
+            <Ground enter={false}>
+              <View style={styles.blocked} testID="deployment-problem">
+                <Notice tone="danger" title="This build can’t start">{DEPLOYMENT_PROBLEM}</Notice>
+              </View>
+            </Ground>
+          ) : (
+            <SessionProvider>
+              <ThemedStack />
+            </SessionProvider>
+          )}
         </ThemeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

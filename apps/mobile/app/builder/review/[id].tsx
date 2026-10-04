@@ -10,6 +10,7 @@ import { EvidenceItem } from '../../../src/evidence/EvidenceItem';
 import { credits, statusLabel, when } from '../../../src/lib/format';
 import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy, useStudyDisputes } from '../../../src/lib/queries';
 import { TransferCard } from '../../../src/wallet/TransferCard';
+import { useSession } from '../../../src/auth/SessionProvider';
 import { space } from '../../../src/theme/tokens';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { Button, Card, ConfirmSheet, EmptyState, Field, Notice, QueryState, Row, Screen, Section, Segmented, StatusPill, Text } from '../../../src/ui';
@@ -63,6 +64,7 @@ function FindingForm({ participationId, evidence }: { participationId: string; e
 
 function ReviewInner() {
   const { colors } = useTheme();
+  const { features } = useSession();
   const { id } = useLocalSearchParams<{ id: string }>();
   const pq = useParticipation(id);
   const study = useStudy(pq.data?.studyId ?? '');
@@ -152,7 +154,7 @@ function ReviewInner() {
                 </Text>
               </Card>
             ) : null}
-            {p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned') ? (
+            {features.devnetTransfers && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
               <TransferCard participationId={p.id} role="builder" canStart />
             ) : null}
             <ConfirmSheet

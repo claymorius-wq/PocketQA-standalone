@@ -1,0 +1,78 @@
+# Production release: independent QA evidence ledger (pqa-qa, pane wX:p2)
+
+I own this file. The lead may commit it as is but shouldn't edit it.
+
+## Basics
+- **Base:** `main` at `9461db5`.
+- **Worktree:** `.worktrees/production-readiness`, branch `feat/production-readiness`.
+- **Started:** 2026-10-04.
+- **Reviewer rules:**
+  - No cloud mutation of any kind: no R2 writes, deletes or config changes, and no Firebase or IAM changes.
+  - The existing demo stays live until the parent's verified cutover.
+  - I don't read `.cloud-local/`, `.env*`, `.preview*` or `preview-data`.
+  - Every P0, P1 or P2 blocks.
+  - "Verified" means I ran an executable flow myself (a test, E2E run or real server). Reading the source alone counts only as "source-checked".
+
+## Acceptance criteria (parent, 2026-10-04) and status
+
+The criteria are A1–A10. Status values are open, source-checked, verified, gated or blocked. "Gated" means the step needs real hardware or real provider credentials and can't be faked.
+
+| # | Criterion | Status | Evidence |
+|---|---|---|---|
+| A1 | Real auth (Firebase) in production mode; no local password path | open | Auth still returns `CONFIGURATION_NOT_FOUND`. A live sign-in is **gated** on Hamza's console step. |
+| A2 | Private R2 evidence storage, pinned to `pocketqa-evidence` | open | — |
+| A3 | No shared-demo shortcuts or test top-ups in production | open | B1 |
+| A4 | Full wallet UX: connect, link, sign in, disconnect and errors, on web and Android MWA | open | A real wallet or Seeker is **gated** on hardware. |
+| A5 | Native session persistence across app restarts | open | B2 |
+| A6 | Safe account lifecycle: sign-up, verify, sign-in, logout revocation, export, delete fails closed without deletion approval | open | — |
+| A7 | Restart safety and backup or restore of the DB | open | B3 |
+| A8 | No unsupported payment or AI claims: test credits and devnet only; AI shown as unavailable | open | — |
+| A9 | No R2 deletion or lifecycle without policy approval; other buckets untouched | open | Carried over from `safety-verdict-qa-r2` (deletion refused, bucket pinned). Must be re-verified on each candidate. |
+| A10 | Existing demo untouched until the parent's cutover | open | — |
+
+## Baseline gaps on `main` 9461db5 (source-checked; for the lead to plan)
+- **B1 (A3): test top-ups have no gate.**
+  - `apps/api/src/handlers/account.ts:201-205` lets any builder mint test credits, and `CreditsScreen.tsx:56` exposes the button.
+  - Production mode needs this route refused server-side (not only hidden in the UI) and covered by a test.
+- **B2 (A5): native Firebase persistence.**
+  - `apps/mobile/src/auth/firebaseClient.ts:33` uses `getAuth(app)` on native.
+  - In the Firebase JS SDK on React Native, that is memory-only unless `initializeAuth(app, { persistence: getReactNativePersistence(...) })` is used. Sessions would then be lost on app restart.
+  - This has to be verified by killing and relaunching on a device or emulator, not from the source.
+- **B3 (A7): no backup or restore path.** There is nothing in `apps/api/src` or `scripts/`. SQLite needs a consistent online backup (`.backup()` or `VACUUM INTO`), a restore drill, and a restart test that covers the deletion outbox and the sweep.
+- **B4 (A3): the shared demo is isolated by `POCKETQA_SHARED_DEMO` and `scripts/preview/start.sh`.**
+  - Production must refuse `SHARED_DEMO`, demo sign-ins and the convenience file.
+  - It also needs proof that the live preview is untouched (A10).
+
+## Candidate reviews
+| Round | Candidate (commit or tree) | Verdict | File |
+|---|---|---|---|
+| inc1 r1 | staged set, 30 files, base `9461db5` | CHANGES_REQUIRED: P2-1, an unset `POCKETQA_ENV` fails open to development (test top-ups on, with real providers) | `docs/reviews/production/inc1-verdict-qa-r1.md` |
+| inc1 r2 | staged set, 39 files, base `9461db5` | APPROVE. P2-1 is fixed and verified. New P3s: `check-url.mjs` exits 0 without checking when invoked through a symlink or a path with spaces; document explicit development mode | `docs/reviews/production/inc1-verdict-qa-r2.md` |
+
+### inc1 r2: executable evidence
+- **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 564 files; scripts 41; contracts 17; domain 170; API 355 plus 2 skipped; mobile 714.
+- **`check-node.mjs` with Node 25.4:** exit 1, as intended.
+- **`loadConfig` probe:**
+  - an unset env with real Firebase or real R2 is refused;
+  - every loopback or private spelling of the production origin is refused;
+  - a public origin loads, with production on and both test features off.
+- **`build-web.sh`:**
+  - bad `PROD_WEB_DIR` values exit 1;
+  - loopback and private API URLs are refused;
+  - `/api` builds with EXIT=0, secrets 0/29;
+  - the `check-url.mjs` guard exits 0 when invoked through a symlink (P3).
+
+## Status after inc1 r1 (A3 and A9 unblocked by r2)
+- **A3** is source-checked and partly verified. The `topUp` and devnet refusals pass their tests and the production web bundle has no demo code. It stays **blocked by P2-1**.
+- **A9** is source-checked: the bucket pin and deletion guard are intact, and production requires `ALLOW_DELETE=1`. It is also **blocked by P2-1**, since the `RETAIN_NONPROD` path is open when the env is unset.
+- **A10:** `scripts/preview/*` isn't in the diff.
+- **B1** is fixed, subject to P2-1. B2 and B3 are still open.
+
+## Executable evidence I ran
+- **inc1 r1, `pnpm verify` with Node v24.21.0:** EXIT=0. Secrets 561 files; script tests 39; contracts 15; domain 170; API 354 plus 2 skipped; mobile 714.
+- **The same run with Node 25.4:** EXIT=1. The `glass` grain test differs by Node version, so this is an environment issue.
+- **inc1 r1, `PROD_API_URL=/api bash scripts/production/build-web.sh`:** EXIT=0. Secret check 0/29; `PREVIEW_BUILD` is inlined as `!1`.
+- **inc1 r1, the `loadConfig` probe** (a temporary tsx script, removed afterwards):
+  - an unset env loads `production:false` with test features on, even with real providers;
+  - `https://localhost` is accepted as the production origin;
+  - emulator hosts are refused.

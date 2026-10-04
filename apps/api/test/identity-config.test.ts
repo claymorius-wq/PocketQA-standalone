@@ -4,7 +4,7 @@ import { ConfigError, loadConfig } from '../src/config';
 
 // ADR 0005: misconfiguration of managed identity fails at startup, never silently weakens auth.
 const base = { POCKETQA_DATA_DIR: tmpdir() };
-const fb = { ...base, POCKETQA_AUTH_MODE: 'firebase', POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-staging', POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key' }; // check-secrets: allow (placeholder public Firebase web config in tests)
+const fb = { ...base, POCKETQA_ENV: 'development', POCKETQA_AUTH_MODE: 'firebase', POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-staging', POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key' }; // check-secrets: allow (placeholder public Firebase web config in tests)
 
 describe('managed identity config', () => {
   it('defaults to local auth with no Firebase', () => {
@@ -48,7 +48,7 @@ describe('managed identity config', () => {
 });
 
 describe('storage config (ADR 0005 §3)', () => {
-  const r2 = { ...base, POCKETQA_STORAGE: 'r2', POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32), POCKETQA_R2_BUCKET: 'pocketqa-evidence', POCKETQA_R2_ACCESS_KEY_ID: 'key-id', POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret', POCKETQA_R2_RETAIN_NONPROD: '1' }; // check-secrets: allow (placeholder test values)
+  const r2 = { ...base, POCKETQA_ENV: 'development', POCKETQA_STORAGE: 'r2', POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32), POCKETQA_R2_BUCKET: 'pocketqa-evidence', POCKETQA_R2_ACCESS_KEY_ID: 'key-id', POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret', POCKETQA_R2_RETAIN_NONPROD: '1' }; // check-secrets: allow (placeholder test values)
 
   it('defaults to local storage; r2 needs account, bucket and server-side keys', () => {
     expect(loadConfig(base)).toMatchObject({ storage: 'local', r2: null });

@@ -19,7 +19,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export function CreditsScreen({ title }: { title: string }) {
-  const { user } = useSession();
+  const { user, features } = useSession();
   const q = useCredits();
   useFocusRefetch(q);
   const qc = useQueryClient();
@@ -38,7 +38,12 @@ export function CreditsScreen({ title }: { title: string }) {
               <Text variant="display" testID="credit-balance">{credits(data.balance)}</Text>
               <Text variant="small" tone="muted">{data.disclaimer}. Credits can’t be withdrawn or exchanged.</Text>
             </Card>
-            {user?.role === 'builder' ? (
+            {user?.role === 'builder' && !features.testCredits ? (
+              <Notice tone="info" title="Funding isn’t available yet" testID="funding-unavailable">
+                Test credits are off on this deployment, and paying with real money isn’t enabled yet. You can draft studies; publishing needs funding.
+              </Notice>
+            ) : null}
+            {user?.role === 'builder' && features.testCredits ? (
               <Card>
                 <Text variant="heading">Add local test credits</Text>
                 <Text variant="small" tone="muted">Fund studies in this local build. No money changes hands.</Text>

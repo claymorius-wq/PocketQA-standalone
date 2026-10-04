@@ -1,6 +1,7 @@
 import { createSignInMessageText } from '@solana/wallet-standard-util';
 import { describe, expect, it } from 'vitest';
 import {
+  isPublicHost,
   buildSiwsMessage,
   buildPath,
   CreateStudyBody,
@@ -111,5 +112,26 @@ describe('contracts', () => {
       expirationTime: '2026-10-04T00:05:00.000Z',
     };
     expect(buildSiwsMessage(input)).toBe(createSignInMessageText(input));
+  });
+});
+
+// The contracts package has no DOM/node lib; the WHATWG URL global exists at test runtime.
+declare const URL: new (u: string) => { hostname: string };
+
+describe('isPublicHost (production endpoints, inc1 review P3-1/P3-2)', () => {
+  const host = (u: string) => new URL(u).hostname;
+  it('refuses loopback, unspecified, private, emulator and mapped addresses in every spelling', () => {
+    for (const u of [
+      'https://localhost', 'https://localhost.', 'https://LOCALHOST', 'https://app.localhost', 'https://127.0.0.1', 'https://127.1', 'https://127.255.0.9',
+      'https://0.0.0.0', 'https://0', 'https://10.0.2.2', 'https://10.1.2.3', 'https://172.16.0.1', 'https://192.168.1.10', 'https://169.254.1.1', 'https://100.64.0.1',
+      'https://[::1]', 'https://[::]', 'https://[::ffff:127.0.0.1]', 'https://[::ffff:8.8.8.8]', 'https://[fd00::1]', 'https://[fe80::1]', 'https://2130706433',
+    ]) {
+      expect(isPublicHost(host(u)), u).toBe(false);
+    }
+  });
+  it('accepts public names and addresses', () => {
+    for (const u of ['https://pocketqa.optijara.ai', 'https://api.pocketqa.example', 'https://8.8.8.8', 'https://172.32.0.1', 'https://[2606:4700::1111]']) {
+      expect(isPublicHost(host(u)), u).toBe(true);
+    }
   });
 });

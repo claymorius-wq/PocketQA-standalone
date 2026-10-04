@@ -56,6 +56,9 @@ preview-data/
 apps/mobile/dist-preview/
 apps/mobile/dist-preview.next/
 apps/mobile/dist-preview.old/
+apps/mobile/dist-production/
+apps/mobile/dist-production.next/
+apps/mobile/dist-production.old/
 .preview-test/
 firebase-debug.log
 firebase-debug.*.log

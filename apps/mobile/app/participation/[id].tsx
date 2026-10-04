@@ -13,6 +13,7 @@ import { MediaPreview } from '../../src/evidence/MediaPreview';
 import { nativeRecorder } from '../../src/evidence/recorder';
 import { applySegment, removeSegment, uploadKept, type LocalSegment } from '../../src/evidence/segments';
 import { TransferCard } from '../../src/wallet/TransferCard';
+import { useSession } from '../../src/auth/SessionProvider';
 import { recordingCapability } from '../../src/lib/capability';
 import { bytes, credits, statusLabel, when } from '../../src/lib/format';
 import { useEvidence, useFindings, useMyDisputes, useParticipation, useTesterStudy } from '../../src/lib/queries';
@@ -262,6 +263,7 @@ function EvidenceCapture({ p, onPendingChange }: { p: Participation; onPendingCh
 }
 
 function Decision({ p }: { p: Participation }) {
+  const { features } = useSession();
   const findings = useFindings(p.id);
   const disputes = useMyDisputes();
   const qc = useQueryClient();
@@ -306,7 +308,7 @@ function Decision({ p }: { p: Participation }) {
         <Field label="Reason" value={reason} onChangeText={setReason} multiline testID="dispute-reason" hint="At least 10 characters." />
         {dispute.error ? <Notice tone="danger" title="Couldn’t send">{(dispute.error as ApiError).message}</Notice> : null}
       </ConfirmSheet>
-      {p.status === 'approved' || p.status === 'resolved' ? <TransferCard participationId={p.id} role="tester" canStart={false} /> : null}
+      {features.devnetTransfers && (p.status === 'approved' || p.status === 'resolved') ? <TransferCard participationId={p.id} role="tester" canStart={false} /> : null}
       {findings.data?.items.length ? (
         <Section title="Findings from the builder">
           {findings.data.items.map((f) => (

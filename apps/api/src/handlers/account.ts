@@ -69,6 +69,7 @@ export const accountHandlers = {
       authMode,
       storage: ctx.deps.config.storage,
       walletLogin: ctx.deps.config.walletLogin,
+      features: ctx.deps.config.features,
       firebase: firebase
         ? {
             apiKey: firebase.webApiKey,
@@ -199,6 +200,9 @@ export const accountHandlers = {
   credits: (ctx) => creditsView(ctx, me(ctx).id),
 
   topUp: (ctx) => {
+    if (!ctx.deps.config.features.testCredits) {
+      throw fail('FEATURE_UNAVAILABLE', 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.');
+    }
     const user = me(ctx);
     post(ctx.deps.db, planTopUp(user.id, ctx.body.amount), ctx.deps.now());
     return creditsView(ctx, user.id);

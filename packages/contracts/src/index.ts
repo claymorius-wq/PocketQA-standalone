@@ -5,9 +5,30 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.4.0';
+export const CONTRACT_VERSION = '0.5.0';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
+
+/**
+ * True when a URL hostname (as `new URL(...).hostname` returns it, which normalises forms
+ * like `127.1`) is a public host. Production refuses loopback, unspecified, private,
+ * link-local, emulator-host and IPv4-mapped IPv6 addresses (docs/production, O5).
+ */
+export function isPublicHost(hostname: string): boolean {
+  const h = hostname.toLowerCase().replace(/\.$/, '');
+  if (h === '' || h === 'localhost' || h.endsWith('.localhost')) return false;
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return !(a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127));
+  }
+  if (h.startsWith('[')) {
+    const v6 = h.slice(1, -1);
+    // Loopback, unspecified, IPv4-mapped/compatible, unique-local (fc00::/7) and link-local (fe80::/10).
+    return !(v6 === '::1' || v6 === '::' || v6.startsWith('::ffff:') || /^::[0-9a-f.]*$/.test(v6) || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6));
+  }
+  return true;
+}
 /** Bearer session token travels in this header; never in URLs, never logged. */
 export const AUTH_HEADER = 'authorization';
 /**
@@ -43,6 +64,8 @@ export const ErrorCode = z.enum([
   'RATE_LIMITED',
   'EMAIL_UNVERIFIED',
   'PROVIDER_UNSUPPORTED',
+  /** Not offered on this deployment (e.g. test credits in production); never a fake success. */
+  'FEATURE_UNAVAILABLE',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -510,6 +533,8 @@ export const ClientConfig = z.object({
   authMode: AuthMode,
   storage: StorageMode,
   walletLogin: z.boolean(),
+  /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
+  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean() }),
   firebase: z
     .object({
       apiKey: z.string().min(1),

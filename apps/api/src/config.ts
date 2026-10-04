@@ -1,12 +1,20 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
-import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, type AuthMode, type StorageMode } from '@pocket-qa/contracts';
+import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, isPublicHost, type AuthMode, type StorageMode } from '@pocket-qa/contracts';
 
 /** Pocket QA's dedicated R2 bucket(s); add a staging bucket here only by decision (ADR 0005). */
 export const R2_BUCKETS: readonly string[] = ['pocketqa-evidence'];
 
 export type Config = {
+  /**
+   * POCKETQA_ENV=production (docs/production/acceptance-ledger.md): managed identity, an
+   * https public origin, private R2 with an approved deletion policy, data outside the
+   * repo, and no demo, emulator or test-credit paths. Default: development.
+   */
+  production: boolean;
+  /** Local test features; both off in production (no fake funding, no demo transfers). */
+  features: { testCredits: boolean; devnetTransfers: boolean };
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -71,6 +79,9 @@ function isGitIgnored(absDir: string): boolean {
  * data directory (SQLite + uploaded media) can never sit in a git-tracked location.
  */
 export function loadConfig(env: Record<string, string | undefined>): Config {
+  const envName = env.POCKETQA_ENV ?? 'development';
+  if (envName !== 'development' && envName !== 'production') throw new ConfigError('POCKETQA_ENV must be development or production.');
+  const production = envName === 'production';
   const host = env.POCKETQA_API_HOST ?? '127.0.0.1';
   if (!LOOPBACK.has(host)) throw new ConfigError(`POCKETQA_API_HOST must be 127.0.0.1 or ::1 (local-only build); got a non-loopback value.`);
 
@@ -83,6 +94,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (insideRepo && !isGitIgnored(dataDir)) {
     throw new ConfigError('POCKETQA_DATA_DIR is inside the repo but not git-ignored; refusing to store data there.');
   }
+  // Production data never shares a directory with development or the demo (preview-data).
+  if (production && insideRepo) throw new ConfigError('In production, POCKETQA_DATA_DIR must be outside the repository.');
 
   const rpcUrl = env.POCKETQA_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
   if (!/^https?:\/\//.test(rpcUrl)) throw new ConfigError('POCKETQA_SOLANA_RPC_URL must be an http(s) URL.');
@@ -107,13 +120,24 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (env.FIREBASE_AUTH_EMULATOR_HOST && !(firebase?.authEmulatorHost && firebase.projectId.startsWith('demo-'))) {
     throw new ConfigError('FIREBASE_AUTH_EMULATOR_HOST is set outside an explicit demo- emulator setup; refusing to start.');
   }
+  if (production) {
+    if (authMode !== 'firebase') throw new ConfigError('Production needs POCKETQA_AUTH_MODE=firebase (no local password accounts).');
+    // Emulator hosts were refused above for non-demo projects; demo- projects are local-only.
+    if (firebase!.projectId.startsWith('demo-')) throw new ConfigError('Production cannot use a demo- Firebase project.');
+  }
   const sharedDemo = env.POCKETQA_SHARED_DEMO === '1';
+  if (production && sharedDemo) throw new ConfigError('The shared demo never runs in production.');
   if (sharedDemo && authMode !== 'local') throw new ConfigError('The shared demo runs only with local auth (synthetic demo accounts).');
   const walletLogin = env.POCKETQA_WALLET_LOGIN === '1';
+  // ADR 0005 §2: the operator sets this only after Hamza's acceptance is recorded there.
+  if (production && walletLogin && env.POCKETQA_WALLET_LOGIN_RISK_ACCEPTED !== '1') {
+    throw new ConfigError('Wallet login in production needs the residual-risk acceptance recorded in ADR 0005 §2 (POCKETQA_WALLET_LOGIN_RISK_ACCEPTED=1).');
+  }
   // Wallet login can create accounts; the shared demo has no self-registration.
   if (sharedDemo && walletLogin) throw new ConfigError('The shared demo cannot enable wallet login (it creates accounts).');
   let publicOrigin: string | null = null;
   // Required for wallet login; optional otherwise (web wallet linking uses it when set).
+  if (production && !env.POCKETQA_PUBLIC_ORIGIN) throw new ConfigError('Production needs POCKETQA_PUBLIC_ORIGIN (the exact https origin of the app).');
   if (walletLogin || env.POCKETQA_PUBLIC_ORIGIN) {
     const raw = env.POCKETQA_PUBLIC_ORIGIN ?? '';
     let u: URL | null;
@@ -125,6 +149,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     const loopback = u !== null && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
     const ok = u !== null && (u.protocol === 'https:' || (u.protocol === 'http:' && loopback)) && !u.username && !u.password && !u.hostname.includes('*') && raw === u.origin;
     if (!ok) throw new ConfigError('POCKETQA_PUBLIC_ORIGIN must be the exact https origin of the app (http only for localhost); wallet login requires it.');
+    if (production && (u!.protocol !== 'https:' || !isPublicHost(u!.hostname))) throw new ConfigError('In production, POCKETQA_PUBLIC_ORIGIN must be https on a public host (not localhost or a private address).');
     publicOrigin = u!.origin;
   }
 
@@ -132,6 +157,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (storage !== 'local' && storage !== 'r2') throw new ConfigError('POCKETQA_STORAGE must be local or r2.');
   // Real uploads never go to the shared synthetic demo (its gate also refuses uploads).
   if (sharedDemo && storage !== 'local') throw new ConfigError('The shared demo runs only with local storage (no real uploads).');
+  if (production && storage !== 'r2') throw new ConfigError('Production stores evidence in private r2 (POCKETQA_STORAGE=r2).');
   let r2: Config['r2'] = null;
   if (storage === 'r2') {
     const accountId = env.POCKETQA_R2_ACCOUNT_ID ?? '';
@@ -141,6 +167,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (!/^[a-f0-9]{32}$/.test(accountId)) throw new ConfigError('POCKETQA_R2_ACCOUNT_ID (32 hex) is required for r2 storage.');
     if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket)) throw new ConfigError('POCKETQA_R2_BUCKET is required for r2 storage.');
     const testServer = env.POCKETQA_R2_ENDPOINT !== undefined && env.POCKETQA_R2_ENDPOINT !== '';
+    if (production && testServer) throw new ConfigError('Production cannot use an R2 test server endpoint (POCKETQA_R2_ENDPOINT).');
+    // Retention-only mode exists for synthetic data; real users need real deletion (ledger S5).
+    if (production && env.POCKETQA_R2_RETAIN_NONPROD === '1') throw new ConfigError('POCKETQA_R2_RETAIN_NONPROD is for synthetic data only and is refused in production.');
     if (!accessKeyId || !secretAccessKey) throw new ConfigError('POCKETQA_R2_ACCESS_KEY_ID and POCKETQA_R2_SECRET_ACCESS_KEY are required for r2 storage.');
     let endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
     if (env.POCKETQA_R2_ENDPOINT) {
@@ -162,7 +191,17 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     r2 = { accountId, bucket, endpoint, accessKeyId, secretAccessKey, allowDelete };
   }
 
+  // Fail closed (inc1 review P2-1): real providers never fall back to development's test
+  // credits, demo transfers or retention-only R2 just because POCKETQA_ENV was left out.
+  const realFirebase = authMode === 'firebase' && !firebase!.projectId.startsWith('demo-');
+  const realR2 = storage === 'r2' && !env.POCKETQA_R2_ENDPOINT;
+  if ((realFirebase || realR2) && env.POCKETQA_ENV === undefined) {
+    throw new ConfigError('A real Firebase project or real R2 is configured: set POCKETQA_ENV explicitly (production, or development for synthetic test data).');
+  }
+
   return {
+    production,
+    features: { testCredits: !production, devnetTransfers: !production },
     host: host as Config['host'],
     port,
     dataDir,
