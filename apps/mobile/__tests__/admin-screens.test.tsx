@@ -243,6 +243,10 @@ describe('Disputes (claim cards)', () => {
       expect(screen.getByTestId('dispute-note').props.value).toBe('Overturning: the note covers it.');
       // Text typed now was never confirmed, so it is not what goes out.
       await fireEvent.changeText(screen.getByTestId('dispute-note'), 'Typed after the confirm.');
+      await fireEvent.press(screen.getByTestId('dispute-outcome-upheld'));
+      expect(screen.getByTestId('dispute-note').props.editable).toBe(false);
+      expect(screen.getByTestId('dispute-note').props.value).toBe('Overturning: the note covers it.');
+      expect(screen.getByTestId('dispute-outcome-overturned')).toBeSelected();
     } finally {
       await act(async () => onlineManager.setOnline(true));
     }
@@ -392,6 +396,8 @@ describe('Moderation (visibility ledger)', () => {
       expect(screen.getByTestId('moderation-reason').props.value).toBe('Misleading payout claims');
       // Text typed now was never confirmed, so it is not what goes out.
       await fireEvent.changeText(screen.getByTestId('moderation-reason'), 'Typed after the confirm.');
+      expect(screen.getByTestId('moderation-reason').props.editable).toBe(false);
+      expect(screen.getByTestId('moderation-reason').props.value).toBe('Misleading payout claims');
     } finally {
       await act(async () => onlineManager.setOnline(true));
     }
@@ -502,6 +508,9 @@ describe('Stuck (triage queue)', () => {
       expect(screen.getByTestId('stuck-reason').props.value).toBe('Notes cover the task; the builder is suspended.');
       // Text typed now was never confirmed, so it is not what goes out.
       await fireEvent.changeText(screen.getByTestId('stuck-reason'), 'Something else, typed after the confirm.');
+      // Locked while sending (Lens follow-ups P3-5): the sheet keeps showing the reason that was sent.
+      expect(screen.getByTestId('stuck-reason').props.editable).toBe(false);
+      expect(screen.getByTestId('stuck-reason').props.value).toBe('Notes cover the task; the builder is suspended.');
     } finally {
       await act(async () => onlineManager.setOnline(true));
     }

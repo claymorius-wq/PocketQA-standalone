@@ -40,6 +40,8 @@ type TaskDraft = { key: number; text: string };
 
 /** The board's dock clearance: the content ends 22dp above whatever floats at the bottom. */
 const DOCK_CLEARANCE = 22;
+/** The ground scrim behind the Save dock (board: 200dp), from the screen's bottom edge. */
+const SCRIM_HEIGHT = 200;
 const CHIP_RADIUS = 14;
 const TASK_EXIT_SHIFT = -12;
 const NOTICE_SHIFT = 6;
@@ -143,6 +145,8 @@ function NewStudyInner() {
       dockPlacement="edge"
       dockKeyboard="hide"
       dockClearance={DOCK_CLEARANCE}
+      // Keyboard focus clears the whole ground scrim behind the dock, not only the dock (web).
+      focusFloor={SCRIM_HEIGHT}
       dock={
         <SaveDock
           lifted={status !== null}
@@ -454,7 +458,7 @@ function Scrim({ lifted }: { lifted: boolean }) {
   const top = colors.background;
   const end = glass.enabled ? (base[base.length - 1]?.color ?? colors.background) : colors.background;
   return (
-    <Animated.View {...DECORATIVE} style={[styles.scrim, PASS_THROUGH, style]}>
+    <Animated.View {...DECORATIVE} testID="dock-scrim" style={[styles.scrim, PASS_THROUGH, style]}>
       <Svg width="100%" height="100%">
         <Defs>
           <LinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -511,7 +515,7 @@ const styles = StyleSheet.create({
   budgetNote: { width: '100%' },
   consentCard: { paddingTop: 14, paddingRight: 16, paddingBottom: 16, paddingLeft: 16, gap: 12 },
   hint: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 200, transformOrigin: 'bottom' },
+  scrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: SCRIM_HEIGHT, transformOrigin: 'bottom' },
   dockColumn: { gap: 4, width: '100%', maxWidth: 744, alignSelf: 'center' },
   // GlassBlur draws a 1dp border: 7 + 1 is the board's 8dp padding.
   dock: { padding: 7, borderRadius: radius.overlay },

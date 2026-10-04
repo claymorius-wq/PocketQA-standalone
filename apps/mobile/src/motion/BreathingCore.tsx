@@ -32,8 +32,12 @@ export type LiveLevels = { scale: number; coreOpacity: number; glow: number; flo
  * Every live output for breath `b`, gate `level` (both 0..1). `steady`/`floorSteady` are the
  * reduced-motion holds (null breathes).
  */
-export function liveLevels(b: number, level: number, steady: number | null, floorSteady: number | null, coreIdle = CORE_IDLE_OPACITY): LiveLevels {
+export function liveLevels(b: number, level: number, steady: number | null, floorSteady: number | null, coreIdleArg?: number): LiveLevels {
   'worklet';
+  // The default lives in the body, not the signature: the worklet transform captures what the
+  // body reads, not default-parameter initialisers, so a signature default was undefined on the
+  // UI thread ("Property 'CORE_IDLE_OPACITY' doesn't exist", native run 2026-10-04).
+  const coreIdle = coreIdleArg ?? CORE_IDLE_OPACITY;
   const lit = steady ?? GLOW_FROM + (1 - GLOW_FROM) * b;
   return {
     scale: steady === null ? 1 + CORE_SCALE * b * level : 1,

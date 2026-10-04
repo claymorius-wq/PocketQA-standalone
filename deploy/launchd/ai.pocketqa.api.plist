@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Pocket QA API under launchd (docs/deploy/production-runbook.md). Template: replace
+  __REPO__, __ENV_FILE__, __LOG_DIR__ and __NODE_BIN_DIR__ before installing. launchd
+  restarts the API if it exits and sends SIGTERM on stop, which the API handles cleanly.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.pocketqa.api</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/production/run-api.sh</string>
+    <string>serve</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>POCKETQA_ENV_FILE</key><string>__ENV_FILE__</string>
+    <key>PATH</key><string>__NODE_BIN_DIR__:/usr/bin:/bin</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>ExitTimeOut</key><integer>30</integer>
+  <key>StandardOutPath</key><string>__LOG_DIR__/api.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIR__/api.err.log</string>
+</dict>
+</plist>

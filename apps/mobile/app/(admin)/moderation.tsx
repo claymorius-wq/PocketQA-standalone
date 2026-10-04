@@ -204,7 +204,7 @@ export default function Moderation() {
         )}
       </QueryState>
       <ConfirmSheet visible={!!target} title={action === 'suspend' ? 'Suspend study?' : 'Reinstate study?'} body="Every moderation action is recorded in the audit log with your reason." confirmLabel={action === 'suspend' ? 'Suspend' : 'Reinstate'} destructive={action === 'suspend'} moment="none" confirmDisabled={reason.trim().length < 5} loading={mod.isPending} onCancel={cancel} onConfirm={() => target && mod.mutate({ ...target, reason })}>
-        <Field label="Reason" value={reason} onChangeText={setReason} hint="At least 5 characters." multiline testID="moderation-reason" />
+        <Field label="Reason" value={reason} onChangeText={setReason} hint="At least 5 characters." multiline locked={mod.isPending} testID="moderation-reason" />
         {mod.error ? <SheetFailure title="Action failed" message={(mod.error as ApiError).message} /> : null}
       </ConfirmSheet>
     </Screen>

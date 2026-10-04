@@ -26,6 +26,12 @@ async function readPassword(prompt: string): Promise<string> {
 const email = Email.parse(process.argv[2]);
 const password = Password.parse(await readPassword('Admin password (min 12 chars): '));
 const config = loadConfig({ ...readEnvFile(join(REPO_ROOT, '.env.local')), ...process.env });
+// Local password admins exist only for local auth. Production (firebase) promotes a verified
+// managed identity instead: pnpm --filter @pocket-qa/api admin:grant <email>.
+if (config.authMode !== 'local') {
+  console.error('This deployment uses managed sign-in; local password admins are refused. Use admin:grant.');
+  process.exit(1);
+}
 mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
 const db = openDb(join(config.dataDir, 'pocketqa.sqlite'));
 if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) {

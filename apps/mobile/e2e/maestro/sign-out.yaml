@@ -1,0 +1,32 @@
+# Regression (native run on the merged Lens build, 2026-10-04): signing out from Settings lands on
+# Sign in without a crash. Before the fix, the root layout swapped its navigator for a <Redirect>
+# while the tabs' guard redirected elsewhere, and expo-router's state sync looped ("Maximum update
+# depth exceeded"). sheet-keyboard.yaml covers the same path after account deletion.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- tapOn:
+    id: tab-settings
+# Centred, so the tap never lands on the floating tab bar that covers the screen's bottom edge.
+- scrollUntilVisible:
+    element:
+      id: sign-out
+    centerElement: true
+- tapOn:
+    id: sign-out
+- extendedWaitUntil:
+    visible:
+      id: sign-in-email
+    timeout: 30000
+- assertNotVisible:
+    id: tab-settings

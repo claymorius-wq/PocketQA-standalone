@@ -7,6 +7,8 @@ import { CardHead, LateEnter } from '../settings/cardParts';
 import { Button, Card, Notice, StatusPill, Text } from '../ui';
 import { walletErrorText } from './errors';
 import { linkWalletWithMwa } from './link';
+import type { StandardWallet } from './standard';
+import { useWallets } from './useWallets';
 
 // The Settings wallet card (A-Settings board, k = 0.8): the 40dp wallet tile, "Devnet wallet" and
 // the link status, the devnet note, then one of: the platform's reason (web, iOS), "Link devnet
@@ -18,7 +20,9 @@ export function WalletSection() {
   const { user, refreshUser } = useSession();
   const cap = walletCapability();
   const unlink = useMutation({ mutationFn: () => api('walletUnlink'), onSuccess: () => refreshUser() });
-  const link = useMutation({ mutationFn: () => linkWalletWithMwa(), onSuccess: () => refreshUser() });
+  // Web: one button per installed Wallet Standard wallet (ledger W1); Android: MWA.
+  const wallets = useWallets();
+  const link = useMutation({ mutationFn: (wallet?: StandardWallet) => linkWalletWithMwa(wallet ? { wallet } : {}), onSuccess: () => refreshUser() });
   const wallet = user?.wallet;
   return (
     <Card testID="wallet-section" k={0.8} style={styles.card}>
@@ -30,8 +34,19 @@ export function WalletSection() {
           <Button label="Unlink wallet" icon="unlink" variant="secondary" onPress={() => unlink.mutate()} loading={unlink.isPending} testID="wallet-unlink" />
         </LateEnter>
       ) : cap.available ? (
-        <LateEnter key="link" style={styles.block}>
-          <Button label="Link devnet wallet" icon="link" variant="secondary" onPress={() => link.mutate()} loading={link.isPending} testID="wallet-link" />
+        <LateEnter key="link" style={[styles.block, styles.linked]}>
+          {(wallets.length > 1 ? wallets : [undefined]).map((w, i) => (
+            <Button
+              key={w?.name ?? 'default'}
+              label={w ? `Link ${w.name}` : 'Link devnet wallet'}
+              icon="link"
+              variant="secondary"
+              onPress={() => link.mutate(w)}
+              loading={link.isPending && link.variables === w}
+              disabled={link.isPending}
+              testID={i === 0 ? 'wallet-link' : `wallet-link-${i}`}
+            />
+          ))}
         </LateEnter>
       ) : (
         <View style={styles.block}>

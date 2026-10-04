@@ -56,7 +56,9 @@ export const LUCIDE_TO_GLYPH = {
   Hourglass: 'stuck',
   Info: 'info',
   Link2: 'link',
+  KeyRound: 'lock', // forgot password
   Lock: 'lock',
+  Mail: 'send', // resend verification email
   LogIn: 'signIn',
   LogOut: 'signOut',
   Paperclip: 'attach',

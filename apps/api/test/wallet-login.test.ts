@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { base58 } from '@scure/base';
-import { buildSiwsMessage, WALLET_NONCE_TTL_SECONDS, WalletLoginResponse, type SiwsInput } from '@pocket-qa/contracts';
+import { appIdentityUri, buildSiwsMessage, WALLET_NONCE_TTL_SECONDS, WalletLoginResponse, type SiwsInput } from '@pocket-qa/contracts';
 import { makeApp, type TestApp } from './helpers';
 
 // ADR 0005 §2: wallet-first login. A separate, purpose-bound, single-use challenge; the
@@ -70,6 +70,34 @@ describe('wallet-first login (local auth mode)', () => {
     const input = await challenge(w);
     const phished = { ...input, domain: 'evil.example', uri: 'https://evil.example' };
     expect((await t.req('POST', '/auth/wallet/login', undefined, signed(w, phished))).body.code).toBe('NONCE_INVALID');
+  });
+
+  it('MWA surface: the challenge binds the Android app identity, not the web origin (ledger W3)', async () => {
+    t = await makeApp({ walletLogin: true });
+    const w = wallet();
+    const r = await t.req('POST', '/auth/wallet/challenge', undefined, { address: w.address, surface: 'mwa' });
+    const input = r.body.input as SiwsInput;
+    expect(input.domain).toBe('pocketqa.local');
+    expect(input.uri).toBe(appIdentityUri('pocketqa.local'));
+    expect(input.statement).toMatch(/Pocket QA Android app/);
+    expect(input.statement).toMatch(/never on a website/);
+    expect(input.statement).toMatch(/not a payment/);
+    // A full sign-in over the MWA-bound text works and creates the account only on request.
+    const ok = await t.req('POST', '/auth/wallet/login', undefined, { ...signed(w, input), newAccount: { role: 'tester', displayName: 'Mo' } });
+    expect(ok.status).toBe(200);
+  });
+
+  it('surfaces are not interchangeable: a web-bound signature fails an MWA challenge and vice versa', async () => {
+    t = await makeApp({ walletLogin: true });
+    const w = wallet();
+    await walletLogin(w, { role: 'tester', displayName: 'W' });
+    const mwa = (await t.req('POST', '/auth/wallet/challenge', undefined, { address: w.address, surface: 'mwa' })).body.input as SiwsInput;
+    const asWeb = { ...mwa, domain: 'app.pocketqa.example', uri: 'https://app.pocketqa.example', statement: (await challenge(w)).statement };
+    expect((await t.req('POST', '/auth/wallet/login', undefined, signed(w, asWeb))).body.code).toBe('NONCE_INVALID');
+    const web = await challenge(w);
+    const asMwa = { ...web, domain: 'pocketqa.local', uri: appIdentityUri('pocketqa.local') };
+    expect((await t.req('POST', '/auth/wallet/login', undefined, signed(w, asMwa))).body.code).toBe('NONCE_INVALID');
+    expect((await t.req('POST', '/auth/wallet/challenge', undefined, { address: w.address, surface: 'ios' })).status).toBe(400);
   });
 
   it('admin accounts cannot sign in with a wallet (review r1 P3)', async () => {

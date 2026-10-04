@@ -19,7 +19,7 @@ jest.mock('lucide-react-native', () =>
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'p1' }), Redirect: () => null, router: { push: jest.fn() } }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder' } }) }));
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder' }, features: { testCredits: true, devnetTransfers: true } }) }));
 jest.mock('expo-video', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { useVideoPlayer: () => ({}), VideoView: (props: { testID?: string }) => <View testID={props.testID} /> };
@@ -338,6 +338,9 @@ describe('review screen', () => {
       expect(screen.getByTestId('approve-note').props.value).toBe('Clear notes, thank you.');
       // Text typed now was never confirmed, so it is not what goes out.
       await fireEvent.changeText(screen.getByTestId('approve-note'), 'Typed after the confirm.');
+      // Locked while sending (Lens follow-ups P3-5).
+      expect(screen.getByTestId('approve-note').props.editable).toBe(false);
+      expect(screen.getByTestId('approve-note').props.value).toBe('Clear notes, thank you.');
     } finally {
       await act(async () => onlineManager.setOnline(true));
     }

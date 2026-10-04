@@ -360,6 +360,55 @@ Guards (fake credentials, no requests sent): wrong account → "refusing: not th
   - `pnpm verify` → EXIT=0 (`docs/reviews/cloud/live/safety-pnpm-verify.txt`): API 342 passed, 2 skipped.
 
 
+## 2026-10-04: Production readiness (lead, worktree `feat/production-readiness`, base `9461db5` = `origin/main`)
+The per-increment evidence files are in `docs/reviews/production/` (`inc*-pnpm-verify.txt`, `inc*-playwright.txt`, `inc*-e2e-firebase.txt`, Maestro folders). Node 24.21.0 throughout.
+
+### Read-only provider probes (no mutation, no secrets printed)
+```
+GET identitytoolkit v1/projects (public web key, pocketqa-optijara)
+  2026-10-04T09:18:20Z 400 CONFIGURATION_NOT_FOUND
+  2026-10-04T09:45:42Z 400 CONFIGURATION_NOT_FOUND
+  2026-10-04T10:22:53Z 400 CONFIGURATION_NOT_FOUND
+GetBucketCors pocketqa-evidence → NoSuchCORSConfiguration (404)
+gcloud --account admin@… projects describe pocketqa-optijara → needs interactive re-authentication
+```
+
+### `pnpm verify` (EXIT=0 at each increment's freeze)
+| Increment | scripts | contracts | domain | api | mobile |
+|---|---|---|---|---|---|
+| 1 `a350118` | 42 | 17 | 170 | 355 + 2 skipped | 714 |
+| 2 `90a5ddd` | 42 | 17 | 170 | 358 + 2 skipped | 722 |
+| 3 `16378f4` | 42 | 17 | 170 | 360 + 2 skipped | 729 |
+| 4 `4028884` | 47 | 17 | 170 | 369 + 2 skipped | 731 |
+
+### Browser
+- `cd apps/mobile && npx playwright test`:
+  - inc1/inc2: 11/11;
+  - inc3/inc4: 12/12, adding the two-wallet chooser test.
+  
+  `PW_EXIT=0` each time. The screenshots the suite rewrites were restored with `git restore`.
+- `pnpm test:e2e:firebase` (Auth emulator, `demo-pocketqa`): 4/4 from inc2 on, covering sign-up/verify, the local-login refusal, resending verification, and the password reset round trip.
+- `PROD_API_URL=/api bash scripts/production/build-web.sh`: EXIT=0. The secret check found 0 values in 29 files; no loopback API origin and no demo account in the bundle.
+
+### Native (EMULATOR ONLY: AVD `Medium_Phone_API_36.1`, `sdk_gphone64_arm64`, Android 16; no physical device)
+| Run | APK sha256 | Result |
+|---|---|---|
+| I8 green: `maestro test e2e/maestro/firebase-persistence.yaml` (dev prebuild; API in firebase mode plus the Auth emulator via `adb reverse`) | `b19367895794a00a2ea725f94c6e7689df4105cee399eacbc4107b81057ce81d` (rebuilt: same hash) | MAESTRO_EXIT=0: signed in after force-stop and relaunch |
+| I8 red: same flow, native `getAuth` (memory only) | `a233bde4c5ff654bbeff19d6ee6d2fbec88b6983a0a1d6ebee18263f11a3d0a7` | MAESTRO_EXIT=1 at "discover-screen visible" after relaunch |
+| W3: `wallet-login-mwa.yaml` (Solana mock wallet; local API with `POCKETQA_WALLET_LOGIN=1`) | `d061f40d8cf3a14195baa6d10490937f9cfab25538a1b6548dc9dffbfa3fb8f2` | MAESTRO_EXIT=0: the wallet showed the `pocketqa.local` SIWS text ("…never on a website… not a payment") → account created → Discover |
+| W3: `wallet-login-mwa-decline.yaml` | same | MAESTRO_EXIT=0: "declined or closed. You are not signed in." |
+| N1: production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`, `EXPO_PUBLIC_API_URL=https://api.pocketqa.example`) | `1ba399a61d5837157b3293caa7906036a84bc4a91459685bc902e2497354b543` | No cleartext domains; the manifest references the network config. The bundle has the https API, 0 × `127.0.0.1:8787` and 0 demo accounts. The unreachable API is shown honestly (`native-production-build/launch.png`) |
+
+The two earlier red-run attempts are not evidence. One reused an account. In the other, the mock wallet was in the foreground on the shared AVD. The test AVD PIN was passed through an env variable and redacted from the Maestro command logs; a scan of `docs/reviews/production` found 0 occurrences.
+
+### Operations (inc4)
+- **Real-process test** (`apps/api/test/operations.test.ts`):
+  - register;
+  - `db:restore` is refused while the API runs, by port and by pid file;
+  - SIGTERM exits 0, the port is closed and the pid file is removed;
+  - restart, then log in as the same user.
+- **Backup drill** (`backup.test.ts`, `db-scripts.test.ts`): an online backup of a live WAL database, mutate, restore, and the backup state returns, with the pre-restore files kept.
+
 ## 2026-10-04: Lens screens, PR #3 (contributor session, claymorius-wq; Windows 11 clone of `feat/lens-ui` at `ad99009`)
 
 **Where the output is.** The raw output of every command below is in `docs/reviews/lens/`, with local paths shortened to `<repo>` and `<tmp>` and the emulator's one-time codes masked. `candidate.md` there explains each file. Node v24.21.0, pnpm 10.32.1.
@@ -400,3 +449,19 @@ $ firebase emulators:exec ... test/firebase-emulator.test.ts  Tests 2 passed (2)
 $ firebase emulators:exec ... playwright.firebase.config.ts   2 passed
 $ focus-visible.spec.ts alone, scroll-padding switched off      2 failed: "scroll-padding-top covers the header scrim", Received 0 (expected >= 105 dark, >= 97 light)
 ```
+
+## 2026-10-04 (afternoon): integrated release candidate (main `4bd307a` merged, plus inc5); details in `docs/reviews/production/rc-candidate.md`
+- **`pnpm verify`:** EXIT=0. Test counts: scripts 47, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1018.
+- **Browser:** Playwright 14/14; Firebase emulator E2E 4/4; production web export EXIT=0.
+- **Android EMULATOR, final APK `6f9208cd…`:**
+  - `run-native.sh`: 12/12;
+  - the MWA sign-in and decline flows with the **mock** wallet: both pass;
+  - Firebase persistence: passes;
+  - crash buffer: 0 entries.
+- **iOS SIMULATOR, `main.jsbundle a9f23a2f…`:** `ios-smoke` and `ios-settings` pass. They failed on `09092f15…` before fix N-4.
+- **R2 CORS on `pocketqa-evidence`:**
+  ```
+  plan create → readback matches
+  PUT preflight from https://pocketqa.optijara.ai → 204; from https://evil.example → 403; GET → 403
+  ```
+

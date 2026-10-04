@@ -1,0 +1,37 @@
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/Users/hamzadiaz/.maestro/lib/jansi-2.4.1.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Running on iPhone 17 Pro - iOS 26.4 - 076074CD-A2D1-48E4-BF12-0343AC79C8AC
+ > Flow ios-smoke
+Launch app "com.reshareai.pocketqa" with clear state... COMPLETED
+Tap on id: sign-in-email... COMPLETED
+Input text ${EMAIL}...WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.oracle.truffle.api.dsl.InlineSupport$UnsafeField (file:/Users/hamzadiaz/.maestro/lib/truffle-api-24.2.0.jar)
+WARNING: Please consider reporting this to the maintainers of class com.oracle.truffle.api.dsl.InlineSupport$UnsafeField
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+ COMPLETED
+Tap on id: sign-in-password... COMPLETED
+Input text ${PASSWORD}... COMPLETED
+Tap on id: sign-in-submit... COMPLETED
+Tap on (Optional) "Not Now"... COMPLETED
+Assert that ".*${STUDY}.*" is visible... COMPLETED
+Tap on ".*${STUDY}.*"... COMPLETED
+Scrolling DOWN until id: recording-unavailable is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled... COMPLETED
+Assert that ".*Recording other apps isn.t supported on iOS.*" is visible... COMPLETED
+Take screenshot ios-study-recording-unavailable... COMPLETED
+Scrolling DOWN until id: consent-checkbox is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled... COMPLETED
+Tap on id: consent-checkbox... COMPLETED
+Tap on id: consent-submit... COMPLETED
+Tap on id: session-start... COMPLETED
+Assert that "IN PROGRESS" is visible... COMPLETED
+Assert that ".*\(tester\).*" is not visible... COMPLETED
+Scrolling DOWN until id: attach-evidence is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled... COMPLETED
+Take screenshot ios-session... COMPLETED
+Launch app "com.reshareai.pocketqa"... COMPLETED
+Tap on id: tab-settings... COMPLETED
+Scrolling DOWN until id: wallet-unavailable is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled... COMPLETED
+Assert that ".*Mobile Wallet Adapter is Android-only.*" is visible... COMPLETED
+Take screenshot ios-settings-wallet-unavailable... COMPLETED
+ios-smoke MAESTRO_EXIT=0

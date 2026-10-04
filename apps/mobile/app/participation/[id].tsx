@@ -16,6 +16,7 @@ import { applySegment, removeSegment, uploadKept, type LocalSegment } from '../.
 import { GlassBlur, GlassSurface, useUplight } from '../../src/glass';
 import { GlassTile } from '../../src/icons';
 import { TransferCard } from '../../src/wallet/TransferCard';
+import { useSession } from '../../src/auth/SessionProvider';
 import { recordingCapability } from '../../src/lib/capability';
 import { bytes, credits, statusLabel, when } from '../../src/lib/format';
 import { useEvidence, useFindings, useMyDisputes, useParticipation, useTesterStudy } from '../../src/lib/queries';
@@ -371,6 +372,9 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   const attachButton = <Button label="Attach screenshot or clip" icon={Paperclip} variant="secondary" onPress={attach} disabled={locked} testID="attach-evidence" />;
   return (
     <Block title="Evidence" gap={10}>
+      {/* Above the recorder, so the reason shows where the user just tapped (a declined capture
+          dialog left it off-screen below the card on the Lens layout; native run 2026-10-04). */}
+      {error ? <Notice tone="danger" title="Evidence" testID="evidence-error">{error}</Notice> : null}
       {cap.available ? (
         // U3 Live and S2: the card is lit from below and the core breathes while recording.
         <RecordControl live={recording} onStart={startRecording} onStop={stopRecording} help={RECORDER_HELP} startDisabled={locked}>
@@ -387,7 +391,6 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
           Android stopped the recording (status-bar control or screen lock). Your clip so far is below for review.
         </Notice>
       ) : null}
-      {error ? <Notice tone="danger" title="Evidence" testID="evidence-error">{error}</Notice> : null}
       {visible.length > 0 ? <ReviewNotice /> : null}
       {/* Rows carry their own 10dp top space and the list pulls up 10, so an empty list takes no gap. */}
       <GlideList gap={0} style={styles.clips}>
@@ -477,6 +480,8 @@ function DisputeCard({ dispute }: { dispute: MyDispute }) {
 }
 
 function Decision({ p }: { p: Participation }) {
+  // Devnet demo transfers are a development feature; production never shows them (ledger D4).
+  const { features } = useSession();
   const findings = useFindings(p.id);
   const disputes = useMyDisputes();
   const qc = useQueryClient();
@@ -533,9 +538,9 @@ function Decision({ p }: { p: Participation }) {
         error={dispute.error ? (dispute.error as ApiError).message : null}
         failureTitle="Couldn’t send"
       >
-        <Field label="Reason" value={reason} onChangeText={setReason} multiline testID="dispute-reason" hint="At least 10 characters." />
+        <Field label="Reason" value={reason} onChangeText={setReason} multiline locked={dispute.isPending} testID="dispute-reason" hint="At least 10 characters." />
       </ConfirmSheet>
-      {p.status === 'approved' || p.status === 'resolved' ? (
+      {features.devnetTransfers && (p.status === 'approved' || p.status === 'resolved') ? (
         <View style={styles.transfer}>
           <TransferCard participationId={p.id} role="tester" canStart={false} />
         </View>

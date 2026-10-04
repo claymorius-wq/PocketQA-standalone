@@ -14,7 +14,7 @@ function mockFetch(storage: 'local' | 'r2', putStatuses: number[] = [200]) {
   global.fetch = jest.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     const u = String(url);
     calls.push({ url: u, method: init?.method ?? 'GET', headers: (init?.headers ?? {}) as Record<string, string>, body: init?.body });
-    if (u.endsWith('/config')) return json(200, { authMode: 'local', storage, walletLogin: false, firebase: null });
+    if (u.endsWith('/config')) return json(200, { authMode: 'local', storage, walletLogin: false, features: { testCredits: true, devnetTransfers: true }, firebase: null });
     if (u.includes('/upload-intents/in-1/complete')) return json(200, evidence);
     if (u.endsWith('/evidence/upload-intents')) return json(200, intent);
     if (u.startsWith('https://acct.r2')) return new Response('', { status: puts.shift() ?? 200 });

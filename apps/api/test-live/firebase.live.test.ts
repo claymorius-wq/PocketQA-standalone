@@ -37,7 +37,7 @@ d('live Firebase Auth: dedicated project', () => {
   };
 
   beforeAll(async () => {
-    const config = loadConfig({ ...env, POCKETQA_DATA_DIR: dir, POCKETQA_AUTH_MODE: 'firebase' });
+    const config = loadConfig({ ...env, POCKETQA_ENV: 'development', POCKETQA_DATA_DIR: dir, POCKETQA_AUTH_MODE: 'firebase' }); // synthetic test users
     if (config.firebase!.projectId !== 'pocketqa-optijara') throw new Error('refusing: not the dedicated project');
     webKey = config.firebase!.webApiKey;
     mkdirSync(join(dir, 'media'));

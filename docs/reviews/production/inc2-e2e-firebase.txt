@@ -1,0 +1,31 @@
+
+> pocket-qa@ test:e2e:firebase /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> firebase emulators:exec --only auth --project demo-pocketqa "pnpm --filter @pocket-qa/mobile exec playwright test -c playwright.firebase.config.ts"
+
+i  emulators: Starting emulators: auth
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  Running script: pnpm --filter @pocket-qa/mobile exec playwright test -c playwright.firebase.config.ts
+[WebServer] npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "node-linker". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Running 4 tests using 1 worker
+
+i  To verify the email address fb-1791108482528@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=5RhXkQVkXIo0S4LZ83r688HMM9L-yKVJr1bzy01iGGpTfpp5C4IYo-&apiKey=fake-api-key
+  ✓  1 e2e-firebase/firebase-auth.spec.ts:19:5 › email sign-up → verify → sign in → choose a role → app; the session survives a reload (1.6s)
+  ✓  2 e2e-firebase/firebase-auth.spec.ts:52:5 › the API refuses local password sign-in in firebase mode (one account system) (8ms)
+i  To verify the email address fb-resend-1791108484053@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=N1Z857jd7FsScQImlZwswbiBAM_iMuR8h_7SQqEak2hy_WHGXmlXu3&apiKey=fake-api-key
+i  To verify the email address fb-resend-1791108484053@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=THGfdlZ_Yx5Aw1akq2AZFdlAXqL_b1ouJRFqOINlk5-heZ2Ldrb0Lr&apiKey=fake-api-key
+  ✓  3 e2e-firebase/firebase-auth.spec.ts:64:5 › an unverified user can resend the verification email from sign-in (ledger I4) (1.0s)
+i  To verify the email address fb-reset-1791108485075@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=oX2AGKju8UhA8NkoU9ZNjN8-TZG_YmqhcprYYPangRLlZSVSKSDyPy&apiKey=fake-api-key
+i  To reset the password for fb-reset-1791108485075@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=resetPassword&lang=en&oobCode=5x4rdAkQ99DEFYCSsw_Lr0WEo35agKjjHVny4dGrbcvH8p5ZZ1iE8_&apiKey=fake-api-key&newPassword=NEW_PASSWORD_HERE
+  ✓  4 e2e-firebase/firebase-auth.spec.ts:86:5 › password reset: same answer for known and unknown emails; the link really resets (ledger I4) (1.5s)
+
+  4 passed (15.3s)
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+EXIT=0

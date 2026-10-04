@@ -34,7 +34,7 @@ const mockCompleteAccount = jest.fn<Promise<void>, [NewAccount]>();
 const mockAuth = { signInWithGoogle: jest.fn<Promise<void>, []>(), signInWithWallet: jest.fn<Promise<void>, [NewAccount?]>() };
 // The session as SessionProvider serves the local build (local auth and storage, no wallet login,
 // nobody waiting to finish an account); a test sets fields for a managed (Firebase) deployment.
-const LOCAL_SESSION = { authMode: 'local', storage: 'local', walletLogin: false, needsAccount: false, pendingProfile: null as NewAccount | null };
+const LOCAL_SESSION = { authMode: 'local', storage: 'local', walletLogin: false, needsAccount: false, pendingProfile: null as NewAccount | null, features: { testCredits: true, devnetTransfers: true }, unverifiedEmail: false, unreachable: false, retryConnection: () => {}, resendVerification: async () => {}, discardUnverified: async () => {}, sendPasswordReset: async () => {} };
 let mockSession: Partial<typeof LOCAL_SESSION> & Record<string, unknown> = { ...LOCAL_SESSION };
 jest.mock('../src/auth/SessionProvider', () => ({
   useSession: () => ({ ...mockSession, ...mockAuth, signIn: mockSignIn, signUp: mockSignUp, completeAccount: mockCompleteAccount }),

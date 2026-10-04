@@ -51,6 +51,11 @@ POCKETQA_LIVE_FIREBASE=1 POCKETQA_FIREBASE_PROJECT_ID=pocketqa-optijara POCKETQA
   pnpm --filter @pocket-qa/api test:live -- test-live/firebase.live.test.ts      # refuses any other project; never deletes
 ```
 
+## Production mode
+- `POCKETQA_ENV=production` refuses every demo, emulator, local-auth, test-credit and devnet-transfer path (`docs/production/acceptance-ledger.md`).
+- With a real Firebase project or real R2, `POCKETQA_ENV` must be set explicitly.
+- **Never use `POCKETQA_ENV=development` with real users.** Development keeps test credits and devnet demo transfers on, and allows R2's retention-only mode. It exists for synthetic data and the live tests only.
+
 ## Feature flags (all off by default)
 
 | Variable | Values | Notes |

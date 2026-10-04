@@ -1,0 +1,6 @@
+bucket pocketqa-evidence: current CORS (none)
+desired [{"AllowedOrigins":["https://pocketqa.optijara.ai"],"AllowedMethods":["PUT"],"AllowedHeaders":["content-type"],"MaxAgeSeconds":3600}] → plan: create
+readback: [{"AllowedMethods":["PUT"],"AllowedOrigins":["https://pocketqa.optijara.ai"],"AllowedHeaders":["content-type"],"MaxAgeSeconds":3600}] → matches
+preflight PUT from https://pocketqa.optijara.ai: status 204 allow-origin=https://pocketqa.optijara.ai allow-methods=PUT
+preflight PUT from https://evil.example: status 403 allow-origin=null allow-methods=null
+preflight GET from the allowed origin: status 403 allow-origin=null

@@ -17,9 +17,10 @@ jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual(
 type Entry = { id: string; kind: string; amount: number; studyId: string | null; participationId: string | null; createdAt: string };
 type Data = { balance: number; entries: Entry[]; disclaimer: 'Test credits · no cash value' };
 let mockUser: { id: string; role: 'tester' | 'builder' } = { id: 'u-tester', role: 'tester' };
+let mockFeatures = { testCredits: true, devnetTransfers: true };
 let mockData: Data = { balance: 0, entries: [], disclaimer: 'Test credits · no cash value' };
 const mockApi = jest.fn();
-jest.mock('../../auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser }) }));
+jest.mock('../../auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser, features: mockFeatures }) }));
 jest.mock('../../lib/queries', () => ({
   useCredits: () => ({ isLoading: false, error: null, data: mockData, refetch: jest.fn() }),
   useFocusRefetch: () => undefined,
@@ -183,6 +184,35 @@ describe('Budget (builder)', () => {
     await fireEvent.press(screen.getByTestId('topup-submit'));
     expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 5000 } });
     expect(mockHero.every((p) => !p.earned)).toBe(true);
+  });
+
+  it('a pending top-up sends the amount that was tapped; picking another meanwhile is ignored (Lens follow-ups P3-6)', async () => {
+    let finish: (v: unknown) => void = () => {};
+    mockApi.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+    await renderScreen('Budget');
+    await fireEvent.press(screen.getByTestId('topup-amount-500'));
+    await fireEvent.press(screen.getByTestId('topup-submit'));
+    await fireEvent.press(screen.getByTestId('topup-amount-5000'));
+    // The control keeps showing what is being sent while the request runs.
+    expect(screen.getByTestId('topup-amount-500')).toHaveProp('accessibilityState', { selected: true });
+    expect(screen.getByTestId('topup-amount-5000')).toHaveProp('accessibilityState', { selected: false });
+    await act(async () => finish({ balance: 500 }));
+    expect(mockApi).toHaveBeenCalledTimes(1);
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 } });
+    mockApi.mockReset();
+  });
+
+  it('production (no test credits): an honest funding notice, no top-up card and no top-up call (ledger D3)', async () => {
+    mockFeatures = { testCredits: false, devnetTransfers: false };
+    try {
+      await renderScreen('Budget');
+      expect(screen.getByTestId('funding-unavailable')).toHaveTextContent(/paying with real money isn’t enabled yet/);
+      expect(screen.queryByTestId('topup-submit')).toBeNull();
+      expect(screen.queryByText('Add local test credits')).toBeNull();
+      expect(mockApi).not.toHaveBeenCalledWith('topUp', expect.anything());
+    } finally {
+      mockFeatures = { testCredits: true, devnetTransfers: true };
+    }
   });
 
   it('an empty ledger shows the builder copy; a failed top-up shows the danger notice', async () => {

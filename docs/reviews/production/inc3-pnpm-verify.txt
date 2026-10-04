@@ -1,0 +1,176 @@
+
+> pocket-qa@ verify /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> node scripts/check-node.mjs && pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 605 committable files scanned, no findings.
+secret check: 0 values, 604 files, 0 occurrences
+
+> pocket-qa@ typecheck /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> eslint .
+
+
+> pocket-qa@ test /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (1.191291ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.075167ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.286958ms)
+✔ allow marker covers only its own line (0.097625ms)
+✔ forbidden paths (0.374084ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (171.169083ms)
+✔ CLI still runs when invoked through a symlink (59.050542ms)
+▶ preview gate: nothing is served without the gate cookie
+  ✔ rejects requests for any other Host (421) (5.522291ms)
+  ✔ redirects pages and assets to the login page, and returns 401 for the API (2.719ms)
+  ✔ serves the login page with a strict CSP and an identity marker (0.9925ms)
+✔ preview gate: nothing is served without the gate cookie (60.469542ms)
+▶ preview gate: login
+  ✔ refuses a cross-site login POST (403) (0.649ms)
+  ✔ rejects a wrong password, then rate-limits that client even with the right one (476.669459ms)
+  ✔ sets a __Host- cookie that is HttpOnly, Secure, SameSite=Strict, Path=/, no Domain (43.458417ms)
+  ✔ ignores an oversized login body (0.714958ms)
+✔ preview gate: login (521.717041ms)
+▶ preview gate: with a valid cookie
+  ✔ serves the app, with SPA fallback and no path traversal (46.408666ms)
+  ✔ proxies /api to the loopback API: path stripped, bearer kept, gate cookie and upstream cookies dropped (44.609292ms)
+  ✔ rejects tampered and expired cookies, and logout clears the cookie (43.904208ms)
+  ✔ returns 502 JSON when the API is down (127.740875ms)
+✔ preview gate: with a valid cookie (262.871625ms)
+▶ preview gate: shared-preview policy (review r1 P2)
+  ✔ refuses uploads, account deletion and admin moderation without reaching the API (45.198375ms)
+  ✔ rejects encoded, dot-segment and doubled-slash spellings instead of forwarding them (41.433584ms)
+  ✔ still forwards allowed calls on the same resources (40.53175ms)
+  ✔ strips headers named in Connection and sandboxes API responses (39.95675ms)
+✔ preview gate: shared-preview policy (review r1 P2) (167.313167ms)
+▶ preview gate: login under load (review r1 P3)
+  ✔ caps concurrent attempts so a burst cannot bypass the per-IP limit (44.211167ms)
+✔ preview gate: login under load (review r1 P3) (44.306458ms)
+▶ preview gate: slow logins (review r2 P3)
+  ✔ trickled login bodies do not hold the verification slots (148.174334ms)
+✔ preview gate: slow logins (review r2 P3) (148.279833ms)
+▶ preview gate: login timeout is per request (review r3 P3)
+  ✔ a slow proxied call on the same keep-alive connection after a login is not cut off (486.070125ms)
+✔ preview gate: login timeout is per request (review r3 P3) (486.492542ms)
+▶ preview gate: login body deadline is total, not idle (review r3 P3)
+  ✔ a body trickled faster than the timeout is still cut off at the deadline (385.302167ms)
+✔ preview gate: login body deadline is total, not idle (review r3 P3) (385.697708ms)
+▶ preview gate: shared-demo convenience (Hamza, 2026-10-03)
+  ✔ prefills the gate password (HTML-escaped) and says it is not access protection (149.24875ms)
+  ✔ serves demo sign-ins only behind the gate, GET only (79.478042ms)
+  ✔ is off by default: no prefill, no bootstrap (39.657084ms)
+  ✔ the convenience file must be 0600 and list only the synthetic demo accounts (0.955791ms)
+✔ preview gate: shared-demo convenience (Hamza, 2026-10-03) (269.58375ms)
+▶ preview gate: configuration guards
+  ✔ refuses a non-loopback API origin and a short cookie key (39.54225ms)
+  ✔ refuses a secret file readable by other users (40.080833ms)
+  ✔ session tokens verify only with the right key and before expiry (0.12275ms)
+✔ preview gate: configuration guards (79.822833ms)
+✔ state folder overrides are limited to .preview or .preview-test/ (review r1 P3) (172.816459ms)
+✔ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (404.348875ms)
+✔ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (271.441375ms)
+✔ start.sh pins the shared demo to local auth and local storage (cloud review r1 P2) (0.155083ms)
+✔ production web build refuses the demo preview switch (9.03975ms)
+✔ production web build refuses missing, plain-http and loopback API URLs (315.777375ms)
+✔ production web build refuses an output dir other than apps/mobile/dist-production (it rm -rf siblings) (438.037625ms)
+✔ check-url mirrors isPublicHost in packages/contracts (same cases) (0.500125ms)
+✔ check-url still checks when invoked through a symlink or a path with spaces (24.471ms)
+ℹ tests 42
+ℹ suites 10
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3825.862334
+Scope: 5 of 6 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  17 passed (17)
+packages/contracts test:    Start at  12:22:33
+packages/contracts test:    Duration  134ms (import 50%, transform 40%, tests 6%, worker 3%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  11 passed (11)
+packages/domain test:       Tests  170 passed (170)
+packages/domain test:    Start at  12:22:34
+packages/domain test:    Duration  273ms (transform 38%, import 37%, worker 14%, tests 11%)
+packages/domain test: [34m % [39m[2mCoverage report from [22m[33mv8[39m
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.83 |     99.4 |     100 |   98.94 |                   
+packages/domain test:  copy.ts          |   96.29 |    94.73 |     100 |     100 | 74                
+packages/domain test:  transferTx.ts    |   96.66 |      100 |     100 |      96 | 12                
+packages/domain test:  wallet.ts        |   97.77 |      100 |     100 |   96.55 | 40                
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.83% ( 255/258 )
+packages/domain test: Branches     : 99.4% ( 168/169 )
+packages/domain test: Functions    : 100% ( 53/53 )
+packages/domain test: Lines        : 98.94% ( 187/189 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/api test$ vitest run
+apps/mobile test$ jest --ci
+apps/api test:  RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/apps/api
+apps/mobile test: PASS src/motion/__tests__/motion-primitives.test.tsx
+apps/mobile test: PASS __tests__/motion.test.tsx
+apps/mobile test: PASS src/motion/__tests__/arrival.test.tsx
+apps/api test:  Test Files  18 passed | 1 skipped (19)
+apps/api test:       Tests  360 passed | 2 skipped (362)
+apps/api test:    Start at  12:22:34
+apps/api test:    Duration  3.54s (tests 65%, import 25%, transform 10%)
+apps/api test: Done
+apps/mobile test: PASS __tests__/signature.test.ts
+apps/mobile test: PASS __tests__/wallet-mwa-login.test.ts
+apps/mobile test: PASS __tests__/managed-session.test.ts
+apps/mobile test: PASS __tests__/token-refresh.test.ts
+apps/mobile test: PASS __tests__/contrast.test.ts
+apps/mobile test: PASS __tests__/wallet-web-flows.test.ts
+apps/mobile test: PASS __tests__/copy.test.ts
+apps/mobile test: PASS __tests__/report-signature.test.ts
+apps/mobile test: PASS __tests__/firebase-persistence.test.ts
+apps/mobile test: PASS __tests__/upload-queue.test.ts
+apps/mobile test: PASS __tests__/wallet-standard.test.ts
+apps/mobile test: PASS src/glass/__tests__/glass.test.tsx
+apps/mobile test: PASS __tests__/demo-accounts.test.ts
+apps/mobile test: PASS __tests__/platform-modules.test.ts
+apps/mobile test: PASS __tests__/firebase-errors.test.ts
+apps/mobile test: PASS __tests__/deployment.test.ts
+apps/mobile test: PASS __tests__/direct-upload.test.ts
+apps/mobile test: PASS __tests__/focus-refetch.test.tsx
+apps/mobile test: PASS __tests__/session-restore.test.ts
+apps/mobile test: PASS __tests__/footer.test.ts
+apps/mobile test: PASS __tests__/capability.test.ts
+apps/mobile test: PASS __tests__/wallet-errors.test.ts
+apps/mobile test: PASS src/ui/__tests__/chrome.test.tsx
+apps/mobile test: PASS src/ui/patterns/__tests__/patterns.test.tsx (5.008 s)
+apps/mobile test: PASS src/icons/__tests__/icons.test.tsx (5.072 s)
+apps/mobile test: PASS src/ui/__tests__/ui.test.tsx (5.148 s)
+apps/mobile test: Test Suites: 29 passed, 29 total
+apps/mobile test: Tests:       729 passed, 729 total
+apps/mobile test: Snapshots:   0 total
+apps/mobile test: Time:        5.548 s
+apps/mobile test: Ran all test suites.
+apps/mobile test: Done
+EXIT=0

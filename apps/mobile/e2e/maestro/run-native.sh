@@ -9,7 +9,7 @@ FLOWDIR="$PWD"
 OUT="$PWD/.results/$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$OUT"
 FLOWS=("$@")
-[ $# -gt 0 ] || FLOWS=(record-consent record-decline notifications-denied remove-segment system-stop notification-stop leave-while-recording wallet-decline wallet-link devnet-transfer-unfunded sheet-keyboard)
+[ $# -gt 0 ] || FLOWS=(record-consent record-decline notifications-denied remove-segment system-stop notification-stop leave-while-recording wallet-decline wallet-link devnet-transfer-unfunded sheet-keyboard sign-out)
 adb reverse tcp:8787 tcp:8787 >/dev/null
 status=0
 for f in "${FLOWS[@]}"; do

@@ -65,7 +65,7 @@ export { Spinner } from './spinner';
 const PASS: ViewStyle = { pointerEvents: 'none' };
 const WEB = Platform.OS === 'web';
 
-export function Screen({ children, title, subtitle, scroll = true, fill = false, testID, right, entrance, dock, dockPlacement = 'float', dockKeyboard = 'stay', dockClearance = space.xl, scrollRef, headerGap = HEADER_GAP }: {
+export function Screen({ children, title, subtitle, scroll = true, fill = false, testID, right, entrance, dock, dockPlacement = 'float', dockKeyboard = 'stay', dockClearance = space.xl, focusFloor = 0, scrollRef, headerGap = HEADER_GAP }: {
   children: ReactNode;
   title?: string;
   subtitle?: string;
@@ -119,6 +119,12 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   dockKeyboard?: 'stay' | 'hide' | 'ride';
   /** Ground left between the end of the content and the dock's top edge (default 24). */
   dockClearance?: number;
+  /**
+   * Web only: the least room, from the bottom of the scroll area, that keyboard focus keeps clear
+   * (scroll-padding-bottom). For a dock with a ground scrim taller than its frame, so a focused
+   * control never rests under the scrim's fade (Lens follow-ups r1 P3-1). Layout is unchanged.
+   */
+  focusFloor?: number;
   /**
    * The scroll view, for a screen that scrolls itself (e.g. to bring a decision into view). Tab
    * roots also scroll to the top when their tab is pressed again (C3), with or without it.
@@ -197,7 +203,9 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   const top = stack ? headerHeight + STACK_CONTENT_GAP : Math.max(insets.top, layout.statusBarReserve) + layout.headerTextTop - layout.statusBarReserve - insets.top;
   // With a dock, the content ends `dockClearance` above the dock's top edge (never less than the usual bottom room).
   const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance : 0;
-  const pad = { paddingTop: top, paddingBottom: Math.max(space.xxl * 2 + tabBarHeight, dockRoom) };
+  // Web: the content also runs at least `focusFloor` past the end, so the last controls can be
+  // scrolled clear of a tall dock scrim when they take keyboard focus. Native layout is unchanged.
+  const pad = { paddingTop: top, paddingBottom: Math.max(space.xxl * 2 + tabBarHeight, dockRoom, WEB ? focusFloor : 0) };
   // Web: keyboard focus scrolls a control into view only when it is outside the scroll area, and
   // that area runs under the header scrim and the dock or tab bar. The same room the content keeps
   // becomes the area's scroll-padding, so a focused control never comes to rest under them (WCAG 2.2
@@ -218,6 +226,10 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
                   style={focusRoom}
                   contentContainerStyle={[styles.content, pad, fill ? styles.grow : null]}
                   keyboardShouldPersistTaps="handled"
+                  // iOS doesn't resize the window for the keyboard (Android does): let the content
+                  // scroll clear of it, so fields above a riding dock can be reached (native run,
+                  // iOS simulator, 2026-10-04).
+                  automaticallyAdjustKeyboardInsets
                   scrollIndicatorInsets={stack ? { top: headerHeight } : undefined}
                 >
                   <View style={[styles.column, fill ? styles.grow : null]}>

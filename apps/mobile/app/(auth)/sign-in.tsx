@@ -1,7 +1,7 @@
 import { Link } from 'expo-router';
-import { LogIn, UserPlus, Wallet } from 'lucide-react-native';
+import { KeyRound, LogIn, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
 import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
 import { useSession } from '../../src/auth/SessionProvider';
@@ -11,7 +11,8 @@ import { armU1, BrandHero, CardRule, disarmU1, SignInDock, signInMoment, u1PassA
 import { UPLIGHT } from '../../src/theme/motion';
 import type { GlyphName } from '../../src/icons';
 import { layout, radius } from '../../src/theme/tokens';
-import { availableWallets } from '../../src/wallet/registry';
+import type { StandardWallet } from '../../src/wallet/standard';
+import { useWallets } from '../../src/wallet/useWallets';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text, useKeyboardShown } from '../../src/ui';
 import { Enter } from '../../src/ui/screen';
 
@@ -29,10 +30,36 @@ const ROLE_GLYPH: Record<DemoRole, GlyphName> = { tester: 'discover', builder: '
 // the fields, and "Finish your account" when a sign-in has no Pocket QA account yet. Those paths
 // land with the plain `replace`, as Sign up does: U1 belongs to the Sign in primary alone.
 export default function SignIn() {
-  const { signIn, authMode, storage, walletLogin, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount } = useSession();
+  const {
+    signIn,
+    authMode,
+    storage,
+    walletLogin,
+    features,
+    needsAccount,
+    pendingProfile,
+    signInWithGoogle,
+    signInWithWallet,
+    completeAccount,
+    unverifiedEmail,
+    resendVerification,
+    discardUnverified,
+    sendPasswordReset,
+    unreachable,
+    retryConnection,
+  } = useSession();
   const web = Platform.OS === 'web';
-  // Wallet sign-in: web with a Solana Wallet Standard extension, when the server enables it.
-  const canWallet = walletLogin && web && availableWallets().length > 0;
+  // Wallet sign-in when the server enables it: web with Wallet Standard extensions (one button
+  // per wallet, ledger W1), or Android through Mobile Wallet Adapter (ledger W3). Never on the
+  // shared preview. iOS has no wallet path.
+  const wallets = useWallets();
+  const android = Platform.OS === 'android';
+  const canWallet = walletLogin && !PREVIEW_BUILD && ((web && wallets.length > 0) || android);
+  const [chosenWallet, setChosenWallet] = useState<StandardWallet | undefined>(undefined);
+  // Firebase mode: "Forgot password?" (ledger I4) and "Resend verification email".
+  const canReset = authMode === 'firebase';
+  const [resetOpen, setResetOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const canGoogle = authMode === 'firebase' && web;
   const [role, setRole] = useState<'tester' | 'builder'>('tester');
   const [displayName, setDisplayName] = useState('');
@@ -61,6 +88,18 @@ export default function SignIn() {
   // Counts Sign in responses; the effect below reads each one's outcome once it has rendered.
   const [answered, setAnswered] = useState(0);
   useEffect(() => () => clearTimeout(passTimer.current), []);
+  // Leaving sign-in after an unverified refusal signs that Firebase user out (inc2 review P3-1).
+  // Refs, not deps: the session object changes on every update, and only unmount should discard.
+  const unverifiedRef = useRef(unverifiedEmail);
+  unverifiedRef.current = unverifiedEmail;
+  const discardRef = useRef(discardUnverified);
+  discardRef.current = discardUnverified;
+  useEffect(
+    () => () => {
+      if (unverifiedRef.current) void discardRef.current();
+    },
+    [],
+  );
 
   function fillDemo(role: DemoRole, list = demo) {
     const a = list.find((x) => x.role === role);
@@ -87,6 +126,7 @@ export default function SignIn() {
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await action();
     } catch (e) {
@@ -143,10 +183,31 @@ export default function SignIn() {
   // fields stay above the keyboard (the content then fits and cannot scroll them into view).
   const keyboard = useKeyboardShown(!PREVIEW_BUILD);
   const anchored = !PREVIEW_BUILD && !keyboard;
+  // With the keyboard up, Sign in rides on it (dockKeyboard "ride"); bring the form's end into view
+  // so neither field sits under it. On iOS the password field was covered and could not be tapped.
+  const scroller = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (!keyboard) return;
+    const t = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(t);
+  }, [keyboard]);
+
+  // Production build, /config unreadable: say so instead of assuming local accounts (inc4).
+  if (unreachable) {
+    return (
+      <Screen testID="sign-in-screen">
+        <Notice tone="danger" title="Can’t reach Pocket QA" testID="unreachable">
+          The Pocket QA server isn’t answering right now, so sign-in isn’t available. Check your connection and try again.
+        </Notice>
+        <Button label="Try again" icon={RefreshCw} onPress={retryConnection} testID="unreachable-retry" />
+      </Screen>
+    );
+  }
 
   return (
     <Screen
       testID="sign-in-screen"
+      scrollRef={scroller}
       fill={anchored}
       // The small print sits above Sign in, so the primary is the last thing on the screen (Mode B).
       dockPlacement="edge"
@@ -184,7 +245,12 @@ export default function SignIn() {
         </SignInDock>
       }
     >
-      <BrandHero key="hero" label="POCKET QA" title="Real-device usability tests" subtitle="Builders fund studies with test credits. Testers record consented sessions. Every reward needs approval." />
+      <BrandHero key="hero" label="POCKET QA" title="Real-device usability tests" subtitle={
+          features.testCredits
+            ? 'Builders fund studies with test credits. Testers record consented sessions. Every reward needs approval.'
+            : 'Builders run usability studies. Testers record consented sessions on their own devices. Every result is reviewed.'
+        }
+      />
       {/* The last step takes the free room (Screen fill) and holds the card at its bottom; the
           error Notice and "Finish your account" rise into that room above it, so the card never
           moves (A-SignIn-Error). */}
@@ -195,6 +261,30 @@ export default function SignIn() {
             <Notice tone="danger" title="Couldn’t sign in" testID="sign-in-error">
               {error}
             </Notice>
+          </Enter>
+        ) : null}
+        {notice ? (
+          <Enter step={1}>
+            <Notice tone="success" title="Check your inbox" testID="sign-in-notice">
+              {notice}
+            </Notice>
+          </Enter>
+        ) : null}
+        {canReset && unverifiedEmail ? (
+          <Enter step={1}>
+            <Button
+              label="Resend verification email"
+              icon={Mail}
+              variant="secondary"
+              onPress={() =>
+                runPlain(async () => {
+                  await resendVerification();
+                  setNotice('We sent a new verification link. Open it, then sign in again.');
+                })
+              }
+              disabled={busy}
+              testID="resend-verification"
+            />
           </Enter>
         ) : null}
         {needsAccount || walletNew ? (
@@ -222,7 +312,7 @@ export default function SignIn() {
               <Button
                 label="Create account"
                 icon={UserPlus}
-                onPress={() => runPlain(() => (walletNew ? signInWithWallet({ role, displayName: displayName.trim() }) : completeAccount({ role, displayName: displayName.trim() })))}
+                onPress={() => runPlain(() => (walletNew ? signInWithWallet({ role, displayName: displayName.trim() }, chosenWallet) : completeAccount({ role, displayName: displayName.trim() })))}
                 loading={busy}
                 disabled={!displayName.trim()}
                 testID="finish-submit"
@@ -253,32 +343,60 @@ export default function SignIn() {
             {/* Return submits too: Sign in lives in the bottom dock, which a phone browser's keyboard can cover. */}
             <Field label="Password" value={password} onChangeText={setPassword} secure returnKeyType="go" onSubmitEditing={() => (ready && !busy ? submit() : undefined)} testID="sign-in-password" />
           </View>
-          {canGoogle || canWallet ? (
+          {canGoogle || canWallet || canReset ? (
             // Secondary glass under the fields, behind the card's divider: never lit (U1 is Sign in's).
             <View>
               <CardRule />
               <View style={styles.others}>
-                {canGoogle ? <Button label="Continue with Google" variant="secondary" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
-                {canWallet ? (
-                  // Sign In With Solana: the wallet shows this site's address; nothing is paid or sent.
+                {canReset ? (
+                  // Sends a reset link to the email above; the answer is the same whether or not an account uses it.
                   <Button
-                    label="Continue with wallet"
-                    icon={Wallet}
-                    variant="secondary"
+                    label={resetOpen ? 'Send password reset link' : 'Forgot password?'}
+                    icon={KeyRound}
+                    variant="ghost"
                     onPress={() =>
-                      runPlain(async () => {
-                        try {
-                          await signInWithWallet();
-                        } catch (e) {
-                          if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
-                          throw e;
-                        }
-                      })
+                      resetOpen
+                        ? runPlain(async () => {
+                            await sendPasswordReset(email.trim());
+                            setNotice('If an account uses this email, a reset link is on its way.');
+                            setResetOpen(false);
+                          })
+                        : setResetOpen(true)
                     }
-                    disabled={busy}
-                    testID="sign-in-wallet"
+                    disabled={busy || (resetOpen && !email.trim())}
+                    testID="forgot-password"
                   />
                 ) : null}
+                {resetOpen ? (
+                  <Text variant="small" tone="muted" testID="reset-hint">
+                    Enter your email above, then send the link.
+                  </Text>
+                ) : null}
+                {canGoogle ? <Button label="Continue with Google" variant="secondary" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
+                {canWallet
+                  ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
+                    (android ? [undefined] : wallets).map((w, i) => (
+                      <Button
+                        key={w?.name ?? 'mwa'}
+                        label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
+                        icon={Wallet}
+                        variant="secondary"
+                        onPress={() =>
+                          runPlain(async () => {
+                            setChosenWallet(w);
+                            try {
+                              await signInWithWallet(undefined, w);
+                            } catch (e) {
+                              if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
+                              throw e;
+                            }
+                          })
+                        }
+                        disabled={busy}
+                        testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
+                      />
+                    ))
+                  : null}
               </View>
             </View>
           ) : null}

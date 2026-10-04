@@ -61,7 +61,11 @@ function creditsView(ctx: Ctx, userId: string) {
 }
 
 export const accountHandlers = {
-  health: () => ({ ok: true as const, contractVersion: CONTRACT_VERSION }),
+  // Readiness, not just liveness: a database that can't answer fails the check (ledger O1).
+  health: (ctx) => {
+    ctx.deps.db.prepare('SELECT 1').get();
+    return { ok: true as const, contractVersion: CONTRACT_VERSION };
+  },
 
   clientConfig: (ctx) => {
     const { authMode, firebase } = ctx.deps.config;
@@ -69,6 +73,7 @@ export const accountHandlers = {
       authMode,
       storage: ctx.deps.config.storage,
       walletLogin: ctx.deps.config.walletLogin,
+      features: ctx.deps.config.features,
       firebase: firebase
         ? {
             apiKey: firebase.webApiKey,
@@ -199,6 +204,9 @@ export const accountHandlers = {
   credits: (ctx) => creditsView(ctx, me(ctx).id),
 
   topUp: (ctx) => {
+    if (!ctx.deps.config.features.testCredits) {
+      throw fail('FEATURE_UNAVAILABLE', 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.');
+    }
     const user = me(ctx);
     post(ctx.deps.db, planTopUp(user.id, ctx.body.amount), ctx.deps.now());
     return creditsView(ctx, user.id);
@@ -293,6 +301,17 @@ export const accountHandlers = {
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${user.id}@deleted.invalid`, user.id);
+      // A fixed-text audit row (no personal data), so operators can find every deletion, e.g. to
+      // re-apply deletions after restoring an older backup (runbook §5).
+      db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
+        newId(),
+        user.id,
+        'user.deleted',
+        'user',
+        user.id,
+        '[account deleted by its owner]',
+        iso(ctx.deps.now()),
+      );
     })();
     // Stored objects: deleted now, or retried through the outbox if the provider fails.
     for (const key of media) await deleteOrQueue(ctx.deps, key);

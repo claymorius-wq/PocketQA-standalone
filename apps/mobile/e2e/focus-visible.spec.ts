@@ -33,8 +33,11 @@ async function geometry(page: Page) {
     while (ground && !ground.querySelector('[data-testid="header-scrim"]')) ground = ground.parentElement;
     const scrim = ground?.querySelector('[data-testid="header-scrim"]');
     const dock = ground?.querySelector('[data-testid="screen-dock"]');
+    // New study's ground scrim behind the dock: focus must clear its fade too (Lens follow-ups r1 P3-1).
+    const dockScrim = dock?.querySelector('[data-testid="dock-scrim"]');
     if (!scrim) throw new Error('no header-scrim around the screen');
     if (!dock) throw new Error('no screen-dock around the screen');
+    if (!dockScrim) throw new Error('no dock-scrim in the dock');
     // The first scrollable element in the screen is its scroll view (text boxes scroll too, but sit inside it).
     const scroller = Array.from(root.querySelectorAll('*')).find((e) => ['auto', 'scroll'].includes(getComputedStyle(e).overflowY));
     if (!scroller) throw new Error('no scroll container in the screen');
@@ -42,7 +45,7 @@ async function geometry(page: Page) {
     const css = getComputedStyle(scroller);
     return {
       scrimBottom: scrim.getBoundingClientRect().bottom,
-      dockTop: dock.getBoundingClientRect().top,
+      dockTop: Math.min(dock.getBoundingClientRect().top, dockScrim.getBoundingClientRect().top),
       scrollerTop: box.top,
       scrollerBottom: box.bottom,
       paddingTop: parseFloat(css.scrollPaddingTop) || 0,
@@ -75,7 +78,7 @@ for (const colorScheme of ['dark', 'light'] as const) {
     // The cause: the scroll area keeps the scrim's and the dock's room clear for focus (1px for rounding).
     const g = await geometry(page);
     expect(g.paddingTop, 'scroll-padding-top covers the header scrim').toBeGreaterThanOrEqual(g.scrimBottom - g.scrollerTop - 1);
-    expect(g.paddingBottom, 'scroll-padding-bottom covers the dock').toBeGreaterThanOrEqual(g.scrollerBottom - g.dockTop - 1);
+    expect(g.paddingBottom, 'scroll-padding-bottom covers the dock and its scrim').toBeGreaterThanOrEqual(g.scrollerBottom - g.dockTop - 1);
 
     // The effect, down the form and back up.
     await page.getByTestId('study-title').focus();

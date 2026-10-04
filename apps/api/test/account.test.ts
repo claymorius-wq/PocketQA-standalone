@@ -63,6 +63,10 @@ describe('export and deletion', () => {
     expect((await t.req('DELETE', '/me', tester.token, { confirm: 'yes' })).status).toBe(400);
     expect(readdirSync(t.mediaDir)).toHaveLength(1);
     expect((await t.req('DELETE', '/me', tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    // A fixed-text audit row records the deletion, with no personal data (inc5).
+    const deletion = t.db.prepare(`SELECT actor_id, target_id, reason FROM audit WHERE action = 'user.deleted'`).get() as { actor_id: string; target_id: string; reason: string };
+    expect(deletion.reason).toBe('[account deleted by its owner]');
+    expect(deletion.actor_id).toBe(deletion.target_id);
 
     expect(readdirSync(t.mediaDir)).toHaveLength(0);
     const row = t.db.prepare('SELECT email, display_name, password_hash, device_json, status FROM users WHERE id = ?').get(tester.id);

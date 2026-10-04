@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="40.0">
+    <testcase id="sign-out" name="sign-out" classname="sign-out" file="/Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/apps/mobile/e2e/maestro/sign-out.yaml" time="40.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

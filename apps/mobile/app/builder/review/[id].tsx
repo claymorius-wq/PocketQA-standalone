@@ -18,6 +18,7 @@ import { layout } from '../../../src/theme/tokens';
 import { Button, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
 import { DecisionBar, SectionHeader } from '../../../src/ui/patterns';
 import { TransferCard } from '../../../src/wallet/TransferCard';
+import { useSession } from '../../../src/auth/SessionProvider';
 
 // Builder review (A-Review, Direction A v2). The participant head with the reward well, the AI
 // panel, the task notes, the evidence strip (its opening reveal is the screen's signature), the
@@ -82,6 +83,8 @@ function FindingForm({ participationId, evidence }: { participationId: string; e
 }
 
 function ReviewInner() {
+  // Devnet demo transfers are a development feature; production never shows them (ledger D4).
+  const { features } = useSession();
   const { glass, motion } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -188,7 +191,7 @@ function ReviewInner() {
                 {canAddFinding(p.status) ? <FindingForm participationId={p.id} evidence={ev.data?.items ?? []} /> : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
-                {!passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
+                {features.devnetTransfers && !passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
                   <TransferCard participationId={p.id} role="builder" canStart />
                 ) : null}
                 <ConfirmSheet
@@ -209,7 +212,7 @@ function ReviewInner() {
                   onCancel={() => setOpen(false)}
                   onConfirm={() => decide.mutate({ kind, note, reason })}
                 >
-                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} testID="approve-note" />}
+                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." locked={decide.isPending} testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} locked={decide.isPending} testID="approve-note" />}
                   {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
                 </ConfirmSheet>
               </>

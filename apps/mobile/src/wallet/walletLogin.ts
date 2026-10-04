@@ -1,7 +1,9 @@
 import type { WalletLoginResponse } from '@pocket-qa/contracts';
+import type { StandardWallet } from './standard';
 
-// Android/iOS: wallet-first login is not offered (ADR 0005 §2). Android keeps MWA account
-// linking only, until an MWA sign_in_payload flow with verified app identity exists.
-export async function walletLoginFlow(_opts: { newAccount?: { role: 'tester' | 'builder'; displayName: string } } = {}): Promise<WalletLoginResponse> {
-  throw new Error('Wallet sign-in is available in the web app with a Solana wallet extension.');
+// iOS (and any platform without a wallet path): wallet-first login is not offered. Web uses
+// the Wallet Standard (walletLogin.web.ts); Android uses Mobile Wallet Adapter
+// (walletLogin.android.ts). Mobile Wallet Adapter does not apply to iOS (CLAUDE.md).
+export async function walletLoginFlow(_opts: { wallet?: StandardWallet; newAccount?: { role: 'tester' | 'builder'; displayName: string } } = {}): Promise<WalletLoginResponse> {
+  throw new Error('Wallet sign-in is available in the Android app and in the web app with a Solana wallet extension.');
 }

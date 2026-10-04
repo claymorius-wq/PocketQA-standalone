@@ -16,3 +16,10 @@ it('Google sign-in errors get their own honest messages (review r2 P3)', () => {
   expect(firebaseErrorText({ code: 'auth/popup-closed-by-user' }, 'google')).toBe('Sign-in was cancelled.');
   expect(firebaseErrorText({ code: 'auth/internal-error' }, 'google')).not.toMatch(/password/);
 });
+
+it('password reset never reveals whether an account exists (ledger I4)', () => {
+  expect(firebaseErrorText({ code: 'auth/invalid-email' }, 'reset')).toBe('Enter a valid email address.');
+  // "No such user" (if enumeration protection is off) is treated like success by the caller.
+  expect(firebaseErrorText({ code: 'auth/user-not-found' }, 'reset')).toBeNull();
+  expect(firebaseErrorText({ code: 'auth/too-many-requests' }, 'reset')).toMatch(/Too many attempts/);
+});

@@ -53,7 +53,8 @@ const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions['logger'] } = {}) {
   const app = Fastify({
     logger: opts.logger ?? false,
-    trustProxy: false,
+    // Only a local reverse proxy (tunnel or gate) can sit in front of a loopback-bound API.
+    trustProxy: deps.config.trustProxy,
   });
   await app.register(cors, {
     origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin)),

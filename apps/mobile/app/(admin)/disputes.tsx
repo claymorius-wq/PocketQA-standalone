@@ -247,13 +247,13 @@ export default function Disputes() {
         <Segmented
           testID="dispute-outcome"
           value={outcome}
-          onChange={setOutcome}
+          onChange={(v) => (resolve.isPending ? undefined : setOutcome(v))}
           options={[
             { value: 'upheld', label: 'Uphold rejection' },
             { value: 'overturned', label: 'Overturn' },
           ]}
         />
-        <Field label="Resolution note" value={note} onChangeText={setNote} hint="At least 5 characters." multiline testID="dispute-note" />
+        <Field label="Resolution note" value={note} onChangeText={setNote} hint="At least 5 characters." multiline locked={resolve.isPending} testID="dispute-note" />
       </ConfirmSheet>
     </Screen>
   );

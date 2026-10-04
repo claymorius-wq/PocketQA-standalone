@@ -116,13 +116,19 @@ export function useLandingEntries<T>(entries: T, { live, delay }: { live: boolea
 }
 
 export function CreditsScreen({ title }: { title: string }) {
-  const { user } = useSession();
+  const { user, features } = useSession();
   const q = useCredits();
   useFocusRefetch(q);
   const qc = useQueryClient();
   const [amount, setAmount] = useState<'500' | '1000' | '5000'>('1000');
+  // Bound to the amount that was tapped (Lens follow-ups r1 P3-6): a request held offline sends
+  // what was confirmed, not whatever the control shows when it finally runs.
+  // The amount in flight: set at the tap (before the mutation's own pending state renders), so the
+  // control shows what is being sent and can't be changed until the request settles.
+  const [sending, setSending] = useState<'500' | '1000' | '5000' | null>(null);
   const topUp = useMutation({
-    mutationFn: () => api('topUp', { body: { amount: Number(amount) } }),
+    mutationFn: (value: number) => api('topUp', { body: { amount: value } }),
+    onSettled: () => setSending(null),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['credits'] }),
   });
   const builder = user?.role === 'builder';
@@ -137,15 +143,22 @@ export function CreditsScreen({ title }: { title: string }) {
             account={user?.id ?? ''}
             tester={user?.role === 'tester'}
             topUp={
-              builder ? (
+              // Production has no test credits and no real funding yet (ledger D3): say so, no button.
+              builder && !features.testCredits ? (
+                <View style={styles.topUp}>
+                  <Notice tone="info" title="Funding isn’t available yet" testID="funding-unavailable">
+                    Test credits are off on this deployment, and paying with real money isn’t enabled yet. You can draft studies; publishing needs funding.
+                  </Notice>
+                </View>
+              ) : builder ? (
                 <Card k={1} style={styles.topUp}>
                   <Text variant="title">Add local test credits</Text>
                   <Text variant="bodySm" tone="muted" style={styles.topUpBody}>Fund studies in this local build. No money changes hands.</Text>
                   <View style={styles.amounts}>
                     <Segmented
                       testID="topup-amount"
-                      value={amount}
-                      onChange={setAmount}
+                      value={sending ?? amount}
+                      onChange={(v) => (sending ? undefined : setAmount(v))}
                       labelVariant="numeral"
                       options={[
                         { value: '500', label: '500' },
@@ -160,7 +173,10 @@ export function CreditsScreen({ title }: { title: string }) {
                     </View>
                   ) : null}
                   <View style={styles.topUpNext}>
-                    <Button label="Add test credits" icon={Plus} onPress={() => topUp.mutate()} loading={topUp.isPending} testID="topup-submit" />
+                    <Button label="Add test credits" icon={Plus} onPress={() => {
+                        setSending(amount);
+                        topUp.mutate(Number(amount));
+                      }} loading={topUp.isPending} testID="topup-submit" />
                   </View>
                 </Card>
               ) : null

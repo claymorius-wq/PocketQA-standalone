@@ -1,0 +1,45 @@
+# Ledger I8: a native Firebase session survives the app being killed and relaunched.
+# Needs the API in firebase mode with the Auth emulator (demo-pocketqa), `adb reverse` for
+# 8787 and 9099, and a verified emulator user (EMAIL/PASSWORD) with no account yet.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- extendedWaitUntil:
+    visible:
+      id: finish-account
+    timeout: 20000
+- tapOn:
+    id: finish-name
+- inputText: Nadia Native
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: finish-submit
+- tapOn:
+    id: finish-submit
+- extendedWaitUntil:
+    visible:
+      id: discover-screen
+    timeout: 20000
+- takeScreenshot: fb-persist-1-signed-in
+# Kill the process (not a background/foreground): only persisted state can bring the session back.
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: discover-screen
+    timeout: 30000
+- assertNotVisible:
+    id: sign-in-screen
+- takeScreenshot: fb-persist-2-after-relaunch
