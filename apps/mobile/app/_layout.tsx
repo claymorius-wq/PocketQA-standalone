@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Redirect, SplashScreen, Stack, useSegments } from 'expo-router';
+import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,8 +20,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function ThemedStack() {
   const { colors, scheme } = useTheme();
-  const { ready, user } = useSession();
-  const segments = useSegments();
+  const { ready } = useSession();
   // Stable options: a new `header` function per render would re-render every mounted header.
   const screenOptions = useMemo(
     () => ({
@@ -47,7 +46,11 @@ function ThemedStack() {
       </Ground>
     );
   }
-  if (!user && segments[0] !== '(auth)') return <Redirect href="/sign-in" />;
+  // No redirect here: the root navigator stays mounted once ready. Every route outside (auth)
+  // guards itself and sends a signed-out user to /sign-in (index, RoleTabs, RequireRole). Swapping
+  // this Stack for a <Redirect> while the tabs' own guard also navigated made expo-router's state
+  // sync loop on sign-out ("Maximum update depth exceeded" in NativeStackNavigator, native run
+  // 2026-10-04, account deletion).
   return (
     <>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />

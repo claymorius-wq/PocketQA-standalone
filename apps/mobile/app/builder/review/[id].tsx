@@ -212,7 +212,7 @@ function ReviewInner() {
                   onCancel={() => setOpen(false)}
                   onConfirm={() => decide.mutate({ kind, note, reason })}
                 >
-                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} testID="approve-note" />}
+                  {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." locked={decide.isPending} testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} locked={decide.isPending} testID="approve-note" />}
                   {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
                 </ConfirmSheet>
               </>

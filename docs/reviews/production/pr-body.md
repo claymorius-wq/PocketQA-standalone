@@ -17,6 +17,24 @@ The real-provider, hardware and store gates below are also open. The live demo p
 | `4028884` | **Operations.** Online read-only backup and a restore drill that refuses while the API runs and never deletes. Clean SIGTERM shutdown and restart. `/health` checks the DB. Loopback-only proxy trust. Supervisor wrapper (literal, allowlisted env file) and launchd templates; `docs/deploy/production-runbook.md`. A production build that can't reach the API shows an honest "Can't reach Pocket QA" | r1 APPROVE, then r2 APPROVE; P3 follow-ups applied after review, covered by `freeze-verdict-qa-r1` |
 | (freeze) | Docs: ledger, verification, progress, this body. `admin:grant` never migrates a live DB. S7 recorded as blocked on A5 | `freeze-verdict-qa-r1` APPROVE (whole branch `9461db5..HEAD`) |
 
+### Integrated release candidate (after `06c09b3`)
+- **`94774d1`: merge of `main` `4bd307a`** (Lens UI, PRs #3 and #4). Lens is kept, with the production behaviour re-applied on its screens.
+- **Increment 5:**
+  - six Lens follow-up UI defects;
+  - a `user.deleted` audit row and the `db:deleted-since` tool;
+  - the exact-origin CORS tool, now **applied** to `pocketqa-evidence` for `https://pocketqa.optijara.ai` (PUT only, readback and preflight verified, no object touched).
+- **Native defects found by the first native run of Lens, all fixed at the root with regression guards:**
+  - a recording-start worklet crash;
+  - a crash on sign-out and account deletion (a redirect loop);
+  - a decline notice that was never visible;
+  - on iOS, the password field covered by the riding Sign-in button.
+- **pqa-qa interim API findings:** P2-1 (crash-safe restore naming) and P2-2 (restore over a corrupt live database) are fixed and tested.
+- **Native evidence is emulator and simulator only:**
+  - Android AVD `Medium_Phone_API_36.1`; iOS simulator iPhone 17 Pro, iOS 26.4;
+  - **wallet tests use test wallets only:** a Wallet Standard test wallet in Playwright, and Solana's mock MWA wallet on the emulator.
+  
+  No physical device and no real wallet were used.
+
 ### Evidence (details: `docs/verification.md`, 2026-10-04 production section)
 - **`pnpm verify`:** EXIT=0. Test counts: scripts 47, contracts 17, domain 170, API 369 plus 2 skipped, mobile 731.
 - **Playwright:** 12/12.
@@ -35,7 +53,7 @@ The real-provider, hardware and store gates below are also open. The live demo p
   - a bucket-scoped R2 token (S2);
   - exact-origin CORS (S3);
   - real browser upload and playback (S4).
-- **Hardware and store:**
+- **Hardware and store** (none of this has been run on real hardware or a real wallet):
   - a physical Android or Seeker device with the exact binary (N2);
   - release signing (A6);
   - native Google sign-in (I9);

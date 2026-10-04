@@ -76,7 +76,8 @@ export default function Stuck() {
         onCancel={cancel}
         onConfirm={() => target && decide.mutate({ ...target, reason })}
       >
-        <Field label="Reason (audited)" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="stuck-reason" />
+        {/* Locked while sending, so the sheet always shows the audited reason that was sent (Lens follow-ups P3-5). */}
+        <Field label="Reason (audited)" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." locked={decide.isPending} testID="stuck-reason" />
         {/* C4's failure branch, with this sheet's own title and testID (the sheet stays open; the confirm retries). */}
         {decide.error ? <SheetFailure title="Not decided" message={(decide.error as ApiError).message} testID="stuck-error" /> : null}
       </ConfirmSheet>

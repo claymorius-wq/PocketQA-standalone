@@ -54,7 +54,9 @@ describe('finding 2: deletion scrubs dispute text, transfer addresses, audit not
     const dispute = t.db.prepare('SELECT reason FROM disputes WHERE id = ?').get(d.id) as { reason: string };
     expect(dispute.reason).toBe('[deleted]');
     expect(t.db.prepare(`SELECT COUNT(*) AS n FROM devnet_transfers WHERE tester_id = ? OR builder_id = ?`).get(tester.id, tester.id)).toEqual({ n: 0 });
-    const audits = t.db.prepare(`SELECT reason FROM audit WHERE target_id = ?`).all(tester.id) as { reason: string }[];
+    // The redacted rows about the user's work; the deletion itself is audited separately (inc5).
+    const audits = t.db.prepare(`SELECT reason FROM audit WHERE target_id = ? AND action != 'user.deleted'`).all(tester.id) as { reason: string }[];
+    expect(t.db.prepare(`SELECT reason FROM audit WHERE target_id = ? AND action = 'user.deleted'`).get(tester.id)).toEqual({ reason: '[account deleted by its owner]' });
     expect(audits.length).toBe(2);
     expect(audits.every((a) => a.reason === '[redacted on account deletion]')).toBe(true);
   });

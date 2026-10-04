@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Medium_Phone_API_36.1" tests="1" failures="0" time="47.0">
+    <testcase id="wallet-link" name="wallet-link" classname="wallet-link" file="/Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/apps/mobile/e2e/maestro/wallet-link.yaml" time="47.0" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

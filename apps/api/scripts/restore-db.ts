@@ -24,8 +24,9 @@ if (running || apiRunning(config.dataDir)) {
 try {
   const r = restoreDb(resolve(from), join(config.dataDir, 'pocketqa.sqlite'), Date.now());
   console.log(`restored; previous files kept as: ${r.keptAs.join(', ') || '(none)'}`);
+  for (const w of r.warnings) console.error(`warning: ${w}`);
 } catch (e) {
-  if (!(e instanceof BackupError)) throw e;
-  console.error(e.message);
+  // Operator-facing: a clear line, never a stack trace (inc5 review P2-2).
+  console.error(e instanceof BackupError ? e.message : `Restore failed: ${(e as Error).message}. The data dir is as the restore left it; see the runbook before starting the API.`);
   process.exit(1);
 }

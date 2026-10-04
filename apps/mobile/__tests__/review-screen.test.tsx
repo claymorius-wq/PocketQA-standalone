@@ -338,6 +338,9 @@ describe('review screen', () => {
       expect(screen.getByTestId('approve-note').props.value).toBe('Clear notes, thank you.');
       // Text typed now was never confirmed, so it is not what goes out.
       await fireEvent.changeText(screen.getByTestId('approve-note'), 'Typed after the confirm.');
+      // Locked while sending (Lens follow-ups P3-5).
+      expect(screen.getByTestId('approve-note').props.editable).toBe(false);
+      expect(screen.getByTestId('approve-note').props.value).toBe('Clear notes, thank you.');
     } finally {
       await act(async () => onlineManager.setOnline(true));
     }

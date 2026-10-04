@@ -301,6 +301,17 @@ export const accountHandlers = {
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${user.id}@deleted.invalid`, user.id);
+      // A fixed-text audit row (no personal data), so operators can find every deletion, e.g. to
+      // re-apply deletions after restoring an older backup (runbook §5).
+      db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
+        newId(),
+        user.id,
+        'user.deleted',
+        'user',
+        user.id,
+        '[account deleted by its owner]',
+        iso(ctx.deps.now()),
+      );
     })();
     // Stored objects: deleted now, or retried through the outbox if the provider fails.
     for (const key of media) await deleteOrQueue(ctx.deps, key);

@@ -1,7 +1,7 @@
 import { Link } from 'expo-router';
 import { KeyRound, LogIn, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
 import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
 import { useSession } from '../../src/auth/SessionProvider';
@@ -183,6 +183,14 @@ export default function SignIn() {
   // fields stay above the keyboard (the content then fits and cannot scroll them into view).
   const keyboard = useKeyboardShown(!PREVIEW_BUILD);
   const anchored = !PREVIEW_BUILD && !keyboard;
+  // With the keyboard up, Sign in rides on it (dockKeyboard "ride"); bring the form's end into view
+  // so neither field sits under it. On iOS the password field was covered and could not be tapped.
+  const scroller = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (!keyboard) return;
+    const t = setTimeout(() => scroller.current?.scrollToEnd({ animated: true }), 50);
+    return () => clearTimeout(t);
+  }, [keyboard]);
 
   // Production build, /config unreadable: say so instead of assuming local accounts (inc4).
   if (unreachable) {
@@ -199,6 +207,7 @@ export default function SignIn() {
   return (
     <Screen
       testID="sign-in-screen"
+      scrollRef={scroller}
       fill={anchored}
       // The small print sits above Sign in, so the primary is the last thing on the screen (Mode B).
       dockPlacement="edge"

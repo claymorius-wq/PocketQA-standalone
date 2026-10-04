@@ -186,6 +186,22 @@ describe('Budget (builder)', () => {
     expect(mockHero.every((p) => !p.earned)).toBe(true);
   });
 
+  it('a pending top-up sends the amount that was tapped; picking another meanwhile is ignored (Lens follow-ups P3-6)', async () => {
+    let finish: (v: unknown) => void = () => {};
+    mockApi.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+    await renderScreen('Budget');
+    await fireEvent.press(screen.getByTestId('topup-amount-500'));
+    await fireEvent.press(screen.getByTestId('topup-submit'));
+    await fireEvent.press(screen.getByTestId('topup-amount-5000'));
+    // The control keeps showing what is being sent while the request runs.
+    expect(screen.getByTestId('topup-amount-500')).toHaveProp('accessibilityState', { selected: true });
+    expect(screen.getByTestId('topup-amount-5000')).toHaveProp('accessibilityState', { selected: false });
+    await act(async () => finish({ balance: 500 }));
+    expect(mockApi).toHaveBeenCalledTimes(1);
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 } });
+    mockApi.mockReset();
+  });
+
   it('production (no test credits): an honest funding notice, no top-up card and no top-up call (ledger D3)', async () => {
     mockFeatures = { testCredits: false, devnetTransfers: false };
     try {

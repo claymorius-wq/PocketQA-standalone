@@ -449,3 +449,19 @@ $ firebase emulators:exec ... test/firebase-emulator.test.ts  Tests 2 passed (2)
 $ firebase emulators:exec ... playwright.firebase.config.ts   2 passed
 $ focus-visible.spec.ts alone, scroll-padding switched off      2 failed: "scroll-padding-top covers the header scrim", Received 0 (expected >= 105 dark, >= 97 light)
 ```
+
+## 2026-10-04 (afternoon): integrated release candidate (main `4bd307a` merged, plus inc5); details in `docs/reviews/production/rc-candidate.md`
+- **`pnpm verify`:** EXIT=0. Test counts: scripts 47, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1018.
+- **Browser:** Playwright 14/14; Firebase emulator E2E 4/4; production web export EXIT=0.
+- **Android EMULATOR, final APK `6f9208cd…`:**
+  - `run-native.sh`: 12/12;
+  - the MWA sign-in and decline flows with the **mock** wallet: both pass;
+  - Firebase persistence: passes;
+  - crash buffer: 0 entries.
+- **iOS SIMULATOR, `main.jsbundle a9f23a2f…`:** `ios-smoke` and `ios-settings` pass. They failed on `09092f15…` before fix N-4.
+- **R2 CORS on `pocketqa-evidence`:**
+  ```
+  plan create → readback matches
+  PUT preflight from https://pocketqa.optijara.ai → 204; from https://evil.example → 403; GET → 403
+  ```
+

@@ -2,13 +2,18 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildApp, loggerOptions } from './app';
 import { loadConfig, readEnvFile, REPO_ROOT } from './config';
-import { PID_FILE } from './backup';
+import { PID_FILE, unfinishedRestore } from './backup';
 import { openDb } from './db';
 import { localStore } from './storage/local';
 import { sweepStorage } from './storage/sweep';
 import { httpDevnetRpc } from './rpc';
 
 const config = loadConfig({ ...readEnvFile(join(REPO_ROOT, '.env.local')), ...process.env });
+const unfinished = unfinishedRestore(config.dataDir);
+if (unfinished) {
+  console.error(unfinished);
+  process.exit(1);
+}
 mkdirSync(join(config.dataDir, 'media'), { recursive: true, mode: 0o700 });
 const db = openDb(join(config.dataDir, 'pocketqa.sqlite'));
 const deps = {

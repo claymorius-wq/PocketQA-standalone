@@ -323,7 +323,7 @@
     "sequenceNumber" : 6,
     "evaluatedCommand" : {
       "inputTextCommand" : {
-        "text" : "correct horse battery staple",
+        "text" : "<redacted>",
         "optional" : false
       }
     }
@@ -356,7 +356,7 @@
     "defineVariablesCommand" : {
       "env" : {
         "EMAIL" : "green.native@example.test",
-        "PASSWORD" : "correct horse battery staple",
+        "PASSWORD" : "<redacted>",
         "MAESTRO_FILENAME" : "firebase-persistence",
         "MAESTRO_DEVICE_UDID" : "emulator-5554",
         "MAESTRO_SHARD_ID" : "1",
@@ -374,7 +374,7 @@
       "defineVariablesCommand" : {
         "env" : {
           "EMAIL" : "green.native@example.test",
-          "PASSWORD" : "correct horse battery staple",
+          "PASSWORD" : "<redacted>",
           "MAESTRO_FILENAME" : "firebase-persistence",
           "MAESTRO_DEVICE_UDID" : "emulator-5554",
           "MAESTRO_SHARD_ID" : "1",

@@ -37,13 +37,13 @@
 | ID | Gate | Class | Status | Evidence or blocker | Authorization |
 |---|---|---|---|---|---|
 | I1 | Production config refuses local password auth, shared demo, emulator hosts and non-prod R2 retention | C | 🔧 | `apps/api/test/production-config.test.ts` (inc1)
-| I2 | Firebase Auth initialised in `pocketqa-optijara` (Email/Password; Google optional; enumeration protection on) | P | ⛔ A1 | getProjectConfig → `CONFIGURATION_NOT_FOUND` at 2026-10-04T09:18:20Z | H-relayed |
+| I2 | Firebase Auth initialised in `pocketqa-optijara` (Email/Password; Google optional; enumeration protection on) | P | ⛔ A1 | getProjectConfig → `CONFIGURATION_NOT_FOUND` at 09:18:20Z, 09:45:42Z, 10:22:53Z and 13:01:31Z (2026-10-04). Only one Firebase app exists ("Pocket QA Web") | H-relayed |
 | I3 | Real sign-up → verification email → verified sign-in → account → logout revokes (live test against the dedicated project) | P | ⛔ A1, A2 | `test-live/firebase.live.test.ts` is ready | H-relayed |
 | I4 | Password reset and verification resend in the app, with copy that doesn't reveal whether an account exists | C | 🔧 | App reset and resend with enumeration-safe copy: `e2e-firebase/firebase-auth.spec.ts` (Auth emulator, 4/4), `__tests__/firebase-errors.test.ts` (inc2)
 | I5 | Password reset email received and the reset works (real inbox) | P | ⛔ A1 | | H-relayed |
 | I6 | Dedicated service identity `pocketqa-api@` with `roles/firebaseauth.admin` only; no personal tokens | P | ⛔ A2 | | H-direct (no personal tokens) |
 | I7 | Production admin provisioning without public identities: `admin:grant` CLI for a verified Firebase user, audited, with no HTTP route | C | 🔧 | `apps/api/test/admin-grant.test.ts`; `scripts/grant-admin.ts` (inc2)
-| I8 | Native (Android) Firebase session persistence | C/H | 🔧 emulator | Keystore-backed RN persistence: Maestro `firebase-persistence.yaml` on the **emulator** (green passes; a red build with `getAuth` fails at relaunch). A physical device is still a hardware gate (N2) (inc2)
+| I8 | Native (Android) Firebase session persistence | C/H | 🔧 emulator | Re-run on the Lens build (**emulator**, development prebuild): the session survives force-stop and relaunch. Physical device and production prebuild still open
 | I9 | Native Google sign-in (needs the native SDK and release SHA fingerprints) | H | ⛔ A6 | | H-relayed |
 | I10 | Authorization: users can't access each other's studies or media; forged, expired and revoked tokens fail; roles can't be escalated | C | ✅ | API suite (authorization matrix, identity tests) in PR #2 | H-direct |
 
@@ -53,7 +53,7 @@
 |---|---|---|---|---|---|
 | S1 | Private bucket `pocketqa-evidence`: presign, signed headers, ETag pin, anonymous GET refused | P | ✅ | PR #2 `live/r2-live-test.txt` (5/5, create-only) | H-direct |
 | S2 | Bucket-scoped runtime token, not account-wide credentials | P | ⛔ A3 | | H-direct |
-| S3 | Exact-origin CORS on `pocketqa-evidence` (PUT from the production origin only, no wildcard) | P | ⛔ A4 | `GetBucketCors` → `NoSuchCORSConfiguration`; the script is prepared, dry-run by default | H-relayed |
+| S3 | Exact-origin CORS on `pocketqa-evidence` (PUT from the production origin only, no wildcard) | P | ✅ | Applied on `pocketqa-evidence` only: one rule, PUT from `https://pocketqa.optijara.ai` with header `content-type`. Readback matches. Preflight: PUT from the origin gives 204; another origin gives 403; GET gives 403 (`docs/reviews/production/r2-cors-apply.txt`). No object touched | H-relayed |
 | S4 | Browser direct upload and playback with seeking against real R2 from the production origin | P | ⛔ A3, A4 | | H-relayed |
 | S5 | **Real-user deletion policy.** Production plus r2 refuses to start until this is decided, because `ALLOW_DELETE=1` is prohibited and `RETAIN_NONPROD` is refused in production. | B | ⛔ A5 | | **open**: R2 deletion prohibited (H-direct) |
 | S6 | Real consented recording uploaded from Android (physical device) | H | ⛔ A6 | | H-direct |
@@ -65,7 +65,7 @@
 |---|---|---|---|---|---|
 | W1 | Web wallet chooser (several Wallet Standard wallets), `solana:signIn` only | C | 🔧 | One button per installed Wallet Standard wallet, for login and linking. The chosen wallet signs, and it is disconnected after every flow: `e2e/wallet-login.spec.ts` "wallet chooser" (inc3)
 | W2 | Web connect, login, link and unlink; the last sign-in method stays protected | C | 🔧 | Web connect, `solana:signIn` login, link and unlink, with the last sign-in method protected (E2E, inc3). Disconnect via `standard:disconnect`
-| W3 | Android MWA login (sign-in payload), with an explicit domain-binding design per client surface | C | 🔧 emulator | `surface: mwa` challenges bound to the app identity (`wallet-login.test.ts`). `walletLogin.android.ts` runs one MWA session. Maestro `wallet-login-mwa.yaml` and `-decline.yaml` pass on the **emulator** with the mock wallet (inc3)
+| W3 | Android MWA login (sign-in payload), with an explicit domain-binding design per client surface | C | 🔧 emulator | Re-run on the Lens build with the Solana **mock** wallet on the **emulator**: MWA sign-in and decline both pass. No real wallet and no physical device (W6 still open)
 | W4 | Wallet login enabled in production only after Hamza's explicit acceptance of the residual raw-`signMessage` phishing risk is recorded in ADR 0005 §2 | B | ⛔ A8 | | **open** |
 | W5 | Real browser wallet (Phantom/Solflare extension) sign-in on the production origin; a wrong origin is refused or warned | H | ⬜ | | H-relayed |
 | W6 | Real-device MWA login and link with a devnet wallet (physical) | H | ⛔ A6 | Earlier MWA linking evidence exists (PR #1 era) | H-relayed |
@@ -119,4 +119,19 @@
 - **Wallet login (inc3 review P3-1, P3-4).** The MWA identity `pocketqa.local` is a placeholder and can't be verified. Moving it to an owned domain with `assetlinks.json` is a precondition for W4 and W6. Not yet tested: Android in firebase mode (the custom-token exchange on a device), a real browser wallet (W5), and a physical device with a real wallet (W6).
 - **Backups and deletion (inc4 review P3-1).** A restore brings back accounts deleted after the backup was taken. The runbook (§5) requires re-applying those deletions by comparing tombstones. Backup retention, and a tool for re-applying deletions, belong to the A5 decision. Known follow-up: account self-deletion isn't written to the audit log; only the tombstone row remains.
 - **N1 evidence (inc4).** A production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`, `EXPO_PUBLIC_API_URL=https://api.pocketqa.example` placeholder) gives a network config with **no** cleartext domains, and the manifest references it. The Hermes bundle contains the https API URL, no `127.0.0.1:8787` and no demo accounts. On the **emulator**, with the API unreachable, the app shows "Can't reach Pocket QA" and a retry, never a local-mode form. Release signing (debug key) and a physical device are still open.
+- **Increment 5.**
+  - Account self-deletion writes a fixed-text `user.deleted` audit row.
+  - `db:deleted-since --pre-restore <file>` lists the deletions to re-apply after a restore.
+  - Six Lens follow-up UI P3s are fixed (`docs/reviews/lens-followups/verdict-qa-r1.md`):
+    - the Credits top-up is bound to the tapped amount;
+    - sheet fields lock while sending;
+    - New study keyboard focus clears the dock scrim;
+    - the disputes and moderation binding tests and the focus-spec items were already on main.
+- **Origin (A4) is confirmed:** `https://pocketqa.optijara.ai`. The Firebase authorized domain for it still needs the console (A1/A4).
+- **Native runs on the merged Lens build** (Android **emulator** AVD `Medium_Phone_API_36.1` and iOS **simulator** iPhone 17 Pro, iOS 26.4; no physical device). They found and fixed four Lens defects: a worklet crash, a sign-out crash, a hidden decline notice, and the iOS password field covered by the riding Sign in button. Details: `docs/reviews/production/rc-candidate.md` §3.
+- **Wallet tests:** every wallet test so far uses **test wallets**:
+  - a Wallet Standard test wallet in Playwright;
+  - Solana's **mock** MWA wallet on the emulator.
+  
+  No real browser wallet (W5) and no real wallet on a device (W6) have been tested.
 

@@ -1,0 +1,13 @@
+record-consent EXIT=0 active_projections=0
+record-decline EXIT=0 active_projections=0
+notifications-denied EXIT=0 active_projections=0
+remove-segment EXIT=0 active_projections=0
+system-stop EXIT=0 active_projections=0
+notification-stop EXIT=0 active_projections=0
+leave-while-recording EXIT=0 active_projections=0
+wallet-decline EXIT=0 active_projections=0
+wallet-link EXIT=0 active_projections=0
+devnet-transfer-unfunded EXIT=0 active_projections=0
+  server transfer state: awaiting_signature signature=null
+sheet-keyboard EXIT=0 active_projections=0
+sign-out EXIT=0 active_projections=0

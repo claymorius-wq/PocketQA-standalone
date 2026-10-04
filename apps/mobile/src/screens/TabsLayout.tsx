@@ -50,7 +50,9 @@ export function RoleTabs({ role, tabs }: { role: Role; tabs: { name: string; tit
     return ref;
   }, []);
   if (!ready) return null;
-  if (!user || user.role !== role) return <Redirect href="/" />;
+  // One target for a signed-out user everywhere (/sign-in), so concurrent guards never disagree.
+  if (!user) return <Redirect href="/sign-in" />;
+  if (user.role !== role) return <Redirect href="/" />;
   return (
     <Tabs
       screenOptions={{

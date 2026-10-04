@@ -1,0 +1,39 @@
+Expo Autolinking module resolution enabled
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Web Bundled 8155ms node_modules/expo-router/entry.js (3429 modules)
+
+› Assets (26):
+../../node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf (49KB)
+../../node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf (49KB)
+../../node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf (68KB)
+../../node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf (68KB)
+../../node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf (52KB)
+../../node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf (52KB)
+../../node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf (52KB)
+../../node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.5KB)
+../../node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469B)
+../../node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138B)
+../../node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188B)
+../../node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364B)
+../../node_modules/expo-router/assets/react-navigation/elements/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653B)
+../../node_modules/expo-router/assets/react-navigation/elements/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207B)
+../../node_modules/expo-router/assets/react-navigation/elements/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425B)
+../../node_modules/expo-router/assets/react-navigation/elements/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235B)
+../../node_modules/expo-router/assets/react-navigation/elements/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928B)
+../../node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465B)
+../../node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.8KB)
+assets/textures/grain-256.958bccf08f2e6708fd73af738fe26e5f.png (61KB)
+
+› web bundles (1):
+_expo/static/js/web/entry-aa68f7788cc0f39d517cb21e1f79c770.js (5.8MB)
+
+› Files (2):
+index.html (1.2KB)
+metadata.json (49B)
+
+Exported: /Users/hamzadiaz/Projects/pocket-qa/.worktrees/production-readiness/apps/mobile/dist-production.next
+secret check: 0 values, 29 files, 0 occurrences
+production web export ready: apps/mobile/dist-production
+EXPORT_EXIT=0
