@@ -54,7 +54,7 @@
 | S1 | Private bucket `pocketqa-evidence`: presign, signed headers, ETag pin, anonymous GET refused | P | ✅ | PR #2 `live/r2-live-test.txt` (5/5, create-only) | H-direct |
 | S2 | Bucket-scoped runtime token, not account-wide credentials | P | ⛔ A3 | | H-direct |
 | S3 | Exact-origin CORS on `pocketqa-evidence` (PUT from the production origin only, no wildcard) | P | ✅ | Applied on `pocketqa-evidence` only: one rule, PUT from `https://pocketqa.optijara.ai` with header `content-type`. Readback matches. Preflight: PUT from the origin gives 204; another origin gives 403; GET gives 403 (`docs/reviews/production/r2-cors-apply.txt`). No object touched | H-relayed |
-| S4 | Browser direct upload and playback with seeking against real R2 from the production origin | P | ⛔ A3, A4 | | H-relayed |
+| S4 | Browser direct upload and playback with seeking against real R2 from the production origin | P | ✅ web | `pnpm test:e2e:live`: production web build behind the production front door, loaded as `https://pocketqa.optijara.ai`. The browser PUT to R2 gives 200 under the exact-origin CORS rule, playback gives 206 with `Content-Range`, and there are 0 CSP violations. Real Firebase and R2, non-production API, synthetic data (`docs/production/web-launch.md` §1). A3 is accepted per Hamza (existing account-wide keys) | H-relayed |
 | S5 | **Real-user deletion policy.** Production plus r2 refuses to start until this is decided, because `ALLOW_DELETE=1` is prohibited and `RETAIN_NONPROD` is refused in production. | B | ⛔ A5 | | **open**: R2 deletion prohibited (H-direct) |
 | S6 | Real consented recording uploaded from Android (physical device) | H | ⛔ A6 | | H-direct |
 | S7 | Interrupted upload resumes (multipart/resumable) | C/B | ⛔ A5 | Blocked by the no-deletion rule. R2 multipart needs `AbortMultipartUpload` for abandoned uploads, and abort deletes the uploaded parts, which is R2 deletion. The lifecycle backstop was withdrawn. Without abort, abandoned uploads leave billed orphan parts forever. Build it only after A5, with abort routed through the `allowDelete`/outbox gate, after a design review. Single PUT up to 100 MB today | plan |
@@ -134,4 +134,8 @@
   - Solana's **mock** MWA wallet on the emulator.
   
   No real browser wallet (W5) and no real wallet on a device (W6) have been tested.
-
+- **Web launch (`docs/production/web-launch.md`).**
+  - The real Firebase and R2 browser E2E passes from the production origin (sign-up through approval, role isolation, ranged playback).
+  - New production front door `scripts/production/web-server.mjs`, with a CSP that names only Firebase Auth and the R2 endpoint.
+  - The live run found and fixed a sign-up defect: a Firebase 503 on the verification email is now reported honestly.
+  - Live cutover still waits on A5, A9, the Firebase plan check (console), A7 and B4.

@@ -35,11 +35,18 @@ export function firebaseAuth(cfg: NonNullable<ClientConfig['firebase']>): Auth {
 
 export const firebaseSession = {
   emailSignIn: (a: Auth, email: string, password: string) => signInWithEmailAndPassword(a, email, password),
-  /** Creates the Firebase user and sends a verification email; the API requires it verified. */
+  /**
+   * Creates the Firebase user and sends a verification email; the API requires it verified.
+   * Only creation can fail the sign-up: once the account exists, a failed send (Firebase answers
+   * 503 at times) is reported as `emailSent: false`, and signing in offers to resend it.
+   */
   async emailSignUp(a: Auth, email: string, password: string) {
     const cred = await createUserWithEmailAndPassword(a, email, password);
-    await sendEmailVerification(cred.user);
-    return cred;
+    const emailSent = await sendEmailVerification(cred.user).then(
+      () => true,
+      () => false,
+    );
+    return { emailSent };
   },
   /** Resend for a signed-in, still-unverified email user (the API refuses them until verified). */
   async resendVerification(a: Auth) {
