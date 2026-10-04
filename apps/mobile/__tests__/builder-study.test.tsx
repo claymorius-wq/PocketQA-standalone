@@ -351,7 +351,7 @@ describe('builder study (A-BStudy)', () => {
     expect(screen.queryByTestId('study-pause')).toBeNull();
   });
 
-  it('never detaches a request still running: after the pending escape, the next sheet opens on it, busy', async () => {
+  it('never detaches a request still running: after the pending escape, any dock button reopens that request’s own sheet, busy', async () => {
     mockStudy = study(PUBLISHED);
     mockApi.mockImplementation(() => new Promise(() => undefined));
     await renderScreen();
@@ -367,7 +367,10 @@ describe('builder study (A-BStudy)', () => {
     await advance(400);
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
     await fireEvent.press(screen.getByTestId('study-close'));
-    // The first request is still the sheet's: its confirm is busy, so no second change can race it.
+    // Close reopens the running Pause's own sheet: it names what is being sent and will take its result,
+    // and its confirm is busy, so no second change can race it.
+    expect(screen.getByText('Pause this study?')).toBeTruthy();
+    expect(screen.queryByText('Close this study?')).toBeNull();
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true, busy: true });
     expect(mockApi).toHaveBeenCalledTimes(1);
   });

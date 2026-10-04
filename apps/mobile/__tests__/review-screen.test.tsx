@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { AccessibilityInfo, Text as RNText } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -315,6 +315,36 @@ describe('review screen', () => {
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
     expect(screen.getByTestId('review-decided')).toHaveTextContent(/Decision: Rejected/);
     expect(screen.getByTestId('review-decided')).toHaveTextContent(/No evidence attached for the wallet step\./);
+  });
+
+  it('binds a decision to what was confirmed: held offline, it still sends its own note, and Reject reopens it while it is held', async () => {
+    mockApi.mockImplementation(async () => participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z' }));
+    await renderIn(<Review />);
+    // A browser that reports offline holds the request; it is sent on reconnect.
+    onlineManager.setOnline(false);
+    try {
+      await fireEvent.press(screen.getByTestId('review-approve'));
+      await fireEvent.changeText(screen.getByTestId('approve-note'), 'Clear notes, thank you.');
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+      await settle();
+      expect(mockApi).not.toHaveBeenCalledWith('approve', expect.anything());
+      // After the pending escape Cancel closes; Reject then reopens the held Approve, as it was sent.
+      await advance(15_100);
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+      await advance(400);
+      await fireEvent.press(screen.getByTestId('review-reject'));
+      expect(screen.getByText(/Approve and credit/)).toBeTruthy();
+      expect(screen.queryByText('Reject this submission?')).toBeNull();
+      expect(screen.getByTestId('approve-note').props.value).toBe('Clear notes, thank you.');
+      // Text typed now was never confirmed, so it is not what goes out.
+      await fireEvent.changeText(screen.getByTestId('approve-note'), 'Typed after the confirm.');
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await settle();
+    await advance(10);
+    expect(mockApi).toHaveBeenCalledWith('approve', { params: { id: 'p1' }, body: { note: 'Clear notes, thank you.' } });
+    expect(mockApi).toHaveBeenCalledTimes(1);
   });
 
   it('a failed decision keeps the sheet open with the server message', async () => {

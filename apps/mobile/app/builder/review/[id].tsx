@@ -10,7 +10,7 @@ import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
 import { credits } from '../../../src/lib/format';
 import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy, useStudyDisputes } from '../../../src/lib/queries';
 import { RequireRole } from '../../../src/screens/RequireRole';
-import { canAddFinding, commitStatus, decisionView, type DecisionKind } from '../../../src/screens/review/decision';
+import { canAddFinding, commitStatus, decisionView, type Decision, type DecisionKind } from '../../../src/screens/review/decision';
 import { EvidenceStrip } from '../../../src/screens/review/EvidenceStrip';
 import { AiPanel, DecisionNotice, DisputeCard, DockSlot, EvidenceEmpty, FindingsList, FormCard, ReviewHead, ReviewSection, TaskNotes } from '../../../src/screens/review/ReviewParts';
 import { useTheme } from '../../../src/theme/ThemeProvider';
@@ -104,12 +104,14 @@ function ReviewInner() {
   const [landed, setLanded] = useState(0);
   const lit = glass.enabled && motion.play.uplightCommit;
   const decide = useMutation({
-    mutationFn: (d: DecisionKind) =>
-      d === 'approve' ? api('approve', { params: { id }, body: note.trim() ? { note } : {} }) : api('reject', { params: { id }, body: { reason } }),
+    // The decision carries its own fields, so a request always sends what was confirmed, even one
+    // the browser held while offline and sends later.
+    mutationFn: (d: Decision) =>
+      d.kind === 'approve' ? api('approve', { params: { id }, body: d.note.trim() ? { note: d.note } : {} }) : api('reject', { params: { id }, body: { reason: d.reason } }),
     onSuccess: (p, d) => {
       // A lit Approve keeps its sheet for the Commit pass and the sheet's onLeave closes it; Reject,
       // reduced motion and the flat light theme close now.
-      if (d === 'approve' && lit) setPassing(true);
+      if (d.kind === 'approve' && lit) setPassing(true);
       else setOpen(false);
       qc.setQueryData(['participation', id], p);
       qc.invalidateQueries({ queryKey: ['studyParticipations', p.studyId] });
@@ -117,8 +119,18 @@ function ReviewInner() {
     },
   });
   const openSheet = (k: DecisionKind) => {
-    // Never detach a request still running (Cancel works again after the pending escape).
-    if (!decide.isPending) decide.reset();
+    // While a decision is still being sent (Cancel works again after the pending escape), Approve
+    // and Reject reopen that decision's own sheet, as it was sent: it takes the result, and no
+    // second decision can race it.
+    const sending = decide.isPending ? decide.variables : undefined;
+    if (sending) {
+      setKind(sending.kind);
+      setNote(sending.note);
+      setReason(sending.reason);
+      setOpen(true);
+      return;
+    }
+    decide.reset();
     setKind(k);
     setOpen(true);
   };
@@ -195,7 +207,7 @@ function ReviewInner() {
                     setLanded((n) => n + 1);
                   }}
                   onCancel={() => setOpen(false)}
-                  onConfirm={() => decide.mutate(kind)}
+                  onConfirm={() => decide.mutate({ kind, note, reason })}
                 >
                   {kind === 'reject' ? <Field label="Reason" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="reject-reason" /> : <Field label="Note to tester (optional)" value={note} onChangeText={setNote} testID="approve-note" />}
                   {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}

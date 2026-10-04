@@ -5,6 +5,9 @@ import type { CommitStatus } from '../../ui/patterns';
 
 export type DecisionKind = 'approve' | 'reject';
 
+/** One decision as it was confirmed: its kind and the text sent with it (the request's variables). */
+export type Decision = { kind: DecisionKind; note: string; reason: string };
+
 /** Findings can be written once the tester has submitted (unchanged rule). */
 export function canAddFinding(status: Participation['status']): boolean {
   return status !== 'consented' && status !== 'in_progress' && status !== 'withdrawn';

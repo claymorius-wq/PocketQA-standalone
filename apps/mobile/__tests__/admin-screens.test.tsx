@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { onlineManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { AccessibilityInfo } from 'react-native';
@@ -408,6 +408,39 @@ describe('Stuck (triage queue)', () => {
     // The 10-character gate is closed again: the old reason cannot pass it.
     expect(screen.getByTestId('confirm-ok')).toBeDisabled();
     expect(screen.queryByTestId('stuck-error')).toBeNull();
+  });
+
+  it('binds a decision to what was confirmed: held offline, it still decides its own item with its own reason', async () => {
+    mockData.stuck.data = { items: [stuckItem('p1', 'Demo: checkout flow'), stuckItem('p2', 'Wallet onboarding')] };
+    await render(tree(<Stuck />, client));
+    await flush();
+    // A browser that reports offline holds the request; it is sent on reconnect.
+    onlineManager.setOnline(false);
+    try {
+      await fireEvent.press(within(item('Demo: checkout flow')).getByTestId('stuck-approve'));
+      await flush(500);
+      await fireEvent.changeText(screen.getByTestId('stuck-reason'), 'Notes cover the task; the builder is suspended.');
+      mockApi.mockResolvedValueOnce({ id: 'p1' });
+      await fireEvent.press(screen.getByTestId('confirm-ok'));
+      await flush(10);
+      expect(mockApi).not.toHaveBeenCalledWith('adminDecide', expect.anything());
+      // After the pending escape Cancel closes; another item's Reject reopens the held decision, as it was sent.
+      await flush(15_100);
+      await fireEvent.press(screen.getByTestId('confirm-cancel'));
+      await flush(500);
+      await fireEvent.press(within(item('Wallet onboarding')).getByTestId('stuck-reject'));
+      await flush(500);
+      expect(screen.getByText('Approve stuck submission?')).toBeTruthy();
+      expect(screen.getByTestId('stuck-reason').props.value).toBe('Notes cover the task; the builder is suspended.');
+      // Text typed now was never confirmed, so it is not what goes out.
+      await fireEvent.changeText(screen.getByTestId('stuck-reason'), 'Something else, typed after the confirm.');
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+    }
+    await flush(10);
+    await flush(10);
+    expect(mockApi).toHaveBeenCalledWith('adminDecide', { params: { id: 'p1' }, body: { decision: 'approve', reason: 'Notes cover the task; the builder is suspended.' } });
+    expect(mockApi).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the Approve title, confirm and tile while the sheet animates out after a success', async () => {
