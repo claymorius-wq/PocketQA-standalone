@@ -109,13 +109,14 @@ const BODY: Partial<Record<RouteName, () => unknown>> = {
   createTransfer: () => ({ participationId: ids.participation }),
   submitTransferSignature: () => ({ signature: '5'.repeat(88) }),
   openDispute: () => ({ participationId: ids.participation, reason: 'This is my dispute reason.' }),
+  createUploadIntent: () => ({ kind: 'screenshot', mimeType: 'image/png', sizeBytes: 100, capturedOn: 'web', clientSegmentId: 'm-1' }),
 };
 
 const OWNER_SCOPED: { name: RouteName; nonOwners: (keyof typeof users)[] }[] = [
   ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash'] as RouteName[]).map(
     (name) => ({ name, nonOwners: ['builderB'] as (keyof typeof users)[] }),
   ),
-  ...(['startParticipation', 'withdrawParticipation', 'putTaskNote', 'submitParticipation', 'uploadEvidence', 'openDispute'] as RouteName[]).map((name) => ({
+  ...(['startParticipation', 'withdrawParticipation', 'putTaskNote', 'submitParticipation', 'uploadEvidence', 'openDispute', 'createUploadIntent', 'completeUploadIntent'] as RouteName[]).map((name) => ({
     name,
     nonOwners: ['testerB'] as (keyof typeof users)[],
   })),

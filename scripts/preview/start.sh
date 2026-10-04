@@ -24,7 +24,9 @@ WEB="$REPO/${PREVIEW_WEB_DIR:-apps/mobile/dist-preview}"
 mkdir -p "$DATA" && chmod 700 "$DATA"
 [ -f "$WEB/index.html" ] || { echo "Run scripts/preview/build-web.sh first." >&2; exit 2; }
 
-POCKETQA_API_HOST=127.0.0.1 POCKETQA_API_PORT="$PREVIEW_API_PORT" POCKETQA_DATA_DIR="$DATA" \
+# The shared synthetic demo is pinned to local auth and local storage: the process
+# environment overrides any cloud settings in .env.local (ADR 0005).
+POCKETQA_SHARED_DEMO=1 POCKETQA_AUTH_MODE=local POCKETQA_STORAGE=local POCKETQA_WALLET_LOGIN=0 POCKETQA_API_HOST=127.0.0.1 POCKETQA_API_PORT="$PREVIEW_API_PORT" POCKETQA_DATA_DIR="$DATA" \
   pnpm --filter @pocket-qa/api start &
 API_PID=$!
 trap 'kill "$API_PID" 2>/dev/null || true' EXIT INT TERM

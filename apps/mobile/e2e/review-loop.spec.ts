@@ -31,18 +31,6 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: join(SHOTS, `${name}.png`), fullPage: true });
 }
 
-// Lens screens are transparent over the Ground, which paints the theme's background (docs/decisions/0005-lens-visual-system.md).
-async function screenBackground(page: Page, testID: string) {
-  return page.getByTestId(testID).evaluate((el) => {
-    // The first background on the way up that is not fully transparent: the colour painted behind the screen.
-    for (let node: Element | null = el; node; node = node.parentElement) {
-      const bg = getComputedStyle(node).backgroundColor;
-      if (bg !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
-    }
-    return 'transparent';
-  });
-}
-
 test('builder creates and funds a study, tester submits consented evidence, builder reviews and approves', async ({ browser }) => {
   const builderCtx = await browser.newContext({ colorScheme: 'light' });
   const testerCtx = await browser.newContext({ colorScheme: 'dark' });
@@ -190,6 +178,20 @@ test('builder creates and funds a study, tester submits consented evidence, buil
   await testerCtx.close();
 });
 
+// The Lens UI paints the theme ground on an ancestor of each (transparent, glass) screen,
+// so the check reads the nearest non-transparent background. Values are the palette
+// grounds in src/theme/tokens.ts: light.background #F6F6F4, dark.background #0B0A1F.
+const LIGHT_GROUND = 'rgb(246, 246, 244)';
+const DARK_GROUND = 'rgb(11, 10, 31)';
+const effectiveBackground = (page: Page) =>
+  page.getByTestId('settings-screen').evaluate((el) => {
+    for (let n: Element | null = el; n; n = n.parentElement) {
+      const bg = getComputedStyle(n).backgroundColor;
+      if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg;
+    }
+    return 'none';
+  });
+
 test('theme switch persists and unauthenticated users land on sign-in', async ({ browser }) => {
   const ctx = await browser.newContext({ colorScheme: 'light' });
   const page = await ctx.newPage();
@@ -197,17 +199,15 @@ test('theme switch persists and unauthenticated users land on sign-in', async ({
   await expect(page.getByTestId('sign-in-screen')).toBeVisible();
   await signUp(page, 'builder', 'Theo');
   await page.getByTestId('tab-builder-settings').click();
-  // The light system scheme first (tokens.ts light.background #F6F6F4), so the dark reading below is the override's.
-  expect(await screenBackground(page, 'settings-screen')).toBe('rgb(246, 246, 244)');
+  // The light system scheme first, so the dark reading below is the override's.
+  expect(await effectiveBackground(page)).toBe(LIGHT_GROUND);
   await page.getByTestId('theme-dark').click();
-  // The dark Lens ground (tokens.ts dark.background #0B0A1F), now and after a reload.
-  const bg = await screenBackground(page, 'settings-screen');
-  expect(bg).toBe('rgb(11, 10, 31)');
+  // The dark Lens ground, now and after a reload.
+  await expect.poll(() => effectiveBackground(page)).toBe(DARK_GROUND);
   await shot(page, 'builder-settings-dark-override');
   await page.reload();
   await expect(page.getByTestId('settings-screen')).toBeVisible();
-  const bg2 = await screenBackground(page, 'settings-screen');
-  expect(bg2).toBe('rgb(11, 10, 31)');
+  await expect.poll(() => effectiveBackground(page)).toBe(DARK_GROUND);
   await ctx.close();
 });
 

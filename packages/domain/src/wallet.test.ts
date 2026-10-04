@@ -3,7 +3,7 @@ import { ed25519 } from '@noble/curves/ed25519.js';
 import { base58 } from '@scure/base';
 import { buildSiwsMessage, type SiwsInput } from '@pocket-qa/contracts';
 import { DomainError } from './errors';
-import { verifyWalletLink, type NonceRecord } from './wallet';
+import { verifyWalletLink, verifyWalletLogin, type LoginChallengeRecord, type NonceRecord } from './wallet';
 import { utf8Bytes } from './utf8';
 
 const sk = ed25519.utils.randomSecretKey();
@@ -86,6 +86,32 @@ describe('verifyWalletLink', () => {
     expectNonceInvalid(
       () => verifyWalletLink({ record: { ...record, address: shortAddr }, request: { ...req(), address: shortAddr }, nowMs: now }),
       /address/,
+    );
+  });
+});
+
+describe('verifyWalletLogin (ADR 0005 §2)', () => {
+  const loginInput: SiwsInput = { ...input, statement: 'Sign in to Pocket QA with this devnet wallet. This is not a payment and sends nothing.' };
+  const login: LoginChallengeRecord = { address, nonce: loginInput.nonce, input: loginInput, expiresAtMs: issued + 300_000, usedAtMs: null };
+  const req = (over: Partial<{ address: string; nonce: string }> = {}, s = signed(buildSiwsMessage(loginInput))) => ({ address, nonce: loginInput.nonce, ...s, ...over });
+
+  it('accepts the exact challenge signed by the wallet', () => {
+    expect(verifyWalletLogin({ record: login, request: req(), nowMs: issued + 1 })).toEqual({ address });
+  });
+
+  it('rejects unknown, used, expired, mismatched and wrongly signed attempts', () => {
+    expectNonceInvalid(() => verifyWalletLogin({ record: null, request: req(), nowMs: issued }), /unknown/);
+    expectNonceInvalid(() => verifyWalletLogin({ record: { ...login, usedAtMs: issued }, request: req(), nowMs: issued }), /already used/);
+    expectNonceInvalid(() => verifyWalletLogin({ record: login, request: req(), nowMs: issued + 300_000 }), /expired/);
+    expectNonceInvalid(() => verifyWalletLogin({ record: login, request: req({ nonce: 'zzzzzzzzzzzzzzzzzz' }), nowMs: issued }), /does not match/);
+    expectNonceInvalid(() => verifyWalletLogin({ record: { ...login, address: 'x' }, request: req(), nowMs: issued }), /address/);
+    // The link statement is a different message, so a link signature can't log in.
+    expectNonceInvalid(() => verifyWalletLogin({ record: login, request: req({}, signed(buildSiwsMessage(input))), nowMs: issued }), /does not match the issued/);
+    expectNonceInvalid(() => verifyWalletLogin({ record: login, request: req({}, signed(buildSiwsMessage(loginInput), otherSk)), nowMs: issued }), /signature is invalid/);
+    const bogus = { ...loginInput, address: 'not-base58-0OIl' };
+    expectNonceInvalid(
+      () => verifyWalletLogin({ record: { ...login, address: bogus.address, input: bogus }, request: { ...req({ address: bogus.address }, signed(buildSiwsMessage(bogus))) }, nowMs: issued }),
+      /not valid base58/,
     );
   });
 });

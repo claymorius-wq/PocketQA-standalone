@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent, type ViewStyle } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FlutedLens, type Uplight, type UplightGrade } from '../glass';
+import { FlutedLens, GroundFade, type Uplight, type UplightGrade } from '../glass';
 import { GradientRule, HIDDEN, PASS_THROUGH } from '../glass/paint';
 import { DUR, useMotion } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
@@ -99,6 +99,8 @@ export function u1PassAt(now = Date.now()): number | null {
 // above the home indicator / gesture bar where that is taller.
 const DOCK_BOTTOM = 30;
 const DOCK_INSET_GAP = 12;
+// The scrim's fade above the dock: Sign in's dock clearance, so content at rest ends where it starts.
+const DOCK_SCRIM_FADE = layout.listGap;
 
 /**
  * Sign in's bottom dock (A-SignIn), the Screen's `dock` with `dockPlacement="edge"` and
@@ -109,14 +111,30 @@ const DOCK_INSET_GAP = 12;
  *
  * While the keyboard is up the dock rides on it with the primary alone (the footer steps aside and
  * the home-indicator inset is under the keyboard), so it never covers the fields being typed in.
+ *
+ * Under it, a strip of the screen's own ground (GroundFade, as under the stack header): opaque
+ * behind the footer and the primary, fading out over the clearance above them. Content taller than
+ * the free room (Finish your account above the form) scrolls under the dock and dissolves into the
+ * ground instead of showing through the small print; content at rest is never veiled. Not while
+ * the dock rides the keyboard (it is off the ground's bottom edge then).
  */
 export function SignInDock({ footer, children, light }: { footer?: ReactNode; children: ReactNode; light?: Uplight }) {
   const insets = useSafeAreaInsets();
   const keyboard = useDockKeyboard();
+  const [height, setHeight] = useState(0);
   const paddingBottom = keyboard ? DOCK_INSET_GAP : Math.max(DOCK_BOTTOM, insets.bottom + DOCK_INSET_GAP);
+  const onLayout = (e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    setHeight((prev) => (prev === h ? prev : h));
+  };
   return (
-    <View style={[styles.dock, { paddingBottom }, BOX_NONE]}>
-      {/* Mode B: painted first, under the small print and the primary; 300dp, so the pool fades out. */}
+    <View onLayout={onLayout} style={[styles.dock, { paddingBottom }, BOX_NONE]}>
+      {height > 0 && !keyboard ? (
+        <View {...HIDDEN} testID="sign-in-dock-scrim" style={[styles.dockScrim, { top: -DOCK_SCRIM_FADE, height: height + DOCK_SCRIM_FADE }, PASS_THROUGH]}>
+          <GroundFade anchor="bottom" height={height + DOCK_SCRIM_FADE} solid={height} />
+        </View>
+      ) : null}
+      {/* Mode B: over the scrim, under the small print and the primary; 300dp, so the pool fades out. */}
       {light ? <CommitUplight light={light} x={0.5} /> : null}
       <View style={[styles.dockColumn, BOX_NONE]}>
         {/* Kept mounted while the keyboard is up, so it never re-enters. */}
@@ -248,6 +266,7 @@ const styles = StyleSheet.create({
   heroSub: { marginTop: 8, maxWidth: 340 },
   dock: { paddingHorizontal: layout.gutter },
   dockColumn: { width: '100%', maxWidth: 720, alignSelf: 'center' },
+  dockScrim: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
   gone: { display: 'none' },
   note: { paddingHorizontal: 4 },
   noteOverlay: { position: 'absolute', top: 0, left: 4, right: 4 },

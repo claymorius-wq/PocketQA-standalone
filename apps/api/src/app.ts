@@ -10,7 +10,9 @@ import { evidenceHandlers } from './handlers/evidence';
 import { participationHandlers } from './handlers/participations';
 import { studyHandlers } from './handlers/studies';
 import { walletHandlers } from './handlers/wallet';
+import { walletLoginHandlers } from './handlers/walletLogin';
 import { HTTP_STATUS, fail, sha256 } from './util';
+import { IdentityError, isRecoverableSignIn, type VerifiedIdentity } from './identity/types';
 import type { UserRow } from './views';
 
 // Exhaustive: adding a route to the contract without a handler is a type error.
@@ -21,6 +23,7 @@ const handlers: Record<RouteName, Handler> = {
   ...evidenceHandlers,
   ...adminHandlers,
   ...walletHandlers,
+  ...walletLoginHandlers,
 };
 
 /** Routes a suspended account may still use: see itself, leave, export or delete its data. */
@@ -80,18 +83,48 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
   });
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ code: 'NOT_FOUND', message: 'Route not found.' }));
 
-  function authenticate(req: FastifyRequest): UserRow | null {
+  /**
+   * Resolves the caller. Firebase mode: a verified Firebase ID token (revocation checked)
+   * whose UID maps to a non-deleted user; local password sessions are not accepted there.
+   * Local mode: an opaque API session. Never both on one deployment (ADR 0005).
+   */
+  async function authenticate(req: FastifyRequest): Promise<{ user: UserRow | null; identity: VerifiedIdentity | null }> {
+    const none = { user: null, identity: null };
     const header = req.headers.authorization ?? '';
-    if (!header.startsWith('Bearer ')) return null;
+    if (!header.startsWith('Bearer ')) return none;
     const token = header.slice(7).trim();
-    if (!token) return null;
+    if (!token) return none;
+    if (deps.config.authMode === 'firebase') {
+      if (!deps.identity) return none;
+      let identity: VerifiedIdentity;
+      try {
+        identity = await deps.identity.verifyIdToken(token);
+      } catch (e) {
+        if (e instanceof IdentityError) return none;
+        throw e; // provider outage etc.: a server error, not a silent sign-out
+      }
+      const found = deps.db
+        .prepare(
+          `SELECT u.*, i.valid_after_ms AS identity_valid_after_ms FROM identities i JOIN users u ON u.id = i.user_id
+           WHERE i.provider = 'firebase' AND i.subject = ? AND u.status != 'deleted'`,
+        )
+        .get(identity.uid) as (UserRow & { identity_valid_after_ms: number }) | undefined;
+      // Server-side revocation (logout): tokens from sign-ins at or before it are dead.
+      if (found && identity.authTimeMs <= found.identity_valid_after_ms) return none;
+      const user: UserRow | undefined = found ? (({ identity_valid_after_ms: _v, ...u }) => u)(found) : undefined;
+      if (user && isRecoverableSignIn(identity)) {
+        // Signed in with a verified email/Google identity: the wallet is no longer the only way in.
+        deps.db.prepare(`UPDATE identities SET has_recovery = 1 WHERE provider = 'firebase' AND subject = ? AND has_recovery = 0`).run(identity.uid);
+      }
+      return { user: user ?? null, identity };
+    }
     const row = deps.db
       .prepare(
         `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
          WHERE s.token_hash = ? AND s.expires_at > ? AND u.status != 'deleted'`,
       )
       .get(sha256(token), deps.now()) as UserRow | undefined;
-    return row ?? null;
+    return { user: row ?? null, identity: null };
   }
 
   for (const [name, def] of Object.entries(routes) as [RouteName, (typeof routes)[RouteName]][]) {
@@ -101,9 +134,15 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
       url: def.path,
       handler: async (req, reply) => {
         let user: UserRow | null = null;
-        if (def.auth !== 'public') {
-          user = authenticate(req);
-          if (!user) throw fail('UNAUTHENTICATED', 'Sign in to continue.');
+        let identity: VerifiedIdentity | null = null;
+        if (def.auth === 'identity') {
+          // In local mode no provider token can ever authenticate: 401, like any bad credential.
+          if (deps.config.authMode !== 'firebase') throw fail('UNAUTHENTICATED', 'Managed sign-in is not enabled on this deployment.');
+          ({ user, identity } = await authenticate(req));
+          if (!identity) throw fail('UNAUTHENTICATED', 'Sign in to continue.');
+        } else if (def.auth !== 'public') {
+          ({ user, identity } = await authenticate(req));
+          if (!user) throw fail('UNAUTHENTICATED', identity ? 'Finish creating your Pocket QA account first.' : 'Sign in to continue.');
           if (user.status === 'suspended' && !SUSPENDED_ALLOWED.has(name)) throw fail('FORBIDDEN_ROLE', 'This account is suspended.');
           if (def.auth !== 'user' && user.role !== def.auth) throw fail('FORBIDDEN_ROLE', `This action is for ${def.auth}s.`);
         }
@@ -116,7 +155,7 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
           }
           body = parsed.data;
         }
-        const ctx: Ctx = { deps, user, params: req.params as Record<string, string>, body, req, reply };
+        const ctx: Ctx = { deps, user, identity, params: req.params as Record<string, string>, body, req, reply };
         const result = await handler(ctx);
         if (def.response === 'binary') return reply;
         // Responses are parsed through the contract schema: unknown fields are stripped,

@@ -134,8 +134,11 @@ const GRAIN_STEPS = 4;
  * and grain (the grain tile aligned with the Ground's, so the opaque part is the ground itself),
  * windowed to the strip and masked by a vertical gradient; drawn once (no blur, no animation).
  * Light: the flat background colour fading out. Outside a Ground, or before it has laid out: nothing.
+ *
+ * `anchor="bottom"` mirrors it for a screen's edge dock (Sign in): the strip is the ground's last
+ * `height` px (`top` is not used), opaque for its bottom `solid` px and fading out upward.
  */
-export function GroundFade({ top, height, solid = 0 }: { top: number; height: number; solid?: number }) {
+export function GroundFade({ top: topEdge = 0, height, solid = 0, anchor = 'top' }: { top?: number; height: number; solid?: number; anchor?: 'top' | 'bottom' }) {
   const paint = useContext(GroundPaintContext);
   const { glass, colors } = useTheme();
   const id = useSvgId('gfade');
@@ -144,15 +147,17 @@ export function GroundFade({ top, height, solid = 0 }: { top: number; height: nu
   const { w, h } = size;
   const g = glass.ground;
   const { pool, fall, shaft } = groundBoxes(g, w, h);
+  const bottom = anchor === 'bottom';
+  const top = bottom ? h - height : topEdge;
   const viewBox = `0 ${top} ${w} ${height}`;
   const hold = Math.min(1, Math.max(0, solid / height));
   // Each Svg is its own document on native, so each carries its own mask.
   const mask = (m: string) => (
     <>
       <LinearGradient id={`${m}g`} gradientUnits="userSpaceOnUse" x1={0} y1={top} x2={0} y2={top + height}>
-        <Stop offset={0} stopColor="#FFFFFF" stopOpacity={1} />
-        <Stop offset={hold} stopColor="#FFFFFF" stopOpacity={1} />
-        <Stop offset={1} stopColor="#FFFFFF" stopOpacity={0} />
+        <Stop offset={0} stopColor="#FFFFFF" stopOpacity={bottom ? 0 : 1} />
+        <Stop offset={bottom ? 1 - hold : hold} stopColor="#FFFFFF" stopOpacity={1} />
+        <Stop offset={1} stopColor="#FFFFFF" stopOpacity={bottom ? 1 : 0} />
       </LinearGradient>
       <Mask id={m} maskUnits="userSpaceOnUse" x={0} y={top} width={w} height={height}>
         <Rect x={0} y={top} width={w} height={height} fill={`url(#${m}g)`} />
@@ -193,7 +198,7 @@ export function GroundFade({ top, height, solid = 0 }: { top: number; height: nu
           <Rect x={pool.x} y={pool.y} width={pool.w} height={pool.h} fill={`url(#${id}p)`} mask={`url(#${id}n)`} />
         </Svg>
       </Animated.View>
-      <FadeGrain top={top} height={height} solid={Math.round(hold * height)} opacity={glass.grain.ground} />
+      <FadeGrain top={top} height={height} solid={Math.round(hold * height)} opacity={glass.grain.ground} bottom={bottom} />
     </View>
   );
 }
@@ -201,14 +206,16 @@ export function GroundFade({ top, height, solid = 0 }: { top: number; height: nu
 /**
  * The Ground's grain over a GroundFade: full over the opaque part, then GRAIN_STEPS bands of falling
  * opacity across the fade (≤ 1.6% steps of a 6.4% grain: invisible). Each band shows the tile at the
- * Ground's own offset, so the grain lines up with the grain it covers.
+ * Ground's own offset, so the grain lines up with the grain it covers. `bottom`: the opaque part is
+ * the strip's end and the bands fade upward.
  */
-function FadeGrain({ top, height, solid, opacity }: { top: number; height: number; solid: number; opacity: number }) {
+function FadeGrain({ top, height, solid, opacity, bottom = false }: { top: number; height: number; solid: number; opacity: number; bottom?: boolean }) {
   const fade = height - solid;
-  const bands = [{ y: 0, h: solid, k: 1 }];
+  const step = fade / GRAIN_STEPS;
+  const bands = [{ y: bottom ? fade : 0, h: solid, k: 1 }];
   for (let i = 0; i < GRAIN_STEPS && fade > 0; i++) {
-    const y = solid + (fade * i) / GRAIN_STEPS;
-    bands.push({ y, h: fade / GRAIN_STEPS, k: 1 - (i + 0.5) / GRAIN_STEPS });
+    const y = bottom ? fade - step * (i + 1) : solid + (fade * i) / GRAIN_STEPS;
+    bands.push({ y, h: step, k: 1 - (i + 0.5) / GRAIN_STEPS });
   }
   return (
     <>

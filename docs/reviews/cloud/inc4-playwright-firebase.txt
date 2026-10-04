@@ -1,0 +1,25 @@
+
+> pocket-qa@ test:e2e:firebase /Users/hamzadiaz/Projects/pocket-qa/.worktrees/cloud-auth-wallet
+> firebase emulators:exec --only auth --project demo-pocketqa "pnpm --filter @pocket-qa/mobile exec playwright test -c playwright.firebase.config.ts"
+
+i  emulators: Starting emulators: auth
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  Running script: pnpm --filter @pocket-qa/mobile exec playwright test -c playwright.firebase.config.ts
+[WebServer] npm warn Unknown env config "npm-globalconfig". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[WebServer] npm warn Unknown env config "node-linker". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+Running 2 tests using 1 worker
+
+i  To verify the email address fb-1791068939898@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=OxPVsLCaJxyuIdiw-uhoZpym2phxw9kLacQNnMmT4UrDmjWrEwhPQG&apiKey=fake-api-key
+  ✓  1 e2e-firebase/firebase-auth.spec.ts:19:5 › email sign-up → verify → sign in → choose a role → app; the session survives a reload (1.6s)
+  ✓  2 e2e-firebase/firebase-auth.spec.ts:52:5 › the API refuses local password sign-in in firebase mode (one account system) (7ms)
+
+  2 passed (12.8s)
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+FB_EXIT=0

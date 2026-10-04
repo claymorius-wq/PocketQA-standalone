@@ -100,12 +100,21 @@ export const walletHandlers = {
     const user = me(ctx);
     const now = ctx.deps.now();
     const nonce = newNonce();
-    const domain = ctx.deps.config.siwsDomain;
+    // Web: the real origin, so a wallet's SIWS domain check matches the page. MWA (Android):
+    // the fixed app identity domain the MWA identity URI is derived from.
+    let domain = ctx.deps.config.siwsDomain;
+    let uri = appIdentityUri(domain);
+    if (ctx.body.surface === 'web') {
+      const origin = ctx.deps.config.publicOrigin;
+      if (!origin) throw fail('CONFLICT_STATE', 'Web wallet linking needs the app’s public origin to be configured (POCKETQA_PUBLIC_ORIGIN).');
+      domain = new URL(origin).host;
+      uri = origin;
+    }
     const input: SiwsInput = {
       domain,
       address: ctx.body.address,
       statement: 'Link this devnet wallet to your Pocket QA account. This is not a payment.',
-      uri: appIdentityUri(domain),
+      uri,
       version: '1',
       chainId: SOLANA_DEVNET_CHAIN,
       nonce,
@@ -158,6 +167,12 @@ export const walletHandlers = {
 
   walletUnlink: (ctx) => {
     const user = me(ctx);
+    // Never remove the last way in: a wallet-only account needs a password or a verified
+    // email/Google sign-in first (ADR 0005 §2).
+    const recoverable = ctx.deps.db.prepare(`SELECT 1 FROM identities WHERE user_id = ? AND has_recovery = 1`).get(user.id);
+    if (!user.password_hash && !recoverable) {
+      throw fail('CONFLICT_STATE', 'Add an email or Google sign-in before removing your only sign-in method.');
+    }
     ctx.deps.db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
     return userView(ctx.deps.db, user);
   },

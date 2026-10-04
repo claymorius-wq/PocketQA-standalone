@@ -26,9 +26,18 @@ jest.mock('expo-router', () => {
   };
 });
 
+type NewAccount = { role: 'tester' | 'builder'; displayName: string };
 const mockSignIn = jest.fn<Promise<void>, [string, string]>();
-const mockSignUp = jest.fn<Promise<void>, [{ email: string; password: string; displayName: string; role: 'tester' | 'builder' }]>();
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ signIn: mockSignIn, signUp: mockSignUp }) }));
+const mockSignUp = jest.fn<Promise<{ verificationSent: boolean }>, [{ email: string; password: string; displayName: string; role: 'tester' | 'builder' }]>();
+const mockCompleteAccount = jest.fn<Promise<void>, [NewAccount]>();
+const mockAuth = { signInWithGoogle: jest.fn<Promise<void>, []>(), signInWithWallet: jest.fn<Promise<void>, [NewAccount?]>() };
+// The session as SessionProvider serves the local build (local auth and storage, no wallet login,
+// nobody waiting to finish an account); a test sets fields for a managed (Firebase) deployment.
+const LOCAL_SESSION = { authMode: 'local', storage: 'local', walletLogin: false, needsAccount: false, pendingProfile: null as NewAccount | null };
+let mockSession: Partial<typeof LOCAL_SESSION> & Record<string, unknown> = { ...LOCAL_SESSION };
+jest.mock('../src/auth/SessionProvider', () => ({
+  useSession: () => ({ ...mockSession, ...mockAuth, signIn: mockSignIn, signUp: mockSignUp, completeAccount: mockCompleteAccount }),
+}));
 
 let mockPreview = false;
 const mockLoadDemo = jest.fn();
@@ -78,6 +87,8 @@ beforeEach(() => {
   mockLoadDemo.mockReset().mockResolvedValue([]);
   mockSignIn.mockReset();
   mockSignUp.mockReset();
+  mockCompleteAccount.mockReset();
+  mockSession = { ...LOCAL_SESSION };
   disarmU1();
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(() => Promise.resolve(false));
   jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((() => ({ remove: jest.fn() })) as unknown as typeof AccessibilityInfo.addEventListener);
@@ -303,6 +314,39 @@ describe('Sign in with the keyboard up', () => {
   });
 });
 
+describe('Sign in dock scrim', () => {
+  /** Lays out every host view that measures itself (the Ground, the dock) at 390 × `height`. */
+  async function layOut(r: Awaited<ReturnType<typeof render>>, height: number) {
+    for (const n of r.container.queryAll((x) => typeof x.type === 'string' && typeof x.props.onLayout === 'function')) {
+      // persist(): the riding dock's KeyboardAvoidingView keeps the event.
+      await act(async () => n.props.onLayout({ persist: () => undefined, nativeEvent: { layout: { x: 0, y: 0, width: 390, height } } }));
+    }
+  }
+
+  it('repaints the ground under the dock: opaque behind the footer and the primary, fading over the clearance above', async () => {
+    const r = await renderIn('dark', <SignIn />);
+    await advance(1000);
+    await layOut(r, 200);
+    const scrim = screen.getByTestId('sign-in-dock-scrim', HIDDEN_OK);
+    // 14 above the dock's top edge (its clearance), down to the screen's bottom edge.
+    expect(StyleSheet.flatten(scrim.props.style)).toMatchObject({ position: 'absolute', top: -14, height: 214 });
+    // The mask is clear at the top and full ground from 14 px down: white 0 → 1 at 1 − 200/214 → 1.
+    expect(JSON.stringify(scrim.children)).toContain(`"gradient":[0,16777215,${1 - 200 / 214},-1,1,-1]`);
+  });
+
+  it('steps aside while the dock rides the keyboard', async () => {
+    const keyboard = mockKeyboard();
+    const r = await renderIn('dark', <SignIn />);
+    await advance(1000);
+    await layOut(r, 200);
+    expect(screen.getByTestId('sign-in-dock-scrim', HIDDEN_OK)).toBeTruthy();
+    await act(async () => keyboard.show());
+    expect(screen.queryByTestId('sign-in-dock-scrim', HIDDEN_OK)).toBeNull();
+    await act(async () => keyboard.hide());
+    expect(screen.getByTestId('sign-in-dock-scrim', HIDDEN_OK)).toBeTruthy();
+  });
+});
+
 describe('Sign in U1', () => {
   it('plays the pilot only, until the session is accepted', () => {
     expect(signInMoment(false, false)).toEqual({ grade: 'pilot', active: false });
@@ -380,11 +424,77 @@ describe('Sign in U1', () => {
     expect(u1Armed()).toBe(false);
   });
 
+  it('stands down when a managed sign-in has no Pocket QA account yet: no pass, nothing armed, Sign in works again', async () => {
+    // Firebase accepted the password, but no account uses that identity: the session asks for one.
+    mockSignIn.mockImplementation(async () => {
+      mockSession = { ...mockSession, authMode: 'firebase', needsAccount: true };
+    });
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'fiona@example.test');
+    await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'a-long-password');
+    await advance(700);
+    await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(u1Armed()).toBe(false);
+    expect(screen.getByTestId('finish-account')).toBeTruthy();
+    // Where a Commit pass would peak (press + 280 + 600), the pilot simply holds.
+    await advance(880);
+    expect(spill()).toHaveAnimatedStyle({ opacity: 0.35 });
+    await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(mockSignIn).toHaveBeenCalledTimes(2);
+  });
+
   it('draws no Uplight in the flat light theme', async () => {
     await renderIn('light', <SignIn />);
     await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'ana@example.test');
     await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'a-long-password');
     expect(screen.queryByTestId('sign-in-uplight-spill', HIDDEN_OK)).toBeNull();
+  });
+});
+
+describe('Sign in with managed identity (cloud auth)', () => {
+  it('says where data lives on a cloud deployment, never "this machine"', async () => {
+    mockSession = { ...LOCAL_SESSION, authMode: 'firebase', storage: 'r2' };
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    expect(screen.getByText('Sign-in is managed by Firebase · evidence is stored privately in cloud storage')).toBeTruthy();
+    expect(screen.queryByText('Local build · data stays on this machine')).toBeNull();
+    // Google and wallet sign-in are web-only: a native render offers neither.
+    expect(screen.queryByTestId('sign-in-google')).toBeNull();
+    expect(screen.queryByTestId('sign-in-wallet')).toBeNull();
+  });
+
+  it('finish your account: the role switch and name prefilled from sign-up, above the sign-in card, then Create account', async () => {
+    mockSession = { ...LOCAL_SESSION, authMode: 'firebase', needsAccount: true, pendingProfile: { role: 'builder', displayName: 'Fiona Firebase' } };
+    mockCompleteAccount.mockResolvedValue(undefined);
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    expect(screen.getByText('Finish your account')).toBeTruthy();
+    expect(screen.getByText('You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.')).toBeTruthy();
+    expect(screen.getByTestId('finish-name').props.value).toBe('Fiona Firebase');
+    expect(screen.getByTestId('finish-role-builder').props.accessibilityState).toMatchObject({ selected: true });
+    // It rises into the room above the sign-in card (the same bottom-anchored wrapper), so that card never moves.
+    expect(formWrapper('finish-account')).toBe(formWrapper('sign-in-email'));
+    expect(anchoredLow()).toBe(true);
+    await fireEvent.changeText(screen.getByTestId('finish-name'), ' Fiona ');
+    await fireEvent.press(screen.getByTestId('finish-role-tester'));
+    await fireEvent.press(screen.getByTestId('finish-submit'));
+    expect(mockCompleteAccount).toHaveBeenCalledWith({ role: 'tester', displayName: 'Fiona' });
+    // A new account lands with the plain replace, as Sign up does: U1 is never armed for it.
+    expect(u1Armed()).toBe(false);
+  });
+
+  it('finish your account needs a display name, and a failure shows in the sign-in notice', async () => {
+    mockSession = { ...LOCAL_SESSION, authMode: 'firebase', needsAccount: true };
+    mockCompleteAccount.mockRejectedValue(new Error('The account could not be created.'));
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    expect(disabled('finish-submit')).toBe(true);
+    await fireEvent.changeText(screen.getByTestId('finish-name'), 'Fiona');
+    expect(disabled('finish-submit')).toBe(false);
+    await fireEvent.press(screen.getByTestId('finish-submit'));
+    expect(screen.getByTestId('sign-in-error')).toBeTruthy();
+    expect(screen.getByText('The account could not be created.')).toBeTruthy();
   });
 });
 
@@ -434,7 +544,7 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   });
 
   it('flags a short password, enables Create account when valid and signs up with the chosen role', async () => {
-    mockSignUp.mockResolvedValue(undefined);
+    mockSignUp.mockResolvedValue({ verificationSent: false });
     await renderIn(scheme, <SignUp />);
     await fireEvent.changeText(screen.getByTestId('sign-up-name'), ' Ana ');
     await fireEvent.changeText(screen.getByTestId('sign-up-email'), ' ana@example.test ');
@@ -448,6 +558,23 @@ describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
     await fireEvent.press(screen.getByTestId('role-builder'));
     await fireEvent.press(screen.getByTestId('sign-up-submit'));
     expect(mockSignUp).toHaveBeenCalledWith({ email: 'ana@example.test', password: fixture('a-long-password'), displayName: 'Ana', role: 'builder' });
+    // Local accounts land at once: nothing to verify.
+    expect(screen.queryByTestId('sign-up-verify')).toBeNull();
+    expect(screen.queryByTestId('sign-up-error')).toBeNull();
+  });
+
+  it('managed sign-in: asks for the emailed verification link in the kit’s info notice', async () => {
+    mockSignUp.mockResolvedValue({ verificationSent: true });
+    await renderIn(scheme, <SignUp />);
+    await fireEvent.changeText(screen.getByTestId('sign-up-name'), 'Fiona');
+    await fireEvent.changeText(screen.getByTestId('sign-up-email'), ' fiona@example.test ');
+    await fireEvent.changeText(screen.getByTestId('sign-up-password'), 'a-long-password');
+    await fireEvent.press(screen.getByTestId('sign-up-submit'));
+    expect(screen.getByTestId('sign-up-verify')).toBeTruthy();
+    expect(screen.getByText('Check your email')).toBeTruthy();
+    // One body line in the notice's muted text (the kit sets a string child as its body).
+    expect(screen.getByText('We sent a verification link to fiona@example.test. Open it, then sign in to finish creating your account.')).toBeTruthy();
+    expect(screen.queryByTestId('sign-up-error')).toBeNull();
   });
 
   it('shows the server’s cause in the failure notice', async () => {

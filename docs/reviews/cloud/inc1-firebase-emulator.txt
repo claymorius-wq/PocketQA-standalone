@@ -1,0 +1,9 @@
+> pocket-qa@ test:emulator /Users/hamzadiaz/Projects/pocket-qa/.worktrees/cloud-auth-wallet
+> firebase emulators:exec --only auth --project demo-pocketqa "pnpm --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts"
+i  emulators: Starting emulators: auth
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  Running script: pnpm --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+i  emulators: Shutting down emulators.
+i  hub: Stopping emulator hub

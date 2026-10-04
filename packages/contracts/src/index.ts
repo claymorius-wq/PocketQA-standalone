@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.3.0';
+export const CONTRACT_VERSION = '0.4.0';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 /** Bearer session token travels in this header; never in URLs, never logged. */
@@ -41,6 +41,8 @@ export const ErrorCode = z.enum([
   'CHAIN_UNAVAILABLE',
   'PAYLOAD_TOO_LARGE',
   'RATE_LIMITED',
+  'EMAIL_UNVERIFIED',
+  'PROVIDER_UNSUPPORTED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -256,6 +258,26 @@ export const Evidence = z.object({
 });
 export type Evidence = z.infer<typeof Evidence>;
 
+/**
+ * Direct-to-storage upload (ADR 0005 §3, `storage: 'r2'`). The server picks an opaque
+ * quarantine key and returns a short-lived presigned PUT bound to the declared type and
+ * exact size; nothing is evidence until the server completes (verifies) the upload.
+ */
+export const CreateUploadIntentBody = EvidenceUploadMeta.extend({
+  mimeType: EvidenceMime,
+  sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
+});
+export const UPLOAD_INTENT_TTL_SECONDS = 15 * 60;
+export const UploadIntent = z.object({
+  id: Id,
+  method: z.literal('PUT'),
+  uploadUrl: z.string().url(),
+  /** Send exactly these headers with the PUT (they are part of the signature). */
+  headers: z.record(z.string(), z.string()),
+  expiresAt: IsoDate,
+});
+export type UploadIntent = z.infer<typeof UploadIntent>;
+
 /** Bound to one evidence item and the requesting user; single resource, short-lived. */
 export const PlaybackToken = z.object({ token: z.string().min(32), expiresAt: IsoDate });
 
@@ -385,7 +407,12 @@ export const WALLET_NONCE_TTL_SECONDS = 300;
 export const DEFAULT_SIWS_DOMAIN = 'pocketqa.local';
 export const appIdentityUri = (domain: string) => `https://${domain}`;
 
-export const WalletNonceBody = z.object({ address: Base58Address });
+/**
+ * `surface`: where the link is signed. `mwa` (default, Android) uses the fixed app identity
+ * domain; `web` uses the deployment's real origin so wallets that check SIWS domains see
+ * the page they are on (ADR 0005 §4).
+ */
+export const WalletNonceBody = z.object({ address: Base58Address, surface: z.enum(['mwa', 'web']).optional() });
 /**
  * Server-issued SIWS input, bound server-side to (user, address, nonce, domain, chain,
  * issuedAt, expiresAt). The app renders it with `buildSiwsMessage` and has the wallet sign
@@ -414,6 +441,23 @@ export const WalletLinkBody = z.object({
   /** base64 ed25519 signature (64 bytes → 88 chars). */
   signature: z.string().length(88),
 });
+
+/**
+ * Wallet-first login (ADR 0005 §2). A separate challenge from account linking: its own
+ * statement ("Sign in … not a payment") and store, single use, rate limited. The wallet
+ * resolves only to the account it is linked to; `newAccount` creates one only if none is.
+ */
+export const WalletLoginChallengeBody = z.object({ address: Base58Address });
+export const WalletLoginBody = WalletLinkBody.extend({
+  newAccount: z.object({ role: SelfServeRole, displayName: DisplayName }).optional(),
+});
+/** `local`: an API session token. `firebase_custom_token`: exchange with the Firebase client SDK for an ID token; it is never an API bearer. */
+export const WalletLoginSession = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('local'), token: z.string().min(32) }),
+  z.object({ kind: z.literal('firebase_custom_token'), customToken: z.string().min(16) }),
+]);
+export const WalletLoginResponse = z.object({ user: User, session: WalletLoginSession });
+export type WalletLoginResponse = z.infer<typeof WalletLoginResponse>;
 
 /**
  * Devnet demo transfer: a builder may send a small devnet SOL amount to an approved
@@ -453,12 +497,43 @@ export const Ok = z.object({ ok: z.literal(true) });
 export const Health = z.object({ ok: z.literal(true), contractVersion: z.string() });
 const list = <T extends z.ZodTypeAny>(item: T) => z.object({ items: z.array(item) });
 
+// ---------- cloud identity and client config (ADR 0005, v0.4.0) ----------
+export const AuthMode = z.enum(['local', 'firebase']);
+export type AuthMode = z.infer<typeof AuthMode>;
+export const StorageMode = z.enum(['local', 'r2']);
+export type StorageMode = z.infer<typeof StorageMode>;
+/**
+ * Public client configuration. Firebase *web* config values are public identifiers, not
+ * secrets; server credentials never appear here.
+ */
+export const ClientConfig = z.object({
+  authMode: AuthMode,
+  storage: StorageMode,
+  walletLogin: z.boolean(),
+  firebase: z
+    .object({
+      apiKey: z.string().min(1),
+      authDomain: z.string().min(1),
+      projectId: z.string().min(1),
+      /** Set only for local emulator testing, e.g. http://127.0.0.1:9099 */
+      authEmulatorUrl: z.string().url().nullable(),
+    })
+    .nullable(),
+});
+export type ClientConfig = z.infer<typeof ClientConfig>;
+/** First sign-in with a managed identity: map it, or explicitly create the account. */
+export const IdentitySessionBody = z.object({
+  newAccount: z.object({ role: SelfServeRole, displayName: DisplayName }).optional(),
+});
+export const IdentitySessionResponse = z.object({ user: User });
+
 // ---------- route table ----------
 /**
  * `auth`: who may call. `scope` documents the ownership rule the handler enforces
  * (non-owners get 404). The Phase 3 authorization-matrix test iterates this table.
  */
-export type RouteAuth = 'public' | 'user' | 'tester' | 'builder' | 'admin';
+/** `identity`: a verified managed identity (Firebase ID token) that may not have an account yet. */
+export type RouteAuth = 'public' | 'identity' | 'user' | 'tester' | 'builder' | 'admin';
 export type RouteScope =
   | 'none'
   | 'self'
@@ -482,6 +557,8 @@ export const routes = {
   register: r({ method: 'POST', path: '/auth/register', auth: 'public', scope: 'none', body: RegisterBody, response: AuthResponse }),
   login: r({ method: 'POST', path: '/auth/login', auth: 'public', scope: 'none', body: LoginBody, response: AuthResponse }),
   logout: r({ method: 'POST', path: '/auth/logout', auth: 'user', scope: 'self', body: null, response: Ok }),
+  clientConfig: r({ method: 'GET', path: '/config', auth: 'public', scope: 'none', body: null, response: ClientConfig }),
+  identitySession: r({ method: 'POST', path: '/auth/identity/session', auth: 'identity', scope: 'self', body: IdentitySessionBody, response: IdentitySessionResponse }),
   me: r({ method: 'GET', path: '/me', auth: 'user', scope: 'self', body: null, response: User }),
   putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfile, response: User }),
   credits: r({ method: 'GET', path: '/me/credits', auth: 'user', scope: 'self', body: null, response: CreditsView }),
@@ -511,6 +588,8 @@ export const routes = {
   listEvidence: r({ method: 'GET', path: '/participations/:id/evidence', auth: 'user', scope: 'participation-party', body: null, response: list(Evidence) }),
   playbackToken: r({ method: 'POST', path: '/evidence/:id/playback-token', auth: 'user', scope: 'participation-party', body: null, response: PlaybackToken }),
   media: r({ method: 'GET', path: '/media/:token', auth: 'public', scope: 'token-holder', body: null, response: 'binary' }),
+  createUploadIntent: r({ method: 'POST', path: '/participations/:id/evidence/upload-intents', auth: 'tester', scope: 'tester-owner', body: CreateUploadIntentBody, response: UploadIntent }),
+  completeUploadIntent: r({ method: 'POST', path: '/evidence/upload-intents/:id/complete', auth: 'tester', scope: 'tester-owner', body: null, response: Evidence }),
   listFindings: r({ method: 'GET', path: '/participations/:id/findings', auth: 'user', scope: 'participation-party', body: null, response: list(Finding) }),
   createFinding: r({ method: 'POST', path: '/participations/:id/findings', auth: 'builder', scope: 'study-owner', body: FindingInput, response: Finding }),
   approve: r({ method: 'POST', path: '/participations/:id/approve', auth: 'builder', scope: 'study-owner', body: ApproveBody, response: Participation }),
@@ -528,6 +607,8 @@ export const routes = {
   walletNonce: r({ method: 'POST', path: '/wallet/nonce', auth: 'user', scope: 'self', body: WalletNonceBody, response: WalletNonceResponse }),
   walletLink: r({ method: 'POST', path: '/wallet/link', auth: 'user', scope: 'self', body: WalletLinkBody, response: User }),
   walletUnlink: r({ method: 'DELETE', path: '/wallet', auth: 'user', scope: 'self', body: null, response: User }),
+  walletLoginChallenge: r({ method: 'POST', path: '/auth/wallet/challenge', auth: 'public', scope: 'none', body: WalletLoginChallengeBody, response: WalletNonceResponse }),
+  walletLogin: r({ method: 'POST', path: '/auth/wallet/login', auth: 'public', scope: 'none', body: WalletLoginBody, response: WalletLoginResponse }),
   createTransfer: r({ method: 'POST', path: '/devnet/transfers', auth: 'builder', scope: 'study-owner', body: CreateDevnetTransferBody, response: DevnetTransfer }),
   submitTransferSignature: r({ method: 'POST', path: '/devnet/transfers/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitTransferSignatureBody, response: DevnetTransfer }),
   getTransfer: r({ method: 'GET', path: '/devnet/transfers/:id', auth: 'user', scope: 'participation-party', body: null, response: DevnetTransfer }),

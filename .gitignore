@@ -57,3 +57,8 @@ apps/mobile/dist-preview/
 apps/mobile/dist-preview.next/
 apps/mobile/dist-preview.old/
 .preview-test/
+firebase-debug.log
+firebase-debug.*.log
+
+# Local cloud-integration material (public web config, server credentials): never committed
+.cloud-local/
