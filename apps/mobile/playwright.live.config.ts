@@ -18,11 +18,12 @@ export default defineConfig({
   expect: { timeout: 30_000 },
   workers: 1,
   reporter: [['list']],
-  use: { trace: 'retain-on-failure', actionTimeout: 30_000, ...devices['Pixel 7'] },
+  // No traces: they would keep live bearer tokens and presigned URLs on disk (review P3-6).
+  use: { trace: 'off', actionTimeout: 30_000, ...devices['Pixel 7'] },
   webServer: [
     { command: 'node e2e-live/start-api.mjs', url: 'http://127.0.0.1:8797/health', reuseExistingServer: false, timeout: 90_000 },
     {
-      command: `PROD_API_URL=/api bash ../../scripts/production/build-web.sh && WEB_PORT=8091 WEB_API_PORT=8797 WEB_PUBLIC_HOST=pocketqa.optijara.ai WEB_ROOT=dist-production WEB_R2_ACCOUNT_ID=${r2Account} node ../../scripts/production/web-server.mjs`,
+      command: `PROD_API_URL=/api bash ../../scripts/production/build-web.sh && WEB_PORT=8091 WEB_API_PORT=8797 WEB_PUBLIC_HOST=pocketqa.optijara.ai WEB_ROOT=dist-production WEB_R2_ACCOUNT_ID=${r2Account} WEB_R2_BUCKET=pocketqa-evidence node ../../scripts/production/web-server.mjs`,
       url: 'http://127.0.0.1:8091',
       reuseExistingServer: false,
       timeout: 300_000,

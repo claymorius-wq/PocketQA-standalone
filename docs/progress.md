@@ -9,7 +9,7 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
   - Real Firebase `pocketqa-optijara` and real R2 `pocketqa-evidence`, through the app UI, loaded as `https://pocketqa.optijara.ai` and answered by the local production front door.
   - The API is explicitly non-production (development, retention-only, deletion off). Synthetic data only, nothing deleted.
   - Covered: sign-up, verify, sign-in, publishing with test credits, consent, a browser PUT to R2 (200 under the real CORS rule), completion, 404 role isolation, 206 ranged playback, approval, and 0 CSP violations.
-- **New production front door** `scripts/production/web-server.mjs`, plus tests and a launchd unit. The preview gate's `connect-src 'self'` would have blocked Firebase Auth and R2 in production. The negative control shows the CSP check catches a wrong origin.
+- **New production front door** `scripts/production/web-server.mjs`, plus tests and a launchd unit. The preview gate's `connect-src 'self'` would have blocked Firebase Auth and R2 in production. A negative control (a wrong R2 origin) shows the CSP is enforced. The violation detector is self-tested in every run.
 - **Defect found live and fixed:** Firebase 503 on the verification email made sign-up falsely report failure.
 - **Plan:** `docs/production/web-launch.md` (acceptance, cutover and rollback, gates). No live cutover: A5, A9, the Firebase plan and Identity Platform console check, A7 and B4 are still open.
 - **Billing:** the read-only Cloud Billing GET with the Firebase CLI login was denied by the session's permission system and not retried. It stays a console check for Hamza.

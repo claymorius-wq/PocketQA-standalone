@@ -37,10 +37,11 @@ The production guards are unchanged: production refuses this mode.
 | Tester session | Tester saves a web device, consents, and starts the session. |
 | Upload | The browser PUTs the synthetic WebM **directly to R2 from the production origin** and gets **200** (real CORS). Completion is verified, then the session is submitted. |
 | Role isolation | A second real tester opening the first tester's session gets **404** from the API, and a tester deep-linking to a builder page lands on Discover. |
-| Playback and approval | The builder opens the evidence. `/api/media/…` answers **206** with `Content-Range`, the `<video>` reaches `readyState ≥ 2`, then the builder approves and the tester sees the approval. |
-| CSP | Every page ran under the production CSP with **zero violations**. |
+| Playback and approval | The builder opens the evidence. `/api/media/…` answers **206** with `Content-Range`, and the `<video>` reaches `readyState ≥ 2`. The builder then approves and the tester sees the approval. |
+| Seeking | The player seeks to 2 s (the `seeked` event fires there). A mid-file range of the same media link (`bytes=1000-1999`) answers **206** for exactly those 1000 bytes. |
+| CSP | Every page ran under the production CSP with **zero violations**. The detector is self-tested in each run: a fetch to an origin outside `connect-src` must be reported. |
 
-The CSP check is negative-controlled. With a wrong R2 origin in `connect-src`, the same run fails at the upload, and the app shows "The upload didn't reach storage".
+**Enforcement is negative-controlled.** With a wrong R2 origin in `connect-src`, the browser blocks the upload and the run fails at it. The app shows "The upload didn't reach storage".
 
 **Defect found and fixed by the live run.** Firebase sometimes answers the verification-email send with **503** right after creating the account.
 - **Before:** the app said "Couldn't create an account…", and left the user signed in to Firebase without saving their role.
@@ -73,9 +74,11 @@ Counts and IDs: `docs/reviews/production/live/web-live-e2e.txt`.
 **Front-door CSP:** `script-src 'self'`; `connect-src 'self'` plus exactly:
 - `https://identitytoolkit.googleapis.com`;
 - `https://securetoken.googleapis.com`;
-- `https://<account>.r2.cloudflarestorage.com`.
+- `https://<account>.r2.cloudflarestorage.com/pocketqa-evidence/`: the one bucket's path, since presigned URLs are path-style.
 
 Media stays `'self'` because playback is proxied. `frame-ancestors 'none'`.
+
+**Forwarding:** the front door drops client-supplied `X-Forwarded-*`, `Forwarded` and `X-Real-IP`. It sets `X-Forwarded-For` itself: CF-Connecting-IP when the peer is the loopback tunnel, otherwise the socket peer. The API's per-client rate limits therefore rely on cloudflared reporting the visitor.
 
 **Front-door headers and caching:**
 - HSTS, `nosniff`, `X-Frame-Options: DENY`, `no-referrer`;
@@ -124,8 +127,8 @@ Each step names who runs it. **The lead never changes the tunnel, DNS or the run
 
 | Gate | Owner | State |
 |---|---|---|
-| Web E2E on real Firebase and R2 from the production origin (I3 web part, S4 web part) | lead | ✅ §1, for the reviewed SHA in the evidence file |
-| Front door with production CSP | lead | 🔧 code here, awaiting pqa-qa |
+| Web E2E on real Firebase and R2 from the production origin (I3 web part, S4 web part) | lead | ✅ §1, for the SHA named in `docs/reviews/production/web-launch/e2e-live.txt` |
+| Front door with production CSP | lead | 🔧 pqa-qa r1 APPROVE; r2 pending on the P3 fixes |
 | **A5: real-user deletion policy, including backup retention** | Hamza | ⛔ Production refuses to start without `ALLOW_DELETE=1`, and that is prohibited until decided |
 | **A9: study funding without payments** (unpaid studies, or no publishing) | Hamza | ⛔ Production builders can't publish |
 | Firebase project state | Hamza (console) | ⚠️ Auth reports `subtype IDENTITY_PLATFORM` after the CLI auth deploy (see below), and the billing or plan state is unverified |

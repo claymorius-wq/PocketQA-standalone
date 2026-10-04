@@ -44,7 +44,7 @@ before(async () => {
     });
   });
   const upPort = await listen(upstream);
-  web = createWebServer({ root, apiOrigin: `http://127.0.0.1:${upPort}`, allowedHosts: [HOST], connect: connectOrigins(ACCOUNT) });
+  web = createWebServer({ root, apiOrigin: `http://127.0.0.1:${upPort}`, allowedHosts: [HOST], connect: connectOrigins(ACCOUNT, 'pocketqa-evidence') });
   webPort = await listen(web);
 });
 after(() => {
@@ -67,7 +67,8 @@ describe('production web server', () => {
     assert.match(r.headers['strict-transport-security'], /max-age=31536000/);
     const csp = r.headers['content-security-policy'];
     assert.match(csp, /script-src 'self';/);
-    assert.match(csp, new RegExp(`connect-src 'self' https://identitytoolkit\\.googleapis\\.com https://securetoken\\.googleapis\\.com https://${ACCOUNT}\\.r2\\.cloudflarestorage\\.com;`));
+    // R2 narrowed to the one bucket's path.
+    assert.match(csp, new RegExp(`connect-src 'self' https://identitytoolkit\\.googleapis\\.com https://securetoken\\.googleapis\\.com https://${ACCOUNT}\\.r2\\.cloudflarestorage\\.com/pocketqa-evidence/;`));
     assert.doesNotMatch(csp, /\*/);
     const asset = await http('GET', '/_expo/app.js');
     assert.equal(asset.headers['content-type'], 'text/javascript; charset=utf-8');
@@ -101,6 +102,20 @@ describe('production web server', () => {
     assert.equal(r.headers['content-security-policy'], "default-src 'none'; sandbox");
   });
 
+  it('states the client address itself and drops client-supplied forwarding headers', async () => {
+    seen.length = 0;
+    const spoof = { 'x-forwarded-for': '6.6.6.6', 'x-forwarded-host': 'evil.example', 'x-forwarded-proto': 'http', forwarded: 'for=6.6.6.6', 'x-real-ip': '6.6.6.6' };
+    // Behind the tunnel (loopback peer): the visitor from CF-Connecting-IP.
+    await http('GET', '/api/me', { headers: { ...spoof, 'cf-connecting-ip': '203.0.113.7' } });
+    // A garbage CF-Connecting-IP falls back to the socket peer.
+    await http('GET', '/api/me', { headers: { ...spoof, 'cf-connecting-ip': '1.2.3.4, 5.6.7.8' } });
+    assert.equal(seen[0].headers['x-forwarded-for'], '203.0.113.7');
+    assert.equal(seen[1].headers['x-forwarded-for'], '127.0.0.1');
+    for (const h of seen.map((x) => x.headers)) {
+      for (const k of ['x-forwarded-host', 'x-forwarded-proto', 'forwarded', 'x-real-ip']) assert.equal(h[k], undefined, k);
+    }
+  });
+
   it('passes ranged media through (206 with Content-Range)', async () => {
     const r = await http('GET', '/api/media/tok', { headers: { range: 'bytes=0-1' } });
     assert.equal(r.status, 206);
@@ -128,7 +143,8 @@ describe('production web server', () => {
   it('refuses a non-loopback API, a missing build, and loose connect-src values', () => {
     assert.throws(() => createWebServer({ root, apiOrigin: 'http://10.0.0.1:8787', allowedHosts: [HOST], connect: [] }), /loopback/);
     assert.throws(() => createWebServer({ root: mkdtempSync(join(tmpdir(), 'pqa-empty-')), apiOrigin: 'http://127.0.0.1:1', allowedHosts: [HOST], connect: [] }), /index\.html/);
-    assert.throws(() => connectOrigins('nothex'), /32 hex/);
-    for (const o of ['https://*.r2.cloudflarestorage.com', 'http://x.example', 'https://x.example/path', "https://x.example; script-src *"]) assert.throws(() => appCsp([o]), /bare https origin/, o);
+    assert.throws(() => connectOrigins('nothex', 'pocketqa-evidence'), /32 hex/);
+    assert.throws(() => connectOrigins(ACCOUNT, ''), /bucket/);
+    for (const o of ['https://*.r2.cloudflarestorage.com', 'http://x.example', 'https://x.example/path', 'https://x.example/a/b/', "https://x.example; script-src *", "https://x.example/b/ 'unsafe-eval'"]) assert.throws(() => appCsp([o]), /https origin/, o);
   });
 });

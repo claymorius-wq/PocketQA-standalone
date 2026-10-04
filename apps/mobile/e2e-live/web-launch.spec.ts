@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -41,7 +41,14 @@ async function mapOrigin(ctx: BrowserContext, seen: { mapped: number; csp: strin
   await ctx.route(`${ORIGIN}/**`, async (route) => {
     const url = new URL(route.request().url());
     seen.mapped += 1;
-    await route.fulfill({ response: await route.fetch({ url: `${WEB}${url.pathname}${url.search}` }) });
+    // On failure (e.g. a request still in flight while a context closes) abort quietly: Playwright's
+    // error for a failed route.fetch prints the request headers, bearer token included. A real
+    // failure still fails the run through the app's own assertions.
+    try {
+      await route.fulfill({ response: await route.fetch({ url: `${WEB}${url.pathname}${url.search}` }) });
+    } catch {
+      await route.abort().catch(() => {});
+    }
   });
   // Any CSP violation (a blocked Firebase or R2 call, an inline script) on any page, across
   // navigations, fails the run: Chromium reports each one on the console.
@@ -99,6 +106,11 @@ test('real Firebase + R2 from the production origin: sign-up → roles → uploa
   await mapOrigin(builderCtx, seen);
   const builder = await builderCtx.newPage();
   await signUpVerifySignIn(builder, 'builder', 'Bea');
+  // The CSP detector works: a fetch to an origin outside connect-src is blocked and reported.
+  await builder.evaluate(() => fetch('https://csp-probe.example.test/').catch(() => null));
+  await expect.poll(() => seen.csp.length).toBeGreaterThan(0);
+  expect(seen.csp.join('\n')).toContain('csp-probe.example.test');
+  seen.csp.length = 0;
 
   // Non-production test credits (no value) fund the synthetic study; production has them off.
   await builder.getByTestId('tab-budget').click();
@@ -184,6 +196,21 @@ test('real Firebase + R2 from the production origin: sign-up → roles → uploa
   expect(ranged.headers()['content-range']).toMatch(/^bytes \d+-\d+\/\d+$/);
   // The playback state is real: the video element decoded frames of the uploaded clip.
   await expect.poll(async () => builder.locator('video').evaluate((v: HTMLVideoElement) => v.readyState), { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
+  // Seeking: the player jumps to 2 s and decodes there; and a mid-file range of the same media
+  // link (as a seek past the buffer requests) answers 206 for exactly those bytes.
+  const seeked = await builder.locator('video').evaluate(
+    (v: HTMLVideoElement) =>
+      new Promise<number>((resolve) => {
+        v.addEventListener('seeked', () => resolve(v.currentTime), { once: true });
+        v.currentTime = 2;
+      }),
+  );
+  expect(seeked).toBeGreaterThanOrEqual(1.9);
+  const mid = await builder.evaluate(async (url) => {
+    const r = await fetch(url, { headers: { range: 'bytes=1000-1999' } });
+    return { status: r.status, range: r.headers.get('content-range'), length: (await r.arrayBuffer()).byteLength };
+  }, ranged.url());
+  expect(mid).toEqual({ status: 206, range: `bytes 1000-1999/${statSync(clip).size}`, length: 1000 });
   await builder.getByTestId('review-approve').click();
   await builder.getByTestId('confirm-ok').click();
   await expect(builder.getByTestId('review-decided')).toContainText('Approved');
@@ -196,5 +223,6 @@ test('real Firebase + R2 from the production origin: sign-up → roles → uploa
   expect(doc.headers()['content-security-policy']).toContain("connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://");
   expect(seen.csp).toEqual([]);
   writeFileSync(join(tmpdir(), `pqa-weblive-${run}.json`), JSON.stringify({ uids: created, participationId }));
+  for (const ctx of [builderCtx, testerCtx, otherCtx]) await ctx.unrouteAll({ behavior: 'ignoreErrors' });
   await Promise.all([builderCtx.close(), testerCtx.close(), otherCtx.close()]);
 });

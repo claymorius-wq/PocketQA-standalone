@@ -216,7 +216,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           } catch (e) {
             throw new Error(firebaseErrorText(e, 'sign-up') ?? 'Sign-up failed.', { cause: e });
           }
-          await firebaseSession.signOut(fb.current!);
+          // The account exists from here on: a failing local sign-out must not turn it into
+          // "Couldn't create account" (web-launch review P3-5).
+          await firebaseSession.signOut(fb.current!).catch(() => {});
           // Remember the choices for "Finish your account" after the email is verified.
           await AsyncStorage.setItem(PENDING_PROFILE, JSON.stringify({ role: input.role, displayName: input.displayName })).catch(() => {});
           return { verification: emailSent ? 'sent' : 'unsent' };

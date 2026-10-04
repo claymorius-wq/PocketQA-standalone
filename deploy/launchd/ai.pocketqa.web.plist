@@ -21,6 +21,7 @@
     <key>WEB_PUBLIC_HOST</key><string>pocketqa.optijara.ai</string>
     <key>WEB_ROOT</key><string>__REPO__/apps/mobile/dist-production</string>
     <key>WEB_R2_ACCOUNT_ID</key><string>__R2_ACCOUNT_ID__</string>
+    <key>WEB_R2_BUCKET</key><string>pocketqa-evidence</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

@@ -4,10 +4,11 @@
 // - the production `expo export` web build (scripts/production/build-web.sh), with SPA fallback;
 // - a same-origin proxy `/api/*` → the loopback Pocket QA API, so the API stays bound to 127.0.0.1;
 // - security headers on everything, and an app CSP whose connect-src names exactly what the
-//   browser must reach besides this origin: Firebase Auth's two endpoints and the R2 account
-//   endpoint for presigned direct uploads. Playback goes through /api, so media stays 'self'.
+//   browser must reach besides this origin: Firebase Auth's two endpoints and the one R2 bucket
+//   for presigned direct uploads. Playback goes through /api, so media stays 'self'.
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, request as httpRequest } from 'node:http';
+import { isIP } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
 
 const TYPES = {
@@ -28,15 +29,34 @@ const TYPES = {
 // domain as frame-src; it is not enabled (ledger I9), so it is not allowed here.
 export const FIREBASE_AUTH_ORIGINS = ['https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com'];
 
-/** connect-src origins for a deployment: Firebase Auth plus this account's R2 S3 endpoint. */
-export function connectOrigins(r2AccountId) {
+/**
+ * connect-src sources for a deployment: Firebase Auth plus this account's R2 S3 endpoint, narrowed
+ * to the one bucket's path (presigned URLs are path-style: /<bucket>/<key>).
+ */
+export function connectOrigins(r2AccountId, bucket) {
   if (!/^[a-f0-9]{32}$/.test(r2AccountId ?? '')) throw new Error('R2 account id must be 32 hex characters');
-  return [...FIREBASE_AUTH_ORIGINS, `https://${r2AccountId}.r2.cloudflarestorage.com`];
+  if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket ?? '')) throw new Error('R2 bucket name is required');
+  return [...FIREBASE_AUTH_ORIGINS, `https://${r2AccountId}.r2.cloudflarestorage.com/${bucket}/`];
 }
 
 // Hop-by-hop headers (RFC 9110 §7.6.1), plus any named in `Connection`, never cross the proxy.
 // Cookies don't either: the app authenticates with a bearer token and sets no cookies.
 const HOP = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'cookie']);
+// Client-supplied forwarding headers are never passed on; the front door states the client
+// address itself (see clientAddress), so the API's per-client rate limits can't be steered.
+const FORWARDING = ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-real-ip'];
+
+/**
+ * The client's address for the API's X-Forwarded-For. Behind the tunnel every connection comes
+ * from loopback, and cloudflared reports the visitor in CF-Connecting-IP (Cloudflare's edge sets
+ * it; clients can't). Anything else is the socket peer itself.
+ */
+function clientAddress(req) {
+  const peer = req.socket.remoteAddress ?? '';
+  const cf = String(req.headers['cf-connecting-ip'] ?? '').trim();
+  const loopback = peer === '127.0.0.1' || peer === '::1' || peer === '::ffff:127.0.0.1';
+  return loopback && isIP(cf) ? cf : peer;
+}
 function stripSet(headers) {
   const named = String(headers.connection ?? '')
     .split(',')
@@ -61,7 +81,7 @@ function securityHeaders() {
 const API_CSP = "default-src 'none'; sandbox";
 // React Native Web needs inline styles, not inline scripts (the export has none).
 export function appCsp(connect) {
-  for (const o of connect) if (!/^https:\/\/[a-z0-9.-]+$/.test(o)) throw new Error(`connect-src origin must be a bare https origin: ${o}`);
+  for (const o of connect) if (!/^https:\/\/[a-z0-9.-]+(\/[a-z0-9-]+\/)?$/.test(o)) throw new Error(`connect-src source must be an https origin, optionally with one /path/: ${o}`);
   return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' ${connect.join(' ')}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'`;
 }
 
@@ -95,6 +115,8 @@ export function createWebServer(opts) {
     const strip = stripSet(req.headers);
     const fwd = {};
     for (const [k, v] of Object.entries(req.headers)) if (!strip.has(k)) fwd[k] = v;
+    for (const k of FORWARDING) delete fwd[k];
+    fwd['x-forwarded-for'] = clientAddress(req);
     fwd.host = api.host;
     const up = httpRequest({ hostname: api.hostname.replace(/^\[|\]$/g, ''), port: api.port, method: req.method, path, headers: fwd, timeout: 120_000 }, (r) => {
       const drop = stripSet(r.headers);
@@ -151,15 +173,15 @@ if (import.meta.main) {
   const port = Number(env.WEB_PORT);
   const apiPort = Number(env.WEB_API_PORT);
   const publicHost = env.WEB_PUBLIC_HOST;
-  if (!port || !apiPort || !publicHost || !env.WEB_ROOT || !env.WEB_R2_ACCOUNT_ID) {
-    console.error('Set WEB_PORT, WEB_API_PORT, WEB_PUBLIC_HOST, WEB_ROOT and WEB_R2_ACCOUNT_ID.');
+  if (!port || !apiPort || !publicHost || !env.WEB_ROOT || !env.WEB_R2_ACCOUNT_ID || !env.WEB_R2_BUCKET) {
+    console.error('Set WEB_PORT, WEB_API_PORT, WEB_PUBLIC_HOST, WEB_ROOT, WEB_R2_ACCOUNT_ID and WEB_R2_BUCKET.');
     process.exit(2);
   }
   const server = createWebServer({
     root: env.WEB_ROOT,
     apiOrigin: `http://127.0.0.1:${apiPort}`,
     allowedHosts: [publicHost, `127.0.0.1:${port}`, `localhost:${port}`],
-    connect: connectOrigins(env.WEB_R2_ACCOUNT_ID),
+    connect: connectOrigins(env.WEB_R2_ACCOUNT_ID, env.WEB_R2_BUCKET),
     log: (line) => console.log(new Date().toISOString(), line),
   });
   server.listen(port, '127.0.0.1', () => console.log(`pocketqa web on 127.0.0.1:${port} for ${publicHost} (api 127.0.0.1:${apiPort})`));
