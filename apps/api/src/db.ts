@@ -337,6 +337,44 @@ const MIGRATIONS: string[] = [
     block_time_ms INTEGER NOT NULL
   );
   `,
+  // 6: reputation (points, fraud reversals, self-dealing flags, opt-in leaderboard). Points are
+  // append-only and separate from money and test credits; they have no cash value.
+  `
+  CREATE TABLE points_events (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    participation_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('accepted','helpful','reversal')),
+    points INTEGER NOT NULL,
+    reverses_id TEXT UNIQUE REFERENCES points_events(id),
+    platform TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX points_events_user ON points_events(user_id);
+  -- One award of each kind per participation.
+  CREATE UNIQUE INDEX points_one_award ON points_events(participation_id, kind) WHERE kind IN ('accepted','helpful');
+  CREATE TRIGGER points_no_update BEFORE UPDATE ON points_events BEGIN SELECT RAISE(ABORT, 'points are append-only'); END;
+  CREATE TRIGGER points_no_delete BEFORE DELETE ON points_events BEGIN SELECT RAISE(ABORT, 'points are append-only'); END;
+  CREATE TABLE fraud_findings (
+    participation_id TEXT PRIMARY KEY REFERENCES participations(id),
+    reason TEXT NOT NULL,
+    decided_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  -- Accepted work that earned no points because it looked like self-dealing.
+  CREATE TABLE points_flags (
+    participation_id TEXT PRIMARY KEY REFERENCES participations(id),
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE leaderboard_profiles (
+    user_id TEXT PRIMARY KEY REFERENCES users(id),
+    opted_in INTEGER NOT NULL CHECK (opted_in IN (0,1)),
+    alias TEXT,
+    updated_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX leaderboard_alias ON leaderboard_profiles(lower(alias)) WHERE alias IS NOT NULL;
+  `,
 ];
 
 /** How many migrations this code ships; tools compare it with a live database's schema. */

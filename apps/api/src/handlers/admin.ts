@@ -4,6 +4,7 @@ import { me, type Ctx, type Handler } from '../context';
 import { post } from '../ledger';
 import { fail, iso, newId, notFound } from '../util';
 import { authorizePayout } from '../escrow';
+import { awardApproval } from '../reputation';
 import { auditView, budgetOf, disputeView, participationView, studyView, tasksOf, type ParticipationRow, type StudyRow } from '../views';
 
 function audit(ctx: Ctx, action: string, targetType: 'study' | 'user' | 'dispute' | 'participation', targetId: string, reason: string) {
@@ -41,6 +42,7 @@ export const adminHandlers = {
         post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'dispute_credit' }), now);
       }
       db.prepare('UPDATE participations SET status = ? WHERE id = ?').run(next, p.id);
+      if (outcome === 'overturned') awardApproval(db, s, p, false, now);
       db.prepare(`UPDATE disputes SET status = 'resolved', outcome = ?, resolution_note = ?, resolved_by = ?, resolved_at = ? WHERE id = ?`).run(
         outcome,
         note,
@@ -126,6 +128,7 @@ export const adminHandlers = {
         post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'reward_credit' }), now);
       }
       db.prepare('UPDATE participations SET status = ?, decided_at = ?, decided_by = ?, decision_reason = ? WHERE id = ?').run(next, iso(now), me(ctx).id, reason, p.id);
+      if (decision === 'approve') awardApproval(db, s, p, false, now);
       audit(ctx, `participation.${decision}`, 'participation', p.id, `${reason} [stuck: ${why}]`);
     })();
     return participationView(db, getParticipationRow(db, ctx.params.id!)!, { withTesterName: true });

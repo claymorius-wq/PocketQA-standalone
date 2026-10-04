@@ -295,6 +295,9 @@ export const accountHandlers = {
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM wallet_nonces WHERE user_id = ?').run(user.id);
       db.prepare('DELETE FROM identities WHERE user_id = ?').run(user.id);
+      // The leaderboard pseudonym goes with the account; points stay append-only under the
+      // now-anonymous id (like ledger postings, ADR 0002).
+      db.prepare('DELETE FROM leaderboard_profiles WHERE user_id = ?').run(user.id);
       // Open direct uploads: close them and remove their quarantine objects.
       for (const r of db.prepare(`SELECT object_key FROM upload_intents WHERE tester_id = ? AND status IN ('pending','completing')`).all(user.id) as { object_key: string }[]) {
         quarantine.push(r.object_key);

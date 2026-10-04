@@ -447,7 +447,8 @@ export const Finding = FindingInput.extend({
 });
 export type Finding = z.infer<typeof Finding>;
 
-export const ApproveBody = z.object({ note: z.string().trim().max(1000).optional() });
+/** `helpful`: the builder marks the tester's feedback helpful (reputation only; no money). */
+export const ApproveBody = z.object({ note: z.string().trim().max(1000).optional(), helpful: z.boolean().optional() });
 export const RejectBody = z.object({ reason: z.string().trim().min(10).max(1000) });
 
 // ---------- credits ledger ----------
@@ -640,6 +641,30 @@ export type DevnetTransfer = z.infer<typeof DevnetTransfer>;
 /** Fetched from devnet by the server (genesis-checked) right before the wallet signs. */
 export const TransferBlockhash = z.object({ blockhash: Base58Address, lastValidBlockHeight: z.number().int().nonnegative() });
 
+// ---------- reputation: points, badges, leaderboard (no cash value, not tradeable) ----------
+export const BadgeId = z.enum(['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist']);
+export const Badge = z.object({ id: BadgeId, label: z.string(), description: z.string() });
+export const PointsEventView = z.object({ kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate, studyTitle: z.string() });
+export const LEADERBOARD_WINDOW_DAYS = 90;
+export const Reputation = z.object({
+  points: z.number().int(),
+  /** Points are a reputation signal only: no cash value, not tradeable, not a token. */
+  noCashValue: z.literal(true),
+  events: z.array(PointsEventView),
+  badges: z.array(Badge),
+  stats: z.object({ accepted: z.number().int(), rejected: z.number().int(), decided: z.number().int(), qualityScore: z.number().int().min(0).max(100), windowDays: z.number().int() }),
+  leaderboard: z.object({ optedIn: z.boolean(), alias: z.string().nullable(), rank: z.number().int().positive().nullable(), minDecided: z.number().int() }),
+});
+export type Reputation = z.infer<typeof Reputation>;
+/** A pseudonym: letters, digits, spaces, - and _ only (so never an email or a wallet address). */
+export const LeaderboardAlias = z.string().trim().min(3).max(24).regex(/^[A-Za-z0-9][A-Za-z0-9 _-]*$/);
+export const LeaderboardSettingsBody = z.object({ optIn: z.boolean(), alias: LeaderboardAlias.optional() });
+/** Strict: a row carries no user id, wallet, email or evidence reference. */
+export const LeaderboardRow = z.strictObject({ rank: z.number().int().positive(), alias: z.string(), qualityScore: z.number().int().min(0).max(100), decided: z.number().int(), badges: z.array(BadgeId) });
+export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays: z.number().int(), minDecided: z.number().int() });
+export type Leaderboard = z.infer<typeof Leaderboard>;
+export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });
+
 // ---------- AI ----------
 export const AiStatus = z.object({ available: z.boolean(), provider: z.string().nullable() });
 
@@ -775,6 +800,10 @@ export const routes = {
   submitFundingSignature: r({ method: 'POST', path: '/escrow/fundings/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitFundingSignatureBody, response: EscrowFunding }),
   myPayouts: r({ method: 'GET', path: '/me/payouts', auth: 'tester', scope: 'self', body: null, response: list(Payout) }),
   adminPayouts: r({ method: 'GET', path: '/admin/payouts', auth: 'admin', scope: 'none', body: null, response: list(Payout) }),
+  myReputation: r({ method: 'GET', path: '/me/reputation', auth: 'tester', scope: 'self', body: null, response: Reputation }),
+  putLeaderboard: r({ method: 'PUT', path: '/me/leaderboard', auth: 'tester', scope: 'self', body: LeaderboardSettingsBody, response: Reputation }),
+  leaderboard: r({ method: 'GET', path: '/leaderboard', auth: 'user', scope: 'none', body: null, response: Leaderboard }),
+  adminFraud: r({ method: 'POST', path: '/admin/participations/:id/fraud', auth: 'admin', scope: 'none', body: FraudFindingBody, response: Ok }),
 } as const;
 export type RouteName = keyof typeof routes;
 

@@ -2,6 +2,7 @@ import { assertCleanCopy, canEditTaskNotes, canOpenDispute, planReward, transiti
 import { getParticipationRow, ownerParticipation, partyParticipation, testerParticipation } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { authorizePayout } from '../escrow';
+import { awardApproval } from '../reputation';
 import { post } from '../ledger';
 import { fail, iso, newId } from '../util';
 import { budgetOf, disputeView, findingView, participationView, tasksOf, type ParticipationRow } from '../views';
@@ -38,6 +39,7 @@ function decide(decision: 'approve' | 'reject') {
         d.reason ?? ctx.body?.note ?? null,
         p.id,
       );
+      if (decision === 'approve') awardApproval(db, s, p, ctx.body?.helpful === true, now);
     })();
     return view(ctx, ctx.params.id!, true);
   };
