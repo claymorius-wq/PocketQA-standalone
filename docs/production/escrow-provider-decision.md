@@ -1,6 +1,6 @@
 # Escrow provider decision: Solana USDC study payouts, refunds and arbitration
 
-**Status:** research and recommendation for Hamza. **Nothing is selected, created, deployed or funded.**
+**Status:** research and recommendation for Hamza. **Nothing is selected, created, deployed or funded.** Revised after pqa-qa r1 (CHANGES_REQUIRED: devnet upgradeability, unverified deployment match, live RPC reader).
 
 **How this was researched:**
 - read-only, on 2026-10-04 and 05 (UTC);
@@ -20,11 +20,13 @@
 ## 1. Short answer
 - **No turnkey, audited, maintained escrow provider was found** for approval-gated work payouts with arbitration on Solana. Solana Pay, Covenant and the hackathon "milestone escrow" repositories don't qualify (see §3). This document doesn't select an unsafe contract to fill that gap.
 - **The safest verified building block is Squads Protocol v4**, used as a per-study custody vault:
-  - audited by four firms, with formal verification;
-  - immutable on mainnet;
-  - open source and maintained.
+  - its **source** is audited by four firms, with formal verification;
+  - the **mainnet** program is immutable;
+  - it is open source and maintained.
   
-  Pocket QA's existing escrow state machine decides outcomes, and the vault's members co-sign them. This gives real multi-party custody without new on-chain code. It also leaves no single key able to move funds, provided the arbiter is genuinely independent of Pocket QA.
+  **But:** the deployed mainnet bytecode is **not verified** against the audited commit (§2 A), and the **devnet** copy can be upgraded by a single key.
+  
+  Pocket QA's existing escrow state machine decides outcomes, and the vault's members co-sign them. This gives real multi-party custody without new on-chain code. No single key can move funds, but only under the conditions in §5: an autonomous config, an independent arbiter, no spending limits, Pocket QA holding one key, and the mainnet program.
 - **A custom escrow program built on audited primitives** (Anchor and SPL Token) could enforce the exact rules on-chain. But the program itself would be **unaudited** until an external audit is commissioned. That is a larger cost and risk; keep it as a later option.
 - **Circle developer-controlled wallets** are a working, priced, regulated-provider route, but they are **custodial for Pocket QA**: it holds the means to move funds, and Circle states that licensing may apply. It isn't escrow.
 
@@ -34,17 +36,17 @@ Every row was checked at the source on the dates shown; "Unknown" means not veri
 ### A. Squads Protocol v4: audited multisig used as the study vault
 | Item | Finding | Source |
 |---|---|---|
-| Program | `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf` (mainnet and devnet) | github.com/Squads-Protocol/v4 README (2026-10-04) |
-| **Upgradeability** | **Immutable.** The upgradeable loader's program-data account `Fy3YMJCv…sh8n` has **no upgrade authority** (`authority: None`) | mainnet `getAccountInfo`, slot 449063805, 2026-10-04 |
+| Program | `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`: the same id on mainnet and devnet | github.com/Squads-Protocol/v4 README (2026-10-04) |
+| **Upgradeability** | **Mainnet: immutable.** Program-data `Fy3YMJCv…sh8n` has `authority: None`; last deployed at slot 302,582,236. **Devnet: upgradeable by a single System-owned key `HM5y4mz3…dtvK`**; last deployed at devnet slot 446,638,068. The devnet code can change at any time and may differ from mainnet | public RPC reads in `docs/reviews/wallet-rewards/provider-research-rpc.txt` (2026-10-04); also found by pqa-qa r1 |
 | Audits | Trail of Bits (2023); Neodyme (2023, 2024); OtterSec (2023, 2024); Certora security review and formal verification (Oct 2023, Dec 2023). The reports are in the repo's `audits/` folder | docs.squads.so/main/security/security-audits/squads-protocol-v4; osec.io/audits lists "July 12, 2023 squads v4" and "April 24, 2024 Squads" (2026-10-04) |
-| **Audit ↔ deployment match** | The README marks commit `64af7330…` as "final and fully audited" and says deployments can be checked with the Ellipsis Labs verifiable-build tool. **I did not run a verifiable build:** the match is claimed, not independently verified here | github.com/Squads-Protocol/v4 (2026-10-04) |
-| License | AGPL-3.0, with Apache-2.0/MIT exceptions for some utility files. **This needs a licence check** before Pocket QA ships modified Squads code. Using the deployed program through its SDK is a separate question, to confirm with counsel | GitHub repo metadata (2026-10-04) |
+| **Audit ↔ deployment match** | **Not verified.** The README marks commit `64af7330…` as "final and fully audited". The public OtterSec verification registry reports the mainnet program as `is_verified: false` ("On chain program not verified"), records commit `3742e552…` (a different commit), `is_frozen: true` and on-chain hash `d4866083…`. **The audits cover source, not the deployed bytecode.** A verified build match (or an equivalent hash comparison) is a **gate before any mainnet use** | github.com/Squads-Protocol/v4; https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf (2026-10-04); pqa-qa r1 |
+| License | The program source is AGPL-3.0 (with Apache-2.0/MIT exceptions for some utility files). The official SDK `@sqds/multisig` (2.1.4) is **MIT** (per pqa-qa r1, npm metadata). Calling the deployed program through the SDK doesn't redistribute modified AGPL code; any fork or redistribution of the program needs a counsel check | GitHub repo metadata (2026-10-04); npm |
 | Maintained | Last commit 2026-08-20; not archived | GitHub API (2026-10-04) |
 | Arbitrary recipients | Yes: vault transactions execute arbitrary instructions, including SPL Token transfers to any account | repo README ("vault transactions", "spending limits") |
 | Governance | `config_authority` default means an **autonomous** multisig (config changes go through member voting). A set key means a **controlled** multisig (that key alone changes members and threshold). Escrow use **must be autonomous** | docs.squads.so/main/development/reference/accounts (2026-10-04) |
 | Time locks | "A transaction will be frozen for a certain period of time after reaching the ready to execute threshold" | docs.squads.so/main/development/reference/time-locks |
 | Spending limits | A pre-approved allowance for a member: one token type, an optional period, a maximum amount, and allowlisted destinations ("multiple addresses can be added"). Who must approve creating one is **not stated** in the source read | squads.xyz/blog/spending-limits (2026-10-04) |
-| Protocol fee | `ProgramConfig.multisigCreationFee` is **0 lamports** (config `BSTq9w3k…cNZr`, authority `8xgjL6yq…YFT`, slot 453407990, 2026-10-04). The config authority can change it, so read it live at quote time | the `program_config.rs` struct plus a mainnet read |
+| Protocol fee | `ProgramConfig.multisigCreationFee` is **0 lamports** on mainnet (config `BSTq9w3k…cNZr`, slot 453,408,589 in the evidence file) and on devnet (pqa-qa r1). The config authority `8xgjL6yq…YFT` is a **single System-owned key**. Its only powers are setting the authority, the creation fee and the treasury; it has **no power over existing multisigs or vaults** (`program_config.rs`, pqa-qa r1). The fee can change, so it is re-checked before any approved pilot | `program_config.rs` plus public RPC reads |
 | Onboarding | None: it is a public program | — |
 
 ### B. A custom escrow program on audited primitives (Anchor plus the classic SPL Token program)
@@ -83,20 +85,36 @@ Every row was checked at the source on the dates shown; "Unknown" means not veri
 ## 4. Matrix
 | Need | A: Squads v4 vault | B: custom program | C: Streamflow | D: Circle dev wallets |
 |---|---|---|---|---|
-| Audited code that moves funds | Supported (4 firms plus formal verification) | **Unsupported** until we commission an audit | Supported (claimed; deployment match Unknown) | Provider-operated; not an on-chain program |
-| Immutable or controlled upgrades | Supported (immutable) | Our choice (Unknown) | Single-key upgradeable | n/a (provider) |
+| Audited code that moves funds | **Audited source; deployed mainnet bytecode not verified** (registry: not verified, different commit). A verified match is a mainnet gate | **Unsupported** until we commission an audit | Claimed audits; deployment match Unknown | Provider-operated; not an on-chain program |
+| Immutable or controlled upgrades | Mainnet immutable; **devnet single-key upgradeable** | Our choice (Unknown) | Single-key upgradeable | n/a (provider) |
 | Release only on approval | Supported, through signatures (threshold) | Supported, enforced on-chain | **Unsupported** (time-based) | Supported, through our backend (custodial) |
-| Exact amount and frozen destination enforced **on-chain** | **Unsupported** (enforced by the signers and our backend, not code). Spending limits could narrow it; Unknown | Supported | Partly (recipient fixed per stream) | Unsupported (backend only) |
+| Exact amount and frozen destination enforced **on-chain** | **Unsupported** (enforced by the signers and our backend, not code). Spending limits must **not** be used: they are single-party spending | Supported | Partly (recipient fixed per stream) | Unsupported (backend only) |
 | Recipient unknown until consent | Supported | Supported | Supported (stream created later) | Supported |
 | Partial payouts and refunds | Supported (one vault transaction each) | Supported | Partly (cancel returns unvested) | Supported |
 | Arbitration | Supported (independent arbiter member) | Supported (arbiter role in program) | Unsupported | Our backend only |
-| No single party moves funds | Supported, **if** the arbiter is independent and the multisig is autonomous | Supported, if designed so | Unsupported for sender cancel | **Unsupported** (Pocket QA controls) |
+| No single party moves funds | Supported **only under all §5 conditions** (autonomous, independent arbiter, no spending limits, one Pocket QA key, mainnet program) | Supported, if designed so | Unsupported for sender cancel | **Unsupported** (Pocket QA controls) |
 | Protocol fee | 0 lamports today (changeable config) | None | Unknown | Per-wallet pricing (above) |
 | Onboarding | None | None | None | Circle account; licensing may apply |
 | Source and license | AGPL-3.0 | Ours | Program source not found | Proprietary service |
 
 ## 5. Recommendation
 **A Squads v4 per-study vault**, as the provider behind our existing `SettlementProvider` interface. It moves to **devnet only after approval**, and to mainnet only after a separate approval and a legal and custody assessment.
+
+**Conditions for "no single party can move funds"** (all of them are required):
+1. an autonomous config (`config_authority` default);
+2. an arbiter independent of Pocket QA;
+3. **no spending limits** on the vault: `spending_limit_use` lets one member spend within a limit without other approvals;
+4. Pocket QA holding exactly one member key;
+5. the immutable **mainnet** program. On devnet a single external key can replace the code.
+
+**Residual risks:**
+- **Two members can reconfigure.** With 2-of-3, any two members (for example the builder and Pocket QA, or Pocket QA and an arbiter who isn't independent) can approve a config transaction that changes the members, threshold or time lock, or simply move funds. That is inherent to the design.
+- **The tester isn't a member.** An approved reward is protected only by two of the three signers honouring the app's decision, and the trust-model copy says so.
+
+**Design parameters** (engineering choices, recorded in ADR 0007 when built):
+- **Permissions:** the builder and the arbiter have Vote; Pocket QA has Initiate, Vote and Execute. Any member with Execute can run an approved transaction.
+- **`rent_collector`:** set to whoever paid the rent, so the rent of executed or cancelled transaction accounts can be reclaimed. `None` disables reclaiming.
+- **`time_lock`:** optional, giving the third party a review window between approval and execution.
 
 **Shape:**
 - **Vault:** one autonomous multisig per study (`config_authority` default), with three members:
@@ -122,6 +140,8 @@ Every row was checked at the source on the dates shown; "Unknown" means not veri
 ## 6. Hamza's decisions (exact and minimal)
 1. **Approach:** A (Squads vault, recommended), B (custom program plus an audit), D (Circle, custodial), or none for now.
 2. **Devnet custody pilot:** approve a devnet-only pilot that creates Squads multisigs holding **devnet test USDC**. CLAUDE.md requires separate approval for smart-contract custody. Yes or no.
+   - **Caveat:** the devnet Squads program can be upgraded by a single third-party key (`HM5y4mz3…dtvK`) and may not match the mainnet build. A pilot tests the integration and the flows, **not** the immutable mainnet program.
+   - The pilot records the devnet program-data hash it ran against.
 3. **Arbiter:** who holds the third key (you personally, a named independent party, or another). If Pocket QA holds two keys, the model becomes custodial.
 4. **Release key:** approve creating a dedicated devnet Pocket QA release keypair, stored outside the repo with mode 0600 (or on a hardware wallet). Never a personal wallet.
 5. **Who pays SOL costs:**
@@ -145,14 +165,15 @@ This is local code with no keys, network writes or custody. It stays disabled be
 - A `squads` adapter skeleton that implements `SettlementProvider` in pure code. It derives the multisig and vault addresses and builds the funding expectation, the payout transfer and the refund transfer, so all can be **unit-tested offline** against the recorded program id and fixtures. Adding the official `@sqds/multisig` SDK would be a pinned dependency with a lockfile review; it needs no secrets.
 - A server policy check: a proposal is built only for the frozen destination's token account and the exact reserved amount (tests).
 - The UI wording of the trust model for the "two of three signers" design, and the builder's per-approval co-sign flow behind a disabled flag.
-- A live quote reader for rent and the Squads creation fee (public, read-only RPC), shown as "estimate" and never promised.
+- An **offline** cost calculator: parameterised rent and fee inputs with fixtures, shown as "estimate" and never promised. **No RPC.** ADR 0007's config refuses every provider network setting in this phase.
 
-**Needs Hamza's approval:** anything in §6, any keypair, any devnet multisig, any devnet or mainnet transfer, any Circle account, any audit spend, and any mainnet or real-fund activity.
+**Needs Hamza's approval:** live RPC reads from the app (they need an ADR 0007 config change), anything in §6, any keypair, any devnet multisig, any devnet or mainnet transfer, any Circle account, any audit spend, and any mainnet or real-fund activity.
 
 ## Sources (accessed 2026-10-04 UTC)
 - Squads v4 security audits: https://docs.squads.so/main/security/security-audits/squads-protocol-v4
 - Squads v4 repository and README: https://github.com/Squads-Protocol/v4
 - Squads ProgramConfig struct: https://github.com/Squads-Protocol/v4/blob/main/programs/squads_multisig_program/src/state/program_config.rs
+- OtterSec verification registry (Squads v4): https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 - Squads accounts reference: https://docs.squads.so/main/development/reference/accounts
 - Squads time-locks: https://docs.squads.so/main/development/reference/time-locks
 - Squads spending limits: https://squads.xyz/blog/spending-limits
