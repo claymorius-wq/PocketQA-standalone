@@ -3,11 +3,11 @@
 // light theme (glass.enabled === false). TODO(light-lens): light Lens recipes land in tokens.ts.
 export { CausticSweep, useSweepOnEnable, type CausticSweepProps } from './CausticSweep';
 export { FlutedLens, type FlutedLensProps } from './FlutedLens';
-export { GlassBlur, blurAvailable, type GlassBlurProps } from './GlassBlur';
+export { BlurTargetContext, GlassBlur, blurAvailable, type GlassBlurProps } from './GlassBlur';
 export { GlassSurface, type GlassLevel, type GlassSurfaceProps } from './GlassSurface';
 export { Grain, GRAIN_TILE, type GrainProps } from './Grain';
-export { Ground, type GroundProps } from './Ground';
+export { Ground, GroundFade, type GroundProps } from './Ground';
 export { useKeyLight, type KeyLight } from './keyLight';
 // useUplightNumeralStyle is integration-pending: the U5/U6 lit balance numerals are not wired yet.
-export { UplightFloor, useUplight, useUplightNumeralStyle, type Uplight, type UplightFloorProps, type UplightGrade, type UplightOptions } from './Uplight';
+export { UplightFloor, UplightMotes, useUplight, useUplightNumeralStyle, type Uplight, type UplightFloorProps, type UplightGrade, type UplightOptions } from './Uplight';
 export { Well, type WellProps, type WellState } from './Well';

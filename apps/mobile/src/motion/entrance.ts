@@ -108,9 +108,10 @@ export function refocusArrival(state: NavState | undefined, routeKey: string | u
 
 /**
  * A light moment the arriving screen finishes for the one it replaced (§M3). `u1`: Sign in's
- * Commit pass, whose 700ms tail plays on the first tab's floor.
+ * Commit pass, whose 700ms tail plays on the first tab's floor. `u2`: Study's join, whose pass
+ * lands (Mode A, `lq-land`) on the session's "You consented on…" card (CONSISTENCY §U).
  */
-export type Handoff = 'u1';
+export type Handoff = 'u1' | 'u2';
 
 /** How long a stamp waits for the screen it announces (the redirect chain takes a few renders). */
 export const ARRIVAL_STAMP_TTL = 2000;
@@ -132,6 +133,15 @@ export function takeArrival(now = Date.now()): ArrivalStamp | null {
   stamp = null;
   if (!s || now - s.at > ARRIVAL_STAMP_TTL) return null;
   return s.handoff ? { arrival: s.arrival, handoff: s.handoff } : { arrival: s.arrival };
+}
+
+/**
+ * Reads the pending stamp only when it carries `handoff` (a screen that finishes one particular
+ * moment, e.g. Session for `u2`); any other stamp stays for the navigator it announces.
+ */
+export function takeHandoff(handoff: Handoff, now = Date.now()): boolean {
+  if (!stamp || stamp.handoff !== handoff) return false;
+  return takeArrival(now)?.handoff === handoff;
 }
 
 /** The slice of a navigation object the arrival needs (absent outside a navigator, and in tests). */

@@ -1,21 +1,44 @@
 import { Fragment, type ReactNode } from 'react';
-import { Text as RNText, type StyleProp, type TextStyle } from 'react-native';
+import { StyleSheet, Text as RNText, type StyleProp, type TextStyle } from 'react-native';
 import { when } from '../../lib/format';
 import { useTheme } from '../../theme/ThemeProvider';
+import { ClauseDot } from '../text';
+
+export { ClauseDot };
 
 // Type for lists, dates and meta (CONSISTENCY.md C6; Direction A §5). One implementation each:
 // - Meta: DM Mono 400 12/16 muted, tabular, one line. Only for readouts of three words or fewer
 //   ("1 task", "5 slots left", "48 KB", ids). Never sentences.
 // - DateText: the date is mono (`Oct 3, 2:05 PM`, lib/format `when`); a verb before it is
 //   Instrument Sans 13/18 muted ("Submitted Oct 3, 2:05 PM").
-// - Clauses: clauses joined by " · ". RN adaptation: React Native text has no per-span nowrap, so
-//   the dot is glued to the clause after it with a no-break space; a line can break before a dot,
-//   never after one, which is the board's "no line ends on a dot" rule.
+// - Clauses: clauses joined by a dot 0.28em from each side (C6 `margin: 0 0.28em`). RN adaptation:
+//   React Native text has no per-span margin or nowrap, so the dot sits between a space and a
+//   no-break space, each tracked to exactly 0.28em of the text's own face (ClauseDot in ui/text:
+//   0.28em less that face's measured space advance). The no-break space glues the dot to the
+//   clause after it: a line can break before a dot, never after one, which is the board's "no line
+//   ends on a dot" rule. The kit's Text sets a " · " written into its string the same way (a Screen
+//   subtitle, a disclaimer), keeping the characters as written.
 // - Byline: the person in 600 text colour, the rest 400 muted.
 // - Amount: Red Hat Display 400 18/24 tabular; +50 in success, −250 (U+2212) in text colour.
 
-/** The separator between clauses: a regular space before the dot, a no-break space after it. */
+/**
+ * The separator as plain text, for strings that cannot hold a nested Text (an accessibility label):
+ * a space before the dot, a no-break space after it. Visible clauses use ClauseDot.
+ */
 export const CLAUSE_SEPARATOR = ' · ';
+
+/** The type size a separator falls back to (the small / meta line, 13). */
+const DEFAULT_SIZE = 13;
+
+/** The font size a style resolves to (for ClauseDot's tracking). */
+export function fontSizeOf(style: StyleProp<TextStyle>): number {
+  return StyleSheet.flatten(style)?.fontSize ?? DEFAULT_SIZE;
+}
+
+/** The font family a style resolves to (for ClauseDot's tracking: each face has its own space advance). */
+export function fontFamilyOf(style: StyleProp<TextStyle>): string | undefined {
+  return StyleSheet.flatten(style)?.fontFamily;
+}
 
 export function Meta({ children, testID, style, tone = 'muted' }: { children: ReactNode; testID?: string; style?: StyleProp<TextStyle>; tone?: 'muted' | 'default' }) {
   const { colors, type } = useTheme();
@@ -52,11 +75,13 @@ export function DateText({ iso, verb, testID, style }: { iso: string | null | un
 export function Clauses({ parts, testID, style, numberOfLines }: { parts: ReactNode[]; testID?: string; style?: StyleProp<TextStyle>; numberOfLines?: number }) {
   const { colors, type } = useTheme();
   const shown = parts.filter((p) => p !== null && p !== undefined && p !== false && p !== '');
+  const size = fontSizeOf([type.small, style]);
+  const family = fontFamilyOf([type.small, style]);
   return (
     <RNText testID={testID} numberOfLines={numberOfLines} style={[type.small, { color: colors.textMuted }, style]}>
       {shown.map((p, i) => (
         <Fragment key={i}>
-          {i > 0 ? CLAUSE_SEPARATOR : null}
+          {i > 0 ? <ClauseDot fontSize={size} fontFamily={family} /> : null}
           {p}
         </Fragment>
       ))}

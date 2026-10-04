@@ -22,6 +22,8 @@ export type RecordControlProps = {
   help: string;
   /** Start is unavailable (evidence locked, a request in flight). Stop is never disabled. */
   startDisabled?: boolean;
+  /** Start's weight: `secondary` once the screen's next step is elsewhere (A-Session: Submit is ready). Default primary. */
+  startVariant?: 'primary' | 'secondary';
   startLabel?: string;
   stopLabel?: string;
   /** What a screen reader hears when recording starts. */
@@ -49,6 +51,7 @@ export function RecordControl({
   onStop,
   help,
   startDisabled = false,
+  startVariant = 'primary',
   startLabel = 'Start screen recording',
   stopLabel = 'Stop recording',
   liveAnnouncement = 'Pocket QA is recording your screen',
@@ -108,7 +111,7 @@ export function RecordControl({
         {live ? (
           <Button label={stopLabel} icon="stop" variant="danger" onPress={onStop} testID={stopTestID} />
         ) : (
-          <Button label={startLabel} icon="record" onPress={onStart} disabled={startDisabled} testID={startTestID} />
+          <Button label={startLabel} icon="record" variant={startVariant} onPress={onStart} disabled={startDisabled} testID={startTestID} />
         )}
         {children}
       </GlassSurface>

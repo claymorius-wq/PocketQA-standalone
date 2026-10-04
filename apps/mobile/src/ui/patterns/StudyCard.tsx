@@ -41,7 +41,7 @@ export function StudyCard({ title, objective, rewardCredits, taskCount, slotsRem
         <Text variant="title" numberOfLines={2} style={styles.title}>{title}</Text>
         <GlassTile name="chevron" size="chip" style={styles.chevron} />
       </View>
-      <Text variant="bodySm" tone="muted" numberOfLines={2} style={styles.objective}>{objective}</Text>
+      <Text variant="bodySm" tone="muted" numberOfLines={2} pretty style={styles.objective}>{objective}</Text>
       <View style={styles.rewardRow}>
         <RewardWell amount={rewardCredits} />
         <View style={styles.meta}>

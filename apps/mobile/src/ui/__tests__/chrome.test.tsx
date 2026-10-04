@@ -179,10 +179,10 @@ describe('the U1 hand-off (§M3)', () => {
 });
 
 describe('stack header (C2)', () => {
-  const props = (back: boolean) =>
+  const props = (back: boolean, name = 'study/[id]') =>
     ({
-      navigation: { goBack: jest.fn() },
-      route: { key: 'study-1', name: 'study/[id]' },
+      navigation: { goBack: jest.fn(), replace: jest.fn() },
+      route: { key: 'study-1', name },
       options: { title: 'Study' },
       back: back ? { title: undefined, href: undefined } : undefined,
     }) as unknown as NativeStackHeaderProps;
@@ -195,8 +195,12 @@ describe('stack header (C2)', () => {
     expect(json).toContain('"gradient":[0,14082303,0.5,1305927935,1,14082303]'); // #D6E0FF: 0, 0.30 (0x4D), 0
     const back = screen.getByLabelText('Back');
     expect(StyleSheet.flatten(back.props.style)).toMatchObject({ borderRadius: 16, minHeight: 44 });
-    const bar = hostParent(hostParent(back) as unknown as { parent: unknown }) as unknown as { props: { style: unknown } };
-    expect(StyleSheet.flatten(bar.props.style as never)).toMatchObject({ paddingTop: 50, paddingLeft: 16, paddingRight: 16 });
+    // The row sits in a full-width clip frame (16 in from both edges, clipping the push arrival so it
+    // never overflows the screen on mobile web) inside the bar, which holds the 44 band + 6 top.
+    const clip = hostParent(hostParent(back) as unknown as { parent: unknown }) as unknown as { props: { style: unknown }; parent: unknown };
+    expect(StyleSheet.flatten(clip.props.style as never)).toMatchObject({ overflow: 'hidden', paddingHorizontal: 16 });
+    const bar = hostParent(clip as never) as unknown as { props: { style: unknown } };
+    expect(StyleSheet.flatten(bar.props.style as never)).toMatchObject({ paddingTop: 50, paddingLeft: 0, paddingRight: 0 });
   });
 
   it('pushes in with its screen (the header is part of the content root)', async () => {
@@ -207,9 +211,27 @@ describe('stack header (C2)', () => {
     expect(pose(row)).toEqual({ opacity: 1, x: 0, y: 0 });
   });
 
-  it('without a back target there is no divider', async () => {
-    const r = await renderIn(<LensStackHeader {...props(false)} />);
+  it('reached without history (a refresh, a deep link), it shows no Back, exactly as main', async () => {
+    const p = props(false, 'builder/new-study');
+    const r = await renderIn(<LensStackHeader {...p} />);
     expect(JSON.stringify(r.toJSON())).not.toContain('"width":1,"height":22');
+    expect(screen.queryByLabelText('Back')).toBeNull();
+    expect(screen.getByText('Study').props.accessibilityRole).toBe('header');
+    expect(p.navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('with history, Back goes back (never replaces)', async () => {
+    const p = props(true);
+    await renderIn(<LensStackHeader {...p} />);
+    fireEvent.press(screen.getByLabelText('Back'));
+    expect(p.navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(p.navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('the root route has no Back and no divider', async () => {
+    const r = await renderIn(<LensStackHeader {...props(false, 'index')} />);
+    expect(JSON.stringify(r.toJSON())).not.toContain('"width":1,"height":22');
+    expect(screen.queryByLabelText('Back')).toBeNull();
     expect(screen.getByText('Study').props.accessibilityRole).toBe('header');
   });
 

@@ -53,6 +53,7 @@ const TEXT_PAIRS: [keyof Palette, keyof Palette][] = [
   ['numeral', 'well'], // reward numerals
   ['textFaint', 'well'], // placeholder in an input well
   ['textFaint', 'surface'],
+  ['textDim', 'surface'], // a dimmed list-row title
   ['textDisabled', 'disabledBg'], // disabled primary label
   ['violet', 'surface'], // section numerals
   ['text', 'ink'], // pressed floors
@@ -106,13 +107,14 @@ type Case = [string, (keyof Palette)[], string[]];
 function glassCases(g: GlassRecipes, p: Palette): Case[] {
   const cases: Case[] = [
     ['card(1)', ['text', 'textMuted', 'primary', 'success', 'danger'], bodyStops(g.card(1))],
-    ['card(0.64)', ['text', 'textMuted'], bodyStops(g.card(0.64))],
+    ['card(0.64)', ['text', 'textMuted', 'textDim'], bodyStops(g.card(0.64))],
     ['cardPressed', ['text', 'textMuted'], bodyStops(g.cardPressed)],
     ['raised', ['text', 'textMuted', 'primary'], bodyStops(g.raised)],
     ['violetTile', ['text', 'primary'], bodyStops(g.violetTile)],
     ['overlay', ['text', 'textMuted', 'primary'], overlayStops(g, p)],
     ['well', ['text', 'textMuted', 'numeral', 'textFaint'], bodyStops(g.well)],
     ['wellError', ['text', 'textFaint'], g.wellError.fill[0]!.stops.map((st) => st.color)],
+    ['wellDark', ['text', 'textMuted', 'neutral'], bodyStops(g.wellDark)],
     ['primary', ['onPrimary'], bodyStops(g.primary)],
     ['primaryPressed', ['onPrimary'], bodyStops(g.primaryPressed)],
     ['primaryDisabled', ['textDisabled'], bodyStops(g.primaryDisabled)],

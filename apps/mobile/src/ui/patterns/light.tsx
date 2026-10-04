@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import Svg, { Defs, Rect } from 'react-native-svg';
-import { UplightFloor, useUplight, type Uplight } from '../../glass';
+import { UplightFloor, UplightMotes, useUplight, type Uplight } from '../../glass';
 import { GradientDef, HIDDEN, PASS_THROUGH, useSvgId } from '../../glass/paint';
 import { UPLIGHT } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -38,9 +38,10 @@ const GLOW_HEIGHT = 56;
 /**
  * Mode A under-glow. Render it as the first child of a position-relative wrapper that also holds
  * the subject, so it paints under the subject and spills 28dp below its bottom edge. Its opacity
- * is the moment's intensity u. Light theme (glass disabled): nothing.
+ * is the moment's intensity u. `motes`: a Mode A Commit pass (U2) carries the five motes inside
+ * the glow; they ride each pass only (Commit, Tail), never at rest. Light theme: nothing.
  */
-export function UnderGlow({ light, style }: { light: Uplight; style?: StyleProp<ViewStyle> }) {
+export function UnderGlow({ light, motes = false, style }: { light: Uplight; motes?: boolean; style?: StyleProp<ViewStyle> }) {
   const id = useSvgId('ug');
   const [w, setW] = useState(0);
   const glow = useAnimatedStyle(() => ({ opacity: light.u.value }));
@@ -59,6 +60,7 @@ export function UnderGlow({ light, style }: { light: Uplight; style?: StyleProp<
           <Rect x={0} y={0} width={w} height={GLOW_HEIGHT} fill={`url(#${id})`} />
         </Svg>
       ) : null}
+      {motes ? <UplightMotes light={light} /> : null}
     </Animated.View>
   );
 }

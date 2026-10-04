@@ -40,6 +40,7 @@ export type Palette = {
   caustic: string; // the only coloured cast shadow (under primary glass), used at 0.3–0.55 alpha
   shadow: string; // cast-shadow tint (never neutral black in dark)
   numeral: string; // big numerals
+  textDim: string; // a row title that steps back (A-Moderation suspended rows)
   textFaint: string; // placeholders only
   textDisabled: string; // disabled labels on disabledBg
   upSource: string; // Uplight core and 1px bottom specular
@@ -77,6 +78,7 @@ export const light: Palette = {
   caustic: '#3442C2',
   shadow: '#000000',
   numeral: '#121212',
+  textDim: '#2E2E2A',
   textFaint: '#696963',
   textDisabled: '#5F5F59',
   upSource: '#EEF2FF',
@@ -114,6 +116,7 @@ export const dark: Palette = {
   caustic: '#6F9BFF',
   shadow: '#02010A',
   numeral: '#DCE5FF',
+  textDim: '#CEC9E6',
   textFaint: '#8580A8',
   textDisabled: '#9A93C4',
   upSource: '#EEF2FF',
@@ -229,6 +232,10 @@ export function typeScale(state: FontState) {
     meta: { ...face('mono400', state), fontSize: 12, lineHeight: 16, fontVariant: TABULAR },
     tabLabel: { ...face('ui600', state), fontSize: 12, lineHeight: 16 },
     segment: { ...face('ui600', state), fontSize: 14, lineHeight: 18 },
+    // Segments that choose an amount (A-Budget top-up): Red Hat Display 500 18/22 tabular.
+    segmentNumeral: { ...face('display500', state), fontSize: 18, lineHeight: 22, fontVariant: TABULAR },
+    // An input that takes a number (A-NewStudy Reward, Slots): Red Hat Display 300 28/32 tabular.
+    inputNumeral: { ...face('display300', state), fontSize: 28, lineHeight: 32, fontVariant: TABULAR },
     amount: { ...face('display400', state), fontSize: 18, lineHeight: 24, fontVariant: TABULAR },
   } satisfies Record<string, TypeStyle>;
 }
@@ -307,6 +314,11 @@ export type GlassRecipes = {
    */
   overlay: GlassSurface & { blurIntensity: number; blurTint: 'dark' | 'light'; blurMethod: 'none' | 'dimezisBlurViewSdk31Plus' };
   well: GlassSurface;
+  /**
+   * The unlit recessed well: no far-wall bloom, the rim at line-strong all round and a deeper floor.
+   * A fact the app cannot provide (A-Review "Analysis unavailable"): recessed, but never lit.
+   */
+  wellDark: GlassSurface;
   wellFocus: { rim: LinearGradientSpec[]; shadow: ShadowRecipe };
   wellError: { fill: GradientSpec[]; rim: LinearGradientSpec[] };
   primary: GlassSurface;
@@ -321,6 +333,8 @@ export type GlassRecipes = {
   ledShadow: (tone: Tone) => ShadowRecipe;
   divider: LinearGradientSpec;
   sheet: { backdrop: string; grabber: string };
+  /** A locked Field's pressed shade over its well (the Lock, §11.5): the well's floor, darker. Undefined where wells are flat (light). */
+  lockShade: string | undefined;
   uplight: {
     floor: UplightFloor;
     card: (u: number) => GlassSurface;
@@ -328,6 +342,13 @@ export type GlassRecipes = {
     /** RN draws one text shadow; the spec's second 1px specular shadow is dropped. */
     numeral: (u: number) => Pick<TextStyle, 'textShadowColor' | 'textShadowOffset' | 'textShadowRadius'>;
     commitConfirmShadow: ShadowRecipe;
+    /**
+     * The commit confirm's fourth shadow on its own (§10.3): the spill under a primary that the
+     * Uplight reaches (a commit sheet's confirm, Sign in under U1). Drawn on a layer whose opacity is u.
+     */
+    spill: ShadowRecipe;
+    /** A primary's uplit edge (A-SignIn U1): the bright bottom specular and a short inner wash from below, opacity u. */
+    primaryEdge: ShadowRecipe;
     /** [x, y (from the bottom), diameter px, peak opacity] as fractions of the floor box. */
     motes: readonly (readonly [number, number, number, number])[];
   };
@@ -352,6 +373,7 @@ const RIM_L1 = (k: number) => lin(135, s(0, '#D6E0FF', f3(0.5 * k)), s(0.3, '#8C
 const CARD_FILL = lin(160, s(0, '#1C1942'), s(0.45, '#16143A'), s(1, '#110F2E'));
 const CARD_BLOOM = (k: number) => rad(1.2, 0.8, 0, 0, s(0, '#6F9BFF', f3(0.1 * k)), s(0.5, '#6F9BFF', 0));
 
+const UPLIGHT_SPILL = '0 14px 30px -10px rgba(141,176,255,0.6)';
 const PRIMARY_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.65), inset -2px -3px 6px rgba(60,70,170,0.35), 8px 12px 26px -10px rgba(111,155,255,0.55), 2px 3px 6px -2px rgba(2,1,10,0.7)';
 
 // Rib width interpolates through the spec's anchors (54 → 7 ribs, 104 → 12, 220 → 22), clamped to 7–10px.
@@ -430,6 +452,12 @@ export const glassDark: GlassRecipes = {
     rim: [lin(135, s(0, '#7A74A8'), s(0.45, '#7A74A8'), s(1, '#A0BAFF'))],
     shadow: 'inset 3px 4px 8px rgba(2,1,10,0.80), inset -1px -1px 0 rgba(150,175,255,0.16)',
   },
+  wellDark: {
+    radius: radius.well,
+    fill: [lin(160, s(0, '#07061A'), s(1, '#0A0920'))],
+    rim: [lin(135, s(0, '#7A74A8'), s(0.5, '#7A74A8', 0.75), s(1, '#7A74A8', 0.45))],
+    shadow: 'inset 3px 4px 10px rgba(2,1,10,0.85)',
+  },
   wellFocus: {
     rim: [lin(135, s(0, '#D6E0FF'), s(0.45, '#6F9BFF'), s(1, '#4A5BC8'))],
     shadow: 'inset 3px 4px 8px rgba(2,1,10,0.80), 0 0 0 3px rgba(111,155,255,0.22), 4px 6px 16px -6px rgba(111,155,255,0.45)',
@@ -489,6 +517,7 @@ export const glassDark: GlassRecipes = {
   ledShadow: (tone) => `0 0 0 2px rgba(${TONE_RGB[tone]},0.18), 0 0 8px rgba(${TONE_RGB[tone]},0.75)`,
   divider: lin(90, s(0, '#D6E0FF', 0.18), s(0.8, '#D6E0FF', 0)),
   sheet: { backdrop: 'rgba(4,3,14,0.62)', grabber: 'rgba(214,224,255,0.28)' },
+  lockShade: 'rgba(8,7,26,0.36)',
   uplight: {
     floor: {
       layers: [
@@ -510,7 +539,9 @@ export const glassDark: GlassRecipes = {
       shadow: 'inset 0 -1px 0 rgba(238,242,255,0.2), 8px 12px 24px -12px rgba(2,1,10,0.7), 0 14px 30px -14px rgba(78,112,255,0.3)',
     }),
     numeral: (u) => ({ textShadowColor: `rgba(141,176,255,${f3(0.55 * u)})`, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 18 }),
-    commitConfirmShadow: `${PRIMARY_SHADOW}, 0 14px 30px -10px rgba(141,176,255,0.6)`,
+    commitConfirmShadow: `${PRIMARY_SHADOW}, ${UPLIGHT_SPILL}`,
+    spill: UPLIGHT_SPILL,
+    primaryEdge: 'inset 0 -1px 0 rgba(238,242,255,0.9), inset 0 -16px 18px -14px rgba(238,242,255,0.6)',
     motes: [[0.38, 0.3, 1.5, 0.55], [0.52, 0.58, 1, 0.45], [0.61, 0.22, 2, 0.35], [0.45, 0.74, 1, 0.5], [0.57, 0.44, 1.5, 0.4]],
   },
   flute: {
@@ -563,6 +594,7 @@ export const glassLight: GlassRecipes = {
   stackRing: { inset: 3, rim: solid(L.surface) },
   overlay: { ...flat(L.surface, L.border, radius.overlay), blurIntensity: 0, blurTint: 'light', blurMethod: 'none' },
   well: flat(L.well, L.borderStrong, radius.well),
+  wellDark: flat(L.well, L.borderStrong, radius.well),
   wellFocus: { rim: [solid(L.primary)], shadow: undefined },
   wellError: { fill: [solid(L.well)], rim: [solid(L.danger)] },
   primary: flat(L.primary, L.primary, radius.button),
@@ -577,12 +609,15 @@ export const glassLight: GlassRecipes = {
   ledShadow: () => undefined,
   divider: solid(L.border),
   sheet: { backdrop: 'rgba(0,0,0,0.5)', grabber: L.border },
+  lockShade: undefined,
   uplight: {
     floor: { layers: [] },
     card: () => flat(L.surface, L.border, radius.card),
     notice: (tone) => flat(LIGHT_TONE[tone][1], LIGHT_TONE[tone][0], radius.notice),
     numeral: () => ({}),
     commitConfirmShadow: undefined,
+    spill: undefined,
+    primaryEdge: undefined,
     motes: [],
   },
   flute: { ...glassDark.flute, shadow: undefined },

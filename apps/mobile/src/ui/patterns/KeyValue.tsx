@@ -1,5 +1,6 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
-import { StyleSheet, Text as RNText, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text as RNText, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { Well } from '../../glass';
 import { useTheme } from '../../theme/ThemeProvider';
 import { Hairline } from './ListRow';
@@ -17,19 +18,24 @@ export type KeyValueProps = {
   valueTestID?: string;
   /** Set by KeyValueList: rows after the first draw the hairline on their top edge. */
   divided?: boolean;
+  /** Extra style on the figure alone, animated styles included (a screen's settle or cross-fade moves only the number). */
+  valueStyle?: ValueStyle;
 };
+
+/** A style for the figure: plain, or a Reanimated animated style. */
+export type ValueStyle = StyleProp<AnimatedStyle<StyleProp<TextStyle>>>;
 
 const show = (v: string | number) => (typeof v === 'number' ? v.toLocaleString('en-US') : v);
 
 /** One term and its figure on a 36dp line (A-BStudy budget card). */
-export function KeyValue({ label, value, swatch, testID, valueTestID, divided = false }: KeyValueProps) {
+export function KeyValue({ label, value, swatch, testID, valueTestID, divided = false, valueStyle }: KeyValueProps) {
   const { colors, type } = useTheme();
   return (
     <View testID={testID} style={styles.row} accessible accessibilityLabel={`${label}: ${show(value)}`}>
       {divided ? <Hairline inset={0} /> : null}
       {swatch ? <MeterSwatch material={swatch} /> : null}
       <RNText style={[type.bodySm, styles.label, { color: colors.textMuted }]}>{label}</RNText>
-      <RNText testID={valueTestID} style={[type.amount, { color: colors.text }]}>{show(value)}</RNText>
+      <Animated.Text testID={valueTestID} style={[type.amount, { color: colors.text }, valueStyle]}>{show(value)}</Animated.Text>
     </View>
   );
 }
@@ -48,14 +54,14 @@ export function KeyValueList({ children, style, testID }: { children: ReactNode;
  * The lead figure of a group (A-BStudy "Reserved"): the term over a Red Hat Display 300 44/44
  * numeral, recessed in a lens well. The KeyValue rows beside it break the total down.
  */
-export function KeyFigure({ label, value, testID, valueTestID, style }: { label: string; value: string | number; testID?: string; valueTestID?: string; style?: StyleProp<ViewStyle> }) {
+export function KeyFigure({ label, value, testID, valueTestID, style, valueStyle }: { label: string; value: string | number; testID?: string; valueTestID?: string; style?: StyleProp<ViewStyle>; valueStyle?: ValueStyle }) {
   const { colors, type } = useTheme();
   return (
     <Well testID={testID} accessible accessibilityLabel={`${label}: ${show(value)}`} style={[styles.figure, style]}>
       <RNText style={[type.small, { color: colors.textMuted }]}>{label}</RNText>
-      <RNText testID={valueTestID} adjustsFontSizeToFit numberOfLines={1} style={[type.numeralXl, styles.figureValue, { color: colors.numeral }]}>
+      <Animated.Text testID={valueTestID} adjustsFontSizeToFit numberOfLines={1} style={[type.numeralXl, styles.figureValue, { color: colors.numeral }, valueStyle]}>
         {show(value)}
-      </RNText>
+      </Animated.Text>
     </Well>
   );
 }

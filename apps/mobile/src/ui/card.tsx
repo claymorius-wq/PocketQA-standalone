@@ -11,12 +11,14 @@ import { EnterContext } from './screen';
 /** L1 light distance down a screen (§2 cardK): rim and bloom × 1, 0.8, 0.64 by entrance step. */
 const CARD_K = [1, 0.8, 0.64] as const;
 
-export function Card({ children, style, testID, onPress, accessibilityLabel, k }: {
+export function Card({ children, style, testID, onPress, accessibilityLabel, accessibilityHint, k }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** A pressable card's extra description (the boards' aria-describedby). */
+  accessibilityHint?: string;
   /** Light distance (cardK). Default: by the screen step the card enters in (1, 0.8, then 0.64). */
   k?: number;
 }) {
@@ -32,7 +34,7 @@ export function Card({ children, style, testID, onPress, accessibilityLabel, k }
   }
   // The whole card is the button; the glass sinks into the pressed recipe (§4 Pressed, C5).
   return (
-    <FocusPressable ringRadius={radius.card} testID={testID} onPress={onPress} onPressIn={press.pressIn} onPressOut={press.pressOut} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={styles.touch}>
+    <FocusPressable ringRadius={radius.card} testID={testID} onPress={onPress} onPressIn={press.pressIn} onPressOut={press.pressOut} accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityHint={accessibilityHint} style={styles.touch}>
       <GlassSurface level="card" k={distance} pressed={press.progress} pressShift={press.shift} style={[styles.card, styles.touch, style]}>
         {children}
       </GlassSurface>

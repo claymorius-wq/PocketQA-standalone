@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { useCallback, useEffect, useState, type ReactNode, type Ref } from 'react';
+import { Platform, Pressable, StyleSheet, type PressableProps, type StyleProp, type View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useMotion } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
@@ -89,15 +89,18 @@ function FocusRingOverlay({ radius, focused }: { radius: number; focused: boolea
  * A Pressable that carries the focus ring: its corner radius is set to `ringRadius` (so the web
  * outline follows it; the Pressable draws nothing itself) and the native overlay is its last child.
  */
-export function FocusPressable({ ringRadius, style, onFocus, onBlur, children, ...rest }: Omit<PressableProps, 'children' | 'style'> & {
+export function FocusPressable({ ringRadius, style, onFocus, onBlur, children, ref, ...rest }: Omit<PressableProps, 'children' | 'style'> & {
   ringRadius: number;
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
+  /** The Pressable's view (React 19 ref prop), so focus can be moved to it. */
+  ref?: Ref<View>;
 }) {
   const ring = useFocusRing(ringRadius);
   return (
     <Pressable
       {...rest}
+      ref={ref}
       onFocus={(e) => {
         ring.onFocus?.();
         onFocus?.(e);

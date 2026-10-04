@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { StyleSheet, Text as RNText, View } from 'react-native';
 import { GradientRule } from '../../glass/paint';
 import { useTheme } from '../../theme/ThemeProvider';
-import { CLAUSE_SEPARATOR } from './type';
+import { ClauseDot } from './type';
 
 // The section rule beside a heading (A-Session "Tasks", "Evidence"): lit at its near end, violet,
 // gone by the far end.
@@ -32,11 +32,28 @@ export type SectionHeaderProps = {
 export function SectionHeader({ title, variant = 'heading', count, rule = false, right, testID }: SectionHeaderProps) {
   const { colors, type } = useTheme();
   const label = variant === 'label';
-  const text = count === undefined ? title : `${title}${CLAUSE_SEPARATOR}${count}`;
+  // The label's count sits 0.28em either side of the dot (A-Moderation "VISIBLE · 2"): a DM Mono
+  // space is a full 0.6em cell, so the two spaces are set at the size that makes them 0.28em,
+  // untracked. The text still reads "Visible · 2" as one string.
+  const gap = <RNText style={[styles.sepSpace, { fontSize: type.label.fontSize ? type.label.fontSize * SEP_SPACE : undefined }]}> </RNText>;
+  const content =
+    count === undefined ? (label ? title.toUpperCase() : title) : label ? (
+      <>
+        {title.toUpperCase()}
+        {gap}·{gap}
+        {count}
+      </>
+    ) : (
+      <>
+        {title}
+        <ClauseDot fontSize={type.heading.fontSize} fontFamily={type.heading.fontFamily} />
+        {count}
+      </>
+    );
   return (
     <View testID={testID} style={[styles.row, label ? styles.labelRow : styles.headingRow]}>
       <RNText accessibilityRole="header" style={[label ? type.label : type.heading, { color: label ? colors.textMuted : colors.text }]}>
-        {label ? text.toUpperCase() : text}
+        {content}
       </RNText>
       {rule && !label ? <GradientRule stops={RULE} style={styles.rule} /> : null}
       {right ? <View style={styles.right}>{right}</View> : null}
@@ -44,7 +61,11 @@ export function SectionHeader({ title, variant = 'heading', count, rule = false,
   );
 }
 
+/** A mono space set at this fraction of the label size is 0.28em of it (0.28 / 0.6). */
+const SEP_SPACE = 0.28 / 0.6;
+
 const styles = StyleSheet.create({
+  sepSpace: { letterSpacing: 0 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   headingRow: { paddingLeft: 4, paddingRight: 2 },
   labelRow: { marginLeft: 4 },
