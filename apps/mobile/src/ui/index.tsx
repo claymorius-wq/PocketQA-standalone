@@ -495,9 +495,13 @@ export function Field({ label, value, onChangeText, error, hint, secure, multili
           testID={testID}
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => {
+          onFocus={(e) => {
             setFocused(true);
             setFocusArmed(true);
+            // Web: a browser brings only a focused text box's caret into view, so a tall multi-line
+            // field could keep its lower lines under a dock. Bring its whole box in instead; the
+            // scroll container's scroll-padding keeps it clear of the header scrim and the dock.
+            if (WEB && multiline) (e.target as unknown as { scrollIntoView?: (o: { block: 'nearest' }) => void }).scrollIntoView?.({ block: 'nearest' });
           }}
           onBlur={() => setFocused(false)}
           // A locked field (U4: submitted notes) takes no more text: nothing typed is silently dropped.
