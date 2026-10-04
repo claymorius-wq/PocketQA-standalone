@@ -47,3 +47,4 @@
   - the reward appears once, in `payments.received`, as string units (`participations[].payout` is null in the export);
   - the builder test includes a builder finding and states what may appear: the builder's own findings keep their participation id, and money rows carry none.
 
+- **Export review r4:** `qa-wallet-rewards-export-verdict-r4.md`, **APPROVE** of exactly `2b069b0` (the r3 P3s, both fixed).
