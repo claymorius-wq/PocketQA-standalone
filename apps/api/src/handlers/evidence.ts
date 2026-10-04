@@ -121,6 +121,8 @@ export const evidenceHandlers = {
 
     const key = newId();
     const path = join(ctx.deps.mediaDir, key);
+    // Registered before the file exists, like every other key the app writes (migration 4).
+    registerObject(db, key, ctx.deps.now());
     try {
       await pipeline(file.file, createWriteStream(path, { mode: 0o600 }));
       if (file.file.truncated) throw fail('PAYLOAD_TOO_LARGE', 'Evidence file is too large.');
@@ -150,7 +152,6 @@ export const evidenceHandlers = {
           `INSERT INTO evidence (id, participation_id, kind, mime_type, size_bytes, duration_ms, task_id, captured_on, client_segment_id, storage_key, created_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
         ).run(id, p.id, meta.data.kind, mime, size, meta.data.durationMs ?? null, meta.data.taskId ?? null, meta.data.capturedOn, meta.data.clientSegmentId, key, iso(ctx.deps.now()));
-        registerObject(db, key, ctx.deps.now());
       })();
       return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(id) as EvidenceRow);
     } catch (e) {

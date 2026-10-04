@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES, UPLOAD_INTENT_TTL_SECONDS, UploadIntent } from '@pocket-qa/contracts';
@@ -329,6 +329,10 @@ describe('scoped deletion: only objects the app created', () => {
     const imported = /import \{([^}]+)\} from '@aws-sdk\/client-s3'/.exec(src)![1]!.split(',').map((x) => x.trim()).sort();
     expect(imported).toEqual(['CopyObjectCommand', 'DeleteObjectCommand', 'GetObjectCommand', 'HeadObjectCommand', 'PutObjectCommand', 'S3Client']);
     expect(src).not.toMatch(/Lifecycle|ListObjects|DeleteObjects|DeleteBucket/);
+    // Nor can any other server module (review P3-4).
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : e.name.endsWith('.ts') ? [join(dir, e.name)] : []));
+    for (const f of walk(join(import.meta.dirname, '../src'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/Lifecycle|ListObjects|DeleteObjects|DeleteBucket/);
   });
 
   it('migration 4 registers the objects an existing database already created', async () => {

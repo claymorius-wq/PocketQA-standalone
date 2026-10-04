@@ -4,7 +4,7 @@
 
 **Status:**
 - The web path is proven end to end against the real providers, with a non-production API and synthetic data (§1).
-- **A5 is decided** (Hamza, 2026-10-04): scoped deletion, only objects Pocket QA created itself (registered in `storage_objects`), only in `pocketqa-evidence`, only for failed-upload cleanup, upload staging and user-requested account deletion; no time-based expiry of evidence, no lifecycle rules, no other bucket. The implementation is in its own review (§4). The web-launch approvals (pqa-qa r1–r3, `184e0a2`) do **not** cover it.
+- **A5 is decided** (Hamza, 2026-10-04): Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other bucket, no bulk purge. Ownership is enforced by the `storage_objects` registry. Removing the temporary quarantine copy of an upload that succeeded (`upload_staging`; the recording stays as `evidence/<id>`) is the **lead's interpretation** of that decision, a temporary app-made duplicate. pqa-qa considers it inside the decision's spirit. It is **pending Hamza's or the parent's confirmation**; if the decision is read literally, stop the two `upload_staging` calls and keep those copies. The implementation is in its own review (§4). The web-launch approvals (pqa-qa r1–r3, `184e0a2`) do **not** cover it.
 - **Live cutover has not happened and must not happen yet.** It needs the reviewed candidate, the open items in §4 (A9 and others), and the parent's tunnel change (§3).
 
 ## 1. What is proven (web, real providers, synthetic data)

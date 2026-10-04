@@ -3,12 +3,15 @@ import type { Deps } from '../context';
 const MAX_BACKOFF_MS = 3600_000;
 
 /**
- * Why Pocket QA deletes a stored object. These are the only reasons it ever does (Hamza's
- * scoped deletion policy, A5, 2026-10-04: its own objects in its own bucket, for failed-upload
- * cleanup and user-requested deletion; no time-based expiry of evidence, no lifecycle rules):
- * - failed_upload: an upload that was rejected, expired unfinished, or crashed mid-promotion;
- * - upload_staging: the quarantine copy of an upload that was promoted to its final key;
- * - account_deletion: the recordings of a user who deleted their account.
+ * Why Pocket QA deletes a stored object. These are the only reasons it ever does. Hamza's
+ * scoped deletion policy (A5, 2026-10-04): its own objects in its own bucket, for failed-upload
+ * cleanup and user-requested deletion; no time-based expiry of evidence, no lifecycle rules.
+ * - failed_upload: an upload that was rejected, expired before completion (even if its bytes
+ *   arrived; the app retries with a new intent), or crashed mid-promotion;
+ * - account_deletion: the recordings of a user who deleted their account;
+ * - upload_staging: the quarantine duplicate of an upload that was promoted to its final key.
+ *   This one is the lead's interpretation (a temporary app-made copy; the recording stays as
+ *   evidence/<id>), pending Hamza's confirmation (docs/production/web-launch.md §4).
  */
 export type DeletionPurpose = 'failed_upload' | 'upload_staging' | 'account_deletion';
 

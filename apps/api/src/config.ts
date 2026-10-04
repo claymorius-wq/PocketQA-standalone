@@ -186,7 +186,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     // Deletion is off by default: deletes wait in the storage_deletions outbox (nothing is lost).
     // POCKETQA_R2_ALLOW_DELETE=1 turns on Hamza's scoped policy (A5, 2026-10-04): only objects
     // this app created and registered (storage_objects), only in its own bucket, only for
-    // failed-upload cleanup, upload staging and account deletion (storage/sweep.ts). There is no
+    // failed-upload cleanup and account deletion, plus the staging-copy cleanup pending Hamza's
+    // confirmation (storage/sweep.ts DeletionPurpose). There is no
     // time-based expiry of evidence and no lifecycle rule.
     const allowDelete = env.POCKETQA_R2_ALLOW_DELETE === '1';
     // Only Pocket QA's own bucket is ever a write target, so a mistyped name with wider
