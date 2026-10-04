@@ -7,6 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "admin:create": "tsx scripts/create-admin.ts",
+    "admin:grant": "tsx scripts/grant-admin.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts"

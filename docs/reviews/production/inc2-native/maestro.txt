@@ -1,0 +1,23 @@
+Running on Medium_Phone_API_36.1
+ > Flow firebase-persistence
+Launch app "com.reshareai.pocketqa" with clear state... COMPLETED
+Tap on id: sign-in-email... COMPLETED
+Input text ${EMAIL}... COMPLETED
+Tap on id: sign-in-password... COMPLETED
+Input text ${PASSWORD}... COMPLETED
+Hide Keyboard... COMPLETED
+Tap on id: sign-in-submit... COMPLETED
+Assert that id: finish-account is visible... COMPLETED
+Tap on id: finish-name... COMPLETED
+Input text Nadia Native... COMPLETED
+Hide Keyboard... COMPLETED
+Scrolling DOWN until id: finish-submit is visible with speed 40, visibility percentage 100%, timeout 20000 ms, with centering disabled... COMPLETED
+Tap on id: finish-submit... COMPLETED
+Assert that id: discover-screen is visible... COMPLETED
+Take screenshot fb-persist-1-signed-in... COMPLETED
+Stop com.reshareai.pocketqa... COMPLETED
+Launch app "com.reshareai.pocketqa"... COMPLETED
+Assert that id: discover-screen is visible... COMPLETED
+Assert that id: sign-in-screen is not visible... COMPLETED
+Take screenshot fb-persist-2-after-relaunch... COMPLETED
+MAESTRO_EXIT=0

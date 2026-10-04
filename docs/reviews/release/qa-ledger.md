@@ -48,6 +48,14 @@ The criteria are A1–A10. Status values are open, source-checked, verified, gat
 |---|---|---|---|
 | inc1 r1 | staged set, 30 files, base `9461db5` | CHANGES_REQUIRED: P2-1, an unset `POCKETQA_ENV` fails open to development (test top-ups on, with real providers) | `docs/reviews/production/inc1-verdict-qa-r1.md` |
 | inc1 r2 | staged set, 39 files, base `9461db5` | APPROVE. P2-1 is fixed and verified. New P3s: `check-url.mjs` exits 0 without checking when invoked through a symlink or a path with spaces; document explicit development mode | `docs/reviews/production/inc1-verdict-qa-r2.md` |
+| inc2 r1 | staged set, 30 files, base `a350118` | APPROVE. P3s: an abandoned unverified Firebase session persists; keystore value size; admin MFA is procedural; native proof is emulator and development only | `docs/reviews/production/inc2-verdict-qa-r1.md` |
+
+### inc2 r1: executable evidence
+- **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 585 files; scripts 42; contracts 17; domain 170; API 358 plus 2 skipped; mobile 721.
+- **`pnpm test:e2e:firebase`** (local Auth emulator): 4/4, EXIT=0, covering resend and enumeration-safe reset.
+- **Native persistence (B2):** I inspected the artifacts (the green flow passes after a kill and relaunch; the red memory-only build fails at relaunch). I didn't rerun it, because the emulator is shared.
+  - B2 is now **verified on an emulator, in a development prebuild**.
+  - A physical device and a production prebuild remain open.
 
 ### inc1 r2: executable evidence
 - **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 564 files; scripts 41; contracts 17; domain 170; API 355 plus 2 skipped; mobile 714.

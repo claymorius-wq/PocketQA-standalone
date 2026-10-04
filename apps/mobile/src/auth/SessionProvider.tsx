@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { walletLoginFlow } from '../wallet/walletLogin';
 import { firebaseAuth, firebaseSession } from './firebaseClient';
 import { firebaseErrorText } from './firebaseErrors';
-import { resolveManagedSession } from './managedSession';
+import { endsRestoredSession, resolveManagedSession } from './managedSession';
 import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
 
@@ -27,6 +27,14 @@ type Session = {
   /** Role and name typed at sign-up (firebase mode), to prefill "Finish your account". */
   pendingProfile: NewAccount | null;
   signIn: (email: string, password: string) => Promise<void>;
+  /** Firebase mode: an email sign-in was refused because the address isn't verified yet. */
+  unverifiedEmail: boolean;
+  /** Firebase mode: resend the verification email to the unverified user, then sign out. */
+  resendVerification: () => Promise<void>;
+  /** Firebase mode: drop a refused unverified sign-in without resending (leaving sign-in). */
+  discardUnverified: () => Promise<void>;
+  /** Firebase mode: send a reset link. Resolves the same whether or not the account exists. */
+  sendPasswordReset: (email: string) => Promise<void>;
   /** Firebase mode returns `verificationSent`: the account is created after the email is verified. */
   signUp: (input: { email: string; password: string; displayName: string; role: 'tester' | 'builder' }) => Promise<{ verificationSent: boolean }>;
   signInWithGoogle: () => Promise<void>;
@@ -51,6 +59,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [features, setFeatures] = useState<ClientConfig['features']>(NO_FEATURES);
   const [needsAccount, setNeedsAccount] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<NewAccount | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState(false);
 
   const clear = useCallback(async () => {
     token.current = null;
@@ -103,7 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           first = false;
           // A persisted Firebase session from an earlier visit.
           // Only a definite "not signed in" ends the session; offline keeps it for later.
-          void (t ? resolveManaged().catch((e) => (e instanceof ApiError && e.code === 'UNAUTHENTICATED' ? clear() : undefined)) : Promise.resolve()).finally(() => setReady(true));
+          void (t ? resolveManaged().catch((e) => (endsRestoredSession(e) ? clear() : undefined)) : Promise.resolve()).finally(() => setReady(true));
         });
         return;
       }
@@ -155,14 +164,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       features,
       needsAccount,
       pendingProfile,
+      unverifiedEmail,
       signIn: async (email, password) => {
         if (authMode === 'firebase') {
+          setUnverifiedEmail(false);
           try {
             await firebaseSession.emailSignIn(fb.current!, email, password);
           } catch (e) {
             throw new Error(firebaseErrorText(e, 'sign-in') ?? 'Sign-in failed.', { cause: e });
           }
-          return afterFirebaseSignIn();
+          try {
+            return await afterFirebaseSignIn();
+          } catch (e) {
+            if (!(e instanceof ApiError && e.code === 'EMAIL_UNVERIFIED')) throw e;
+            // Stay signed in to Firebase only so the verification email can be resent.
+            setUnverifiedEmail(true);
+            throw new Error('Verify your email first: open the link we sent you, then sign in again.', { cause: e });
+          }
         }
         return accept(await api('login', { body: { email, password }, token: null }));
       },
@@ -180,6 +198,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         await accept(await api('register', { body: input, token: null }));
         return { verificationSent: false };
+      },
+      resendVerification: async () => {
+        try {
+          await firebaseSession.resendVerification(fb.current!);
+        } catch (e) {
+          throw new Error(firebaseErrorText(e, 'sign-in') ?? (e instanceof Error ? e.message : 'Couldn’t resend the email.'), { cause: e });
+        } finally {
+          setUnverifiedEmail(false);
+          await clear();
+        }
+      },
+      discardUnverified: async () => {
+        setUnverifiedEmail(false);
+        await clear();
+      },
+      sendPasswordReset: async (email) => {
+        try {
+          await firebaseSession.passwordReset(fb.current!, email);
+        } catch (e) {
+          if (!String((e as { code?: string })?.code ?? '').startsWith('auth/')) throw new Error('Couldn’t send the email. Try again.', { cause: e });
+          const text = firebaseErrorText(e, 'reset');
+          if (text) throw new Error(text, { cause: e });
+          // Otherwise behave exactly like success (no account enumeration).
+        }
       },
       signInWithGoogle: async () => {
         try {
@@ -203,7 +245,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       refreshUser: async () => setUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, features, needsAccount, pendingProfile, accept, acceptWallet, afterFirebaseSignIn, clear],
+    [ready, user, authMode, storage, walletLogin, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

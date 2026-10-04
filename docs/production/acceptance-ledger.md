@@ -39,11 +39,11 @@
 | I1 | Production config refuses local password auth, shared demo, emulator hosts and non-prod R2 retention | C | 🔧 | `apps/api/test/production-config.test.ts` (inc1)
 | I2 | Firebase Auth initialised in `pocketqa-optijara` (Email/Password; Google optional; enumeration protection on) | P | ⛔ A1 | getProjectConfig → `CONFIGURATION_NOT_FOUND` at 2026-10-04T09:18:20Z | H-relayed |
 | I3 | Real sign-up → verification email → verified sign-in → account → logout revokes (live test against the dedicated project) | P | ⛔ A1, A2 | `test-live/firebase.live.test.ts` is ready | H-relayed |
-| I4 | Password reset and verification resend in the app, with copy that doesn't reveal whether an account exists | C | ⬜ | | H-relayed |
+| I4 | Password reset and verification resend in the app, with copy that doesn't reveal whether an account exists | C | 🔧 | App reset and resend with enumeration-safe copy: `e2e-firebase/firebase-auth.spec.ts` (Auth emulator, 4/4), `__tests__/firebase-errors.test.ts` (inc2)
 | I5 | Password reset email received and the reset works (real inbox) | P | ⛔ A1 | | H-relayed |
 | I6 | Dedicated service identity `pocketqa-api@` with `roles/firebaseauth.admin` only; no personal tokens | P | ⛔ A2 | | H-direct (no personal tokens) |
-| I7 | Production admin provisioning without public identities: `admin:grant` CLI for a verified Firebase user, audited, with no HTTP route | C | ⬜ | | H-relayed |
-| I8 | Native (Android) Firebase session persistence | C | ⬜ | | H-relayed |
+| I7 | Production admin provisioning without public identities: `admin:grant` CLI for a verified Firebase user, audited, with no HTTP route | C | 🔧 | `apps/api/test/admin-grant.test.ts`; `scripts/grant-admin.ts` (inc2)
+| I8 | Native (Android) Firebase session persistence | C/H | 🔧 emulator | Keystore-backed RN persistence: Maestro `firebase-persistence.yaml` on the **emulator** (green passes; a red build with `getAuth` fails at relaunch). A physical device is still a hardware gate (N2) (inc2)
 | I9 | Native Google sign-in (needs the native SDK and release SHA fingerprints) | H | ⛔ A6 | | H-relayed |
 | I10 | Authorization: users can't access each other's studies or media; forged, expired and revoked tokens fail; roles can't be escalated | C | ✅ | API suite (authorization matrix, identity tests) in PR #2 | H-direct |
 
@@ -111,3 +111,8 @@
 | N2 | Exact binary installed and tested on a physical Android or Seeker device (labelled physical, not simulator) | H | ⛔ A6 | | H-relayed |
 | N3 | iOS: graceful capability differences (no MWA claim) | C | ✅ | PR #1 | plan |
 | N4 | Store signing and submission | H/B | not authorised | No store submission for this build | prohibited |
+
+## Residual risks and open notes (from reviews)
+- **Admin accounts (inc2 review P3-3).** `admin:grant` trusts the verified identity behind the email. The operator must confirm the person out of band before granting. Admins should use Google sign-in with 2-step verification. Admin MFA in Pocket QA itself needs Identity Platform (billing, not approved), so **admin MFA is a residual risk**.
+- **Keystore value size (inc2 review P3-2).** Firebase's persisted user JSON is typically over 2 KB. Android's keystore-backed `expo-secure-store` handled it (emulator proof). iOS Keychain may reject values over 2048 bytes, so **iOS managed sign-in stays an open gate**, with chunking as the fix if iOS becomes a target.
+- **Native proof scope (inc2 review P3-4).** I8 was proven with a **development prebuild on an emulator**. A production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`) on a physical Android or Seeker device stays open under N1 and N2.

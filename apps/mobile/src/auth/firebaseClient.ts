@@ -1,21 +1,20 @@
 import type { ClientConfig } from '@pocket-qa/contracts';
 import { getApps, initializeApp } from 'firebase/app';
-import { Platform } from 'react-native';
 import {
-  browserSessionPersistence,
   connectAuthEmulator,
   initializeAuth,
   createUserWithEmailAndPassword,
-  getAuth,
   GoogleAuthProvider,
   onIdTokenChanged,
   sendEmailVerification,
   signInWithCustomToken,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithPopup,
   signOut,
   type Auth,
 } from 'firebase/auth';
+import { firebasePersistence } from './firebasePersistence';
 
 /**
  * Firebase client for `authMode: 'firebase'` deployments (ADR 0005 §1). Configured only
@@ -28,9 +27,8 @@ let auth: Auth | null = null;
 export function firebaseAuth(cfg: NonNullable<ClientConfig['firebase']>): Auth {
   if (auth) return auth;
   const app = getApps().find((a) => a.name === 'pocketqa') ?? initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId }, 'pocketqa');
-  // Web: tab-scoped persistence (sessionStorage), like local mode: closing the tab signs
-  // out and the refresh token isn't kept in long-lived IndexedDB (ADR 0005 §1).
-  auth = Platform.OS === 'web' ? initializeAuth(app, { persistence: browserSessionPersistence }) : getAuth(app);
+  // Web: tab-scoped sessionStorage. Native: the OS keystore, so sessions survive restarts.
+  auth = initializeAuth(app, { persistence: firebasePersistence() });
   if (cfg.authEmulatorUrl) connectAuthEmulator(auth, cfg.authEmulatorUrl, { disableWarnings: true });
   return auth;
 }
@@ -43,6 +41,13 @@ export const firebaseSession = {
     await sendEmailVerification(cred.user);
     return cred;
   },
+  /** Resend for a signed-in, still-unverified email user (the API refuses them until verified). */
+  async resendVerification(a: Auth) {
+    if (!a.currentUser) throw new Error('Sign in again to resend the verification email.');
+    await sendEmailVerification(a.currentUser);
+  },
+  /** Firebase sends the reset email; with enumeration protection on, it never says whether the account exists. */
+  passwordReset: (a: Auth, email: string) => sendPasswordResetEmail(a, email),
   googleSignIn: (a: Auth) => signInWithPopup(a, new GoogleAuthProvider()),
   customTokenSignIn: (a: Auth, token: string) => signInWithCustomToken(a, token),
   onIdToken: (a: Auth, cb: (token: string | null) => void) => onIdTokenChanged(a, async (u) => cb(u ? await u.getIdToken() : null)),

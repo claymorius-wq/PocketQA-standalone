@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
-import { LogIn, ShieldCheck, UserPlus, Wallet } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { KeyRound, LogIn, Mail, ShieldCheck, UserPlus, Wallet } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
 import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
@@ -14,7 +14,7 @@ import { Button, Card, Field, Notice, Row, Screen, Segmented, Text } from '../..
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
 
 export default function SignIn() {
-  const { signIn, authMode, storage, walletLogin, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount } = useSession();
+  const { signIn, authMode, storage, walletLogin, features, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount, unverifiedEmail, resendVerification, discardUnverified, sendPasswordReset } = useSession();
   const web = Platform.OS === 'web';
   // Wallet sign-in: web with a Solana Wallet Standard extension, when the server enables it.
   const canWallet = walletLogin && web && availableWallets().length > 0;
@@ -33,6 +33,9 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Firebase mode: "Forgot password?" and "Resend verification email".
+  const [resetOpen, setResetOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   // Shared demo preview only: fill (never submit) a synthetic demo sign-in.
   const [demo, setDemo] = useState<DemoAccount[]>([]);
   const [demoRole, setDemoRole] = useState<DemoRole>('tester');
@@ -59,9 +62,23 @@ export default function SignIn() {
     };
   }, []); // load once on mount
 
+  // Leaving sign-in after an unverified refusal signs that Firebase user out (inc2 review P3-1).
+  // Refs, not deps: the session object changes on every update, and only unmount should discard.
+  const unverifiedRef = useRef(unverifiedEmail);
+  unverifiedRef.current = unverifiedEmail;
+  const discardRef = useRef(discardUnverified);
+  discardRef.current = discardUnverified;
+  useEffect(
+    () => () => {
+      if (unverifiedRef.current) void discardRef.current();
+    },
+    [],
+  );
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await action();
     } catch (e) {
@@ -81,7 +98,11 @@ export default function SignIn() {
           <Text variant="label" tone="primary">POCKET QA</Text>
         </Row>
         <Text variant="display">Real-device usability tests</Text>
-        <Text tone="muted">Builders fund studies with test credits. Testers record consented sessions. Every reward needs approval.</Text>
+        <Text tone="muted">
+          {features.testCredits
+            ? 'Builders fund studies with test credits. Testers record consented sessions. Every reward needs approval.'
+            : 'Builders run usability studies. Testers record consented sessions on their own devices. Every result is reviewed.'}
+        </Text>
       </View>
       {demo.length ? (
         <Card testID="demo-accounts">
@@ -99,7 +120,41 @@ export default function SignIn() {
         <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" testID="sign-in-email" />
         <Field label="Password" value={password} onChangeText={setPassword} secure testID="sign-in-password" />
         {error ? <Notice tone="danger" title="Couldn’t sign in" testID="sign-in-error">{error}</Notice> : null}
+        {notice ? <Notice tone="success" title="Check your inbox" testID="sign-in-notice">{notice}</Notice> : null}
+        {authMode === 'firebase' && unverifiedEmail ? (
+          <Button
+            label="Resend verification email"
+            icon={Mail}
+            variant="secondary"
+            onPress={() => run(async () => {
+              await resendVerification();
+              setNotice('We sent a new verification link. Open it, then sign in again.');
+            })}
+            disabled={busy}
+            testID="resend-verification"
+          />
+        ) : null}
         <Button label="Sign in" icon={LogIn} onPress={submit} loading={busy} disabled={!email || !password} testID="sign-in-submit" />
+        {authMode === 'firebase' ? (
+          <Button
+            label={resetOpen ? 'Send password reset link' : 'Forgot password?'}
+            icon={KeyRound}
+            variant="ghost"
+            onPress={() =>
+              resetOpen
+                ? run(async () => {
+                    await sendPasswordReset(email.trim());
+                    // Same answer whether or not an account uses this email.
+                    setNotice('If an account uses this email, a reset link is on its way.');
+                    setResetOpen(false);
+                  })
+                : setResetOpen(true)
+            }
+            disabled={busy || (resetOpen && !email.trim())}
+            testID="forgot-password"
+          />
+        ) : null}
+        {resetOpen ? <Text variant="small" tone="muted" testID="reset-hint">Enter your email above, then send the link.</Text> : null}
         {authMode === 'firebase' && web ? <Button label="Continue with Google" variant="secondary" onPress={() => run(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
         {canWallet ? (
           // Sign In With Solana: the wallet shows this site's address; nothing is paid or sent.
