@@ -10,3 +10,4 @@ export * from './wallet';
 export * from './utf8';
 export * from './stuck';
 export * from './transferTx';
+export * from './escrow';

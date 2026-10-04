@@ -1,0 +1,170 @@
+import { describe, expect, it } from 'vitest';
+import { DomainError } from './errors';
+import {
+  escrowAvailability,
+  MAX_ESCROW_UNITS,
+  planAuthorizePayout,
+  planFunding,
+  planRefund,
+  planSettlePayout,
+  quoteEscrow,
+  transitionPayout,
+  verifyFundingTransfer,
+  type EscrowPosting,
+  type FundingExpectation,
+  type ObservedTransfer,
+} from './escrow';
+
+const sum = (ps: EscrowPosting[]) => ps.reduce((s, p) => s + p.amount, 0);
+const bal = (ps: EscrowPosting[], account: string) => ps.filter((p) => p.account === account).reduce((s, p) => s + p.amount, 0);
+const code = (f: () => unknown) => {
+  try {
+    f();
+  } catch (e) {
+    return (e as DomainError).code;
+  }
+  return 'none';
+};
+
+describe('quoteEscrow: exact integer token units', () => {
+  it('10 × 1 USDC with an illustrative 10% fee: pool 10, fee 1, total 11 (6-decimal units)', () => {
+    expect(quoteEscrow({ rewardUnits: 1_000_000, slots: 10, feeBps: 1000 })).toEqual({
+      rewardUnits: 1_000_000,
+      slots: 10,
+      feeBps: 1000,
+      perTestFeeUnits: 100_000,
+      perTestTotalUnits: 1_100_000,
+      rewardPoolUnits: 10_000_000,
+      platformFeeUnits: 1_000_000,
+      totalUnits: 11_000_000,
+    });
+  });
+
+  it('rounds a fractional per-test fee up to a whole unit, never with floating point', () => {
+    // 333_333 × 10% = 33_333.3 → 33_334 per test; totals are per-test × slots exactly.
+    const q = quoteEscrow({ rewardUnits: 333_333, slots: 3, feeBps: 1000 });
+    expect(q.perTestFeeUnits).toBe(33_334);
+    expect(q.platformFeeUnits).toBe(100_002);
+    expect(q.totalUnits).toBe(q.rewardPoolUnits + q.platformFeeUnits);
+  });
+
+  it('a zero fee is allowed; non-integers, negatives and overflow are refused', () => {
+    expect(quoteEscrow({ rewardUnits: 5, slots: 2, feeBps: 0 }).totalUnits).toBe(10);
+    for (const bad of [
+      { rewardUnits: 1.5, slots: 1, feeBps: 0 },
+      { rewardUnits: 0, slots: 1, feeBps: 0 },
+      { rewardUnits: -1, slots: 1, feeBps: 0 },
+      { rewardUnits: 1, slots: 0, feeBps: 0 },
+      { rewardUnits: 1, slots: 1, feeBps: -1 },
+      { rewardUnits: 1, slots: 1, feeBps: 10_001 },
+      { rewardUnits: MAX_ESCROW_UNITS, slots: 2, feeBps: 0 },
+      { rewardUnits: Number.MAX_SAFE_INTEGER, slots: 1, feeBps: 1 },
+    ]) {
+      expect(code(() => quoteEscrow(bad)), JSON.stringify(bad)).toBe('VALIDATION');
+    }
+  });
+});
+
+describe('escrow postings', () => {
+  const q = quoteEscrow({ rewardUnits: 1_000_000, slots: 2, feeBps: 1000 });
+
+  it('every plan is balanced and moves only whole units', () => {
+    const plans = [
+      planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits }),
+      planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: q.totalUnits }),
+      planSettlePayout({ participationId: 'p1', testerId: 't1', amountUnits: q.rewardUnits }),
+      planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: 1_100_000 }),
+    ];
+    for (const p of plans) {
+      expect(sum(p)).toBe(0);
+      for (const x of p) expect(Number.isSafeInteger(x.amount)).toBe(true);
+    }
+  });
+
+  it('funding → approval → settlement → refund leaves the vault at zero and pays exactly once', () => {
+    let ledger: EscrowPosting[] = planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits });
+    expect(bal(ledger, 'vault:s1')).toBe(2_200_000);
+    ledger = [...ledger, ...planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: 2_200_000 })];
+    expect(bal(ledger, 'payable:p1')).toBe(1_000_000);
+    expect(bal(ledger, 'fees:platform')).toBe(100_000);
+    ledger = [...ledger, ...planSettlePayout({ participationId: 'p1', testerId: 't1', amountUnits: 1_000_000 })];
+    expect(bal(ledger, 'payable:p1')).toBe(0);
+    expect(bal(ledger, 'out:tester:t1')).toBe(1_000_000);
+    // The second slot was never used: its reward and unearned fee go back to the builder.
+    ledger = [...ledger, ...planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: bal(ledger, 'vault:s1') })];
+    expect(bal(ledger, 'vault:s1')).toBe(0);
+    expect(bal(ledger, 'out:refund:b1')).toBe(1_100_000);
+  });
+
+  it('an approval the vault cannot cover is refused (never a negative vault)', () => {
+    expect(code(() => planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: q.perTestTotalUnits - 1 }))).toBe('BUDGET_INSUFFICIENT');
+  });
+
+  it('refund of a negative or non-integer vault is an invariant error; zero refunds nothing', () => {
+    expect(planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: 0 })).toEqual([]);
+    expect(code(() => planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: -1 }))).toBe('INTERNAL');
+    expect(code(() => planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 0.5 }))).toBe('VALIDATION');
+  });
+});
+
+describe('escrowAvailability: reservations never exceed confirmed funds', () => {
+  const q = quoteEscrow({ rewardUnits: 1_000_000, slots: 3, feeBps: 1000 });
+  it('each holding participation holds one reward plus its fee', () => {
+    const a = escrowAvailability({ vaultBalanceUnits: q.totalUnits, quote: q, holdingCount: 2 });
+    expect(a).toEqual({ heldUnits: 2_200_000, availableUnits: 1_100_000, canReserve: true });
+    expect(escrowAvailability({ vaultBalanceUnits: q.totalUnits, quote: q, holdingCount: 3 }).canReserve).toBe(false);
+  });
+  it('an unfunded or underfunded vault reserves nothing', () => {
+    expect(escrowAvailability({ vaultBalanceUnits: 0, quote: q, holdingCount: 0 }).canReserve).toBe(false);
+    expect(escrowAvailability({ vaultBalanceUnits: q.perTestTotalUnits - 1, quote: q, holdingCount: 0 }).canReserve).toBe(false);
+  });
+  it('holds above the vault are an invariant error', () => {
+    expect(code(() => escrowAvailability({ vaultBalanceUnits: 1_100_000, quote: q, holdingCount: 2 }))).toBe('INTERNAL');
+  });
+});
+
+describe('payout state machine', () => {
+  it('only confirmed is paid; failure retries; confirmed is final', () => {
+    expect(transitionPayout('pending', 'submit')).toBe('submitted');
+    expect(transitionPayout('submitted', 'confirm')).toBe('confirmed');
+    expect(transitionPayout('submitted', 'fail')).toBe('failed');
+    expect(transitionPayout('failed', 'submit')).toBe('submitted');
+    expect(transitionPayout('pending', 'fail')).toBe('failed'); // e.g. the submitter could not send
+    for (const [from, action] of [
+      ['confirmed', 'submit'],
+      ['confirmed', 'fail'],
+      ['confirmed', 'confirm'],
+      ['pending', 'confirm'],
+      ['failed', 'confirm'],
+    ] as const) {
+      expect(code(() => transitionPayout(from, action)), `${from}+${action}`).toBe('CONFLICT_STATE');
+    }
+  });
+});
+
+describe('verifyFundingTransfer: exact network, mint, recipient, amount and reference', () => {
+  const expect0: FundingExpectation = { network: 'simulated', mint: 'SIM-USDC', vault: 'sim-vault:s1', amountUnits: 11_000_000, reference: 'ref-1', notBeforeMs: 1_000 };
+  const ok: ObservedTransfer = { status: 'finalized', network: 'simulated', mint: 'SIM-USDC', destination: 'sim-vault:s1', amountUnits: 11_000_000, reference: 'ref-1', blockTimeMs: 2_000 };
+
+  it('confirms only an exact, finalized match', () => {
+    expect(verifyFundingTransfer(expect0, ok)).toEqual({ status: 'confirmed', reason: null });
+  });
+  it('waits while the transfer is unfinalized or not found yet', () => {
+    expect(verifyFundingTransfer(expect0, { ...ok, status: 'processing' }).status).toBe('pending');
+    expect(verifyFundingTransfer(expect0, null).status).toBe('pending');
+  });
+  it.each([
+    ['wrong network', { network: 'solana:mainnet' }],
+    ['wrong mint', { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' }],
+    ['wrong recipient', { destination: 'sim-vault:other' }],
+    ['insufficient amount', { amountUnits: 10_999_999 }],
+    ['overpayment', { amountUnits: 11_000_001 }],
+    ['another intent’s reference', { reference: 'ref-2' }],
+    ['a transfer older than the intent', { blockTimeMs: 999 }],
+    ['a failed transfer', { status: 'failed' }],
+  ] as const)('fails: %s', (_, patch) => {
+    const v = verifyFundingTransfer(expect0, { ...ok, ...(patch as Partial<ObservedTransfer>) });
+    expect(v.status).toBe('failed');
+    expect(v.reason).toBeTruthy();
+  });
+});
