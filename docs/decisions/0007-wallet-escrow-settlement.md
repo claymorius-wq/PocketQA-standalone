@@ -18,7 +18,15 @@ Hamza approved implementation on 2026-10-05, relayed by the parent ("nice lets g
 - **Explicitly excluded:** mainnet, real funds, cloud credential access, paid services, production activation, a preview restart, push or merge.
 - **Required:** "explicitly distinguish local simulated settlement from live devnet and real money, never call simulation paid".
 
-**This phase therefore builds and ships only local simulated settlement.** Nothing in it holds keys, signs transactions, contacts a network or moves any asset.
+**The parent's clarification after pqa-qa r1** (2026-10-05) resolves B-1:
+- Hamza's latest approval supersedes the plan-only status **for implementation**.
+- **Authorised now:** local code, tests, read-only provider and RPC research, isolated test fixtures, app and UI work, and durable settlement boundaries.
+- **Not approved:** public devnet program deployment, funding or key creation. There is no real custody.
+- Program logic may be built locally with local test keys only if necessary.
+- B-2 and B-3 remain **production and provider gates**, not reasons to halt the local slice.
+- QA's live-devnet evidence is a later release gate.
+
+**This phase therefore builds and ships only local simulated settlement.** The devnet or real provider adapter is **disabled until a verified provider or program is chosen and approved**. No such adapter exists in code, and config refuses every value except `off` and `simulated`. Nothing in it holds keys, signs transactions, contacts a network or moves any asset.
 
 **Not authorised by this decision, so a separate recorded approval is needed:**
 - **Smart-contract custody.** CLAUDE.md says: "No mainnet escrow/real payouts/smart-contract custody … without separate approval." That includes:
@@ -54,7 +62,9 @@ The UI and docs name the trust model in plain words:
    - The amount is the reward frozen at study creation.
    - The destination is the payout wallet frozen at consent.
    - No API takes an amount or destination for a payout. **Admins decide outcomes, never amounts or destinations.**
-2. **Refund:** only after the study is closed, only the vault balance (unused rewards plus unearned fees), and only to the wallet that funded the study (recorded from the verified funding transfer).
+2. **Refund:** only after the study is closed, and only the vault balance: unused rewards plus their unearned fees, after every hold has settled.
+   - It goes only to the wallet that funded the study, recorded from the verified funding transfer.
+   - It is pending (`refund_pending`) until the settlement provider confirms it, the same way payouts are.
 3. **Destination changes:** none in this phase. The payout wallet is frozen at consent, and re-linking a different wallet later doesn't change existing participations. A controlled recovery flow (re-authentication, signature from the new wallet, cooldown, audit, refused while a payout is in flight) is future work.
 4. **Fee:** the platform fee is earned per approved test. It comes from the fee portion the builder funded, never from the reward pool.
 5. **Keys:** none exist in this phase. If (i) is approved for devnet, the ADR amendment must list:
@@ -91,6 +101,9 @@ The UI and docs name the trust model in plain words:
   - one refund per study;
   - `UNIQUE(signature)` for funding and payouts.
 - Reservations are checked inside the same SQLite write transaction that creates them.
+- **The invariant** (`escrowInvariant`) holds after every transition and is checked in tests and by the reconciliation pass:
+
+  funded = available + held + payable (approved, payment pending) + settled + platform fees + pending refund + refunded
 
 **Open product decisions** (from the plan, not decided here):
 - **Platform fee:** provisional and configurable, `POCKETQA_ESCROW_FEE_BPS`, default 1000 (10%, illustrative).

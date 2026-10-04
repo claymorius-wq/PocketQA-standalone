@@ -14,14 +14,16 @@ import { conflict, DomainError } from './errors';
  * - `payable:<participation>` an approved reward awaiting a confirmed payout
  * - `fees:platform`          the disclosed platform fee, earned per approved test
  * - `out:tester:<user>`      confirmed payouts (left the system)
- * - `out:refund:<builder>`   refunds of unused funds after the study closes
+ * - `refund_pending:<study>` unused funds being refunded after close, not yet confirmed
+ * - `out:refund:<wallet>`    confirmed refunds, to the wallet that funded the study
+ * Every posting carries its study id, so a study's books can be checked on their own.
  */
 export const USDC_DECIMALS = 6;
 /** Per-study cap (1,000,000 USDC): keeps every product and sum far inside safe integers. */
 export const MAX_ESCROW_UNITS = 1_000_000_000_000;
 export const MAX_FEE_BPS = 10_000;
 
-export type EscrowKind = 'funding' | 'payout_authorized' | 'fee_earned' | 'payout_settled' | 'refund';
+export type EscrowKind = 'funding' | 'payout_authorized' | 'fee_earned' | 'payout_settled' | 'refund_authorized' | 'refund_settled';
 export type EscrowPosting = { account: string; amount: number; kind: EscrowKind; studyId: string | null; participationId: string | null };
 
 export type EscrowQuote = {
@@ -94,15 +96,54 @@ export function planAuthorizePayout(input: { studyId: string; participationId: s
 }
 
 /** Only a payout confirmed on the settlement network leaves the payable account. */
-export function planSettlePayout(input: { participationId: string; testerId: string; amountUnits: number }): EscrowPosting[] {
-  return pair(payableAccount(input.participationId), `out:tester:${input.testerId}`, units(input.amountUnits, 'The payout', { positive: true }), 'payout_settled', null, input.participationId);
+export function planSettlePayout(input: { studyId: string; participationId: string; testerId: string; amountUnits: number }): EscrowPosting[] {
+  return pair(payableAccount(input.participationId), `out:tester:${input.testerId}`, units(input.amountUnits, 'The payout', { positive: true }), 'payout_settled', input.studyId, input.participationId);
 }
 
-/** After close, everything left in the vault (unused rewards and their unearned fees) is refunded. */
-export function planRefund(input: { studyId: string; builderId: string; vaultBalanceUnits: number }): EscrowPosting[] {
+export const refundPendingAccount = (studyId: string) => `refund_pending:${studyId}`;
+/**
+ * After close, everything left in the vault (unused rewards and their unearned fees) is set
+ * aside for refund; it leaves the system only when the refund transfer is confirmed.
+ */
+export function planAuthorizeRefund(input: { studyId: string; vaultBalanceUnits: number }): EscrowPosting[] {
   if (!Number.isSafeInteger(input.vaultBalanceUnits) || input.vaultBalanceUnits < 0) throw new DomainError('INTERNAL', 'Escrow invariant violated: negative vault.');
   if (input.vaultBalanceUnits === 0) return [];
-  return pair(vaultAccount(input.studyId), `out:refund:${input.builderId}`, input.vaultBalanceUnits, 'refund', input.studyId, null);
+  return pair(vaultAccount(input.studyId), refundPendingAccount(input.studyId), input.vaultBalanceUnits, 'refund_authorized', input.studyId, null);
+}
+/** A confirmed refund, only ever to the wallet that funded the study. */
+export function planSettleRefund(input: { studyId: string; funder: string; amountUnits: number }): EscrowPosting[] {
+  return pair(refundPendingAccount(input.studyId), `out:refund:${input.funder}`, units(input.amountUnits, 'The refund', { positive: true }), 'refund_settled', input.studyId, null);
+}
+
+/**
+ * The study's books balance: every funded unit is in exactly one place. Reservations (held)
+ * are inside the vault, not on top of it. `ok` is false on any imbalance, negative bucket or
+ * posting to an account outside this study's escrow.
+ */
+export function escrowInvariant(input: { studyId: string; postings: readonly EscrowPosting[]; quote: EscrowQuote; holdingCount: number }) {
+  const mine = input.postings.filter((p) => p.studyId === input.studyId);
+  const sumWhere = (f: (a: string) => boolean) => mine.filter((p) => f(p.account)).reduce((s, p) => s + p.amount, 0);
+  const fundedUnits = -sumWhere((a) => a === 'in:funding');
+  const vault = sumWhere((a) => a === vaultAccount(input.studyId));
+  const heldUnits = input.quote.perTestTotalUnits * input.holdingCount;
+  const buckets = {
+    availableUnits: vault - heldUnits,
+    heldUnits,
+    payableUnits: sumWhere((a) => a.startsWith('payable:')),
+    settledUnits: sumWhere((a) => a.startsWith('out:tester:')),
+    feesUnits: sumWhere((a) => a === PLATFORM_FEES),
+    pendingRefundUnits: sumWhere((a) => a === refundPendingAccount(input.studyId)),
+    refundedUnits: sumWhere((a) => a.startsWith('out:refund:')),
+  };
+  const known = (a: string) =>
+    a === 'in:funding' || a === vaultAccount(input.studyId) || a.startsWith('payable:') || a.startsWith('out:tester:') || a === PLATFORM_FEES || a === refundPendingAccount(input.studyId) || a.startsWith('out:refund:');
+  const total = Object.values(buckets).reduce((s, v) => s + v, 0);
+  const ok =
+    mine.every((p) => known(p.account) && Number.isSafeInteger(p.amount)) &&
+    mine.reduce((s, p) => s + p.amount, 0) === 0 &&
+    Object.values(buckets).every((v) => v >= 0) &&
+    fundedUnits === total;
+  return { fundedUnits, ...buckets, ok };
 }
 
 /** Each participation that holds budget holds one reward plus its fee. */

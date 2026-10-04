@@ -5,8 +5,10 @@ import {
   MAX_ESCROW_UNITS,
   planAuthorizePayout,
   planFunding,
-  planRefund,
+  escrowInvariant,
+  planAuthorizeRefund,
   planSettlePayout,
+  planSettleRefund,
   quoteEscrow,
   transitionPayout,
   verifyFundingTransfer,
@@ -72,8 +74,9 @@ describe('escrow postings', () => {
     const plans = [
       planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits }),
       planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: q.totalUnits }),
-      planSettlePayout({ participationId: 'p1', testerId: 't1', amountUnits: q.rewardUnits }),
-      planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: 1_100_000 }),
+      planSettlePayout({ studyId: 's1', participationId: 'p1', testerId: 't1', amountUnits: q.rewardUnits }),
+      planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: 1_100_000 }),
+      planSettleRefund({ studyId: 's1', funder: 'W1', amountUnits: 1_100_000 }),
     ];
     for (const p of plans) {
       expect(sum(p)).toBe(0);
@@ -87,13 +90,17 @@ describe('escrow postings', () => {
     ledger = [...ledger, ...planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: 2_200_000 })];
     expect(bal(ledger, 'payable:p1')).toBe(1_000_000);
     expect(bal(ledger, 'fees:platform')).toBe(100_000);
-    ledger = [...ledger, ...planSettlePayout({ participationId: 'p1', testerId: 't1', amountUnits: 1_000_000 })];
+    ledger = [...ledger, ...planSettlePayout({ studyId: 's1', participationId: 'p1', testerId: 't1', amountUnits: 1_000_000 })];
     expect(bal(ledger, 'payable:p1')).toBe(0);
     expect(bal(ledger, 'out:tester:t1')).toBe(1_000_000);
-    // The second slot was never used: its reward and unearned fee go back to the builder.
-    ledger = [...ledger, ...planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: bal(ledger, 'vault:s1') })];
+    // The second slot was never used: its reward and unearned fee are refunded to the funding
+    // wallet, first pending, then settled.
+    ledger = [...ledger, ...planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: bal(ledger, 'vault:s1') })];
     expect(bal(ledger, 'vault:s1')).toBe(0);
-    expect(bal(ledger, 'out:refund:b1')).toBe(1_100_000);
+    expect(bal(ledger, 'refund_pending:s1')).toBe(1_100_000);
+    ledger = [...ledger, ...planSettleRefund({ studyId: 's1', funder: 'W1', amountUnits: 1_100_000 })];
+    expect(bal(ledger, 'refund_pending:s1')).toBe(0);
+    expect(bal(ledger, 'out:refund:W1')).toBe(1_100_000);
   });
 
   it('an approval the vault cannot cover is refused (never a negative vault)', () => {
@@ -101,8 +108,8 @@ describe('escrow postings', () => {
   });
 
   it('refund of a negative or non-integer vault is an invariant error; zero refunds nothing', () => {
-    expect(planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: 0 })).toEqual([]);
-    expect(code(() => planRefund({ studyId: 's1', builderId: 'b1', vaultBalanceUnits: -1 }))).toBe('INTERNAL');
+    expect(planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: 0 })).toEqual([]);
+    expect(code(() => planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: -1 }))).toBe('INTERNAL');
     expect(code(() => planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 0.5 }))).toBe('VALIDATION');
   });
 });
@@ -166,5 +173,35 @@ describe('verifyFundingTransfer: exact network, mint, recipient, amount and refe
     const v = verifyFundingTransfer(expect0, { ...ok, ...(patch as Partial<ObservedTransfer>) });
     expect(v.status).toBe('failed');
     expect(v.reason).toBeTruthy();
+  });
+});
+
+describe('escrowInvariant: every funded unit is accounted for in exactly one place', () => {
+  const q = quoteEscrow({ rewardUnits: 1_000_000, slots: 3, feeBps: 1000 });
+  const steps: EscrowPosting[][] = [
+    planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits }),
+    planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: q.totalUnits }),
+    planAuthorizePayout({ studyId: 's1', participationId: 'p2', quote: q, vaultAvailableIncludingThis: q.totalUnits - q.perTestTotalUnits }),
+    planSettlePayout({ studyId: 's1', participationId: 'p1', testerId: 't1', amountUnits: q.rewardUnits }),
+    planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: q.perTestTotalUnits }),
+    planSettleRefund({ studyId: 's1', funder: 'W1', amountUnits: q.perTestTotalUnits }),
+  ];
+  it('holds after every step: funded = available + held + payable + settled + fees + pending refund + refunded', () => {
+    let ledger: EscrowPosting[] = [];
+    for (const [i, step] of steps.entries()) {
+      ledger = [...ledger, ...step];
+      const inv = escrowInvariant({ studyId: 's1', postings: ledger, quote: q, holdingCount: 0 });
+      expect(inv.ok, `step ${i}: ${JSON.stringify(inv)}`).toBe(true);
+    }
+    const end = escrowInvariant({ studyId: 's1', postings: ledger, quote: q, holdingCount: 0 });
+    expect(end).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 1_000_000, settledUnits: 1_000_000, feesUnits: 200_000, pendingRefundUnits: 0, refundedUnits: 1_100_000, ok: true });
+  });
+  it('counts held reservations inside the vault, not on top of it', () => {
+    const funded = planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits });
+    expect(escrowInvariant({ studyId: 's1', postings: funded, quote: q, holdingCount: 2 })).toMatchObject({ availableUnits: 1_100_000, heldUnits: 2_200_000, ok: true });
+  });
+  it('detects a posting outside the escrow accounts', () => {
+    const bad: EscrowPosting[] = [...planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 100 }), { account: 'vault:s1', amount: -1, kind: 'refund', studyId: 's1', participationId: null }];
+    expect(escrowInvariant({ studyId: 's1', postings: bad, quote: q, holdingCount: 0 }).ok).toBe(false);
   });
 });
