@@ -5,8 +5,12 @@ import { Writable } from 'node:stream';
 import { SOLANA_DEVNET_GENESIS_HASH } from '@pocket-qa/contracts';
 import type { ParsedTx } from '@pocket-qa/domain';
 import { buildApp, loggerOptions } from '../src/app';
-import type { DevnetRpc } from '../src/context';
+import type { Deps, DevnetRpc } from '../src/context';
 import { openDb } from '../src/db';
+import { localStore } from '../src/storage/local';
+import { r2Store } from '../src/storage/r2';
+import { FakeIdentity } from './fakeIdentity';
+import { FakeS3 } from './fakeS3';
 
 export const START = Date.parse('2026-10-02T12:00:00.000Z');
 
@@ -31,13 +35,19 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
   const db = openDb(join(dir, 'test.sqlite'));
   const clock = { now: START };
   const rpc = new FakeRpc();
+  const authMode = opts.authMode ?? 'local';
+  const identity = new FakeIdentity('demo-pocketqa', () => clock.now);
+  const storage = opts.storage ?? 'local';
+  const s3 = new FakeS3();
+  const r2 = storage === 'r2' ? { accountId: '0'.repeat(32), bucket: 'pqa-test', endpoint: await s3.start(), accessKeyId: 'test-key-id', secretAccessKey: 'test-secret-key', allowDelete: opts.r2AllowDelete ?? true } : null; // check-secrets: allow (fake S3 test credentials)
+  const store = r2 ? r2Store(r2) : localStore(mediaDir);
   const logs: string[] = [];
   const stream = new Writable({
     write(chunk, _enc, cb) {
@@ -45,22 +55,37 @@ export async function makeApp(opts: { captureLogs?: boolean } = {}) {
       cb();
     },
   });
-  const app = await buildApp(
-    {
+  const deps: Deps = {
       db,
-      config: { host: '127.0.0.1', port: 0, dataDir: dir, rpcUrl: 'http://fake', siwsDomain: 'pocketqa.local', aiProvider: null },
+      config: {
+        host: '127.0.0.1',
+        port: 0,
+        dataDir: dir,
+        rpcUrl: 'http://fake',
+        siwsDomain: 'pocketqa.local',
+        aiProvider: null,
+        authMode,
+        firebase: authMode === 'firebase' ? { projectId: 'demo-pocketqa', webApiKey: 'demo-web-api-key', authDomain: 'demo-pocketqa.firebaseapp.com', authEmulatorHost: null } : null, // check-secrets: allow (placeholder public Firebase web config in tests)
+        sharedDemo: false,
+        walletLogin: opts.walletLogin ?? false,
+        publicOrigin: opts.walletLogin ? 'https://app.pocketqa.example' : null,
+        storage,
+        r2,
+      },
+      store,
+      identity: authMode === 'firebase' ? identity : null,
       now: () => clock.now,
       rpc,
       mediaDir,
-    },
-    opts.captureLogs ? { logger: loggerOptions(stream) } : {},
-  );
+    };
+  const app = await buildApp(deps, opts.captureLogs ? { logger: loggerOptions(stream) } : {});
   await app.ready();
 
-  async function req(method: string, url: string, token?: string, payload?: unknown, headers: Record<string, string> = {}) {
+  async function req(method: string, url: string, token?: string, payload?: unknown, headers: Record<string, string> = {}, remoteAddress?: string) {
     const res = await app.inject({
       method: method as 'GET',
       url,
+      ...(remoteAddress ? { remoteAddress } : {}),
       headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
       ...(payload !== undefined ? { payload: payload as object } : {}),
     });
@@ -109,6 +134,10 @@ export async function makeApp(opts: { captureLogs?: boolean } = {}) {
     db,
     clock,
     rpc,
+    identity,
+    deps,
+    s3,
+    store,
     logs,
     mediaDir,
     req,
@@ -117,6 +146,7 @@ export async function makeApp(opts: { captureLogs?: boolean } = {}) {
     upload,
     async close() {
       await app.close();
+      if (r2) await s3.stop();
       db.close();
       rmSync(dir, { recursive: true, force: true });
     },

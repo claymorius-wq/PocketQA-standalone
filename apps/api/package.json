@@ -8,9 +8,12 @@
     "start": "tsx src/server.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
     "@fastify/cors": "11.3.0",
     "@fastify/multipart": "10.1.2",
     "@node-rs/argon2": "2.2.1",
@@ -18,15 +21,16 @@
     "@pocket-qa/domain": "workspace:*",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.5",
+    "firebase-admin": "14.5.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@noble/curves": "2.4.0",
+    "@scure/base": "2.4.0",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.19.1",
     "tsx": "4.23.15",
     "typescript": "~6.0.3",
-    "vitest": "5.0.3",
-    "@noble/curves": "2.4.0",
-    "@scure/base": "2.4.0"
+    "vitest": "5.0.3"
   }
 }

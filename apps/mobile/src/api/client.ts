@@ -22,12 +22,18 @@ export type Body<N extends RouteName> = Def<N>['body'] extends z.ZodTypeAny ? z.
 
 let tokenGetter: () => string | null = () => null;
 let onUnauthenticated: () => void = () => {};
-export function configureClient(opts: { getToken: () => string | null; onUnauthenticated: () => void }) {
+let tokenRefresher: (() => Promise<string | null>) | null = null;
+/**
+ * `refreshToken` (managed identity only): on a 401, get a fresh ID token and retry once
+ * before treating the session as ended, so an expired token after sleep isn't a sign-out.
+ */
+export function configureClient(opts: { getToken: () => string | null; onUnauthenticated: () => void; refreshToken?: () => Promise<string | null> }) {
   tokenGetter = opts.getToken;
   onUnauthenticated = opts.onUnauthenticated;
+  tokenRefresher = opts.refreshToken ?? null;
 }
 
-async function send(method: string, path: string, init: { body?: BodyInit; json?: unknown; token?: string | null }) {
+async function send(method: string, path: string, init: { body?: BodyInit; json?: unknown; token?: string | null }, retried = false): Promise<unknown> {
   const headers: Record<string, string> = {};
   const token = init.token === undefined ? tokenGetter() : init.token;
   if (token) headers.authorization = `Bearer ${token}`;
@@ -58,7 +64,14 @@ async function send(method: string, path: string, init: { body?: BodyInit; json?
   }
   if (!res.ok) {
     const err = ErrorBody.safeParse(data);
-    if (err.success && err.data.code === 'UNAUTHENTICATED' && token) onUnauthenticated();
+    if (err.success && err.data.code === 'UNAUTHENTICATED' && token) {
+      // Only requests using the session's own token are refreshed (never explicit tokens).
+      if (!retried && init.token === undefined && tokenRefresher && !(init.body instanceof FormData)) {
+        const fresh = await tokenRefresher().catch(() => null);
+        if (fresh) return send(method, path, init, true);
+      }
+      onUnauthenticated();
+    }
     throw err.success ? new ApiError(err.data.code, err.data.message, res.status) : new ApiError('BAD_RESPONSE', 'Unexpected server response.', res.status);
   }
   return data;
@@ -86,6 +99,7 @@ export async function api<N extends RouteName>(
  * Native's legacy `{uri,name,type}` FormData parts.
  */
 export async function uploadEvidence(participationId: string, meta: Record<string, unknown>, file: Blob, filename: string) {
+  if ((await getClientConfig()).storage === 'r2') return uploadDirect(participationId, meta, file, filename);
   const form = new FormData();
   form.append('meta', JSON.stringify(meta)); // must precede `file`
   form.append('file', file, filename);
@@ -93,6 +107,46 @@ export async function uploadEvidence(participationId: string, meta: Record<strin
   const parsed = routes.uploadEvidence.response.safeParse(data);
   if (!parsed.success) throw new ApiError('BAD_RESPONSE', 'Unexpected upload response.', 200);
   return parsed.data;
+}
+
+let clientConfig: Promise<Response<'clientConfig'>> | null = null;
+/** Public deployment config (auth mode, storage); fetched once per app session. */
+export function getClientConfig() {
+  clientConfig ??= api('clientConfig').catch((e) => {
+    clientConfig = null; // don't cache a failure
+    throw e;
+  });
+  return clientConfig;
+}
+export function resetClientConfigCache() {
+  clientConfig = null;
+}
+
+const MIME_BY_EXT: Record<string, string> = { mp4: 'video/mp4', webm: 'video/webm', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+const PUT_ATTEMPTS = 3;
+
+/**
+ * Direct upload to private storage (ADR 0005 §3): ask the API for an intent, PUT the bytes
+ * to its short-lived presigned URL with exactly the signed headers (never the session
+ * bearer), then ask the API to verify and complete it. Nothing counts as evidence until
+ * completion succeeds; a failed PUT is retried, and never completed.
+ */
+async function uploadDirect(participationId: string, meta: Record<string, unknown>, file: Blob, filename: string) {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  const mimeType = file.type || MIME_BY_EXT[ext] || '';
+  const intent = await api('createUploadIntent', { params: { id: participationId }, body: { ...meta, mimeType, sizeBytes: file.size } as Body<'createUploadIntent'> });
+  let ok = false;
+  for (let attempt = 1; attempt <= PUT_ATTEMPTS && !ok; attempt += 1) {
+    try {
+      const res = await fetch(intent.uploadUrl, { method: 'PUT', headers: intent.headers, body: file });
+      ok = res.ok;
+    } catch {
+      ok = false;
+    }
+    if (!ok && attempt < PUT_ATTEMPTS) await new Promise((r) => setTimeout(r, 300 * attempt));
+  }
+  if (!ok) throw new ApiError('OFFLINE', 'The upload didn’t reach storage. Check your connection and try again.', 0);
+  return api('completeUploadIntent', { params: { id: intent.id } });
 }
 
 export const mediaUrl = (token: string) => `${API_BASE_URL}${buildPath(routes.media.path, { token })}`;
