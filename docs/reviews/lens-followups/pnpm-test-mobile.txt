@@ -1,0 +1,55 @@
+# HEAD fdb92e4 (fix(ui): web multi-line fields come wholly into view; the focus test checks caus), 2026-10-04T12:35:26Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm --filter @pocket-qa/mobile test
+
+> @pocket-qa/mobile@0.1.0 test <repo>\apps\mobile
+> jest --ci
+
+PASS src/screens/__tests__/adminAudit.test.ts (62.493 s)
+PASS __tests__/auth-layout.test.tsx (65.684 s)
+PASS src/ui/__tests__/chrome.test.tsx (68.69 s)
+PASS src/ui/__tests__/shared.test.tsx (70.383 s)
+PASS __tests__/work-screen.test.tsx (70.663 s)
+PASS src/glass/__tests__/glass.test.tsx (5.075 s)
+PASS src/ui/patterns/__tests__/patterns.test.tsx (71.145 s)
+PASS src/screens/__tests__/CreditsScreen.test.tsx (72.488 s)
+PASS __tests__/direct-upload.test.ts
+PASS __tests__/builder-studies.test.tsx (72.979 s)
+PASS src/screens/__tests__/StuckQueue.test.tsx (72.798 s)
+PASS __tests__/signature.test.ts
+PASS __tests__/copy.test.ts
+PASS __tests__/upload-queue.test.ts
+PASS __tests__/study-detail.test.tsx (73.414 s)
+PASS src/motion/__tests__/motion-primitives.test.tsx
+PASS src/motion/__tests__/arrival.test.tsx
+PASS __tests__/focus-refetch.test.tsx
+PASS __tests__/discover.test.tsx (74.587 s)
+PASS __tests__/wallet-web-flows.test.ts
+PASS __tests__/contrast.test.ts
+PASS src/ui/__tests__/ui.test.tsx (74.949 s)
+PASS __tests__/motion.test.tsx
+PASS __tests__/token-refresh.test.ts
+PASS __tests__/managed-session.test.ts
+PASS __tests__/platform-modules.test.ts
+PASS __tests__/report-signature.test.ts
+PASS __tests__/wallet-errors.test.ts
+PASS __tests__/firebase-errors.test.ts
+PASS __tests__/capability.test.ts
+PASS __tests__/wallet-standard.test.ts
+PASS __tests__/session-restore.test.ts
+PASS __tests__/demo-accounts.test.ts
+PASS __tests__/footer.test.ts
+PASS src/screens/__tests__/settings.test.tsx (78.913 s)
+PASS src/icons/__tests__/icons.test.tsx (16.122 s)
+PASS __tests__/new-study.test.tsx (80.393 s)
+PASS __tests__/review-screen.test.tsx (81.024 s)
+PASS __tests__/builder-study.test.tsx (81.249 s)
+PASS __tests__/admin-screens.test.tsx (86.565 s)
+PASS __tests__/participation-session.test.tsx (86.609 s)
+PASS __tests__/auth-screens.test.tsx (89.644 s)
+
+Test Suites: 42 passed, 42 total
+Tests:       989 passed, 989 total
+Snapshots:   0 total
+Time:        92.915 s
+Ran all test suites.
+EXIT=0
