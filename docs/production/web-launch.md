@@ -78,7 +78,7 @@ Counts and IDs: `docs/reviews/production/live/web-live-e2e.txt`.
 
 Media stays `'self'` because playback is proxied. `frame-ancestors 'none'`.
 
-**Forwarding:** the front door drops client-supplied `X-Forwarded-*`, `Forwarded` and `X-Real-IP`. It sets `X-Forwarded-For` itself: CF-Connecting-IP when the peer is the loopback tunnel, otherwise the socket peer. The API's per-client rate limits therefore rely on cloudflared reporting the visitor.
+**Forwarding:** the front door drops client-supplied `X-Forwarded-*`, `Forwarded` and `X-Real-IP`. It sets `X-Forwarded-For` itself: CF-Connecting-IP when the peer is the loopback tunnel, otherwise the socket peer. The API's per-client rate limits therefore rely on cloudflared reporting the visitor. **Trust assumption:** any local process can connect to the loopback front door and set CF-Connecting-IP. So the front door stays loopback-only, behind the tunnel, on a single-tenant host, with no other local listener proxying to it.
 
 **Front-door headers and caching:**
 - HSTS, `nosniff`, `X-Frame-Options: DENY`, `no-referrer`;

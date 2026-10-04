@@ -36,7 +36,7 @@ const clip = join(tmpdir(), `pqa-weblive-${run}.webm`);
 execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=360x640:rate=15', '-t', '3', '-c:v', 'libvpx-vp9', '-b:v', '200k', '-an', '-y', clip]);
 
 /** Maps the production origin onto the local front door inside this browser context only. */
-async function mapOrigin(ctx: BrowserContext, seen: { mapped: number; csp: string[] }) {
+async function mapOrigin(ctx: BrowserContext, seen: { mapped: number; aborted: number; csp: string[] }) {
   // Every request to the production host is fulfilled here; route.fetch only ever targets loopback.
   await ctx.route(`${ORIGIN}/**`, async (route) => {
     const url = new URL(route.request().url());
@@ -47,6 +47,7 @@ async function mapOrigin(ctx: BrowserContext, seen: { mapped: number; csp: strin
     try {
       await route.fulfill({ response: await route.fetch({ url: `${WEB}${url.pathname}${url.search}` }) });
     } catch {
+      seen.aborted += 1;
       await route.abort().catch(() => {});
     }
   });
@@ -97,7 +98,7 @@ test.afterAll(() => {
 });
 
 test('real Firebase + R2 from the production origin: sign-up → roles → upload → completion → ranged playback → approval; isolation holds', async ({ browser }) => {
-  const seen = { mapped: 0, csp: [] as string[] };
+  const seen = { mapped: 0, aborted: 0, csp: [] as string[] };
   const config = await (await fetch(`${API}/config`)).json();
   // Non-production run against real providers (never the shared demo, never production).
   expect(config).toMatchObject({ authMode: 'firebase', storage: 'r2', firebase: { projectId: 'pocketqa-optijara' } });
@@ -223,6 +224,8 @@ test('real Firebase + R2 from the production origin: sign-up → roles → uploa
   expect(doc.headers()['content-security-policy']).toContain("connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://");
   expect(seen.csp).toEqual([]);
   writeFileSync(join(tmpdir(), `pqa-weblive-${run}.json`), JSON.stringify({ uids: created, participationId }));
+  // No request was quietly aborted during the run (teardown aborts are prevented by unrouteAll).
+  expect(seen.aborted).toBe(0);
   for (const ctx of [builderCtx, testerCtx, otherCtx]) await ctx.unrouteAll({ behavior: 'ignoreErrors' });
   await Promise.all([builderCtx.close(), testerCtx.close(), otherCtx.close()]);
 });
