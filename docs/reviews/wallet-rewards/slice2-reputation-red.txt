@@ -1,0 +1,2 @@
+Error: Cannot find module './reputation' imported from /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/packages/domain/src/reputation.test.ts
+      Tests  no tests

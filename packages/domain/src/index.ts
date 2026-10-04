@@ -12,3 +12,4 @@ export * from './stuck';
 export * from './transferTx';
 export * from './escrow';
 export * from './tokenTransfer';
+export * from './reputation';
