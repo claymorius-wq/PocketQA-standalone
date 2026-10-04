@@ -25,3 +25,17 @@
 7. The builder's books show 1.50 settled and 1.65 available, consistent with the 10% illustrative fee.
 
 **Stability:** the spec was repeated 5/5 after a test-only navigation fix. `goBack()` after reloads was unreliable, so the spec now opens the study by its URL.
+
+## Reviews (pqa-qa, copied from its worktree `.worktrees/qa-wallet-rewards`)
+- `qa-architecture-threat-review-r1.md`: blockers B-1, B-2 and B-3. B-1 was resolved by ADR 0007 and the parent's clarification; B-2 and B-3 remain provider-activation gates.
+- `qa-local-slice-test-matrix-r1.md`: rows A–I.
+- `qa-local-slice-verdict-r1.md`: CHANGES_REQUIRED on `e38c9ab`, one P2 (builder deletion stranding escrowed funds).
+- `qa-local-slice-verdict-r2.md`: **APPROVE** of `0659ffb`, for the local simulated slice only.
+
+**Open before any release with real or devnet money:**
+- export of reputation and payment data;
+- provider gates B-2 and B-3 (audited program or provider, authorities and keys);
+- a sweep for unmatched deposits;
+- live devnet evidence;
+- real wallets on a device.
+
