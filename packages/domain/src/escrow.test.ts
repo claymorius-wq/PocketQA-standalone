@@ -201,7 +201,7 @@ describe('escrowInvariant: every funded unit is accounted for in exactly one pla
     expect(escrowInvariant({ studyId: 's1', postings: funded, quote: q, holdingCount: 2 })).toMatchObject({ availableUnits: 1_100_000, heldUnits: 2_200_000, ok: true });
   });
   it('detects a posting outside the escrow accounts', () => {
-    const bad: EscrowPosting[] = [...planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 100 }), { account: 'vault:s1', amount: -1, kind: 'refund', studyId: 's1', participationId: null }];
+    const bad: EscrowPosting[] = [...planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 100 }), { account: 'vault:s1', amount: -1, kind: 'refund_authorized', studyId: 's1', participationId: null }];
     expect(escrowInvariant({ studyId: 's1', postings: bad, quote: q, holdingCount: 0 }).ok).toBe(false);
   });
 });
