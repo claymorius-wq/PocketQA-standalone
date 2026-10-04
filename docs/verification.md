@@ -494,3 +494,8 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
 - **Live scoped deletion on `pocketqa-evidence`:** EXIT=0. The run created 3 objects and deleted exactly those 3. The listing was 26 objects before and 26 after, identical in keys, ETags and sizes. Deleting a pre-existing key by name was refused (`docs/reviews/production/live/r2-scoped-delete.txt`).
 - **Production start smoke:** health 200; `/config` gives firebase, r2, `testCredits: false` and `devnetTransfers: false`. It was stopped afterwards and created no data (`docs/reviews/production/live/prod-start-smoke.txt`).
 
+## 2026-10-04 (night): scoped deletion review-fix candidate `4fd0071` (pqa-qa scoped-delete-qa-r1 CHANGES_REQUIRED P2-1, fixed)
+- **`pnpm verify`:** EXIT=0. API 382 plus 2 skipped; mobile 1021; scripts 57.
+- **Live scoped deletion at `4fd0071`:** EXIT=0. Before 26 and after 26 objects, identical; only the run's 3 objects were deleted.
+- **Production start smoke at `4fd0071`:** EXIT=0. Firebase, r2, test credits and devnet transfers off.
+

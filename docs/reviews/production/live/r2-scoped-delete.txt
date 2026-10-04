@@ -1,6 +1,6 @@
-Live scoped-deletion check (A5, Hamza 2026-10-04) on pocketqa-evidence. Lead, 2026-10-04T20:47:28Z.
+Live scoped-deletion check (A5, Hamza 2026-10-04) on pocketqa-evidence. Lead, 2026-10-04T20:53:50Z.
 $ git rev-parse HEAD
-2adea53d649e97409e85bf63180548d5294f328e
+4fd00716d48d8e3a9cca809f09d973d385c02bee
 $ node run-live-r2-delete.cjs <worktree>   # loads ~/.config/pocketqa/r2.env into the child env only; redacts account id, key pair and signatures
 
 > @pocket-qa/api@0.1.0 test:live /Users/hamzadiaz/Projects/pocket-qa/.worktrees/web-launch/apps/api
@@ -18,16 +18,16 @@ stdout | test-live/r2-scoped-delete.live.test.ts > live R2: scoped deletion of a
 LIVE_R2_DELETE_AFTER 26 objects
 
 stdout | test-live/r2-scoped-delete.live.test.ts > live R2: scoped deletion of app-created objects only
-LIVE_R2_DELETE_CREATED ["quarantine/d9ba47b4-3cc9-4831-be18-34959446ccc6","evidence/e1f3259b-6526-4ac6-a1a9-0e43e15a1472","quarantine/54c10729-47db-4369-b5da-8e86aa07af01"]
-LIVE_R2_DELETE_DELETED ["quarantine/d9ba47b4-3cc9-4831-be18-34959446ccc6","quarantine/54c10729-47db-4369-b5da-8e86aa07af01","evidence/e1f3259b-6526-4ac6-a1a9-0e43e15a1472"]
+LIVE_R2_DELETE_CREATED ["quarantine/eeef7295-6596-4739-bdb2-89983a1b1784","evidence/8a41ec37-90ed-46b5-8ed5-1f7601194d1a","quarantine/e0cbcd0a-c518-4eb9-8293-09a9407a1780"]
+LIVE_R2_DELETE_DELETED ["quarantine/eeef7295-6596-4739-bdb2-89983a1b1784","quarantine/e0cbcd0a-c518-4eb9-8293-09a9407a1780","evidence/8a41ec37-90ed-46b5-8ed5-1f7601194d1a"]
 
- ✓ test-live/r2-scoped-delete.live.test.ts (1 test) 2443ms
+ ✓ test-live/r2-scoped-delete.live.test.ts (1 test) 2470ms
    ✓ live R2: scoped deletion of app-created objects only (1)
-     ✓ staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged 2438ms
+     ✓ staging, failed-upload and account-deletion paths delete exactly the run’s objects; everything else is unchanged 2465ms
 
  Test Files  1 passed | 2 skipped (3)
       Tests  1 passed | 6 skipped (7)
-   Start at  22:47:29
-   Duration  2.71s (tests 77%, import 14%, transform 9%)
+   Start at  22:53:51
+   Duration  2.71s (tests 79%, import 12%, transform 8%)
 
 EXIT=0
