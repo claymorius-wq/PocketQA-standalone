@@ -71,7 +71,7 @@ test('allow marker covers only its own line', () => {
 });
 
 test('forbidden paths', () => {
-  for (const p of ['.envrc', '.env.local', 'apps/api/.env_prod', 'x/my-keypair.json', 'a.sqlite', 'b.db-wal', 'apps/api/.data/m.mp4', 'k.p12', 'credentials.json', '.preview/access.txt', '.preview/gate-secret.json', 'preview-data/media/x.png', 'preview-data/.seeded', '.preview-test/state/convenience.json']) {
+  for (const p of ['.envrc', '.env.local', 'apps/api/.env_prod', 'x/my-keypair.json', 'a.sqlite', 'b.db-wal', 'apps/api/.data/m.mp4', 'k.p12', 'credentials.json', '.preview/access.txt', '.preview/gate-secret.json', 'preview-data/media/x.png', 'preview-data/.seeded', '.preview-test/state/convenience.json', '.cloud-local/firebase-web.json', '.cloud-local/service-account.json']) {
     assert.ok(isForbiddenPath(p), p);
   }
   assert.ok(!isForbiddenPath('.env.example'));

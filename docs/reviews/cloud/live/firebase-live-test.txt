@@ -1,0 +1,7 @@
+# Live Firebase check, 2026-10-04 03:38 CEST, project pocketqa-optijara. Output redacted (refresh token, web key, client secret).
+LIVE_FIREBASE_CREATED_UIDS []
+     × real email sign-up → unverified refused → verified → account → logout revokes 288ms
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+Error: accounts:signUp: CONFIGURATION_NOT_FOUND

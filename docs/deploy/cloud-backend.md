@@ -1,6 +1,50 @@
 # Cloud backend: environment, provider setup and gates
 
-Status, 2026-10-04: the code is implemented and tested locally. **Nothing has been provisioned.** No Firebase project, Cloudflare R2 bucket, hosting or DNS was created; account access isn't verified. Decision record: `docs/decisions/0005-cloud-identity-storage-wallet.md`.
+Status, 2026-10-04:
+- The code is implemented and tested locally.
+- Hamza and the parent created a dedicated Firebase project `pocketqa-optijara` and a dedicated R2 bucket `pocketqa-evidence`. See the live verification below.
+- No hosting or DNS was provisioned, and no billing was enabled. Decision record: `docs/decisions/0005-cloud-identity-storage-wallet.md`.
+
+## Live verification (2026-10-04)
+
+**Cloudflare R2: verified against the dedicated bucket `pocketqa-evidence`** (`apps/api/test-live/r2.live.test.ts`, 5/5). The run was create-only: every delete was intercepted and refused.
+- A real presigned PUT, HEAD and ranged read.
+- **R2 enforces the signed headers:** a PUT with a different length or type is refused, and nothing is created.
+- An ETag-pinned copy works; a stale ETag gives 412 (`StorageChanged`).
+- An anonymous GET is refused, so the objects are private.
+- The full API flow (intent, presigned PUT, verified completion, promotion, ranged playback) works, and a spoofed type is rejected.
+
+Objects created: `docs/reviews/cloud/live/r2-objects-created.md` (5 synthetic fixtures; removing them needs Hamza's approval).
+
+The credentials used for the run were the account-level ones from the authorized env file, loaded in-process and never printed. **Production must use a bucket-scoped token instead.**
+
+**Firebase: partly verified.**
+- The project is visible to the Firebase CLI.
+- Pocket QA's own **web app** was created (`Pocket QA Web`). Its public SDK config is kept outside git in `.cloud-local/firebase-web.json` (0600).
+- **Firebase Authentication is not initialised** in the project: `accounts:signUp` and `createAuthUri` both return `CONFIGURATION_NOT_FOUND`.
+  - On the free plan, only the console can initialise it. The API route (`identityPlatform:initializeAuth`) upgrades to Identity Platform and needs billing, which is not authorised.
+  - The live test (`apps/api/test-live/firebase.live.test.ts`) is ready, and fails today with exactly that error. It created no users.
+
+### Remaining user actions, in order
+1. **Firebase console** → `pocketqa-optijara` → Authentication → **Get started**. Under Sign-in method, enable **Email/Password**; Google is optional (it needs a support email). This is free and needs no billing. Then the live Firebase test can run.
+2. **Server credential (Admin SDK)** for any hosted API:
+   - Enable the IAM API in `pocketqa-optijara` (it's off today).
+   - Create a dedicated service account (for example `pocketqa-api`) with `roles/firebaseauth.admin`, plus `roles/iam.serviceAccountTokenCreator` on itself so it can sign custom tokens for wallet login.
+   - Prefer workload identity; otherwise keep a key only in the host's secret store.
+   - The `gcloud` Optijara account needs interactive re-authentication first (`gcloud auth login <account> --no-activate`, which doesn't switch the global account).
+3. **R2 production token:** in the Cloudflare dashboard, create an R2 API token scoped to **`pocketqa-evidence` only**, with Object Read & Write.
+4. **R2 bucket settings** (each a change to the bucket's config, so approval is required):
+   - a CORS rule allowing `PUT` from the exact app origin, with header `content-type`;
+   - a lifecycle rule expiring `quarantine/` after 1 day.
+   - Browser direct uploads can't work until CORS is set; server-side and Node uploads already work.
+
+### Running the live tests (credentials only from the environment; excluded from `pnpm verify`/CI)
+```sh
+POCKETQA_LIVE_R2=1 POCKETQA_R2_ACCOUNT_ID=… POCKETQA_R2_BUCKET=pocketqa-evidence POCKETQA_R2_ACCESS_KEY_ID=… POCKETQA_R2_SECRET_ACCESS_KEY=… \
+  pnpm --filter @pocket-qa/api test:live -- test-live/r2.live.test.ts           # refuses any other bucket/account; never deletes
+POCKETQA_LIVE_FIREBASE=1 POCKETQA_FIREBASE_PROJECT_ID=pocketqa-optijara POCKETQA_FIREBASE_WEB_API_KEY=… GOOGLE_APPLICATION_CREDENTIALS=… \
+  pnpm --filter @pocket-qa/api test:live -- test-live/firebase.live.test.ts      # refuses any other project; never deletes
+```
 
 ## Feature flags (all off by default)
 
@@ -19,14 +63,14 @@ Status, 2026-10-04: the code is implemented and tested locally. **Nothing has be
 | `POCKETQA_SHARED_DEMO` | `0`/`1` | The shared synthetic preview only. It refuses firebase mode, r2 and wallet login. `scripts/preview/start.sh` pins all four. |
 
 ## Firebase setup (gate 1: needs a verified Optijara project)
-1. Verify the account. Today `firebase projects:list` fails for the Optijara login. Never print `firebase login:list --json` raw, because it contains tokens.
+1. The dedicated project `pocketqa-optijara` exists and the Firebase CLI lists it (verified 2026-10-04). Never print `firebase login:list --json` raw, because it contains tokens.
 2. Use separate staging and production projects. Enable the **Email/Password** and **Google** providers only, since the API refuses others. Require email verification (the API enforces it as well).
 3. Authorized domains: the exact app origins only.
 4. Give the API host a service account with the minimum role (Firebase Authentication Admin), or workload identity.
 5. Gate check: sign up, verify the email, choose a role, sign in, and log out on every device. A token from before logout must be refused. Run a Google sign-in on the real domain.
 
 ## Cloudflare R2 setup (gate 2: needs a verified Optijara account)
-1. Verify the account. Today `wrangler whoami` is unauthenticated.
+1. The dedicated bucket `pocketqa-evidence` exists and was verified live (2026-10-04; see Live verification). `wrangler` itself is unauthenticated; the S3 API with account credentials works.
 2. Create **private** buckets for staging and production, with public access and the `r2.dev` URL off.
 3. Create an API token scoped to that one bucket with Object Read & Write. Store it in the host's secret store.
 4. Add a CORS rule on the bucket. It must allow `PUT` from the exact app origin(s) only, with request header `content-type`, and no wildcards.
@@ -54,7 +98,6 @@ Status, 2026-10-04: the code is implemented and tested locally. **Nothing has be
 - Android: not offered (MWA linking only).
 
 ## Known follow-ups (not blockers)
-- **Web wallet linking and domain warnings.** The link message uses the fixed SIWS domain `pocketqa.local`, which is shared with the Android MWA identity. Wallets that detect SIWS-formatted text may warn about a domain mismatch when it's signed on the web origin. Bind the web link message to `POCKETQA_PUBLIC_ORIGIN`, or use a non-SIWS link statement, and verify with a real wallet at the wallet gate.
 - **Wallet chooser.** With several Wallet Standard wallets installed, web login and linking use the first one. Add a chooser.
 
 ## Local verification commands

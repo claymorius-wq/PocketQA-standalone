@@ -30,9 +30,30 @@ Every verdict is in `docs/reviews/cloud/` (`inc*-verdict-qa-r*.md`), next to the
 - **Mutation checks:** I1–I6, W1–W8, S1–S9, C1–C7 and others, recorded in the candidates.
 - R2 is tested through the real adapter against a local fake S3, which doesn't verify signatures.
 
+### Live provider verification (2026-10-04, dedicated resources only)
+- **Cloudflare R2: verified** against the dedicated bucket `pocketqa-evidence` (`apps/api/test-live/r2.live.test.ts`, 5/5). The run was **create-only**: deletes were intercepted and refused, and the test is pinned to that bucket and to the Optijara account by hash.
+  - Real presigned PUT, HEAD and ranged read.
+  - R2 refuses a PUT with a different length or type (signed headers are enforced).
+  - The ETag-pinned copy works, and a stale ETag gives 412.
+  - An anonymous GET is refused.
+  - The full API flow works (intent, PUT, verified completion, promotion, ranged playback, spoofed type rejected).
+  - 5 synthetic objects were created and none deleted (`docs/reviews/cloud/live/r2-objects-created.md`).
+  - The credentials used were account-level, loaded in-process and never printed. **Production needs a bucket-scoped token.**
+- **Firebase: partly verified.**
+  - The project `pocketqa-optijara` is visible, and Pocket QA's own web app was created.
+  - **Firebase Authentication is not initialised** (`CONFIGURATION_NOT_FOUND`). On the free plan only the console can initialise it, and the API route needs billing.
+  - The live test is ready, and fails at exactly that point. No users were created.
+- Live suites are excluded from `pnpm verify` and CI (`pnpm --filter @pocket-qa/api test:live`). Review: `docs/reviews/cloud/live-verdict-qa-r1.md` (APPROVE).
+
+### Remaining user actions (exact)
+1. Firebase console → `pocketqa-optijara` → Authentication → **Get started**, then enable Email/Password.
+2. A server Admin credential: enable the IAM API and create a dedicated service account (`roles/firebaseauth.admin`, plus a token creator on itself), or re-authenticate the Optijara `gcloud` account so the lead can do it.
+3. A bucket-scoped R2 token for `pocketqa-evidence` (Object Read & Write).
+4. Approval for the bucket config changes: CORS (`PUT` from the exact app origin) and lifecycle (`quarantine/` after 1 day).
+
 ### Gates NOT passed (real providers and hardware)
-1. **Firebase:** Optijara project access isn't verified (`projects:list` fails). Untested: real email/Google sign-in, and the Admin credential.
-2. **Cloudflare R2:** the account isn't verified (`wrangler whoami` unauthenticated). Untested: a real private bucket, enforcement of the signed headers, CORS, lifecycle, real-device uploads.
+1. **Firebase:** Authentication isn't initialised in `pocketqa-optijara` (user action 1). Untested: real email/Google sign-in, and the Admin service account.
+2. **Cloudflare R2:** the bucket and the signed-header enforcement are verified live. Still open: a bucket-scoped token, CORS for browser PUT, lifecycle, and real-device uploads.
 3. **Hosting:** TLS endpoint, trusted proxies, CORS or same-origin `/api`, a single sweep runner, database choice.
 4. **Wallets:**
    - real Wallet Standard browser wallets have not been tested;

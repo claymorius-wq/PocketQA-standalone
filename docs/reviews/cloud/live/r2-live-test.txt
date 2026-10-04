@@ -1,0 +1,8 @@
+# Live R2 check, 2026-10-04 03:34 CEST. Bucket: pocketqa-evidence only. Create-only: deletes intercepted and refused.
+# Runner: credentials loaded inside the process from the authorized env file; output scanned: 0 credential values present.
+
+ RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/cloud-auth-wallet/apps/api
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  03:33:55
+   Duration  2.97s (tests 94%, import 3%, transform 3%)

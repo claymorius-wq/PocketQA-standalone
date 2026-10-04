@@ -56,6 +56,8 @@ const FORBIDDEN_PATHS = [
   /(^|\/)\.preview\//,
   /(^|\/)preview-data\//,
   /(^|\/)\.preview-test\//,
+  // Local cloud-integration material (ADR 0005): web config, server credentials.
+  /(^|\/)\.cloud-local\//,
 ];
 
 export function scanText(text) {

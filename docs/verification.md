@@ -327,3 +327,20 @@ light press feedback).
 
 Not run here (no device attached): `e2e/maestro/sheet-keyboard.yaml` (new), the Playwright web suite, and the ADR 0005 Seeker
 budget (SVG canvases per screen, Perf Monitor UI/JS fps). Run them on the Seeker before the freeze candidate.
+
+
+## 2026-10-04: Cloud activation, live provider checks (lead, worktree `feat/cloud-auth-wallet`)
+
+**How the evidence was produced.** These runs are not part of `pnpm verify` or CI; `test-live/` is excluded and runs only through `pnpm test:live`.
+- **R2.** A scratchpad runner (not in the repo) read `R2_ENDPOINT`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` from the authorized `optijara-website/.env.local` inside its own process.
+  - It derived the account id from the endpoint host and set `POCKETQA_R2_BUCKET=pocketqa-evidence` explicitly (never `R2_BUCKET_NAME`, the blog bucket).
+  - It ran `vitest run --config vitest.live.config.ts test-live/r2.live.test.ts`.
+  - It replaced every credential value in the output with `<redacted>`, and the saved output was then scanned for the raw values: 0 found.
+- **Firebase.** The runner wrote the Firebase CLI login as a temporary `authorized_user` credential (0600, in the session scratchpad), removed it in `finally` and on SIGINT/SIGTERM, and redacted the refresh token, web key and client secret from the output.
+- **Objects created:** a read-only `ListObjectsV2` on `pocketqa-evidence` printed keys and sizes only.
+
+```
+R2 live:        Tests 5 passed (5)                 objects created: 5 (listed in docs/reviews/cloud/live/r2-objects-created.md); deletions: 0
+Firebase live:  Error: accounts:signUp: CONFIGURATION_NOT_FOUND   users created: 0
+Guards (fake credentials, no requests sent): wrong account → "refusing: not the expected Cloudflare account"; bucket blog-assets → "refusing to run against bucket blog-assets"
+```
