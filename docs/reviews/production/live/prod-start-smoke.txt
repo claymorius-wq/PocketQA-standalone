@@ -1,7 +1,7 @@
-Production-mode START smoke (no cutover; fresh temp data dir; no user or object created). Lead, 2026-10-04T20:53:54Z.
+Production-mode START smoke (no cutover; fresh temp data dir; no user or object created). Lead, 2026-10-04T20:59:35Z.
 POCKETQA_ENV=production, real Firebase (Admin SDK key), real R2 with POCKETQA_R2_ALLOW_DELETE=1 (scoped policy, A5), RETAIN_NONPROD unset, POCKETQA_PUBLIC_ORIGIN=https://pocketqa.optijara.ai, loopback port 8798.
 $ git rev-parse HEAD
-4fd00716d48d8e3a9cca809f09d973d385c02bee
+ddb8b0d3497bbf53110828b70c3106ab231567de
 $ node prod-smoke.mjs <worktree>
 health: 200
 config: {"authMode":"firebase","storage":"r2","projectId":"pocketqa-optijara","features":{"testCredits":false,"devnetTransfers":false},"walletLogin":false}

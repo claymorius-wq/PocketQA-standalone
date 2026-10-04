@@ -499,3 +499,12 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
 - **Live scoped deletion at `4fd0071`:** EXIT=0. Before 26 and after 26 objects, identical; only the run's 3 objects were deleted.
 - **Production start smoke at `4fd0071`:** EXIT=0. Firebase, r2, test credits and devnet transfers off.
 
+## 2026-10-04 (night): scoped deletion, literal A5 scope, candidate `ddb8b0d` (no `upload_staging`)
+- **`pnpm verify`:** EXIT=0. API 385 plus 2 skipped, including the regression tests; mobile 1021; scripts 57.
+- **Live, fresh synthetic objects only:** EXIT=0.
+  - The failed upload's object was deleted.
+  - The successful upload's quarantine copy was kept after completion.
+  - Account deletion then deleted the recording and that copy.
+  - 26 objects before and 26 after, identical (`live/r2-scoped-delete.txt`).
+- **Production start smoke:** EXIT=0 (`live/prod-start-smoke.txt`).
+
