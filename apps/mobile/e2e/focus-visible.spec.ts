@@ -4,6 +4,12 @@ import { expect, test, type Page } from '@playwright/test';
 // web build (WCAG 2.2 SC 2.4.11, Focus Not Obscured). New study is the long form with both: the
 // header scrim over the top of its scroll area and the Save draft dock over the bottom. Tab walks
 // down the whole form and Shift+Tab walks back up, in both themes.
+//
+// Every control must be wholly clear of both, except a multi-line text box: a browser scrolls a
+// focused text box only far enough to show its caret, so a tall one (the 5-row consent field) may
+// keep its lower lines under the dock. It must still show at least its first line (SC 2.4.11 asks
+// that the focused control is not entirely hidden).
+const LINE = 20;
 const run = Date.now().toString(36);
 const pw = 'correct horse battery staple';
 
@@ -27,6 +33,7 @@ async function focusPlace(page: Page) {
     const dock = document.querySelector('[data-testid="screen-dock"]')?.getBoundingClientRect();
     return {
       name: el.getAttribute('data-testid') ?? el.getAttribute('aria-label') ?? el.tagName,
+      textBox: el.tagName === 'TEXTAREA',
       top: r.top,
       bottom: r.bottom,
       scrimBottom: scrim ? scrim.bottom : 0,
@@ -51,9 +58,16 @@ for (const colorScheme of ['dark', 'light'] as const) {
       const p = await focusPlace(page);
       if (!p) continue;
       walked.add(p.name);
-      // Wholly between the scrim's end and the dock's top edge (1px for subpixel rounding).
-      expect(p.top, `${p.name} (after ${key}) under the header scrim`).toBeGreaterThanOrEqual(p.scrimBottom - 1);
-      expect(p.bottom, `${p.name} (after ${key}) under the dock`).toBeLessThanOrEqual(p.dockTop + 1);
+      if (p.textBox) {
+        // A multi-line text box: at least its first line shows between the scrim and the dock.
+        const clear = Math.min(p.bottom, p.dockTop) - Math.max(p.top, p.scrimBottom);
+        expect(clear, `${p.name} (after ${key}) hidden under the header scrim or the dock`).toBeGreaterThanOrEqual(Math.min(LINE, p.bottom - p.top) - 1);
+        expect(p.top, `${p.name} (after ${key}) starts under the header scrim`).toBeGreaterThanOrEqual(p.scrimBottom - 1);
+      } else {
+        // Wholly between the scrim's end and the dock's top edge (1px for subpixel rounding).
+        expect(p.top, `${p.name} (after ${key}) under the header scrim`).toBeGreaterThanOrEqual(p.scrimBottom - 1);
+        expect(p.bottom, `${p.name} (after ${key}) under the dock`).toBeLessThanOrEqual(p.dockTop + 1);
+      }
     }
     // The walk really went through the form, not a couple of controls.
     expect(walked.size).toBeGreaterThan(8);
