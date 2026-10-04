@@ -5,9 +5,11 @@ import { LoadingState, Screen } from '../src/ui';
 export default function Index() {
   const { ready, user } = useSession();
   if (!ready) {
+    // The start screen (A-States root, CONSISTENCY C7): the one LoadingState with the brand lens,
+    // which resolves once (S1) over the spinner row. Never lit.
     return (
       <Screen scroll={false}>
-        <LoadingState label="Starting Pocket QA…" />
+        <LoadingState label="Starting Pocket QA…" brand />
       </Screen>
     );
   }

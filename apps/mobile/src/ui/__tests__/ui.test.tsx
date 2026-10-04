@@ -411,7 +411,7 @@ describe('Lens review fixes (dark)', () => {
       <ConfirmSheet visible title="Publish this study?" confirmLabel="Publish" moment={moment} onConfirm={jest.fn()} onCancel={jest.fn()} />
     );
     const lit = await renderIn('dark', sheet());
-    expect(StyleSheet.flatten(screen.getByTestId('confirm-sheet').props.style)).toMatchObject({ paddingTop: 9, paddingHorizontal: 23 });
+    expect(StyleSheet.flatten(screen.getByTestId('confirm-sheet').props.style)).toMatchObject({ paddingTop: 9, paddingHorizontal: 19 });
     expect(count(lit.toJSON(), FLOOR)).toBeGreaterThan(0);
     const unlit = await renderIn('dark', sheet('none'));
     expect(count(unlit.toJSON(), FLOOR)).toBe(0);

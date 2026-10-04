@@ -19,7 +19,8 @@ import { useSvgId } from './svg';
 export const TILE_SIZES = {
   hero: { width: 54, height: 54, radius: radius.tile, glyph: 34 },
   header: { width: 44, height: 44, radius: 14, glyph: 20 },
-  list: { width: 40, height: 40, radius: radius.tileSm, glyph: 26 },
+  // CONSISTENCY G4: a 24 glyph in a 36–40 tile.
+  list: { width: 40, height: 40, radius: radius.tileSm, glyph: 24 },
   notice: { width: 36, height: 36, radius: radius.tileSm, glyph: 24 },
   chip: { width: 32, height: 32, radius: 11, glyph: 18 },
   tab: { width: 48, height: 32, radius: radius.tabTile, glyph: 26 },
@@ -83,7 +84,7 @@ const roundedRect = (x: number, y: number, w: number, h: number, r: number) => {
  * Draws a GlassSurface recipe behind its children. CSS's padding-box/border-box gradient rim
  * becomes the rim gradient on the full rect with the fill on the rect inset 1px (radius − 1).
  */
-function TileSurface({
+export function TileSurface({
   width: w,
   height: h,
   surface,

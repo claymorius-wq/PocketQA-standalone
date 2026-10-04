@@ -1,90 +1,84 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Eye, Hourglass, X } from 'lucide-react-native';
+import { Hourglass } from 'lucide-react-native';
 import { useState } from 'react';
-import { View } from 'react-native';
-import { STUCK_AFTER_DAYS, type StuckSubmission } from '@pocket-qa/contracts';
-import { EvidenceItem } from '../../src/evidence/EvidenceItem';
+import { STUCK_AFTER_DAYS } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../src/api/client';
-import { credits, when } from '../../src/lib/format';
-import { useAdminStuck, useEvidence, useFocusRefetch } from '../../src/lib/queries';
-import { space } from '../../src/theme/tokens';
-import { Button, Card, ConfirmSheet, EmptyState, Field, Notice, QueryState, Row, Screen, StatusPill, Text } from '../../src/ui';
+import { useAdminStuck, useFocusRefetch } from '../../src/lib/queries';
+import { StuckQueue, type StuckDecision } from '../../src/screens/StuckQueue';
+import { ConfirmSheet, EmptyState, Field, QueryState, Screen } from '../../src/ui';
+import { SheetFailure } from '../../src/ui/patterns';
 
-/**
- * Read-only view of the work, so an admin deciding instead of the study owner sees what
- * was asked, the tester's notes and the evidence (playback is admin-authorized server side).
- */
-function StuckWork({ item }: { item: StuckSubmission }) {
-  const [open, setOpen] = useState(false);
-  const ev = useEvidence(item.participation.id, open);
-  if (!open) return <Button label="Review work" icon={Eye} variant="secondary" onPress={() => setOpen(true)} testID="stuck-review" />;
-  return (
-    <View style={{ gap: space.sm }} testID="stuck-work">
-      {item.tasks.map((t, i) => (
-        <View key={t.id} style={{ gap: space.xs }}>
-          <Text variant="label" tone="muted">TASK {i + 1}</Text>
-          <Text>{t.instruction}</Text>
-          <Text variant="small" testID={`stuck-note-${i}`}>{item.participation.taskNotes.find((n) => n.taskId === t.id)?.note || 'No notes.'}</Text>
-        </View>
-      ))}
-      <QueryState query={ev} empty={(d) => (d.items.length === 0 ? <Text variant="small" tone="muted" testID="stuck-no-evidence">No evidence uploaded.</Text> : null)}>
-        {(d) => <View style={{ gap: space.sm }}>{d.items.map((e) => <EvidenceItem key={e.id} e={e} />)}</View>}
-      </QueryState>
-    </View>
-  );
-}
+// A-Stuck: a triage queue (one focus card, then "Next in queue"; src/screens/StuckQueue), every
+// item decidable in place. The sheets ask for the audited reason; admin decisions are never lit
+// (CONSISTENCY C4: the Approve sheet's tile is the hourglass on a success rim, Reject the rose
+// reject tile). Each sheet starts clean (no earlier reason, no stale failure), and it keeps naming
+// the decision it was opened for while it plays its exit.
+
+/** One decision as it was confirmed: the request's variables. */
+type StuckRequest = { id: string; decision: StuckDecision; reason: string };
 
 export default function Stuck() {
   const q = useAdminStuck();
   useFocusRefetch(q);
   const qc = useQueryClient();
-  const [target, setTarget] = useState<{ id: string; decision: 'approve' | 'reject' } | null>(null);
+  const [target, setTarget] = useState<{ id: string; decision: StuckDecision } | null>(null);
   const [reason, setReason] = useState('');
+  // The participation just decided, so the queue can file its card away (S8). UI state only.
+  const [decided, setDecided] = useState<{ id: string; n: number } | null>(null);
+  // The sheet keeps the last decision's title, confirm and tile while it animates out (target is
+  // already null then), so an Approve sheet never flips to Reject as it leaves.
+  const [shown, setShown] = useState(target);
+  if (target && target !== shown) setShown(target);
+  const decision = (target ?? shown)?.decision;
   const decide = useMutation({
-    mutationFn: () => api('adminDecide', { params: { id: target!.id }, body: { decision: target!.decision, reason } }),
-    onSuccess: () => {
+    // Bound to what was confirmed (the item, the decision and the reason), never to the sheet's
+    // latest state: a request the browser holds while offline still decides the right item.
+    mutationFn: (r: StuckRequest) => api('adminDecide', { params: { id: r.id }, body: { decision: r.decision, reason: r.reason } }),
+    onSuccess: (p) => {
+      // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
-      setReason('');
+      setDecided((prev) => ({ id: p.id, n: (prev?.n ?? 0) + 1 }));
       qc.invalidateQueries({ queryKey: ['adminStuck'] });
       qc.invalidateQueries({ queryKey: ['audit'] });
     },
   });
+  // A sheet opened for a new item starts clean: a reason typed in a cancelled sheet never pre-fills
+  // the next one (it would pass the 10-character gate), and a stale failure never shows. Reset on
+  // open only, so the sheet body does not change while it animates out after Cancel. While a
+  // decision is still being sent (Cancel works again after the pending escape), any item's action
+  // reopens that decision's own sheet, as it was sent: it takes the result, and no second decision
+  // can race it.
+  const open = (id: string, d: StuckDecision) => {
+    const sending = decide.isPending ? decide.variables : undefined;
+    if (sending) {
+      setReason(sending.reason);
+      setTarget({ id: sending.id, decision: sending.decision });
+      return;
+    }
+    setReason('');
+    decide.reset();
+    setTarget({ id, decision: d });
+  };
+  const cancel = () => setTarget(null);
   return (
     <Screen title="Stuck work" subtitle={`Submitted work no builder can review: builder suspended or deleted, or waiting ${STUCK_AFTER_DAYS}+ days`} testID="stuck-screen">
       <QueryState query={q} empty={(d) => (d.items.length === 0 ? <EmptyState icon={Hourglass} title="Nothing stuck" body="Submissions appear here only when their builder can't review them." /> : null)}>
-        {(d) => (
-          <View style={{ gap: space.md }}>
-            {d.items.map((s) => (
-              <Card key={s.participation.id} testID={`stuck-${s.reason}`}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <StatusPill status="pending" label={s.reason === 'builder_inactive' ? `Builder ${s.builderStatus}` : 'Overdue'} />
-                  <Text variant="small" tone="muted">Submitted {when(s.participation.submittedAt)}</Text>
-                </Row>
-                <Text variant="heading">{s.studyTitle}</Text>
-                <Text variant="small">{s.participation.testerDisplayName ?? 'Tester'} · {credits(s.participation.rewardCredits)} on approval · {s.participation.taskNotes.length} note(s)</Text>
-                <StuckWork item={s} />
-                <Row>
-                  <Button label="Approve" icon={Check} onPress={() => setTarget({ id: s.participation.id, decision: 'approve' })} testID="stuck-approve" />
-                  <Button label="Reject" icon={X} variant="danger" onPress={() => setTarget({ id: s.participation.id, decision: 'reject' })} testID="stuck-reject" />
-                </Row>
-              </Card>
-            ))}
-          </View>
-        )}
+        {(d) => <StuckQueue items={d.items} decided={decided} onDecide={open} />}
       </QueryState>
       <ConfirmSheet
         visible={!!target}
-        title={target?.decision === 'approve' ? 'Approve stuck submission?' : 'Reject stuck submission?'}
+        title={decision === 'approve' ? 'Approve stuck submission?' : 'Reject stuck submission?'}
         body="You are deciding instead of the study owner. Your reason is recorded in the audit log and shown to the tester."
-        confirmLabel={target?.decision === 'approve' ? 'Approve' : 'Reject'}
-        destructive={target?.decision === 'reject'}
+        confirmLabel={decision === 'approve' ? 'Approve' : 'Reject'}
+        destructive={decision === 'reject'}
         confirmDisabled={reason.trim().length < 10}
         loading={decide.isPending}
-        onCancel={() => setTarget(null)}
-        onConfirm={() => decide.mutate()}
+        onCancel={cancel}
+        onConfirm={() => target && decide.mutate({ ...target, reason })}
       >
         <Field label="Reason (audited)" value={reason} onChangeText={setReason} multiline hint="At least 10 characters." testID="stuck-reason" />
-        {decide.error ? <Notice tone="danger" title="Not decided" testID="stuck-error">{(decide.error as ApiError).message}</Notice> : null}
+        {/* C4's failure branch, with this sheet's own title and testID (the sheet stays open; the confirm retries). */}
+        {decide.error ? <SheetFailure title="Not decided" message={(decide.error as ApiError).message} testID="stuck-error" /> : null}
       </ConfirmSheet>
     </Screen>
   );

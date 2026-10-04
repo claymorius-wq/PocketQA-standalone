@@ -18,6 +18,7 @@ import type { GlyphVariant } from './material';
 
 export { GlassGlyph, type GlassGlyphProps } from './GlassGlyph';
 export { GlassTile, TabGlyph, TILE_SIZES, type GlassTileProps, type TileSize } from './GlassTile';
+export { BALANCE_POSE, BalanceGlyph, BalanceTile, panShift, type BalanceGlyphProps, type BalancePose } from './Balance';
 export { ALIASES, GLYPHS, GLYPH_NAMES, resolveGlyph, type GlyphAlias, type GlyphName, type GlyphPart } from './glyphs';
 export type { GlyphVariant } from './material';
 

@@ -1,0 +1,168 @@
+# HEAD fdb92e4 (fix(ui): web multi-line fields come wholly into view; the focus test checks caus), 2026-10-04T12:34:39Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm verify
+
+> pocket-qa@ verify <repo>
+> pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets <repo>
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 600 committable files scanned, no findings.
+secret check: 18 values, 600 files, 0 occurrences
+
+> pocket-qa@ typecheck <repo>
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint <repo>
+> eslint .
+
+
+> pocket-qa@ test <repo>
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (3.8083ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.2179ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (1.2474ms)
+✔ allow marker covers only its own line (0.4495ms)
+✔ forbidden paths (1.2589ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (676.1749ms)
+✔ CLI still runs when invoked through a symlink (236.5487ms)
+▶ preview gate: nothing is served without the gate cookie
+  ✔ rejects requests for any other Host (421) (20.5425ms)
+  ✔ redirects pages and assets to the login page, and returns 401 for the API (10.7647ms)
+  ✔ serves the login page with a strict CSP and an identity marker (2.0571ms)
+✔ preview gate: nothing is served without the gate cookie (143.9636ms)
+▶ preview gate: login
+  ✔ refuses a cross-site login POST (403) (2.0465ms)
+  ✔ rejects a wrong password, then rate-limits that client even with the right one (946.6993ms)
+  ✔ sets a __Host- cookie that is HttpOnly, Secure, SameSite=Strict, Path=/, no Domain (83.5823ms)
+  ✔ ignores an oversized login body (2.2722ms)
+✔ preview gate: login (1035.3ms)
+▶ preview gate: with a valid cookie
+  ✔ serves the app, with SPA fallback and no path traversal (110.9476ms)
+  ✔ proxies /api to the loopback API: path stripped, bearer kept, gate cookie and upstream cookies dropped (94.2296ms)
+  ✔ rejects tampered and expired cookies, and logout clears the cookie (98.257ms)
+  ✔ returns 502 JSON when the API is down (237.7365ms)
+✔ preview gate: with a valid cookie (541.6892ms)
+▶ preview gate: shared-preview policy (review r1 P2)
+  ✔ refuses uploads, account deletion and admin moderation without reaching the API (118.323ms)
+  ✔ rejects encoded, dot-segment and doubled-slash spellings instead of forwarding them (106.5903ms)
+  ✔ still forwards allowed calls on the same resources (90.2258ms)
+  ✔ strips headers named in Connection and sandboxes API responses (82.6119ms)
+✔ preview gate: shared-preview policy (review r1 P2) (398.266ms)
+▶ preview gate: login under load (review r1 P3)
+  ✔ caps concurrent attempts so a burst cannot bypass the per-IP limit (98.2377ms)
+✔ preview gate: login under load (review r1 P3) (98.4441ms)
+▶ preview gate: slow logins (review r2 P3)
+  ✔ trickled login bodies do not hold the verification slots (191.7836ms)
+✔ preview gate: slow logins (review r2 P3) (191.9855ms)
+▶ preview gate: login timeout is per request (review r3 P3)
+  ✔ a slow proxied call on the same keep-alive connection after a login is not cut off (571.7275ms)
+✔ preview gate: login timeout is per request (review r3 P3) (571.9986ms)
+▶ preview gate: login body deadline is total, not idle (review r3 P3)
+  ✔ a body trickled faster than the timeout is still cut off at the deadline (401.3181ms)
+✔ preview gate: login body deadline is total, not idle (review r3 P3) (401.6552ms)
+▶ preview gate: shared-demo convenience (Hamza, 2026-10-03)
+  ✔ prefills the gate password (HTML-escaped) and says it is not access protection (258.7665ms)
+  ✔ serves demo sign-ins only behind the gate, GET only (160.5909ms)
+  ✔ is off by default: no prefill, no bootstrap (85.2617ms)
+  ✖ the convenience file must be 0600 and list only the synthetic demo accounts (2.6552ms)
+✖ preview gate: shared-demo convenience (Hamza, 2026-10-03) (508.0646ms)
+▶ preview gate: configuration guards
+  ✔ refuses a non-loopback API origin and a short cookie key (84.3ms)
+  ✖ refuses a secret file readable by other users (92.4649ms)
+  ✔ session tokens verify only with the right key and before expiry (0.549ms)
+✖ preview gate: configuration guards (177.5779ms)
+✔ state folder overrides are limited to .preview or .preview-test/ (review r1 P3) (695.554ms)
+✖ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (903.0866ms)
+✖ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (327.3367ms)
+✔ start.sh pins the shared demo to local auth and local storage (cloud review r1 P2) (1.3195ms)
+ℹ tests 37
+ℹ suites 10
+ℹ pass 33
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5285.2956
+
+✖ failing tests:
+
+test at scripts\preview-gate.test.mjs:415:3
+✖ the convenience file must be 0600 and list only the synthetic demo accounts (2.6552ms)
+  Error: convenience file must be mode 0600 (is 666)
+      at loadConvenience (<repo>/scripts/preview/gate-server.mjs:393:27)
+      at TestContext.<anonymous> (<repo>/scripts/preview-gate.test.mjs:422:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts\preview-gate.test.mjs:435:3
+✖ refuses a secret file readable by other users (92.4649ms)
+  Error: gate secret file must be mode 0600 (is 666)
+      at loadSecret (<repo>/scripts/preview/gate-server.mjs:406:27)
+      at TestContext.<anonymous> (<repo>/scripts/preview-gate.test.mjs:442:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1905:7)
+
+test at scripts\preview-scripts.test.mjs:33:1
+✖ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (903.0866ms)
+  AssertionError [ERR_ASSERTION]: gate-secret.json
+  
+  438 !== 384
+  
+      at TestContext.<anonymous> (<repo>/scripts/preview-scripts.test.mjs:57:62)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 438,
+    expected: 384,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\preview-scripts.test.mjs:62:1
+✖ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (327.3367ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (<repo>/scripts/preview-scripts.test.mjs:74:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT=1

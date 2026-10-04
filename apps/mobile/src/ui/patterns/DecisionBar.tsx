@@ -54,7 +54,7 @@ export function DecisionBar({ negative, positive, ratio = 'even', title, docked 
     </View>
   );
   const heading = title ? (
-    <Text variant="heading" style={docked ? styles.dockTitle : styles.title}>
+    <Text variant="heading" header style={docked ? styles.dockTitle : styles.title}>
       {title}
     </Text>
   ) : null;
@@ -93,6 +93,11 @@ export type SheetActionsProps = {
   /** A required field is not filled yet: unlit glass that wakes with a 240ms crossfade. */
   confirmDisabled?: boolean;
   /**
+   * The Commit pass is playing (U7, after success): both actions ignore presses and the confirm is
+   * announced busy, with no spinner and its lit look kept, until the sheet leaves (C4).
+   */
+  locked?: boolean;
+  /**
    * U7 only (Approve and credit…, Publish): the sheet's commit light (useCommitUplight). The
    * confirm then carries the commit spill, which follows the light: it holds with the pilot,
    * peaks with the pass and is cut with a failure.
@@ -110,7 +115,7 @@ export type SheetActionsProps = {
 
 /**
  * A sheet's one action row (CONSISTENCY C4): Cancel (secondary) on the left, the confirm on the
- * right, each half the row, 12 apart. Pending keeps the confirm's label and swaps its glyph for
+ * right, each in a slot of exactly half the row, 12 apart. Pending keeps the confirm's label and swaps its glyph for
  * the spinner, and disables both actions; the light never rises while it waits. Pair with
  * SheetFailure for the failure branch and useCommitUplight + CommitUplight for U7 sheets.
  */
@@ -124,6 +129,7 @@ export function SheetActions({
   pending = false,
   cancelDisabled = pending,
   confirmDisabled = false,
+  locked = false,
   light,
   onConfirmCenter,
   cancelTestID = 'confirm-cancel',
@@ -147,8 +153,11 @@ export function SheetActions({
   };
   return (
     <View style={[styles.row, styles.sheetRow]} onLayout={onRow}>
-      <Button label={cancelLabel} variant="secondary" onPress={onCancel} disabled={cancelDisabled} testID={cancelTestID} style={styles.even} />
-      <View style={styles.even} onLayout={onConfirmBox}>
+      {/* Both actions sit in equal unpadded slots (C4 1 : 1): a padded button on a 0 basis keeps its padding on top of its share on web. */}
+      <View style={[styles.even, styles.slot]}>
+        <Button label={cancelLabel} variant="secondary" onPress={onCancel} disabled={cancelDisabled || locked} testID={cancelTestID} style={styles.fill} />
+      </View>
+      <View style={[styles.even, styles.slot]} onLayout={onConfirmBox}>
         {commit ? <Animated.View {...HIDDEN} style={[styles.spill, PASS_THROUGH, spill]} /> : null}
         <Button
           label={confirmLabel}
@@ -157,7 +166,11 @@ export function SheetActions({
           onPress={onConfirm}
           disabled={confirmDisabled}
           loading={pending}
+          locked={locked}
+          // S4 never plays on the fire of a confirm a Commit pass follows (C4); it still plays when it enables.
+          sweepOnFire={!light}
           testID={confirmTestID}
+          style={styles.fill}
         />
       </View>
     </View>
@@ -185,8 +198,14 @@ export function SheetFailure({ message, title = 'Action failed', testID }: { mes
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   sheetRow: { gap: 12 },
-  even: { flex: 1, minWidth: 0 },
-  lead: { flex: 1.45, minWidth: 0 },
+  // CSS `flex: 1 1 0` in long form: react-native-web resolves `flex: 1` as a shorthand under its
+  // View default `flex-basis: auto`, so without the 0 basis the split followed the labels' widths.
+  even: { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  lead: { flexGrow: 1.45, flexShrink: 1, flexBasis: 0, minWidth: 0 },
+  // A sheet action's slot (the confirm's also holds the commit spill); its button fills it. The
+  // slots carry no padding, so on a 0 basis they split the row exactly (C4: 1 : 1).
+  slot: { alignItems: 'stretch' },
+  fill: { alignSelf: 'stretch', width: '100%' },
   title: { marginBottom: 10, marginLeft: 4 },
   dockTitle: { marginTop: 2, marginBottom: 10, marginLeft: 6 },
   dock: { padding: 12, borderRadius: radius.overlay },

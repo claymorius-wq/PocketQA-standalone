@@ -2,7 +2,8 @@
 // glyph source, lens-glyphs.mjs round 4 (CONSISTENCY G: boards never define a glyph), with its
 // thin tubes `t`/`tw` written as `s`/`w`. RN keeps four camelCase names for source names:
 // signIn = `signin`, signOut = `logout`, fileWarning = `filewarn`, chevronDown = `chevdown`.
-// The S6 Disputes parts (dPost, dBeam, dPanL, dPanR) are not ported: no RN screen animates them yet.
+// The S6 Disputes parts (dPost, dBeam, dPanL, dPanR) are the source's DISPUTES_PARTS: the disputes
+// glyph split so BalanceGlyph can weigh it (the beam turns, the pans hang plumb).
 //
 // 32-unit grid, 3.5-unit margin. A glyph is a list of parts drawn back to front. A part is a
 // closed volume `f` (fill-rule evenodd, so inner subpaths cut slots through it) and/or a tube `s`
@@ -268,6 +269,12 @@ export const GLYPHS = {
     { s: 'M16 5.4V8 M16 24V26.6', w: 2.2 },
     { s: 'M12.2 10.2H10.2A5.8 5.8 0 0 0 10.2 21.8H12.2 M19.8 10.2H21.8A5.8 5.8 0 0 1 21.8 21.8H19.8', w: 3.6 },
   ],
+  // S6 (A-Disputes "balance weighs"): DISPUTES_PARTS, the disputes glyph above in four pieces. The
+  // post and the beam are its first two parts verbatim; the pans are its third part split in two.
+  dPost: [{ s: 'M16 9v14.5', w: 4, f: 'M12.4 23.6H19.6a1.9 1.9 0 0 1 1.9 1.9V25.5a1.9 1.9 0 0 1 -1.9 1.9H12.4a1.9 1.9 0 0 1 -1.9 -1.9V25.5a1.9 1.9 0 0 1 1.9 -1.9Z' }],
+  dBeam: [{ s: 'M7 11.6L25 9.4', w: 3.4, f: 'M13.7 8.3a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0 -4.6 0Z' }],
+  dPanL: [{ s: 'M7 11.6L4.3 18.5 M7 11.6L9.7 18.5', w: 1.7, f: 'M3.6 18.5h6.8a3.4 3.4 0 0 1-6.8 0Z' }],
+  dPanR: [{ s: 'M25 9.4L22.3 16.3 M25 9.4L27.7 16.3', w: 1.7, f: 'M21.6 16.3h6.8a3.4 3.4 0 0 1-6.8 0Z' }],
 } as const satisfies Record<string, readonly GlyphPart[]>;
 
 export type GlyphName = keyof typeof GLYPHS;

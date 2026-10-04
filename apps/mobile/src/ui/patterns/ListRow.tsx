@@ -37,6 +37,10 @@ export type ListRowProps = {
   testID?: string;
   /** Set by ListCard: rows after the first draw the hairline on their top edge. */
   divided?: boolean;
+  /** The title steps back (A-Moderation's suspended rows): `textDim` instead of the text colour. */
+  dim?: boolean;
+  /** `ledger`: the taller row of a ledger (A-Moderation): min 72, padding 12/14/12/16. */
+  density?: 'default' | 'ledger';
 };
 
 /**
@@ -44,7 +48,7 @@ export type ListRowProps = {
  * Instrument Sans 600 15/22, meta under it, and an optional trailing element. Rows sit in one
  * ListCard. A pressable row sinks 1dp down-right while pressed (not under reduced motion).
  */
-export function ListRow({ glyph, tint, glyphVariant, title, meta, trailing, onPress, accessibilityLabel, testID, divided = false }: ListRowProps) {
+export function ListRow({ glyph, tint, glyphVariant, title, meta, trailing, onPress, accessibilityLabel, testID, divided = false, dim = false, density = 'default' }: ListRowProps) {
   const { colors, type } = useTheme();
   const press = usePressMotion(!onPress);
   const body = (
@@ -52,7 +56,7 @@ export function ListRow({ glyph, tint, glyphVariant, title, meta, trailing, onPr
       {divided ? <Hairline /> : null}
       {glyph ? <GlassTile name={glyph} size="list" tint={tint} variant={glyphVariant} /> : null}
       <View style={styles.text}>
-        <RNText numberOfLines={2} style={[type.heading, styles.title, { color: colors.text }]}>{title}</RNText>
+        <RNText numberOfLines={2} style={[type.heading, styles.title, { color: dim ? colors.textDim : colors.text }]}>{title}</RNText>
         {meta === undefined || meta === null ? null : typeof meta === 'string' ? <Meta>{meta}</Meta> : meta}
       </View>
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
@@ -60,7 +64,7 @@ export function ListRow({ glyph, tint, glyphVariant, title, meta, trailing, onPr
   );
   if (!onPress) {
     return (
-      <View testID={testID} style={styles.row}>
+      <View testID={testID} style={[styles.row, density === 'ledger' ? styles.ledger : null]}>
         {body}
       </View>
     );
@@ -68,7 +72,7 @@ export function ListRow({ glyph, tint, glyphVariant, title, meta, trailing, onPr
   return (
     // C1: the ring follows the row's own corners, the ListCard's 24 inset by its 4dp padding.
     <FocusPressable ringRadius={ROW_RADIUS} testID={testID} onPress={onPress} onPressIn={press.pressIn} onPressOut={press.pressOut} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? title}>
-      <Animated.View style={[styles.row, press.motionStyle]}>{body}</Animated.View>
+      <Animated.View style={[styles.row, density === 'ledger' ? styles.ledger : null, press.motionStyle]}>{body}</Animated.View>
     </FocusPressable>
   );
 }
@@ -97,6 +101,7 @@ const styles = StyleSheet.create({
   hairline: { position: 'absolute', right: 0, top: 0, height: 1 },
   card: { borderRadius: 24 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 10, paddingHorizontal: 16 },
+  ledger: { minHeight: 72, paddingTop: 12, paddingRight: 14, paddingBottom: 12, paddingLeft: 16 },
   text: { flex: 1, minWidth: 0, gap: 2 },
   // Instrument Sans 600 15/22 (C6 "list / card row title"): the heading face at the body size.
   title: { fontSize: 15 },

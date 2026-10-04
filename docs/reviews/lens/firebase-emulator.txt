@@ -1,0 +1,41 @@
+# HEAD ad99009 (fix(ui): apply the r2 QA review (3 P3s)), 2026-10-04T11:25:23Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ firebase emulators:exec --only auth --project demo-pocketqa "pnpm --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts"   (= pnpm test:emulator)
+i  emulators: Starting emulators: auth
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  Running script: "node" "pnpm.cjs" --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts
+
+ RUN  v5.0.3 <repo>/apps/api
+
+ ❯ test/firebase-emulator.test.ts (2 tests) 517ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/firebase-emulator.test.ts > Firebase Admin adapter against the Auth emulator
+Error: EPERM, Permission denied: <tmp>\pqa-emu-9K9We3 '<tmp>\pqa-emu-9K9We3'
+ ❯ test/firebase-emulator.test.ts:55:5
+     53|   afterAll(async () => {
+     54|     await app.close();
+     55|     rmSync(dir, { recursive: true, force: true });
+       |     ^
+     56|   });
+     57|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 passed (2)
+   Start at  13:25:37
+   Duration  2.81s (import 60%, tests 20%, transform 20%)
+
+undefined
+<repo>\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run test/firebase-emulator.test.ts
+!  Script exited unsuccessfully (code 1)
+i  emulators: Shutting down emulators.
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+
+Error: Script ""node" "pnpm.cjs" --filter @pocket-qa/api exec vitest run test/firebase-emulator.test.ts" exited with code 1
+EXIT=1

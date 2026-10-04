@@ -9,8 +9,9 @@ import type { LinearGradientSpec, Palette } from '../../theme/tokens';
 // The slot / budget meter materials (A-BStudies "Slot meter rule", shared with A-BStudy's budget
 // meter and its legend swatches). Awarded is pale lit glass, filled (held for review, or
 // committed) is violet glass, open is a recessed socket; a draft or closed study's sockets are
-// unlit (no far-wall light) and a closed study's pips are dimmed. Pips are lit glass, never light
-// sources: no caustic, no glow.
+// unlit (no far-wall light) and a closed study's pips are dimmed. `bare` (a budget slot holding no
+// credits: a draft's slots, or credits released at close) is the empty unlit socket. Pips are lit
+// glass, never light sources: no caustic, no glow.
 //
 // RN adaptation: every pip of a meter is drawn in ONE react-native-svg canvas (one view, not one
 // GlassSurface per pip). Each pip keeps its gradient body, gradient rim, 1dp top highlight and the
@@ -24,7 +25,7 @@ const lin = (angle: number, ...stops: ReturnType<typeof s>[]): LinearGradientSpe
 
 type PipRecipe = { fill: LinearGradientSpec; rim?: LinearGradientSpec; highlight?: [string, number]; step?: string };
 
-const PIPS: Record<Exclude<MeterMaterial, 'bare'>, PipRecipe> = {
+const PIPS: Record<MeterMaterial, PipRecipe> = {
   awarded: {
     fill: lin(135, s(0, '#EEF2FF'), s(0.55, '#D6E0FF'), s(1, '#AEBDEB')),
     rim: lin(135, s(0, '#FFFFFF', 0.9), s(1, '#4E5FC9', 0.45)),
@@ -50,10 +51,14 @@ const PIPS: Record<Exclude<MeterMaterial, 'bare'>, PipRecipe> = {
     fill: lin(160, s(0, '#04030E'), s(1, '#0A0920')),
     rim: lin(135, s(0, '#5C568A'), s(0.5, '#7A74A8'), s(1, '#7A74A8')),
   },
+  bare: {
+    fill: lin(160, s(0, '#04030E'), s(1, '#0A0920')),
+    rim: lin(135, s(0, '#5C568A'), s(0.5, '#7A74A8'), s(1, '#7A74A8')),
+  },
 };
 
 /** Light theme (glass disabled): flat fills from the palette, a hairline socket. */
-function flatPip(m: Exclude<MeterMaterial, 'bare'>, c: Palette): { fill: string; rim?: string } {
+function flatPip(m: MeterMaterial, c: Palette): { fill: string; rim?: string } {
   switch (m) {
     case 'awarded':
       return { fill: c.primary };
@@ -68,7 +73,7 @@ function flatPip(m: Exclude<MeterMaterial, 'bare'>, c: Palette): { fill: string;
 
 export type PipCell = { x: number; w: number; material: MeterMaterial };
 
-/** Draws pips of height `h` (radius h/2) in one canvas. `bare` cells leave the track empty. */
+/** Draws pips of height `h` (radius h/2) in one canvas. `bare` cells are empty unlit sockets. */
 export const PipCanvas = memo(function PipCanvas({ cells, width, h }: { cells: readonly PipCell[]; width: number; h: number }) {
   const { glass, colors } = useTheme();
   const id = useSvgId('pip');
@@ -81,7 +86,6 @@ export const PipCanvas = memo(function PipCanvas({ cells, width, h }: { cells: r
       <View {...HIDDEN} style={[{ width: W, height: H }, PASS_THROUGH]}>
         <Svg width={W} height={H}>
           {cells.map((c, i) => {
-            if (c.material === 'bare') return null;
             const f = flatPip(c.material, colors);
             return <Rect key={i} x={c.x + 0.5} y={0.5} width={Math.max(0, c.w - 1)} height={h - 1} rx={r - 0.5} fill={f.fill} stroke={f.rim} strokeWidth={f.rim ? 1 : 0} />;
           })}
@@ -94,7 +98,6 @@ export const PipCanvas = memo(function PipCanvas({ cells, width, h }: { cells: r
       <Svg width={W} height={H}>
         <Defs>
           {cells.map((c, i) => {
-            if (c.material === 'bare') return null;
             const p = PIPS[c.material];
             const box = { x: c.x, y: 0, w: c.w, h };
             return [
@@ -104,7 +107,6 @@ export const PipCanvas = memo(function PipCanvas({ cells, width, h }: { cells: r
           })}
         </Defs>
         {cells.map((c, i) => {
-          if (c.material === 'bare') return null;
           const p = PIPS[c.material];
           return [
             p.step ? <Rect key={`s${i}`} x={c.x + 1} y={1.5} width={c.w} height={h} rx={r} fill={p.step} /> : null,

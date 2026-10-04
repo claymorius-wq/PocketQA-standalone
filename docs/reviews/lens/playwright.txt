@@ -1,0 +1,21 @@
+# HEAD ad99009 (fix(ui): apply the r2 QA review (3 P3s)), 2026-10-04T11:23:27Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm exec playwright test -c artifacts/integ/playwright.config.ts   (mirror of playwright.config.ts on 8788/8091/8900)
+
+Running 11 tests using 1 worker
+
+  ok  1 artifacts\integ\e2e\account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.9s)
+
+  ok  2 artifacts\integ\e2e\admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (27.9s)
+  ok  3 artifacts\integ\e2e\remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (18.0s)
+  ok  4 artifacts\integ\e2e\remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (2.8s)
+
+  ok  5 artifacts\integ\e2e\remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (5.1s)
+  ok  6 artifacts\integ\e2e\review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (35.3s)
+  ok  7 artifacts\integ\e2e\review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (4.8s)
+  ok  8 artifacts\integ\e2e\review-loop.spec.ts:217:5 › offline state when the API is unreachable (3.7s)
+  ok  9 artifacts\integ\e2e\wallet-login.spec.ts:71:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (2.6s)
+  ok 10 artifacts\integ\e2e\wallet-login.spec.ts:101:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (1.0s)
+  ok 11 artifacts\integ\e2e\wallet-login.spec.ts:110:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (1.6s)
+
+  11 passed (1.9m)
+EXIT=0

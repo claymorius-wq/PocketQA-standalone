@@ -58,7 +58,7 @@ Scope of verification: registry existence, exact version, engines/peer compatibi
 
 ## Lens visual system (added 2026-10-03, branch `feat/lens-ui`)
 
-Installed with `cd apps/mobile && pnpm exec expo install react-native-reanimated react-native-worklets expo-blur expo-font @expo-google-fonts/red-hat-display @expo-google-fonts/instrument-sans @expo-google-fonts/dm-mono`. Expo modules keep Expo's `~` range (as above); everything else is pinned exactly. The SDK 57 pins come from `expo@57.0.26/bundledNativeModules.json` (`react-native-reanimated 4.5.1`, `react-native-worklets 0.10.1`, `expo-blur ~57.0.3`, `expo-font ~57.0.4`). Rationale: `docs/decisions/0005-lens-visual-system.md`.
+Installed with `cd apps/mobile && pnpm exec expo install react-native-reanimated react-native-worklets expo-blur expo-font @expo-google-fonts/red-hat-display @expo-google-fonts/instrument-sans @expo-google-fonts/dm-mono`. Expo modules keep Expo's `~` range (as above); everything else is pinned exactly. The SDK 57 pins come from `expo@57.0.26/bundledNativeModules.json` (`react-native-reanimated 4.5.1`, `react-native-worklets 0.10.1`, `expo-blur ~57.0.3`, `expo-font ~57.0.4`). Rationale: `docs/decisions/0006-lens-visual-system.md`.
 
 | Package | Pinned | Resolved | Why |
 |---|---|---|---|
@@ -76,7 +76,7 @@ Jest: `apps/mobile/package.json` sets `resolver: "react-native-worklets/jest/res
 
 Lockfile side effect: with Reanimated back on the SDK 57 pin, its worklets peer no longer pulls the 0.87 React Native tooling. `@react-native/metro-config`, `@react-native/babel-preset` and `@react-native/metro-babel-transformer` resolve 0.86.3 (were 0.87.1), and the 0.87.1 entries of `@react-native/codegen` and `@react-native/babel-plugin-codegen` are gone (0.86.3 is used). All now match `react-native` 0.86.3. No package.json range changed for them.
 
-Not added: `@shopify/react-native-skia` (see ADR 0005), `expo-linear-gradient` (SVG gradients cover it and also handle the radial layers), `react-native-shadow-2` (React Native's own `boxShadow` takes the spec's shadow lists, inset included).
+Not added: `@shopify/react-native-skia` (see ADR 0006), `expo-linear-gradient` (SVG gradients cover it and also handle the radial layers), `react-native-shadow-2` (React Native's own `boxShadow` takes the spec's shadow lists, inset included).
 
 ## Candidates only (unverified; Phase 6 decides)
 

@@ -1,0 +1,12 @@
+# The offline test alone at ad99009 (the candidate), with the check scoped to My work (058268d): it passes.
+# Method: the web export is built from that commit's apps/mobile/app and apps/mobile/src (the rest of the checkout is
+# identical to main apart from docs and test files); then only "offline state when the API is unreachable" runs, on a fresh
+# database, through the same Windows mirror of playwright.config.ts as playwright.txt.
+export EXIT=0
+
+Running 1 test using 1 worker
+
+  ok 1 artifacts\integ\e2e\review-loop.spec.ts:217:5 › offline state when the API is unreachable (3.7s)
+
+  1 passed (10.2s)
+EXIT=0

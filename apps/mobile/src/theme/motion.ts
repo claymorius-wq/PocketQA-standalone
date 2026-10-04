@@ -9,7 +9,7 @@ import {
   type WithTimingConfig,
 } from 'react-native-reanimated';
 
-// Lens motion system (Direction A v2 §11; docs/decisions/0005-lens-visual-system.md).
+// Lens motion system (Direction A v2 §11; docs/decisions/0006-lens-visual-system.md).
 // Light is constant; glass moves under it. Everything here runs on the UI thread through
 // Reanimated: only transform, opacity and shadow-layer opacity animate, never gradients, blur or
 // shadow radii.
@@ -74,6 +74,8 @@ export const UPLIGHT = {
   earned: { rise: DUR.rise, settle: DUR.settle, rest: 0.45 },
   live: { from: 0.72, to: 1, cycle: CYCLE.breathe, reducedRest: 0.86 },
   pilot: { signIn: 0.35, sheet: 0.55, delay: 260, rise: DUR.rise },
+  // lq-land (C4): a Commit pass's tail landing on its subject's uplit layer, 0 → 0.6 over 240 ease-lens, → 0 over 700 ease-lens.
+  land: { peak: 0.6, rise: DUR.swap, fall: DUR.settle },
   cut: DUR.release, // the light cut on stop / sheet close: never a gentle fade
   floorScaleFrom: 0.3,
   moteDuration: DUR.settle, // 700: no segment is longer than dur-settle (§11.1)
@@ -85,6 +87,8 @@ export const SIGNATURE = {
   sweepAngle: 105,
   sweepFrom: -1.4,
   sweepTo: 3.3,
+  /** S4 never plays twice in a row: a sweep within this long of the last one is skipped (C4, §11.5). */
+  sweepGuard: 1200,
   rollColumnDelay: 40,
   rollLedgerDelay: 600,
   lockStep: 40,

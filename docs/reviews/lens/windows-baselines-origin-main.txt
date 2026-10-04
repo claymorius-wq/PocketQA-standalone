@@ -1,0 +1,216 @@
+# Windows-only failures, measured on main before any Lens change
+#
+# These two runs are from this Windows 11 machine on 2026-10-03 at about 16:54 local time, on the clone's main
+# at d358a05 (before PR #1 and PR #3). They show the same failures that the PR #3 runs show:
+#  - the root node --test of scripts/*.test.mjs: the 4 checks that a file is mode 0600 (Windows reports 0666);
+#  - apps/api test/config.bind.test.ts: expects the POSIX path apps/api/.data (Windows returns backslashes).
+# PR #3 changes nothing in scripts/, apps/api or packages/:
+$ git diff --stat origin/main ad99009 -- scripts apps/api packages
+(no output: identical to main)
+
+# --- pnpm verify on main d358a05 (it stops at the root scripts tests) ---
+
+> pocket-qa@ verify <repo>
+> pnpm check:secrets && node scripts/preview/assert-no-secrets.mjs --repo && pnpm typecheck && pnpm lint && pnpm test
+
+
+> pocket-qa@ check:secrets <repo>
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 397 committable files scanned, no findings.
+secret check: 7 values, 397 files, 0 occurrences
+
+> pocket-qa@ typecheck <repo>
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/api typecheck$ tsc -p tsconfig.json
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+
+> pocket-qa@ lint <repo>
+> eslint .
+
+
+> pocket-qa@ test <repo>
+> node --test "scripts/*.test.mjs" && pnpm -r --if-present test
+
+✔ flags known token shapes (3.1131ms)
+✔ flags credential-named identifiers regardless of prefix or case (0.2576ms)
+✔ ignores ordinary code, empty env values and spaced passphrases (0.9872ms)
+✔ allow marker covers only its own line (0.2927ms)
+✔ forbidden paths (0.8491ms)
+✔ CLI exits 1 on a planted secret and on a force-added sqlite file, 0 on a clean repo (808.6288ms)
+✔ CLI still runs when invoked through a symlink (276.6068ms)
+▶ preview gate: nothing is served without the gate cookie
+  ✔ rejects requests for any other Host (421) (17.3937ms)
+  ✔ redirects pages and assets to the login page, and returns 401 for the API (12.9318ms)
+  ✔ serves the login page with a strict CSP and an identity marker (1.6883ms)
+✔ preview gate: nothing is served without the gate cookie (146.9182ms)
+▶ preview gate: login
+  ✔ refuses a cross-site login POST (403) (2.3501ms)
+  ✔ rejects a wrong password, then rate-limits that client even with the right one (1151.7428ms)
+  ✔ sets a __Host- cookie that is HttpOnly, Secure, SameSite=Strict, Path=/, no Domain (100.4915ms)
+  ✔ ignores an oversized login body (2.9767ms)
+✔ preview gate: login (1258.4362ms)
+▶ preview gate: with a valid cookie
+  ✔ serves the app, with SPA fallback and no path traversal (128.4226ms)
+  ✔ proxies /api to the loopback API: path stripped, bearer kept, gate cookie and upstream cookies dropped (115.8696ms)
+  ✔ rejects tampered and expired cookies, and logout clears the cookie (102.1632ms)
+  ✔ returns 502 JSON when the API is down (294.1903ms)
+✔ preview gate: with a valid cookie (641.3116ms)
+▶ preview gate: shared-preview policy (review r1 P2)
+  ✔ refuses uploads, account deletion and admin moderation without reaching the API (111.0601ms)
+  ✔ rejects encoded, dot-segment and doubled-slash spellings instead of forwarding them (100.3824ms)
+  ✔ still forwards allowed calls on the same resources (99.7938ms)
+  ✔ strips headers named in Connection and sandboxes API responses (88.9473ms)
+✔ preview gate: shared-preview policy (review r1 P2) (400.7663ms)
+▶ preview gate: login under load (review r1 P3)
+  ✔ caps concurrent attempts so a burst cannot bypass the per-IP limit (113.7847ms)
+✔ preview gate: login under load (review r1 P3) (114.0172ms)
+▶ preview gate: slow logins (review r2 P3)
+  ✔ trickled login bodies do not hold the verification slots (203.0309ms)
+✔ preview gate: slow logins (review r2 P3) (203.2806ms)
+▶ preview gate: login timeout is per request (review r3 P3)
+  ✔ a slow proxied call on the same keep-alive connection after a login is not cut off (595.0502ms)
+✔ preview gate: login timeout is per request (review r3 P3) (595.4053ms)
+▶ preview gate: login body deadline is total, not idle (review r3 P3)
+  ✔ a body trickled faster than the timeout is still cut off at the deadline (413.791ms)
+✔ preview gate: login body deadline is total, not idle (review r3 P3) (414.0658ms)
+▶ preview gate: shared-demo convenience (Hamza, 2026-10-03)
+  ✔ prefills the gate password (HTML-escaped) and says it is not access protection (271.3516ms)
+  ✔ serves demo sign-ins only behind the gate, GET only (175.7255ms)
+  ✔ is off by default: no prefill, no bootstrap (85.3147ms)
+  ✖ the convenience file must be 0600 and list only the synthetic demo accounts (2.2427ms)
+✖ preview gate: shared-demo convenience (Hamza, 2026-10-03) (535.5894ms)
+▶ preview gate: configuration guards
+  ✔ refuses a non-loopback API origin and a short cookie key (87.7757ms)
+  ✖ refuses a secret file readable by other users (97.516ms)
+  ✔ session tokens verify only with the right key and before expiry (0.4253ms)
+✖ preview gate: configuration guards (185.997ms)
+✔ state folder overrides are limited to .preview or .preview-test/ (review r1 P3) (851.8787ms)
+✖ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (1063.3514ms)
+✖ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (395.4824ms)
+ℹ tests 36
+ℹ suites 10
+ℹ pass 32
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5677.2027
+
+✖ failing tests:
+
+test at scripts\preview-gate.test.mjs:405:3
+✖ the convenience file must be 0600 and list only the synthetic demo accounts (2.2427ms)
+  Error: convenience file must be mode 0600 (is 666)
+      at loadConvenience (<repo>/scripts/preview/gate-server.mjs:385:27)
+      at TestContext.<anonymous> (<repo>/scripts/preview-gate.test.mjs:412:18)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at scripts\preview-gate.test.mjs:425:3
+✖ refuses a secret file readable by other users (97.516ms)
+  Error: gate secret file must be mode 0600 (is 666)
+      at loadSecret (<repo>/scripts/preview/gate-server.mjs:398:27)
+      at TestContext.<anonymous> (<repo>/scripts/preview-gate.test.mjs:432:15)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1905:7)
+
+test at scripts\preview-scripts.test.mjs:27:1
+✖ rotate with --password-stdin: new hash and cookie key, old sessions rejected, nothing printed (1063.3514ms)
+  AssertionError [ERR_ASSERTION]: gate-secret.json
+  
+  438 !== 384
+  
+      at TestContext.<anonymous> (<repo>/scripts/preview-scripts.test.mjs:51:62)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 438,
+    expected: 384,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts\preview-scripts.test.mjs:56:1
+✖ enable-convenience: refuses a wrong password, writes a 0600 file of synthetic sign-ins, prints nothing secret (395.4824ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 2
+  
+      at TestContext.<anonymous> (<repo>/scripts/preview-scripts.test.mjs:68:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+ ELIFECYCLE  Test failed. See above for more details.
+ ELIFECYCLE  Command failed with exit code 1.
+
+# --- pnpm --filter @pocket-qa/api test on main d358a05 ---
+
+> @pocket-qa/api@0.1.0 test <repo>\apps\api
+> vitest run
+
+
+ RUN  v5.0.3 <repo>/apps/api
+
+ ❯ test/config.bind.test.ts (3 tests | 1 failed) 912ms
+   ❯ local-only configuration (3)
+     × refuses a data directory inside the repo that git would track 220ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/config.bind.test.ts > local-only configuration > refuses a data directory inside the repo that git would track
+AssertionError: expected 'C:\Users\<user>\AppData\Local\Packages…' to match /apps\/api\/\.data$/api\
+
+- Expected:
+/apps\/api\/\.data$/
+
++ Received:
+"<repo>\\apps\\api\\.data"
+
+ ❯ test/config.bind.test.ts:22:73
+     20|     expect(() => loadConfig({ POCKETQA_DATA_DIR: 'packages' })).toThro…
+     21|     expect(() => loadConfig({ POCKETQA_DATA_DIR: '.' })).toThrowError(…
+     22|     expect(loadConfig({ POCKETQA_DATA_DIR: 'apps/api/.data' }).dataDir…
+       |                                                                         ^
+     23|     expect(loadConfig({ POCKETQA_DATA_DIR: tmpdir() }).dataDir).toBeTr…
+     24|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  1 failed | 270 passed (271)
+   Start at  16:55:08
+   Duration  5.53s (tests 58%, import 30%, transform 10%, worker 2%)
+
+ ELIFECYCLE  Test failed. See above for more details.

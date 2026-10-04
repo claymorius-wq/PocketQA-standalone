@@ -9,7 +9,8 @@ import { cornerStyle, DEFAULT_CAUSTIC, HIDDEN, PASS_THROUGH, useSvgId, type Corn
 
 // S4 (§11.5): a 105° white band, 34% of the button wide, crosses it from −140% to 330% of its own
 // width in 560ms ease-refract while its opacity goes 0 → 1 (by 18%) → 1 (82%) → 0, clipped to the
-// button. Plays when a primary becomes enabled and when it fires; never on hover, never on a loop.
+// button. Plays when a primary becomes enabled and when it fires; never on hover, never on a loop,
+// never twice in a row (the 1200ms guard).
 // The down-right caustic brightens with it: a second caustic shadow layer at half the band's opacity.
 
 const BAND_PEAK = 0.8; // band centre alpha on the boards (0.75 on the Submit dock)
@@ -17,7 +18,7 @@ const FADE = 0.18; // opacity keyframes at 18% and 82%
 const CAUSTIC_BOOST = 0.5;
 
 export type CausticSweepProps = {
-  /** Each change to a positive value plays one sweep; a change while one is running is ignored (never twice in a row). */
+  /** Each change to a positive value plays one sweep; a change within SIGNATURE.sweepGuard (1200ms) of the last sweep is ignored (never twice in a row). */
   playKey: number;
   /** The button's radius (default 18) so the band is clipped to it. */
   radius?: number;
@@ -38,7 +39,7 @@ export function CausticSweep({ playKey, radius = 18, corners = 'all' }: CausticS
     if (!live || playKey <= 0) return;
     const now = Date.now();
     if (now < busyUntil.current) return;
-    busyUntil.current = now + DUR.rise;
+    busyUntil.current = now + SIGNATURE.sweepGuard;
     const sweep = motion.timing.refract;
     const edge = { ...sweep, duration: Math.round(DUR.rise * FADE) };
     progress.value = withSequence(withTiming(0, { duration: 0 }), withTiming(1, sweep));

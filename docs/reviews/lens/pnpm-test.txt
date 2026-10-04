@@ -1,0 +1,63 @@
+# HEAD ad99009 (fix(ui): apply the r2 QA review (3 P3s)), 2026-10-04T11:21:07Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ pnpm -r --if-present test
+Scope: 5 of 6 workspace projects
+packages/contracts test$ vitest run
+packages/contracts test:  RUN  v5.0.3 <repo>/packages/contracts
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  15 passed (15)
+packages/contracts test:    Start at  13:21:09
+packages/contracts test:    Duration  626ms (import 68%, transform 23%, tests 5%, worker 3%)
+packages/contracts test: Done
+packages/domain test$ vitest run --coverage
+packages/domain test:  RUN  v5.0.3 <repo>/packages/domain
+packages/domain test:       Coverage enabled with v8
+packages/domain test:  Test Files  11 passed (11)
+packages/domain test:       Tests  170 passed (170)
+packages/domain test:    Start at  13:21:10
+packages/domain test:    Duration  1.12s (import 53%, transform 27%, worker 12%, tests 8%)
+packages/domain test:  % Coverage report from v8
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: File              | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: All files         |   98.83 |     99.4 |     100 |   98.94 |                   
+packages/domain test:  copy.ts          |   96.29 |    94.73 |     100 |     100 | 74                
+packages/domain test:  transferTx.ts    |   96.66 |      100 |     100 |      96 | 12                
+packages/domain test:  wallet.ts        |   97.77 |      100 |     100 |   96.55 | 40                
+packages/domain test: ------------------|---------|----------|---------|---------|-------------------
+packages/domain test: =============================== Coverage summary ===============================
+packages/domain test: Statements   : 98.83% ( 255/258 )
+packages/domain test: Branches     : 99.4% ( 168/169 )
+packages/domain test: Functions    : 100% ( 53/53 )
+packages/domain test: Lines        : 98.94% ( 187/189 )
+packages/domain test: ================================================================================
+packages/domain test: Done
+apps/api test$ vitest run
+apps/mobile test$ jest --ci
+apps/api test:  RUN  v5.0.3 <repo>/apps/api
+apps/api test:  ❯ test/config.bind.test.ts (3 tests | 1 failed) 3097ms
+apps/api test:    ❯ local-only configuration (3)
+apps/api test:      × refuses a data directory inside the repo that git would track 1397ms
+apps/api test: ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+apps/api test:  FAIL  test/config.bind.test.ts > local-only configuration > refuses a data directory inside the repo that git would track
+apps/api test: AssertionError: expected 'C:\Users\<user>\AppData\Local\Packages…' to match /apps\/api\/\.data$/api\
+apps/api test: - Expected:
+apps/api test: /apps\/api\/\.data$/
+apps/api test: + Received:
+apps/api test: "<repo>\\apps\\api\\.data"
+apps/api test:  ❯ test/config.bind.test.ts:23:73
+apps/api test:      21|     expect(() => loadConfig({ POCKETQA_DATA_DIR: 'packages' })).toThro…
+apps/api test:      22|     expect(() => loadConfig({ POCKETQA_DATA_DIR: '.' })).toThrowError(…
+apps/api test:      23|     expect(loadConfig({ POCKETQA_DATA_DIR: 'apps/api/.data' }).dataDir…
+apps/api test:        |                                                                         ^
+apps/api test:      24|     expect(loadConfig({ POCKETQA_DATA_DIR: tmpdir() }).dataDir).toBeTr…
+apps/api test:      25|   });
+apps/api test: ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+apps/api test:  Test Files  1 failed | 13 passed | 1 skipped (15)
+apps/api test:       Tests  1 failed | 341 passed | 2 skipped (344)
+apps/api test:    Start at  13:21:12
+apps/api test:    Duration  8.19s (tests 53%, import 39%, transform 8%)
+apps/api test: Failed
+<repo>\apps\api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @pocket-qa/api@0.1.0 test: `vitest run`
+Exit status 1
+EXIT=1
