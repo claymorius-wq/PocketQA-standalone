@@ -8,6 +8,8 @@
     "start": "tsx src/server.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "admin:grant": "tsx scripts/grant-admin.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
+    "db:restore": "tsx scripts/restore-db.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts"

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Daily online database backup at 03:15 (docs/deploy/production-runbook.md). Template:
+  replace the same placeholders as ai.pocketqa.api.plist. The env file sets
+  POCKETQA_BACKUP_DIR (outside the repository). Backups are never pruned automatically.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.pocketqa.backup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/scripts/production/run-api.sh</string>
+    <string>backup</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>POCKETQA_ENV_FILE</key><string>__ENV_FILE__</string>
+    <key>PATH</key><string>__NODE_BIN_DIR__:/usr/bin:/bin</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>15</integer></dict>
+  <key>StandardOutPath</key><string>__LOG_DIR__/backup.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIR__/backup.err.log</string>
+</dict>
+</plist>

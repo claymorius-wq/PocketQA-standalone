@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { KeyRound, LogIn, Mail, ShieldCheck, UserPlus, Wallet } from 'lucide-react-native';
+import { KeyRound, LogIn, Mail, RefreshCw, ShieldCheck, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
@@ -15,7 +15,7 @@ import { useWallets } from '../../src/wallet/useWallets';
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
 
 export default function SignIn() {
-  const { signIn, authMode, storage, walletLogin, features, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount, unverifiedEmail, resendVerification, discardUnverified, sendPasswordReset } = useSession();
+  const { signIn, authMode, storage, walletLogin, features, needsAccount, pendingProfile, signInWithGoogle, signInWithWallet, completeAccount, unverifiedEmail, resendVerification, discardUnverified, sendPasswordReset, unreachable, retryConnection } = useSession();
   const web = Platform.OS === 'web';
   // Wallet sign-in when the server enables it: web with Wallet Standard extensions (one button
   // per wallet, ledger W1), or Android through Mobile Wallet Adapter (ledger W3). Never on the
@@ -95,6 +95,17 @@ export default function SignIn() {
     }
   }
   const submit = () => run(() => signIn(email.trim(), password));
+
+  if (unreachable) {
+    return (
+      <Screen testID="sign-in-screen">
+        <Notice tone="danger" title="Can’t reach Pocket QA" testID="unreachable">
+          The Pocket QA server isn’t answering right now, so sign-in isn’t available. Check your connection and try again.
+        </Notice>
+        <Button label="Try again" icon={RefreshCw} onPress={retryConnection} testID="unreachable-retry" />
+      </Screen>
+    );
+  }
 
   return (
     <Screen testID="sign-in-screen">

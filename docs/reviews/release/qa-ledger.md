@@ -50,6 +50,25 @@ The criteria are A1–A10. Status values are open, source-checked, verified, gat
 | inc1 r2 | staged set, 39 files, base `9461db5` | APPROVE. P2-1 is fixed and verified. New P3s: `check-url.mjs` exits 0 without checking when invoked through a symlink or a path with spaces; document explicit development mode | `docs/reviews/production/inc1-verdict-qa-r2.md` |
 | inc2 r1 | staged set, 30 files, base `a350118` | APPROVE. P3s: an abandoned unverified Firebase session persists; keystore value size; admin MFA is procedural; native proof is emulator and development only | `docs/reviews/production/inc2-verdict-qa-r1.md` |
 | inc3 r1 | staged set, 36 files, base `90a5ddd` | APPROVE. P3s: the `pocketqa.local` MWA identity can't be verified (broken icon, no Digital Asset Links); transaction wording on login errors; the MWA statement lacks "only sign in the app"; Android firebase mode, W5 and W6 untested | `docs/reviews/production/inc3-verdict-qa-r1.md` |
+| inc4 r1 | staged set, 20 files, base `16378f4` | APPROVE. P3s: backups keep deleted accounts and a restore undoes deletions (fold into A5); `db:backup` runs migrations on the live DB; the restore relies on a port probe; the env file is sourced as shell; the backup dir symlink isn't resolved | `docs/reviews/production/inc4-verdict-qa-r1.md` |
+| inc4 r2 | staged set, 28 files, base `16378f4` | APPROVE. The r1 P3s are fixed. New P3s: the runbook env example's inline comments break the literal parser (fails closed); no unit test for "unreachable"; optional key allowlist | `docs/reviews/production/inc4-verdict-qa-r2.md` |
+
+### inc4 r2: executable evidence
+- **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 620 files; scripts 45; contracts 17; domain 170; API 369 plus 2 skipped; mobile 729.
+- **The parser loop on a scratch file:** inline comments are kept in the values (P3-1).
+- **Production APK launch screenshot:** inspected. It shows "Can't reach Pocket QA" and no local sign-in form.
+
+### inc4 r1: executable evidence
+- **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 616 files; scripts 44; contracts 17; domain 170; API 368 plus 2 skipped; mobile 729.
+- **My own real-process drill** (temp dir, port 18947):
+  - a live backup at 0600;
+  - restore refused while the API runs;
+  - SIGTERM exits 0 and the WAL is checkpointed;
+  - restore kept a `.pre-restore` copy;
+  - after restart, an account from before the backup logs in and one created after it gets 401;
+  - a second SIGTERM exits 0.
+- **`plutil -lint`:** both plists OK.
+- **A7 (restart and backup):** verified locally. The production host install and its drill remain gated on access action A7.
 
 ### inc3 r1: executable evidence
 - **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 603 files; scripts 42; contracts 17; domain 170; API 360 plus 2 skipped; mobile 728.

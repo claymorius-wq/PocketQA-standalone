@@ -13,6 +13,12 @@ export type Config = {
    * repo, and no demo, emulator or test-credit paths. Default: development.
    */
   production: boolean;
+  /**
+   * Proxies whose X-Forwarded-For is trusted for the client address (per-client rate
+   * limits). The API binds loopback only, so the only proxy that can exist is local:
+   * `loopback` trusts 127.0.0.1 and ::1 and nothing else. Production defaults to it.
+   */
+  trustProxy: false | string[];
   /** Local test features; both off in production (no fake funding, no demo transfers). */
   features: { testCredits: boolean; devnetTransfers: boolean };
   host: '127.0.0.1' | '::1';
@@ -199,8 +205,12 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     throw new ConfigError('A real Firebase project or real R2 is configured: set POCKETQA_ENV explicitly (production, or development for synthetic test data).');
   }
 
+  const trust = env.POCKETQA_TRUST_PROXY ?? (production ? 'loopback' : 'none');
+  if (trust !== 'loopback' && trust !== 'none') throw new ConfigError('POCKETQA_TRUST_PROXY must be loopback or none.');
+
   return {
     production,
+    trustProxy: trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
     features: { testCredits: !production, devnetTransfers: !production },
     host: host as Config['host'],
     port,

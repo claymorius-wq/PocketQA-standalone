@@ -35,7 +35,7 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -59,6 +59,7 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
       db,
       config: {
         production: opts.production ?? false,
+        trustProxy: opts.trustProxy ? ['127.0.0.1', '::1'] : false,
         features: { testCredits: !opts.production, devnetTransfers: !opts.production },
         host: '127.0.0.1',
         port: 0,

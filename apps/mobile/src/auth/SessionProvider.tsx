@@ -9,6 +9,7 @@ import type { StandardWallet } from '../wallet/standard';
 import { walletLoginFlow } from '../wallet/walletLogin';
 import { firebaseAuth, firebaseSession } from './firebaseClient';
 import { firebaseErrorText } from './firebaseErrors';
+import { PRODUCTION_BUILD } from '../lib/deployment';
 import { endsRestoredSession, resolveManagedSession } from './managedSession';
 import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
@@ -22,6 +23,12 @@ type Session = {
   /** Evidence storage from the server's public config, for honest copy about where data lives. */
   storage: StorageMode;
   walletLogin: boolean;
+  /**
+   * Production builds only: the server's /config couldn't be read, so the deployment's auth
+   * mode is unknown. The app says so and offers a retry instead of assuming local accounts.
+   */
+  unreachable: boolean;
+  retryConnection: () => void;
   /** Deployment features from /config; off unless the server says on (never a fake success). */
   features: ClientConfig['features'];
   /** Signed in with a managed identity that has no Pocket QA account yet: ask for a role. */
@@ -60,6 +67,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [walletLogin, setWalletLogin] = useState(false);
   const [storage, setStorage] = useState<StorageMode>('local');
   const [features, setFeatures] = useState<ClientConfig['features']>(NO_FEATURES);
+  const [unreachable, setUnreachable] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [needsAccount, setNeedsAccount] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<NewAccount | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState(false);
@@ -91,6 +100,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     let unsubscribe: (() => void) | null = null;
     (async () => {
       const cfg = await getClientConfig().catch(() => null);
+      if (!cfg && PRODUCTION_BUILD) {
+        setUnreachable(true);
+        setReady(true);
+        return;
+      }
+      setUnreachable(false);
       setWalletLogin(cfg?.walletLogin ?? false);
       setStorage(cfg?.storage ?? 'local');
       setFeatures(cfg?.features ?? NO_FEATURES);
@@ -132,7 +147,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setReady(true);
     })();
     return () => unsubscribe?.();
-  }, [clear, resolveManaged]);
+  }, [clear, resolveManaged, attempt]);
 
   const accept = useCallback(async (res: { token: string; user: User }) => {
     token.current = res.token;
@@ -164,6 +179,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       authMode,
       storage,
       walletLogin,
+      unreachable,
+      retryConnection: () => {
+        setReady(false);
+        setAttempt((n) => n + 1);
+      },
       features,
       needsAccount,
       pendingProfile,
@@ -258,7 +278,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       refreshUser: async () => setUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
+    [ready, user, authMode, storage, walletLogin, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -61,7 +61,11 @@ function creditsView(ctx: Ctx, userId: string) {
 }
 
 export const accountHandlers = {
-  health: () => ({ ok: true as const, contractVersion: CONTRACT_VERSION }),
+  // Readiness, not just liveness: a database that can't answer fails the check (ledger O1).
+  health: (ctx) => {
+    ctx.deps.db.prepare('SELECT 1').get();
+    return { ok: true as const, contractVersion: CONTRACT_VERSION };
+  },
 
   clientConfig: (ctx) => {
     const { authMode, firebase } = ctx.deps.config;

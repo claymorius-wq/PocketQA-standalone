@@ -93,21 +93,21 @@
 
 | ID | Gate | Class | Status | Evidence or blocker | Authorization |
 |---|---|---|---|---|---|
-| O1 | Health and readiness endpoints | C | ⬜ | | plan |
-| O2 | SQLite online backup, restore script and a tested restore drill | C | ⬜ | | plan |
+| O1 | Health and readiness endpoints | C | 🔧 | `/health` pings the DB, so it is readiness, not just liveness (`apps/api/test/operations.test.ts`) (inc4)
+| O2 | SQLite online backup, restore script and a tested restore drill | C | 🔧 | Online `backup()` producing a self-contained 0600 file with sha256; restore keeps the old files and refuses while the API runs; drill tests `backup.test.ts`, `db-scripts.test.ts`, `operations.test.ts`; runbook §5 (inc4). A host drill is still to be recorded on the production host
 | O3 | Migrations run once and are idempotent on restart (existing) | C | ✅ | `db.ts` migrations, PR #2 | plan |
-| O4 | Process supervision and restart recovery (launchd unit plus runbook) | C/H | ⬜ | Host decision A7 | plan |
+| O4 | Process supervision and restart recovery (launchd unit plus runbook) | C/H | 🔧 code | SIGTERM/SIGINT give a clean shutdown and restart keeps the data (real process test); `scripts/production/run-api.sh` (locked-down env file); `deploy/launchd/*.plist`; runbook §3 (inc4). Installation on the host waits on A7 | plan |
 | O5 | Real TLS endpoint; the native app refuses http or loopback API URLs in production builds | C/P | 🔧 code | The app refuses non-https or loopback APIs in production builds; Android has no cleartext in production. Real TLS waits on host A7. | H-relayed |
-| O6 | Rate limits (wallet login, login, uploads), in-process with a single instance documented | C | ✅ partly | PR #2 | plan |
-| O7 | Audit log for admin, moderation and role changes, including `admin:grant` | C | ⬜ | | plan |
-| O8 | Redacted logs: no tokens, keys or emails in logs | C | ⬜ | | plan |
+| O6 | Rate limits (wallet login, login, uploads), in-process with a single instance documented | C | 🔧 | Plus a trusted proxy limited to loopback (production default), so limits are per client behind the tunnel and a forged X-Forwarded-For is ignored without trust (`operations.test.ts`) (inc4) | plan |
+| O7 | Audit log for admin, moderation and role changes, including `admin:grant` | C | 🔧 | Disputes, moderation and admin decisions were audited already (PR #2); `admin:grant` adds `user.admin_granted` (inc2)
+| O8 | Redacted logs: no tokens, keys or emails in logs | C | 🔧 | Logger serializers record method, redacted path and status only; media tokens and `/__preview` paths are redacted (`apps/api/test/log.redact.test.ts`)
 | O9 | Production data dir separate from the demo (`preview-data`) | C | 🔧 | `production-config.test.ts` (data dir must be outside the repo) (inc1)
 
 ## Native and release
 
 | ID | Gate | Class | Status | Evidence or blocker | Authorization |
 |---|---|---|---|---|---|
-| N1 | Android release build with the production API URL (https), cleartext off | C | ⬜ | | H-relayed |
+| N1 | Android release build with the production API URL (https), cleartext off | C | 🔧 emulator | Production prebuild: no cleartext, https API inlined, no loopback or demo accounts in the bundle; unreachable state honest on the emulator (see notes, inc4). Release signing is still open (A6)
 | N2 | Exact binary installed and tested on a physical Android or Seeker device (labelled physical, not simulator) | H | ⛔ A6 | | H-relayed |
 | N3 | iOS: graceful capability differences (no MWA claim) | C | ✅ | PR #1 | plan |
 | N4 | Store signing and submission | H/B | not authorised | No store submission for this build | prohibited |
@@ -117,4 +117,6 @@
 - **Keystore value size (inc2 review P3-2).** Firebase's persisted user JSON is typically over 2 KB. Android's keystore-backed `expo-secure-store` handled it (emulator proof). iOS Keychain may reject values over 2048 bytes, so **iOS managed sign-in stays an open gate**, with chunking as the fix if iOS becomes a target.
 - **Native proof scope (inc2 review P3-4).** I8 was proven with a **development prebuild on an emulator**. A production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`) on a physical Android or Seeker device stays open under N1 and N2.
 - **Wallet login (inc3 review P3-1, P3-4).** The MWA identity `pocketqa.local` is a placeholder and can't be verified. Moving it to an owned domain with `assetlinks.json` is a precondition for W4 and W6. Not yet tested: Android in firebase mode (the custom-token exchange on a device), a real browser wallet (W5), and a physical device with a real wallet (W6).
+- **Backups and deletion (inc4 review P3-1).** A restore brings back accounts deleted after the backup was taken. The runbook (§5) requires re-applying those deletions by comparing tombstones. Backup retention, and a tool for re-applying deletions, belong to the A5 decision. Known follow-up: account self-deletion isn't written to the audit log; only the tombstone row remains.
+- **N1 evidence (inc4).** A production prebuild (`EXPO_PUBLIC_POCKETQA_ENV=production`, `EXPO_PUBLIC_API_URL=https://api.pocketqa.example` placeholder) gives a network config with **no** cleartext domains, and the manifest references it. The Hermes bundle contains the https API URL, no `127.0.0.1:8787` and no demo accounts. On the **emulator**, with the API unreachable, the app shows "Can't reach Pocket QA" and a retry, never a local-mode form. Release signing (debug key) and a physical device are still open.
 
