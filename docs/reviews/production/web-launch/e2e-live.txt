@@ -1,0 +1,15 @@
+$ git rev-parse HEAD
+2f5cec42c8cf94b1039e2a3c69362d63715847a5
+$ pnpm test:e2e:live
+
+> pocket-qa@ test:e2e:live /Users/hamzadiaz/Projects/pocket-qa/.worktrees/web-launch
+> pnpm --filter @pocket-qa/mobile exec playwright test -c playwright.live.config.ts
+
+
+Running 1 test using 1 worker
+
+WEB_LIVE_FIREBASE_UIDS ["RFi7fev9SWeNwFpcSvLwMhsHGxm1","ePOMhvhO5sYIN8F2nr0fk12nue13","VoI4XAAtX5XmIDlMvySefI1z5Ts1"] VERIFICATION_EMAIL ["sent","sent","sent"]
+  ✓  1 e2e-live/web-launch.spec.ts:92:5 › real Firebase + R2 from the production origin: sign-up → roles → upload → completion → ranged playback → approval; isolation holds (46.4s)
+
+  1 passed (58.8s)
+EXIT=0

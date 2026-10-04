@@ -465,3 +465,14 @@ $ focus-visible.spec.ts alone, scroll-padding switched off      2 failed: "scrol
   PUT preflight from https://pocketqa.optijara.ai → 204; from https://evil.example → 403; GET → 403
   ```
 
+## 2026-10-04 (evening): web launch closure, candidate `2f5cec4` (`feat/web-launch-e2e`)
+Full outputs are in `docs/reviews/production/web-launch/`; the live run log and fixture inventory are in `docs/reviews/production/live/web-live-e2e.txt`.
+- **`pnpm verify`:** EXIT=0. Secrets: 737 files, no findings. Tests: scripts 56, contracts 17, domain 170, API 376 plus 2 skipped, mobile 1021.
+- **Browser:**
+  - Playwright 14/14, EXIT=0;
+  - Firebase emulator E2E 4/4, EXIT=0;
+  - `pnpm test:e2e:live` 1/1, EXIT=0 (real Firebase and R2, non-production API, production web build and front door).
+- **Live UIDs created by the passing run:** `RFi7fev9SWeNwFpcSvLwMhsHGxm1`, `ePOMhvhO5sYIN8F2nr0fk12nue13`, `VoI4XAAtX5XmIDlMvySefI1z5Ts1`.
+- **Inventory after all runs:** 17 synthetic Firebase users and 18 objects in `pocketqa-evidence`. Nothing deleted.
+- **Not run:** the billing read. A read-only Cloud Billing GET via the Firebase CLI login was **denied** by the session's permission system and not retried by any route.
+

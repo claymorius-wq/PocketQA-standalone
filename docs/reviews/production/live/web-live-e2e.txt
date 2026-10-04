@@ -1,0 +1,59 @@
+Live web E2E on real providers (docs/production/web-launch.md §1). Lead, worktree feat/web-launch-e2e, 2026-10-04 (UTC).
+Non-production API: POCKETQA_ENV=development, R2 retention-only, deletion off. Synthetic data only. Nothing deleted.
+Web: production build (scripts/production/build-web.sh) behind scripts/production/web-server.mjs, loaded as https://pocketqa.optijara.ai,
+answered locally (Playwright route), so the deployed preview was never reached. No wallet is used and no real-wallet claim is made.
+
+Runs (all on this branch; the code under test is unchanged from 2f5cec4 except where noted):
+1  19:23Z  sign-up..review passed; FAIL at `evidence-media` assert (expo-video's web VideoView has no data-testid; trace showed playback-token 200 and /api/media 206). Spec fixed to assert on <video>.
+2  19:25Z  FAIL at the tester's sign-up: Firebase accounts:signUp 200, then accounts:sendOobCode 503, and the app wrongly showed "Couldn't create an account". DEFECT, fixed (honest "Account created, email not sent").
+3  19:28Z  PASS (plain static server; before the production front door existed).
+4  19:35Z  PASS via the production build and front door, 0 CSP violations; VERIFICATION_EMAIL ["sent","unsent","sent"]: the 503 recurred live and the fixed path carried the run through.
+5  19:36Z  NEGATIVE CONTROL (config temporarily set to a wrong R2 account in connect-src, then restored): FAIL at "Uploaded (1)" as expected; app showed "The upload didn't reach storage". No object was written.
+6  19:42Z  PASS at 2f5cec4 (docs/reviews/production/web-launch/e2e-live.txt).
+
+Read-only inventory after run 6 (scratch script; firebase-admin listUsers + R2 ListObjectsV2; prints no credentials):
+$ date -u; node inventory.cjs
+2026-10-04T19:43:34Z
+firebase users total 17; synthetic pqa-* 17
+  0Pfj1oClaZf4OI5TXVjDnt1fvoS2	pqa-weblive-tara-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:29 GMT
+  1wr6xje806Ps8KenOfW2S2eA5ua2	pqa-weblive-bea-muu81te5@example.test	verified=true	created=Sun, 04 Oct 2026 19:36:29 GMT
+  2x1bXt4gRjcgmLyeO2JftvUTDh23	pqa-weblive-omar-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:46 GMT
+  9IWQYD4BpuN7PvsfeZqGN6BUnFy2	pqa-weblive-tara-muu7niaf@example.test	verified=false	created=Sun, 04 Oct 2026 19:25:35 GMT
+  B8DulGO0EjPbAdQ37gAyQqXdIXi1	pqa-weblive-bea-muu7niaf@example.test	verified=true	created=Sun, 04 Oct 2026 19:25:21 GMT
+  RFi7fev9SWeNwFpcSvLwMhsHGxm1	pqa-weblive-bea-muu898z5@example.test	verified=true	created=Sun, 04 Oct 2026 19:42:15 GMT
+  VoI4XAAtX5XmIDlMvySefI1z5Ts1	pqa-weblive-omar-muu898z5@example.test	verified=true	created=Sun, 04 Oct 2026 19:42:47 GMT
+  av6THvhJZdV0VgdcvMyYFN1g96z2	pqa-weblive-bea-muu7r7tm@example.test	verified=true	created=Sun, 04 Oct 2026 19:28:14 GMT
+  bCoPMTtrVparTSHzwzV751VBhQh2	pqa-weblive-tara-muu81te5@example.test	verified=true	created=Sun, 04 Oct 2026 19:36:42 GMT
+  ePOMhvhO5sYIN8F2nr0fk12nue13	pqa-weblive-tara-muu898z5@example.test	verified=true	created=Sun, 04 Oct 2026 19:42:30 GMT
+  gvE7OcdCdEZX6vhkv2ewbCl7PPW2	pqa-weblive-tara-muu7r7tm@example.test	verified=true	created=Sun, 04 Oct 2026 19:28:28 GMT
+  iPfKORy96vYB1SsFK8wvNOujfbT2	pqa-live-1791139611817@example.test	verified=true	created=Sun, 04 Oct 2026 18:46:52 GMT
+  kdSb0SeGuebPxYE7lbLAIn6mkL43	pqa-weblive-omar-muu7r7tm@example.test	verified=true	created=Sun, 04 Oct 2026 19:28:44 GMT
+  t6Y7kNTX5ja90szNvpD8rIpHGQd2	pqa-weblive-tara-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:42 GMT
+  udP4fK794rUVhz2ekhN9Ng1OL5m2	pqa-weblive-bea-muu807td@example.test	verified=true	created=Sun, 04 Oct 2026 19:35:14 GMT
+  y50tR2xvnuRYurI6tVJdidFvm7Q2	pqa-weblive-omar-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:57 GMT
+  z4f4HJ1noMTjmCyJ9B5qqCACM512	pqa-weblive-bea-muu7l2g9@example.test	verified=true	created=Sun, 04 Oct 2026 19:23:28 GMT
+  r2 evidence/0d997720-1ba0-4fe8-94f8-8f1dd77f3ed8	35145	2026-10-04T19:35:41.695Z
+  r2 evidence/52559507-fb26-421e-b391-ffb160e1957a	35145	2026-10-04T19:23:53.018Z
+  r2 evidence/890376db-9100-45c1-87de-22b1322909e0	35145	2026-10-04T19:28:40.392Z
+  r2 evidence/a6ccf754-95e8-4581-b510-2328401576c6	35145	2026-10-04T19:42:42.564Z
+  r2 evidence/d145f146-d048-413d-8f48-ecc7605ded66	268	2026-10-04T01:33:58.054Z
+  r2 evidence/ec685a79-1fa4-429c-9c1d-f10756c0c596	268	2026-10-04T18:47:17.955Z
+  r2 evidence/livemut5dotfa5e0fca	268	2026-10-04T01:33:56.995Z
+  r2 evidence/livemuu6ajsd7428faa	268	2026-10-04T18:47:16.637Z
+  r2 quarantine/26f65e83-45e2-4430-973d-8f4ac470a8b7	72	2026-10-04T01:33:58.601Z
+  r2 quarantine/97701c8b-92fe-452b-a9ff-ab536f746707	35145	2026-10-04T19:42:41.576Z
+  r2 quarantine/a501fab0-93de-4b82-81e2-30df9b44cdba	268	2026-10-04T18:47:17.342Z
+  r2 quarantine/a94101f7-027c-4881-95a4-2e33be012bb9	35145	2026-10-04T19:28:39.666Z
+  r2 quarantine/c0057e0f-d150-46e8-a23a-bef8345f7276	72	2026-10-04T18:47:18.714Z
+  r2 quarantine/d1cbfa0e-ea52-4c44-b27f-11f7df62fbe3	35145	2026-10-04T19:35:41.022Z
+  r2 quarantine/df1fcc5b-0eef-432b-9144-f184aa4705d7	35145	2026-10-04T19:23:52.298Z
+  r2 quarantine/f70456ff-0d2a-4c18-85fe-9d90c6bd3a58	268	2026-10-04T01:33:57.581Z
+  r2 quarantine/livemut5dotfa5e0fca	268	2026-10-04T01:33:56.279Z
+  r2 quarantine/livemuu6ajsd7428faa	268	2026-10-04T18:47:15.652Z
+r2 pocketqa-evidence objects 18
+
+Notes:
+- pqa-weblive-tara-muu7niaf (run 2) stays unverified: its verification email was never sent (503) and the run stopped there.
+- iPfKORy96vYB1SsFK8wvNOujfbT2 and the 268/72-byte objects predate this work (earlier live provider tests).
+- Retention-only mode copies quarantine/<id> to evidence/<id> and keeps both; 4 web uploads = 8 objects.
+- All of the above belong on the A5 cleanup list. No deletion was attempted.

@@ -4,6 +4,16 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-04, evening): web launch closure (`feat/web-launch-e2e` from main `4b48a29`)
+- **Live web E2E on the real providers passes** (`pnpm test:e2e:live`).
+  - Real Firebase `pocketqa-optijara` and real R2 `pocketqa-evidence`, through the app UI, loaded as `https://pocketqa.optijara.ai` and answered by the local production front door.
+  - The API is explicitly non-production (development, retention-only, deletion off). Synthetic data only, nothing deleted.
+  - Covered: sign-up, verify, sign-in, publishing with test credits, consent, a browser PUT to R2 (200 under the real CORS rule), completion, 404 role isolation, 206 ranged playback, approval, and 0 CSP violations.
+- **New production front door** `scripts/production/web-server.mjs`, plus tests and a launchd unit. The preview gate's `connect-src 'self'` would have blocked Firebase Auth and R2 in production. The negative control shows the CSP check catches a wrong origin.
+- **Defect found live and fixed:** Firebase 503 on the verification email made sign-up falsely report failure.
+- **Plan:** `docs/production/web-launch.md` (acceptance, cutover and rollback, gates). No live cutover: A5, A9, the Firebase plan and Identity Platform console check, A7 and B4 are still open.
+- **Billing:** the read-only Cloud Billing GET with the Firebase CLI login was denied by the session's permission system and not retried. It stays a console check for Hamza.
+
 ## Current work (2026-10-04): production readiness (`feat/production-readiness`, base `9461db5`)
 Hamza's production request, relayed by the parent. Each increment was reviewed by pqa-qa (read-only) before its commit:
 
