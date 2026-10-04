@@ -359,3 +359,29 @@ Guards (fake credentials, no requests sent): wrong account → "refusing: not th
   - The bucket is pinned to `pocketqa-evidence`.
   - `pnpm verify` → EXIT=0 (`docs/reviews/cloud/live/safety-pnpm-verify.txt`): API 342 passed, 2 skipped.
 
+
+## 2026-10-04: Lens screens, PR #3 (contributor session, claymorius-wq; Windows 11 clone of `feat/lens-ui` at `ad99009`)
+
+**Where the output is.** The raw output of every command below is in `docs/reviews/lens/`, with local paths shortened to `<repo>` and `<tmp>` and the emulator's one-time codes masked. `candidate.md` there explains each file. Node v24.21.0, pnpm 10.32.1.
+
+**How Playwright was run.** Both suites ran through a git-ignored mirror of the repo's configs:
+- ports 8788, 8091 and 8900;
+- `env:` instead of the POSIX `VAR=x cmd` syntax;
+- screenshots written outside `docs/reviews`.
+
+```
+$ pnpm verify                                   EXIT=1 at the root scripts tests: tests 37, pass 33, fail 4
+                                                (the 4 POSIX 0600 file-mode checks; same on main d358a05 here; code unchanged by PR #3)
+  check:secrets passed: 590 committable files scanned, no findings.   secret check: 18 values, 590 files, 0 occurrences
+  typecheck: 4 projects Done.   lint: no output.
+$ pnpm -r --if-present test                     contracts Tests 15 passed (15); domain Tests 170 passed (170)
+                                                API Tests 1 failed | 341 passed | 2 skipped (344)
+                                                (config.bind expects a POSIX path; same on main d358a05 here; code unchanged by PR #3)
+$ pnpm --filter @pocket-qa/mobile test          Test Suites: 42 passed, 42 total   Tests: 983 passed, 983 total
+$ playwright test (mirror of playwright.config.ts)            11 passed (1.9m)
+$ firebase emulators:exec ... test/firebase-emulator.test.ts  Tests 2 passed (2); the file failed in afterAll: rmSync EPERM (Windows)
+$ firebase emulators:exec ... playwright.firebase.config.ts   2 passed
+$ the offline test alone                        origin/main: 1 failed (strict mode: two empty-states); 75e009a: 1 failed; ad99009: 1 passed
+```
+
+Not run here, because no device was attached: the Maestro native flows, the iOS flows and the Seeker performance check.

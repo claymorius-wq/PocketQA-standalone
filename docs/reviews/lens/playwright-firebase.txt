@@ -1,0 +1,19 @@
+# HEAD ad99009 (fix(ui): apply the r2 QA review (3 P3s)), 2026-10-04T11:25:41Z, v24.21.0, pnpm 10.32.1, Windows 11
+$ firebase emulators:exec --only auth --project demo-pocketqa "pnpm --filter @pocket-qa/mobile exec playwright test -c artifacts/integ/fb/playwright.firebase.config.ts"   (= pnpm test:e2e:firebase on 8788/8091)
+i  emulators: Starting emulators: auth
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  Running script: "node" "pnpm.cjs" --filter @pocket-qa/mobile exec playwright test -c artifacts/integ/fb/playwright.firebase.config.ts
+
+Running 2 tests using 1 worker
+
+i  To verify the email address fb-1791113160952@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=<masked>&apiKey=<masked>
+  ok 1 artifacts\integ\fb\e2e-firebase\firebase-auth.spec.ts:19:5 › email sign-up → verify → sign in → choose a role → app; the session survives a reload (3.7s)
+  ok 2 artifacts\integ\fb\e2e-firebase\firebase-auth.spec.ts:57:5 › the API refuses local password sign-in in firebase mode (one account system) (37ms)
+
+  2 passed (9.3s)
++  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+EXIT=0

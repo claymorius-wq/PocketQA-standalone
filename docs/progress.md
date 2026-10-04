@@ -4,6 +4,35 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Lens screens, PR #3 (2026-10-04, `feat/lens-ui`, contributor session, updated against main after PR #2)
+The Lens redesign comes from a contributor (claymorius-wq), built in a separate Claude Code session (`claude-opus-5-5`), not by the lead pane. PR #1 (the foundation) merged on 2026-10-03; PR #3 rebuilds every screen. Hamza asked for it to be updated against main, its conflicts resolved, its tests rerun and a review done before merging.
+
+**Done**
+- **Merged main into the branch.** The conflicts were in Sign in, Sign up and `review-loop.spec.ts`, and every PR #2 flow was kept. The merged tree is identical to the integration tested before PR #2 merged.
+- **Fixed main's "Check your email" notice.** Its body was bare text in a View: unstyled on web, never drawn on native.
+- **Renumbered the Lens ADR to 0006.** The cloud identity ADR keeps 0005.
+
+**Review.** The reviewers were read-only subagents of the contributor session, not the `pqa-qa` pane; each verdict is in `docs/reviews/lens/`.
+- r1, four areas: APPROVE ×3, and CHANGES_REQUIRED on builder/admin (1 P2).
+- Fixes: the P2 and 17 of 20 P3s, in `4875dbd`.
+- r2: APPROVE, with 3 P3s, fixed in `ad99009`.
+- r3: APPROVE, with one new P3, left open (below).
+
+**One e2e check scoped (`058268d`).** The offline test failed when run alone, on main too, because Discover's empty-state stays mounted.
+
+**Verification on `ad99009` (Windows 11).**
+- Everything passes except three Windows-only baselines, all in code PR #3 does not touch (identical to main):
+  - the root scripts' 0600 file-mode checks;
+  - the API `config.bind` path test;
+  - the emulator test's cleanup (EPERM).
+- Counts: app 983 tests, API 341, Playwright 11/11, Firebase emulator 2/2 + 2/2.
+- See `docs/verification.md` (2026-10-04, Lens screens) and `docs/reviews/lens/candidate.md`.
+
+**Open**
+- A native run on a Lens build: a dev-client rebuild, the Maestro flows, iOS, and the Seeker performance check, including the header scrim's SVG cost.
+- Web keyboard focus can land under the header scrim and the docks.
+- r3 1: after the 15 s pending escape, a sheet opened for another action or row stays bound to the request still running. The follow-up fix: reopen on the pending request's own action or row, and pass each request's target and fields as `mutate()` variables.
+
 ## Current work (2026-10-03): remaining local scope reviewed and merged (`feat/remaining-scope`, then `fix/r2-p3`)
 Hamza asked for the remaining local scope:
 - devnet transfer screen with honest awaiting, pending, confirmed, failed and expired states;

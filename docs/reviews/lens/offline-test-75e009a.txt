@@ -1,0 +1,48 @@
+# The offline test alone at 75e009a (this branch before the r1 fixes), before the scoped check: it fails the same way.
+# Method: the web export is built from that commit's apps/mobile/app and apps/mobile/src (the rest of the checkout is
+# identical to main apart from docs and test files); then only "offline state when the API is unreachable" runs, on a fresh
+# database, through the same Windows mirror of playwright.config.ts as playwright.txt.
+export EXIT=0
+
+Running 1 test using 1 worker
+
+  x  1 artifacts\integ\e2e\review-loop.spec.ts:214:5 › offline state when the API is unreachable (3.8s)
+
+
+  1) artifacts\integ\e2e\review-loop.spec.ts:214:5 › offline state when the API is unreachable ─────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByTestId('empty-state')
+    Expected: visible
+    Error: strict mode violation: getByTestId('empty-state') resolved to 2 elements:
+        1) <div data-testid="empty-state" class="css-g5y9jx r-1777fci r-uugskt r-ah86l4 r-1oknz3f r-145ew9a r-14gvhwr">…</div> aka getByTestId('discover-results').getByTestId('empty-state')
+        2) <div data-testid="empty-state" class="css-g5y9jx r-1777fci r-uugskt r-ah86l4 r-1oknz3f r-145ew9a r-14gvhwr">…</div> aka getByTestId('work-screen').getByTestId('empty-state')
+
+    Call log:
+      - Expect "toBeVisible" getByTestId('empty-state') with timeout 20000ms
+      - waiting for getByTestId('empty-state')
+
+
+      223 |   await ctx.unroute('http://127.0.0.1:8788/**');
+      224 |   await page.getByTestId('retry-button').click();
+    > 225 |   await expect(page.getByTestId('empty-state')).toBeVisible();
+          |                                                 ^
+      226 |   await ctx.close();
+      227 | });
+      228 |
+        at <repo>\apps\mobile\artifacts\integ\e2e\review-loop.spec.ts:225:49
+
+    Error Context: artifacts\integ\test-results\review-loop-offline-state-when-the-API-is-unreachable\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts\integ\test-results\review-loop-offline-state-when-the-API-is-unreachable\trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace artifacts\integ\test-results\review-loop-offline-state-when-the-API-is-unreachable\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    artifacts\integ\e2e\review-loop.spec.ts:214:5 › offline state when the API is unreachable ──────
+EXIT=1
