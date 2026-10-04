@@ -57,7 +57,7 @@
 | S4 | Browser direct upload and playback with seeking against real R2 from the production origin | P | ⛔ A3, A4 | | H-relayed |
 | S5 | **Real-user deletion policy.** Production plus r2 refuses to start until this is decided, because `ALLOW_DELETE=1` is prohibited and `RETAIN_NONPROD` is refused in production. | B | ⛔ A5 | | **open**: R2 deletion prohibited (H-direct) |
 | S6 | Real consented recording uploaded from Android (physical device) | H | ⛔ A6 | | H-direct |
-| S7 | Interrupted upload resumes (multipart/resumable) | C | ⬜ | Known follow-up; single PUT up to 100 MB today | plan |
+| S7 | Interrupted upload resumes (multipart/resumable) | C/B | ⛔ A5 | Blocked by the no-deletion rule. R2 multipart needs `AbortMultipartUpload` for abandoned uploads, and abort deletes the uploaded parts, which is R2 deletion. The lifecycle backstop was withdrawn. Without abort, abandoned uploads leave billed orphan parts forever. Build it only after A5, with abort routed through the `allowDelete`/outbox gate, after a design review. Single PUT up to 100 MB today | plan |
 
 ## Wallet
 
@@ -78,7 +78,7 @@
 | D2 | No demo seeding or public admin identity reachable in production | C | 🔧 | Production refuses local auth, so the demo seed's `/auth/register` is refused, and `admin:create` refuses non-local auth: `apps/api/test/admin-scripts.test.ts` (inc1)
 | D3 | Test-credit top-up unavailable in production: an honest error and the UI hides it, with no fake success | C | 🔧 | `apps/api/test/production-features.test.ts`; Credits screen notice (inc1)
 | D4 | Devnet demo transfer is not offered in production (devnet only, clearly labelled) | C | 🔧 | `production-features.test.ts`; transfer cards hidden (inc1)
-| D5 | The demo preview (`scripts/preview/*`) still works unchanged as an isolated fixture | C | ⬜ | | H-relayed |
+| D5 | The demo preview (`scripts/preview/*`) still works unchanged as an isolated fixture | C | ✅ | `scripts/preview/*` is unchanged on this branch. `preview-scripts.test.mjs` and `preview-gate.test.mjs` pass in every `pnpm verify`, and pqa-qa checked its A10 in every round
 
 ## Financial and product (business)
 

@@ -52,6 +52,26 @@ The criteria are A1–A10. Status values are open, source-checked, verified, gat
 | inc3 r1 | staged set, 36 files, base `90a5ddd` | APPROVE. P3s: the `pocketqa.local` MWA identity can't be verified (broken icon, no Digital Asset Links); transaction wording on login errors; the MWA statement lacks "only sign in the app"; Android firebase mode, W5 and W6 untested | `docs/reviews/production/inc3-verdict-qa-r1.md` |
 | inc4 r1 | staged set, 20 files, base `16378f4` | APPROVE. P3s: backups keep deleted accounts and a restore undoes deletions (fold into A5); `db:backup` runs migrations on the live DB; the restore relies on a port probe; the env file is sourced as shell; the backup dir symlink isn't resolved | `docs/reviews/production/inc4-verdict-qa-r1.md` |
 | inc4 r2 | staged set, 28 files, base `16378f4` | APPROVE. The r1 P3s are fixed. New P3s: the runbook env example's inline comments break the literal parser (fails closed); no unit test for "unreachable"; optional key allowlist | `docs/reviews/production/inc4-verdict-qa-r2.md` |
+| freeze r1 | `9461db5..4028884` plus the staged freeze set | APPROVE. My A1–A10 reconcile with the acceptance ledger with no contradictions. P3s: PR body wording; carry the lead's advisor and subagent disclosure into the PR; close out the 🔧 statuses | `docs/reviews/production/freeze-verdict-qa-r1.md` |
+
+### freeze r1: executable evidence (freeze tree, Node 24.21.0)
+- **`pnpm verify`:** EXIT=0. Secrets 624; scripts 47; contracts 17; domain 170; API 369 plus 2 skipped; mobile 731.
+- **Playwright:** 12/12. Screenshots restored.
+- **`pnpm test:e2e:firebase`:** 4/4.
+- **`build-web.sh /api`:** EXIT=0, secrets 0/29.
+- **`git diff 9461db5 HEAD -- scripts/preview`:** empty (A10).
+- **Branch grep:** no added R2 delete or bucket-config path (A9).
+
+### Final status (freeze)
+- **Verified locally:** A3, A6 (code), A7 (local), A8, A10.
+- **Verified on an emulator only:** A4 (web and MWA, mock wallet) and A5.
+- **Gated:**
+  - A1: live Firebase, waiting on access actions A1 and A2;
+  - A2: the token, CORS and browser upload, waiting on A3 and A4;
+  - A4: real wallets, physical device and A8;
+  - A5: physical device;
+  - A7: production host;
+  - A9: Hamza's deletion policy (access action A5).
 
 ### inc4 r2: executable evidence
 - **`pnpm verify` with Node 24.21.0:** EXIT=0. Secrets 620 files; scripts 45; contracts 17; domain 170; API 369 plus 2 skipped; mobile 729.

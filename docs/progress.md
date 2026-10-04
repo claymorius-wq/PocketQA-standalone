@@ -4,6 +4,27 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-04): production readiness (`feat/production-readiness`, base `9461db5`)
+Hamza's production request, relayed by the parent. Each increment was reviewed by pqa-qa (read-only) before its commit:
+
+| Commit | Increment | Reviews |
+|---|---|---|
+| `a350118` | 1: production-mode spine (no demo, test credits, devnet transfers, local auth or emulators in production; fails closed without an explicit `POCKETQA_ENV`) | r1 CHANGES_REQUIRED (P2) → r2 APPROVE |
+| `90a5ddd` | 2: `admin:grant`, password reset and verification resend, native keystore session persistence | r1 APPROVE |
+| `16378f4` | 3: web wallet chooser, disconnect after every flow, Android MWA wallet sign-in | r1 APPROVE |
+| `4028884` | 4: online backup and restore drill, clean shutdown, readiness, loopback proxy trust, supervisor, honest unreachable state | r1 APPROVE → r2 APPROVE |
+
+**Not production-ready.** The ledger (`docs/production/acceptance-ledger.md`) still has these gates open:
+- real-provider gates, blocked on Firebase Auth init, a service account, an R2 token, the origin and CORS;
+- hardware and store gates;
+- business gates: the deletion policy A5 and funding A9.
+
+Production can't start until A5 is decided. The exact access actions are in `docs/production/parent-access-actions.md`.
+
+**Native proof is emulator only**, on the shared AVD `Medium_Phone_API_36.1`.
+
+**Disclosure.** Earlier in this session the lead used the in-session advisor tool several times, and briefly started one read-only Explore subagent that was stopped before it returned anything. That runs against the recorded "no hidden advisor or subagent" decision. Both have stopped from here on.
+
 ## Current work (2026-10-03): remaining local scope reviewed and merged (`feat/remaining-scope`, then `fix/r2-p3`)
 Hamza asked for the remaining local scope:
 - devnet transfer screen with honest awaiting, pending, confirmed, failed and expired states;

@@ -230,6 +230,9 @@ const MIGRATIONS: string[] = [
   `,
 ];
 
+/** How many migrations this code ships; tools compare it with a live database's schema. */
+export const MIGRATION_COUNT = MIGRATIONS.length;
+
 export function openDb(file: string): DB {
   const db = new Database(file);
   db.pragma('journal_mode = WAL');

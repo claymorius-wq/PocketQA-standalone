@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join as pathJoin } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CLI_ACTOR_ID, GrantError, grantAdmin } from '../src/adminGrant';
+import { openDb } from '../src/db';
 import { makeApp, STUDY, type TestApp } from './helpers';
 
 // Ledger I7: production admin provisioning is a host CLI over a verified managed identity.
@@ -71,5 +72,12 @@ describe('admin:grant CLI', () => {
     expect([local.status, local.stderr]).toEqual([1, expect.stringMatching(/admin:create/)]);
     const noReason = run(['ops@example.test'], { POCKETQA_DATA_DIR: dir });
     expect([noReason.status, noReason.stderr]).toEqual([2, expect.stringMatching(/usage/)]);
+    // Never migrates a live database: a schema that doesn't match this code is refused.
+    const old = openDb(pathJoin(dir, 'pocketqa.sqlite'));
+    old.prepare('DELETE FROM schema_migrations WHERE version = (SELECT MAX(version) FROM schema_migrations)').run();
+    old.close();
+    const fb = { POCKETQA_DATA_DIR: dir, POCKETQA_ENV: 'development', POCKETQA_AUTH_MODE: 'firebase', POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-staging', POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key' }; // check-secrets: allow (placeholder public Firebase web config in tests)
+    const mismatch = run(['ops@example.test', '--reason', 'Platform operations lead'], fb);
+    expect([mismatch.status, mismatch.stderr]).toEqual([1, expect.stringMatching(/doesn't match this code/)]);
   }, 60_000);
 });
