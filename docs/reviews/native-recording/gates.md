@@ -2,6 +2,7 @@
 
 - **Candidate:** `feat/native-voice-recording` code @ `0aaa89b` (= `fe89787` + pqa-qa's P3: the intro's entrances render still off screen); APK sha256 `6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9`. `fe89787` is the native branch with the AudioRecord + MediaCodec + MediaMuxer pipeline (`fdc8e95`, `30a98d9`), the off-screen entrance fix (`44fea59`) and pqa-ios's iOS parity (`267fca4`), merged with `origin/main` `daf0c85` (#10 intro, #11 badges and leaderboard).
 - **Evidence:** emulator and compile only. **This is not "mobile ready".** Real-phone recording, real speech, the iPhone broadcast and the Seeker are unproven.
+- **pqa-qa verdict r2: APPROVE** for code `0aaa89b` (`qa-native-verdict-r2.md`), scoped to Android pipeline structure, lifecycle and privacy on the emulator, plus the iOS compile only. No open P0–P2. Explicitly NOT approved, as device gates: (1) a non-silent signal and real speech on the shipping pipeline, incl. a ≥ 10 min real-phone capture gated with the signal check; (2) Seeker; (3) the iPhone broadcast runtime; (4) appops mic loss; (5) the real Android 15+ chip and lock stop.
 - History: the earlier MediaRecorder candidate (`c5e629d`) is superseded. Its voice stall is analysed in `docs/plans/native-capture-pipeline.md`.
 
 ## Words used here
