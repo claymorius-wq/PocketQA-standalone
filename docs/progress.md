@@ -4,6 +4,18 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-05): desktop web screen recording with microphone narration (`feat/screen-recording`, from main `6028f08`)
+- **Scope:** Hamza authorised the build. It's a local-only recorder in the tester's session on desktop browsers, offering per-session consent, the browser's own share dialog, mic narration, a live status with a timer, Stop, then replay, download or discard.
+- **Not in scope:** no upload, storage, network or AI. AI feedback and console-log collection are future work.
+- **Mobile and unsupported browsers:** an honest "not available" message. Native Android is unchanged.
+- **Plan:** `docs/plans/web-screen-audio-recording.md`, citing MDN and W3C. pqa-qa's threat review r1 set the acceptance bar T1–T15.
+- **Headers:** `microphone=(self)` and `display-capture=(self)` in both web servers (pqa-qa F1); the camera stays off.
+- **Evidence** (`docs/reviews/screen-recording/`):
+  - TDD with 14 mutants caught;
+  - real-Chromium tests on fake devices, with ffprobe showing VP9 video plus Opus audio and a non-silent narration track;
+  - `pnpm verify` and Playwright 19/19;
+  - a usability guide that separates what was tested from the untested real share dialog and microphone.
+
 ## Current work (2026-10-05): Squads v4 devnet feasibility pilot (ADR 0007 §10, `feat/wallet-rewards`)
 - **LIVE gate PASSED** (pqa-qa live verdict r2 APPROVE, 2026-10-05). Its scope:
   - devnet test USDC only, and test keys simulate every role (no independent custody or physical wallet);

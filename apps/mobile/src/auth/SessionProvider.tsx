@@ -13,6 +13,7 @@ import { PRODUCTION_BUILD } from '../lib/deployment';
 import { endsRestoredSession, resolveManagedSession } from './managedSession';
 import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
+import { disposeAllWebRecorders } from '../evidence/webScreenRecorder';
 
 type NewAccount = { role: 'tester' | 'builder'; displayName: string };
 type Session = {
@@ -75,6 +76,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [unverifiedEmail, setUnverifiedEmail] = useState(false);
 
   const clear = useCallback(async () => {
+    // A web screen recording never outlives the session: stop its devices and drop its bytes.
+    disposeAllWebRecorders();
     token.current = null;
     setUser(null);
     setNeedsAccount(false);

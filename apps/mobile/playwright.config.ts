@@ -16,6 +16,21 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: { baseURL: 'http://localhost:8090', trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'] },
+  projects: [
+    // Every flow on a mobile-sized web view (the recorder there says it needs a computer).
+    { name: 'mobile-web', testIgnore: /web-recorder\.spec\.ts/ },
+    // The desktop web recorder in real Chromium, with SYNTHETIC media: the fake-UI flag accepts the
+    // share chooser and the fake devices supply a test-pattern screen and a tone for the microphone.
+    // No real screen, window or microphone is captured (docs/plans/web-screen-audio-recording.md).
+    {
+      name: 'desktop-recorder',
+      testMatch: /web-recorder\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--auto-accept-this-tab-capture'] },
+      },
+    },
+  ],
   webServer: [
     {
       // Loopback devnet JSON-RPC test double (see e2e/fake-devnet-rpc.mjs).

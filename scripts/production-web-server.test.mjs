@@ -63,6 +63,9 @@ describe('production web server', () => {
     assert.match(r.body, /<title>app<\/title>/); // SPA fallback
     assert.equal(r.headers['cache-control'], 'no-store');
     assert.equal(r.headers['x-frame-options'], 'DENY');
+    // The web recorder (docs/plans/web-screen-audio-recording.md): microphone and screen capture for this
+    // origin only; the camera stays off (pqa-qa F1/T15).
+    assert.equal(r.headers['permissions-policy'], 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()');
     assert.equal(r.headers['x-content-type-options'], 'nosniff');
     assert.match(r.headers['strict-transport-security'], /max-age=31536000/);
     const csp = r.headers['content-security-policy'];

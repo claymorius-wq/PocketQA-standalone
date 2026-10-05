@@ -1,0 +1,34 @@
+# Web screen recorder: TDD evidence (2026-10-05, Node v24.21.0, feat/screen-recording)
+
+## RED: tests written before the code
+$ npx jest __tests__/web-screen-recorder.test.ts
+  ● Test suite failed to run
+    Cannot find module '../src/evidence/webScreenRecorder' from '__tests__/web-screen-recorder.test.ts'
+Tests:       0 total
+$ npx jest __tests__/web-recorder-card.test.tsx
+    Cannot find module '../src/evidence/localDownload' from '__tests__/web-recorder-card.test.tsx'
+Tests:       0 total
+$ node --test scripts/preview-gate.test.mjs scripts/production-web-server.test.mjs   (permissions-policy asserted before the servers changed)
+ℹ pass 34
+ℹ fail 2
+
+## Mutation checks on the controller (each guard removed alone; the suite must fail)
+mutant 'T2: mic asked before the screen': Tests:       5 failed, 34 passed, 39 total
+mutant 'T3: mic failure keeps the screen share': Tests:       3 failed, 36 passed, 39 total
+mutant 'T4: late screen answer kept': Tests:       1 failed, 38 passed, 39 total
+mutant 'T4: late mic answer kept': Tests:       1 failed, 38 passed, 39 total
+mutant 'T5: extra audio track in the recorded stream': Tests:       1 failed, 38 passed, 39 total
+mutant 'T7: screen-ended not handled': Tests:       1 failed, 38 passed, 39 total
+mutant 'T7: tracks not released at the end': Tests:       4 failed, 35 passed, 39 total
+mutant 'T8: discard keeps the object URL': Tests:       1 failed, 38 passed, 39 total
+mutant 'T9: no byte cap': Tests:       1 failed, 38 passed, 39 total
+mutant 'T9: no duration cap': Tests:       1 failed, 38 passed, 39 total
+mutant 'T6: first candidate forced': Tests:       3 failed, 36 passed, 39 total
+mutant 'T12: mobile not detected': Tests:       4 failed, 35 passed, 39 total
+mutant 'review start allowed (silent draft loss)': Tests:       1 failed, 38 passed, 39 total
+mutant 'sign-out registry ignored': Tests:       1 failed, 38 passed, 39 total
+
+## GREEN
+Tests:       51 passed, 51 total
+ℹ pass 36
+ℹ fail 0

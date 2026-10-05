@@ -121,7 +121,9 @@ function securityHeaders(secure) {
     'x-frame-options': 'DENY',
     'referrer-policy': 'no-referrer',
     'x-robots-tag': 'noindex, nofollow',
-    'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    // Microphone and screen capture for this origin only: the local-only web recorder
+    // (docs/plans/web-screen-audio-recording.md). The camera stays off.
+    'permissions-policy': 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()',
     'cross-origin-opener-policy': 'same-origin',
     ...(secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
   };
