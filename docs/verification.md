@@ -845,3 +845,22 @@ Branch `feat/lens-badges` at `3ba55de`, from main `ae0b501`. Playwright ran thro
     - `intro.spec.ts` "on a short screen…": "Target page, context or browser has been closed" mid-test.
     - `remaining-scope.spec.ts:99`: the devnet demo transfer's "CONFIRMED ON DEVNET" did not appear in time.
   - Both passed in every earlier run. Re-run alone on the same export: 10 passed (1.0m): intro.spec.ts 7 and remaining-scope.spec.ts 3.
+
+
+## 2026-10-06: native recording, new capture pipeline + main merged (lead, `feat/native-voice-recording` @ fe89787). EMULATOR/COMPILE ONLY
+Gate ledger: `docs/reviews/native-recording/gates.md`. Research and design: `docs/plans/native-capture-pipeline.md`.
+- **Pipeline** (`fdc8e95`, `30a98d9`): AudioRecord, MediaCodec (AAC, H.264 from a surface) and MediaMuxer replace MediaRecorder.
+  - Kotlin tests: PendingStore 10, VoiceCheck 9 (ran on the real emulator clips), PipelineLogic 10, CaptureMath 2; RED, then GREEN.
+  - pqa-qa's pipeline review r1 P2-C, P2-D and P3s were fixed, and r2 confirmed them.
+- **UI fix** (`44fea59`): entrances that start while the app is off screen render settled. Jest background-entrance 5, RED (3 failing), then GREEN.
+- **Emulator** (`-no-audio`: the guest mic is digital silence, so the verdicts are **structure only**). Details: `docs/reviews/native-recording/android-pipeline/`.
+  - control, stress, call, dka and death PASS;
+  - micoff did not exercise mic loss;
+  - combined cross-app run with main's intro: rc=0, video 49.009 s, audio 49.017 s, gaps 0, `PqaCapture` gaps 0 / lost 0, overruns 0.
+- **Merge of origin/main `daf0c85`** (`fe89787`):
+  - conflicts in `_open-session.yaml` (intro skip plus the native mic permission) and docs; kept both sides;
+  - `pnpm install --frozen-lockfile` clean;
+  - **`pnpm verify` EXIT=0**: secrets 1017 files, no findings; scripts 60, contracts 17, domain 222, API 573 plus 2 skipped, mobile 63 suites / 1344 tests (`docs/reviews/native-recording/verify.txt`);
+  - **Playwright 28/28** (`playwright.txt`); the rewritten gate-a, remaining-scope, screen-recording and wallet-rewards/browser screenshots were restored from Git.
+- **APK** at fe89787: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, sha256 `277e8744837819958af2e57acd37685bdc712e46c50755bc3224274e4b8b91a9`, 52483457 bytes, Android Debug cert.
+- **Not proven:** a non-silent signal through the new pipeline (BLOCKED (infra) on the emulator), speech, any real phone, the Seeker, or an iPhone broadcast.

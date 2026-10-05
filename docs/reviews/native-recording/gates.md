@@ -1,45 +1,46 @@
-# Native screen + voice recording: what is proven, what is blocked (2026-10-05)
+# Native screen + voice recording: what is proven, what is blocked (updated 2026-10-06)
 
-Code freeze candidate: `feat/native-voice-recording` @ `c5e629d`. Evidence is **emulator and simulator only**.
-**This is not "mobile ready".** Real-phone recording, real speech and the iPhone broadcast are unproven.
+- **Candidate:** `feat/native-voice-recording` @ `fe89787`. That is the native branch with the AudioRecord + MediaCodec + MediaMuxer pipeline (`fdc8e95`, `30a98d9`), the off-screen entrance fix (`44fea59`) and pqa-ios's iOS parity (`267fca4`), merged with `origin/main` `daf0c85` (#10 intro, #11 badges and leaderboard).
+- **Evidence:** emulator and compile only. **This is not "mobile ready".** Real-phone recording, real speech, the iPhone broadcast and the Seeker are unproven.
+- History: the earlier MediaRecorder candidate (`c5e629d`) is superseded. Its voice stall is analysed in `docs/plans/native-capture-pipeline.md`.
 
 ## Words used here
-- **Synthetic non-silent signal**: on the Android emulator, the microphone delivers the emulator HAL's own 220 Hz tone. The HAL falls back to it when it can't open a host capture source; the host mic was off throughout. Seeing it in a recording proves that the app's **microphone path** is captured live and muxed with the screen for the whole clip. It does **not** prove that speech is captured, intelligible or well levelled: **speech microphone verification** needs a real phone and a person talking.
-- **BLOCKED (infra)**: the test harness failed, not the app, and there was one bounded retry (parent's rule, 2026-10-05). It is neither a pass nor a product failure.
+- **Structure only:** the emulator now runs with `-no-audio`, so its microphone delivers **digital silence**. The gate (`check-voice.py --structure-only`) then proves:
+  - one H.264 and one AAC stream;
+  - |audio − video| ≤ 1 s;
+  - no audio timestamp gaps (the samples held account for the duration within 0.5 s);
+  - the pipeline's own `PqaCapture` stop line (gaps, lost ms, dropped chunks).
+
+  It does **not** prove that a signal reached the file.
+- **Synthetic non-silent signal:** the emulator HAL's 220 Hz tone. It was seen only with the old MediaRecorder build (run 5, r3), before fresh emulator instances began aborting in host CoreAudio. It is **not speech verification**.
+- **BLOCKED (infra/harness):** the test harness or emulator failed, not the app.
 
 ## Proven (engineering scope)
 | Gate | Evidence |
 |---|---|
-| Android records the screen and microphone while the tester uses **other apps**, stops from the notification, and returns the clip for review; it uploads only through Keep + Upload (local API) | r3 `voice-cross-app.yaml` rc=0 on APK `07415792…` (= freeze build); frames from the clip show Pocket QA (Stop shown), Settings › Display & touch, the launcher, and the notification shade "Pocket QA is recording your screen and microphone"; `android-r3/` |
-| The clip carries the (synthetic) mic signal for its **whole** length | r3: video 276.108 s, audio 275.505 s, \|a−v\| 0.604 s; 56 × 5 s windows from −3.0 to −3.2 dBFS (`android-r3/check-voice-cross-app.txt`). Run 5: 230.366 / 229.645 s, 46 windows (`android-cross-app/probe.txt`) |
-| Signal provenance is honest | Live emulator HAL log "failed to create alsa source for 'AUDIO_DEVICE_IN_BUILTIN_MIC'; creating a tone source instead"; AOSP `device_port_source.cpp`; AudioService `src:MIC … pack:com.reshareai.pocketqa … silenced:false` (`android-cross-app/probe.txt`) |
-| A refused microphone records nothing (no video-only clip) | `voice-mic-denied.yaml` PASS (APK before the voice-check fix; that JS path is unchanged) |
-| **A voice that stops early is caught** (release blocker) | The preserved emulator failure (video 391.7 s, AAC 202.7 s; sha256 `f221c20c…`, kept privately) is detected by `VoiceCheckTest` on the real file; synthetic truncated and no-audio fixtures; the UI says "Voice stops at m:ss of m:ss…" and offers Remove only (jest). Same rule on iOS (pqa-ios swiftc tests) |
-| Clips survive the screen being destroyed in the background; only their session lists them; sign-out and account deletion clear them; a recording lost to process death is reported once | Kotlin `PendingStoreTest` 10; jest session 40 and sign-out 1; 13/13 mutants caught |
-| iPhone code compiles for the Simulator: app plus the Broadcast Upload Extension, embedded with its App Group | see "iOS compile" below |
+| Android records the screen and microphone while the tester uses **other apps**; notification Stop; the clip returns for review; upload only through Keep + Upload (local API) | combined build `fe89787`, APK `277e8744…91a9`: `voice-cross-app.yaml` rc=0, **including main's intro** (shown and skipped on a fresh install, not shown again on return); `android-pipeline/combined-cross-app.txt` |
+| The audio path stays continuous under the stimuli seen at the old stalls | `android-pipeline/README.md`, "stress": rotation, uiautomator bursts, forced dexopt and lock during one recording; gaps 0, lost 0, overruns 0, 238.188 / 238.121 s |
+| Lifecycle | control PASS; call PASS (the system silenced the mic, the app stopped itself, the clip came back and uploaded); dka PASS (the activity was destroyed while away, the recording survived, P2-A); death PASS (the interrupted notice, no clip); `android-pipeline/README.md` |
+| A voice that stops early, or is missing in the middle, is caught and can't be uploaded | VoiceCheck (edge max(1 s, 2 %); mid-clip lost > 1 s or a gap > 0.5 s), JVM tests on synthetic and real MP4s, including the preserved failure clip; jest copy and no Keep; `check-voice-selftest.sh` 8/8 (pqa-qa reproduced it with its own gapped fixture) |
+| A refused microphone records nothing | `voice-mic-denied.yaml` PASS |
+| A clip and stop notice that arrive while the app is off screen are visible on return | the bug found in the call scenario (`call-before-fix-blank.png`), fixed in `44fea59` (`call-clip-visible-after-fix.png`); jest RED → GREEN |
+| Sign-out and account deletion clear clips; only the clip's own session lists it | Kotlin PendingStore tests; jest sign-out |
+| Workspace | `pnpm verify` EXIT=0 at `fe89787` (mobile 63 suites, 1344 tests); Playwright 28/28 |
+| iPhone code compiles: the app plus the Broadcast Upload Extension | see "iOS compile" |
 
-## BLOCKED (infra): Android lifecycle scenarios on the emulator
-Harness and flows are committed (`apps/mobile/e2e/maestro/voice-lifecycle.sh`, `_voice-*.yaml`, `check-voice.py`). They are ready to run again on healthier infrastructure or a phone.
-
-| Scenario | What happened (r3) |
+## Not exercised or BLOCKED
+| Item | Status |
 |---|---|
-| rotation | Recording started and survived landscape (projection active). The stop and upload flows failed twice each: "Maestro Android driver did not start up in time". A new Maestro session can't attach while a projection is running on this emulator (also seen in r1). The single-session cross-app flow is unaffected. |
-| lock | Start flow: Maestro gRPC `UNAVAILABLE` "Command failed (tcp:…): closed" |
-| call, micoff (appops RECORD_AUDIO ignore), dka (always_finish_activities), death | not reached after the above. Run stopped under the bounded-retry rule. |
-
-Earlier, the r1 run observed (manually, through adb) that a recording continued through landscape and back, and that an in-app Stop produced a reviewable clip. Its audio stopped at 202.7 s, which was the blocker now detected. On this emulator image, screen lock does **not** stop projection (also seen 2026-10-03).
+| A non-silent mic signal through the **new** pipeline | **BLOCKED (infra)** on this emulator. Fresh instances with host audio abort in CoreAudio at the first mic open; `-no-audio` gives silence; the HAL's simulate-input property wasn't applied. It is part of the device gate. |
+| Mic loss via `appops RECORD_AUDIO ignore` | **Not exercised**: on this image it didn't silence a capture that was already running. Silencing is covered by the call scenario. |
+| Root cause of the old MediaRecorder stall | **Not proven.** It correlated with bursts of system work, and the control run before the switch never executed. The new pipeline is built so that a stall can't pass silently, and the stress run passed. |
+| Lock stopping projection (documented for Android 15 QPR1+) | not on this Android 16 emulator image (projection stays live). Handled either way. |
 
 ## Hardware gates (need a person with the device)
-1. **Android phone / Solana Seeker**: install the APK (`docs/handoff/native-recording-device-install.md`, USB + `adb reverse`), record 1–2 minutes across two real apps while **speaking**, then stop from the notification, keep and upload. Verify the speech is audible and the voice check passes. Repeat with rotation, lock (Android 15 QPR1+ stops on lock), an incoming call, and Settings › Apps › Pocket QA › Microphone off mid-recording. **Seeker** has not been connected at all; no Seeker-specific API is used or claimed.
-2. **iPhone**: needs an Apple Developer team, App IDs `com.reshareai.pocketqa` and `com.reshareai.pocketqa.Broadcast`, App Group `group.com.reshareai.pocketqa` on both, development profiles, and a signed install. Then: picker → Microphone on → Start Broadcast → other apps while speaking → stop from the status indicator → review in Pocket QA. The Simulator cannot run a system broadcast.
-3. **Untethered phone**: needs an approved https backend (`EXPO_PUBLIC_API_URL`); the cookie-gated preview can't serve the native app.
+1. **Android phone and Solana Seeker:** install the APK (`docs/handoff/native-recording-device-install.md`); record **at least 10 minutes** across two real apps while **speaking**; then stop, keep and upload. The speech must be audible, and the clip must pass `check-voice.py` with the signal check on. Repeat with rotation, lock, an incoming call, and the microphone switched off in Settings mid-recording. No Seeker has been connected; no Seeker-specific API is used or claimed.
+2. **iPhone:** an Apple Developer team; App IDs `com.reshareai.pocketqa` and `com.reshareai.pocketqa.Broadcast`, with App Group `group.com.reshareai.pocketqa` on both; profiles; a signed install. Then: picker → Microphone on → Start Broadcast → other apps while speaking → stop → review.
+3. **Untethered phone:** an approved https backend (`EXPO_PUBLIC_API_URL`).
 
-## iOS compile (frozen combined code `c5e629d`; pqa-ios, `ios-build.txt` §12, evidence commit 8ec331e)
-- `expo prebuild --platform ios --clean`, then `pod install`, then `xcodebuild -workspace PocketQA.xcworkspace -scheme PocketQA -sdk iphonesimulator -configuration Debug -jobs 4 CODE_SIGNING_ALLOWED=NO build` gave **BUILD SUCCEEDED** with 0 errors. 543 compiler warnings plus 2 script-phase warnings, **all third-party** (React-Core, Pods headers, Expo modules…), **0 in our sources**.
-- Lead's independent check of the built bundle:
-  - `PocketQA.app` is `com.reshareai.pocketqa`;
-  - `PlugIns/PocketQaBroadcast.appex` is `com.reshareai.pocketqa.Broadcast`, with `NSExtensionPointIdentifier` `com.apple.broadcast-services-upload` and `RPBroadcastProcessMode` `RPBroadcastProcessModeSampleBuffer`;
-  - archs x86_64 and arm64.
-- App Group `group.com.reshareai.pocketqa` is in both generated entitlements files. The build is **unsigned**, so the entitlement is not signed into the binaries.
-- Swift handoff and voice-check tests at `c5e629d`: 27, 0 failures (macOS swiftc). Plugin jest 14/14.
-- **Not proven:** any broadcast recording. The Simulator can't run a system broadcast. That needs a physical iPhone and a team whose profiles include the App Group for both bundle ids.
+## iOS compile
+- At `c5e629d`: BUILD SUCCEEDED, 0 warnings in our sources (`ios-build.txt` §12).
+- At `fe89787`: pending (pqa-ios, §14).

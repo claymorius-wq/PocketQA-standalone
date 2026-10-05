@@ -4,6 +4,16 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-06): native recording, new capture pipeline, merged with main (`feat/native-voice-recording` @ fe89787)
+- **Why:** MediaRecorder's audio stopped for good mid-recording on the emulator, three times, and reported nothing.
+- **Fix:** our own AudioRecord + MediaCodec + MediaMuxer pipeline. The design follows WebRTC's reference mic capture, Zoom's documented MediaProjection + microphone FGS route, and Android's input-sharing rules, all cited in `docs/plans/native-capture-pipeline.md`. Meet's internals are not claimed.
+- **Also fixed:**
+  - voice lost mid-clip now has its own bound;
+  - an evidence gate that couldn't see timestamp gaps;
+  - clip rows and notices that stayed invisible when they arrived while the app was off screen.
+- **main `daf0c85`** (intro, badges) is merged in this worktree, not into main: verify passes and Playwright is 28/28; the combined cross-app run passes with the intro.
+- **Emulator results are structure only** (its mic is silence). A non-silent signal, speech, real phones, the Seeker and an iPhone broadcast are gates (`docs/reviews/native-recording/gates.md`). **Not merged; awaiting pqa-qa's verdict and pqa-ios's iOS compile at fe89787.**
+
 ## Current work (2026-10-05): native screen + voice recording across apps (`feat/native-voice-recording`, from main `ae0b501`)
 - **Scope:** Hamza authorised it, relayed by the parent. A tester starts recording in Pocket QA, switches to OTHER apps and narrates, then reviews, keeps or discards the clip back in Pocket QA. Upload happens only through the explicit existing path. Android/Seeker uses MediaProjection plus a `mediaProjection|microphone` foreground service; iPhone uses a ReplayKit Broadcast Upload Extension with an App Group (built by pqa-ios, `wX:p3`, and merged). Mobile web says honestly that it can't capture other apps.
 - **Freeze candidate `c5e629d`**, awaiting pqa-qa's verdict. pqa-qa reviewed the code and found no new P0–P2; its verdict is blocked on the lifecycle evidence. **Not merged.**
