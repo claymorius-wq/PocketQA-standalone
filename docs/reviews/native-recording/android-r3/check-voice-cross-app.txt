@@ -1,0 +1,4 @@
+video 276.108 s, audio 275.505 s, |a-v| 0.604 s (limit 1.0 s)
+56 windows of 5 s; min -3.2 dBFS, max -3.0 dBFS; below -40 dBFS: 0 (0 in the allowed tail)
+PASS
+4261d93a2420fc7cd8d02fc839e45f750a66abbe3ce132fa17b0f8dd703aef21  r3/cross-app/uploaded.mp4 (kept privately, git-ignored)

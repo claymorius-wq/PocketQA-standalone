@@ -670,3 +670,48 @@ Full outputs are in `docs/reviews/screen-recording/`.
 - **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
   - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
 
+
+## 2026-10-05: native screen + voice recording across apps (lead, `feat/native-voice-recording`). EMULATOR/SIMULATOR ONLY
+Freeze candidate **`c5e629d`**. Gate ledger: `docs/reviews/native-recording/gates.md`. Install/backend guide: `docs/handoff/native-recording-device-install.md`.
+**Not "mobile ready"**: no physical Android, Seeker or iPhone was used, and no real speech was recorded.
+
+### Android APK (built at c5e629d)
+```
+$ ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4   (JAVA_HOME=Android Studio JBR)
+BUILD SUCCESSFUL in 35s
+apps/mobile/android/app/build/outputs/apk/release/app-release.apk  52416705 bytes
+sha256 074157921a1ea38662df280364b17c6bd6c36167cc5c3d84e24df4b2a4515c75
+apksigner: Signer #1 certificate DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US
+aapt2: package com.reshareai.pocketqa versionCode 1 versionName 0.1.0; targetSdkVersion 36
+on-device base.apk (emulator-5556) sha256 = 074157921a1ea38662df280364b17c6bd6c36167cc5c3d84e24df4b2a4515c75
+```
+
+### Unit tests and mutation
+- Kotlin (`./gradlew :pocketqa-screen-capture:testDebugUnitTest -Dpqa.voiceClips=<private dir>`): PendingStoreTest 10, VoiceCheckTest 8 (0 skipped: it ran on the real emulator clips), CaptureMathTest 2. RED first: the classes were missing, then the PendingStore API.
+  - VoiceCheck on the preserved emulator failure clip (sha256 f221c20c…cbccd): video 391.72 s, voice 202.69 s, so incomplete. Run 5 clip: complete.
+- Jest: participation-session 40, sign-out-recordings 1. RED: 6 failing, then the Android AppState race (1 failing), then GREEN.
+- Mutants: 8/8 Kotlin and 5/5 JS caught. One Kotlin survivor (empty-tag listing) was found, then caught by a new test.
+
+### Emulator evidence (emulator-5556: own AVD PocketQA_Recorder_API36, Android 16 / API 36; host mic OFF)
+- **r3 cross-app** (APK 07415792…): `voice-cross-app.yaml` rc=0.
+  - `check-voice.py`: video 276.108 s, audio 275.505 s, |a−v| 0.604 s; 56 × 5 s windows from −3.0 to −3.2 dBFS; PASS (`docs/reviews/native-recording/android-r3/`).
+- **Run 5 cross-app** (earlier APK): 230.366 / 229.645 s; PASS (`android-cross-app/probe.txt`).
+- **Signal:** the emulator HAL's 220 Hz built-in-mic tone fallback. The HAL logged "failed to create alsa source for 'AUDIO_DEVICE_IN_BUILTIN_MIC'; creating a tone source instead", observed live; the source is AOSP `device_port_source.cpp`. This is a **synthetic non-silent signal, not speech verification**. The gRPC `injectAudio` route crashed the emulator (`inject-tone.py`, KNOWN BLOCKER).
+- **r2 found a regression**, fixed in cc70f3c: Android's consent dialog returned the app to `active` before the service flagged itself, so the card showed Start while recording.
+- **mic-denied:** PASS ("…needs the microphone… Nothing was recorded.", no consent dialog, no projection).
+- **Lifecycle (rotation, lock, call, micoff, dka, death):** BLOCKED (infra) in r3 after one retry each.
+  - The cause was a new Maestro session failing to attach while a projection was live: "driver did not start up in time" and gRPC UNAVAILABLE (`android-r3/infra-blocked.txt`).
+  - pqa-qa has an exclusive emulator slot queued after the heavy builds.
+
+### Workspace checks (HEAD 8345bfd = c5e629d + one eslint ignore line + docs-only merges)
+- **`pnpm verify`** EXIT=0 (`docs/reviews/native-recording/verify.txt`), Node v24.21.0.
+  - Secrets: 963 committable files, no findings.
+  - Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 55 suites / 1178 tests.
+  - The first attempt failed lint only on Gradle's JVM test HTML report (`modules/screen-capture/android/build/`, git-ignored). Fixed by ignoring native module build outputs in `eslint.config.mjs` (8345bfd).
+- **Playwright** `pnpm --filter @pocket-qa/mobile exec playwright test`: **21/21 passed**, EXIT=0 (`playwright.txt`). The screenshots it rewrote (gate-a, remaining-scope, screen-recording, wallet-rewards/browser) were restored from Git.
+
+### iOS (pqa-ios, frozen combined code c5e629d; `ios-build.txt` §12)
+- `expo prebuild --platform ios --clean`, `pod install`, `xcodebuild … -sdk iphonesimulator -configuration Debug -jobs 4 CODE_SIGNING_ALLOWED=NO build`: **BUILD SUCCEEDED**.
+  - 0 errors. 543 compiler warnings and 2 script warnings, all third-party; 0 in our sources.
+- Lead's check of the bundle: `PlugIns/PocketQaBroadcast.appex` is `com.reshareai.pocketqa.Broadcast`, broadcast-services-upload, SampleBuffer, x86_64 and arm64. The App Group is in both generated entitlements; the build is unsigned.
+- Swift tests: 27, 0 failures. **No broadcast was run:** the Simulator can't run one, and there's no iPhone or team.

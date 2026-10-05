@@ -4,6 +4,14 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-05): native screen + voice recording across apps (`feat/native-voice-recording`, from main `ae0b501`)
+- **Scope:** Hamza authorised it, relayed by the parent. A tester starts recording in Pocket QA, switches to OTHER apps and narrates, then reviews, keeps or discards the clip back in Pocket QA. Upload happens only through the explicit existing path. Android/Seeker uses MediaProjection plus a `mediaProjection|microphone` foreground service; iPhone uses a ReplayKit Broadcast Upload Extension with an App Group (built by pqa-ios, `wX:p3`, and merged). Mobile web says honestly that it can't capture other apps.
+- **Freeze candidate `c5e629d`**, awaiting pqa-qa's verdict. pqa-qa reviewed the code and found no new P0–P2; its verdict is blocked on the lifecycle evidence. **Not merged.**
+- **Release blocker found and fixed:** an emulator rotation run produced video 391.7 s with the microphone track ending at 202.7 s, and nothing noticed. Every finished clip now has its own track durations measured. A clip whose voice doesn't cover the video within max(1 s, 2 %) is shown as "Voice stops at m:ss of m:ss…" and can only be removed. The same rule applies on iOS.
+- **pqa-qa r1** P2-A (a screen destroyed in the background deleted the recording) and P3 1–6 are fixed. A regression the emulator found (cc70f3c) is fixed.
+- **Proven on the emulator:** cross-app capture, the notification Stop, review, keep and upload, with the synthetic mic signal covering the whole clip, plus mic-denied. **BLOCKED (infra):** the six lifecycle scenarios. **Hardware gates:** a real Android phone or Seeker with speech; an iPhone with a team and App Group profiles; an https backend for untethered phones (`docs/reviews/native-recording/gates.md`).
+- **APK** sha256 `07415792…5c75` (`docs/verification.md`); install guide `docs/handoff/native-recording-device-install.md`.
+
 ## Current work (2026-10-05): desktop web screen recording with microphone narration (`feat/screen-recording`, from main `6028f08`)
 - **Scope:** Hamza authorised the build. It's a local-only recorder in the tester's session on desktop browsers, offering per-session consent, the browser's own share dialog, mic narration, a live status with a timer, Stop, then replay, download or discard.
 - **Not in scope:** no upload, storage, network or AI. AI feedback and console-log collection are future work.

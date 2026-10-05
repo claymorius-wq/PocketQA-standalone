@@ -1,0 +1,33 @@
+# r3 lifecycle on emulator-5556: infra failures, verbatim excerpts
+
+## rotation (after start + landscape; recording active, projections=1)
+
+Maestro Android driver did not start up in time  ---  emulator [ emulator-5556 ] & port  [ dadb.open( tcp:53569 ) ]
+
+The stack trace was:
+maestro.MaestroDriverStartupException$AndroidDriverTimeoutException: Maestro Android driver did not start up in time  ---  emulator [ emulator-5556 ] & port  [ dadb.open( tcp:53569 ) ]
+	at maestro.drivers.AndroidDriver.awaitLaunch(AndroidDriver.kt:162)
+	at maestro.drivers.AndroidDriver.open(AndroidDriver.kt:108)
+
+## lock (start flow)
+io.grpc.StatusRuntimeException: UNAVAILABLE
+	at io.grpc.stub.ClientCalls.toStatusRuntimeException(ClientCalls.java:275)
+	at io.grpc.stub.ClientCalls.getUnchecked(ClientCalls.java:256)
+	at io.grpc.stub.ClientCalls.blockingUnaryCall(ClientCalls.java:169)
+
+## summary.txt
+APK 074157921a1ea386 HEAD cc70f3c
+[cross-app] maestro rc=0
+[cross-app]   video 276.108 s, audio 275.505 s, |a-v| 0.604 s (limit 1.0 s)
+[cross-app]   56 windows of 5 s; min -3.2 dBFS, max -3.0 dBFS; below -40 dBFS: 0 (0 in the allowed tail)
+[cross-app]   PASS
+[rotation] started rc=0 projections=1
+[rotation] landscape: projections=1
+[rotation] maestro driver did not start; retrying _voice-stop-in-app.yaml
+[rotation] maestro driver did not start; retrying _voice-stop-in-app.yaml
+[rotation] maestro driver did not start; retrying _voice-keep-upload.yaml
+[rotation] maestro driver did not start; retrying _voice-keep-upload.yaml
+[rotation] upload flow FAILED
+[rotation] EXIT=1 active_projections_after=1
+[lock] started rc=1 projections=0
+[lock] locked: projections=0 service=0
