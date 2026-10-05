@@ -77,3 +77,33 @@ claude --model claude-opus-5-5 --append-system-prompt "<team rules: no Agent too
 ```
 
 No `--fallback-model` was passed. The banner in pane `wX:p2` reads "Opus 5.5 · Claude Max".
+
+## 2026-10-05: iOS native implementer pane `pqa-ios` (native screen + voice recording)
+**Why:** Hamza authorised the native mobile recording build, and the parent asked for iOS in parallel in its own Opus 5.5 pane and worktree, with disjoint ownership.
+
+**Launch:**
+- launched by `pocketqa-lead` from inside Herdr (`HERDR_ENV=1`, pane `wX:p1`):
+  ```
+  herdr pane split --current --direction down --cwd /Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios --no-focus   → wX:p3
+  herdr agent start pqa-ios --kind claude --pane wX:p3 -- --model claude-opus-5-5          → agent_started pqa-ios idle wX:p3
+  ```
+- no `--fallback-model`;
+- the brief forbids subagents and the advisor tool, and limits it to the files it owns.
+
+**Worktree:** `.worktrees/native-ios`, branch `feat/native-voice-ios`, from `c648dd2`.
+
+**Ownership:**
+- the iOS module: `modules/screen-capture/ios/**` and `ios-extension/**`;
+- `expo-module.config.json`;
+- `apps/mobile/plugins/withBroadcastExtension.js` and its test;
+- the iOS entries in `app.json`.
+
+The lead keeps Android, the shared JS and the docs, and integrates.
+
+**Live proof** (`herdr agent list`, workspace `wX`, at 2026-10-05T17:00Z):
+```
+pocketqa-lead  wX:p1  claude  status=working  cwd=/Users/hamzadiaz/Projects/pocket-qa
+pqa-ios  wX:p3  claude  status=working  cwd=/Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios
+pqa-qa  wX:p2  claude  status=done  cwd=/Users/hamzadiaz/Projects/pocket-qa
+```
+Pane `wX:p3` scrollback (read with `herdr pane read`) shows the launch line `claude --model claude-opus-5-5` and the banner `Opus 5.5 · Claude Max`; no fallback model.

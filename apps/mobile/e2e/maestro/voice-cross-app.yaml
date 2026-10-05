@@ -1,0 +1,69 @@
+# Native screen + VOICE across apps (docs/plans/native-screen-voice-recording.md), emulator only.
+# Start in Pocket QA, switch to OTHER apps (synthetic emulator system apps, no user data), stop from
+# the recording notification, come back, review, keep, and upload through the existing explicit
+# path. Run with the host microphone OFF (`adb -s <serial> emu avd hostmicoff`), so the emulated
+# microphone delivers no room audio. A synthetic tone can be fed with inject-tone.py where the
+# emulator supports it (see its KNOWN BLOCKER note).
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- assertVisible: .*other apps.*
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop
+- takeScreenshot: 01-recording-in-pocketqa
+# Leave Pocket QA: the recording continues in other apps.
+- pressKey: home
+- launchApp:
+    appId: com.android.settings
+    stopApp: false
+- waitForAnimationToEnd
+- takeScreenshot: 02-other-app-settings
+- scrollUntilVisible:
+    element:
+      text: "Display.*"
+    timeout: 10000
+- tapOn: "Display.*"
+- waitForAnimationToEnd
+- takeScreenshot: 03-other-app-settings-display
+- pressKey: home
+- launchApp:
+    appId: com.google.android.deskclock
+    stopApp: false
+- waitForAnimationToEnd
+- takeScreenshot: 04-other-app-clock
+# Stop from the notification while still in the other app.
+- swipe:
+    start: 50%, 1%
+    end: 50%, 70%
+- assertVisible: "Pocket QA is recording your screen and microphone"
+- takeScreenshot: 05-notification-stop
+- tapOn: "Stop recording"
+- pressKey: back
+# Back to Pocket QA: the clip is waiting for review (never uploaded until kept and uploaded).
+- launchApp:
+    appId: com.reshareai.pocketqa
+    stopApp: false
+- scrollUntilVisible:
+    element:
+      id: segment-recorded
+    timeout: 20000
+- takeScreenshot: 06-back-clip-to-review
+- scrollUntilVisible:
+    element:
+      id: segment-keep
+- tapOn:
+    id: segment-keep
+- scrollUntilVisible:
+    element:
+      id: upload-kept
+- tapOn:
+    id: upload-kept
+- scrollUntilVisible:
+    element:
+      id: uploaded-evidence
+    timeout: 60000
+- assertVisible: .*Uploaded \(1\).*
+- takeScreenshot: 07-uploaded
