@@ -1,0 +1,3 @@
+Python-Markdown 3.10.2 + tables, design doc lines 133-150 at 45d806f
+table <tr> count: 9 (header + 8 rows; the Done row is not among them)
+Tier-ups paragraph renders as: U6).</p> <p><strong>Tier-ups.</strong> On a tier-up the medallion starts lit, showing the tier already held. Only the new bead, the stacked ring and the light mark the change; a badge the tester holds is never shown as locked. | Done | The sheet leaves, U5 returns to 0.45, and the key pool returns to 0.72 | 240 ease-exit; 700 ease-lens |</p>

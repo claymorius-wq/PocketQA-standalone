@@ -4,6 +4,27 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Reputation design and escrow research (2026-10-05, `docs/reputation-escrow-proposal`, contributor session)
+Docs only: no code, API, contract or data change.
+- **Where it comes from.** Hamza's message of 2026-10-05, relayed by claymorius-wq, set a new direction: wallet and USDC escrow payouts, points, badges and a leaderboard. His plan (`docs/plans/wallet-escrow-rewards-leaderboard.md`) isn't in the repo yet. Both documents below are inputs for it, not decisions.
+- **Who did the work.** It was made in a separate Claude Code session (`claude-opus-5-5`) for claymorius-wq, not by the lead pane. The research, the boards, their critiques and the docs review were done by that session's subagents, not the `pqa-qa` pane.
+- **Research:** `docs/research/usdc-escrow-and-anti-gaming.md`.
+  - It recommends a devnet-only study-vault program with Squads v4 multisigs in every privileged role, so funds can only go to the tester of record, the builder or the treasury.
+  - It ties this to production gates A9 and B1, and lists the approvals needed, in order.
+  - Every claim is labelled OBSERVED, INTERPRETATION or HYPOTHESIS. The session lead's re-check of the on-chain and fee facts is in `docs/reviews/reputation-proposal/research-recheck.txt`.
+- **Design:** `docs/design/reputation-layer.md`, the reputation layer in Lens.
+  - It covers points (proposal values), levels, five badges, the medallion, and a proposed ninth Uplight moment (U9, "badge earned").
+  - It covers the screens: the tester's "You" tab, the leaderboard, and the builder's review with a track record and one helpful mark per session.
+  - It covers the anti-gaming rules, how the proposal differs from the research, 15 open questions for Hamza, where the layer would land in code, and the visual recipes.
+  - The boards were made for the private design canvas, as a new page "Next · reputation (proposal)", and a private static preview of every board exists; claymorius-wq can share both.
+  - The boards went through two critique rounds (21 and 23 findings) and a final verification: 42 of 44 findings fixed, 2 partly.
+    - A polish pass then fixed the rest of one of them and the seven small issues the verification found.
+    - Promoting the new glyphs into the main Lens glyph set waits for Hamza.
+    - The records are in `docs/reviews/reputation-proposal/`.
+- **Review:** docs review r1 was CHANGES_REQUIRED (0 P1, 10 P2, 11 P3), fixed in `80d9bed`. r2 was APPROVE with six P3s, fixed in `5a39a77` without re-review. The verdicts and the candidate summary are in `docs/reviews/reputation-proposal/`.
+- **Checks on `5a39a77`:** check:secrets, assert-no-secrets, typecheck and lint pass (`docs/verification.md`). No tests ran, because no code changed.
+- Nothing here changes A9, B1, B2, the plan's Money row or any approval.
+
 ## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)
 - **Hamza's decision, through the parent's clarification:** Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other buckets, no bulk purge. Backup retention is not part of it.
 - **Implemented:**
