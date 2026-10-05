@@ -4,6 +4,20 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Reputation design and escrow research (2026-10-05, `docs/reputation-escrow-proposal`, contributor session)
+Docs only: no code, API, contract or data change. Hamza's new direction covers wallet and USDC escrow payouts, points, badges and a leaderboard. His plan (`docs/plans/wallet-escrow-rewards-leaderboard.md`) isn't in the repo yet. Both documents below are inputs for it, not decisions.
+- **Research:** `docs/research/usdc-escrow-and-anti-gaming.md`.
+  - It recommends a devnet-only study-vault program with Squads v4 multisigs in every privileged role, so funds can only go to the tester of record, the builder or the treasury.
+  - It ties this to production gates A9 and B1, and lists the approvals needed, in order.
+  - Every claim is labelled OBSERVED, INTERPRETATION or HYPOTHESIS. The key on-chain and fee facts were re-checked before commit.
+- **Design:** `docs/design/reputation-layer.md`, the reputation layer in Lens.
+  - It covers points (proposal values), levels, five badges, the medallion, and a proposed ninth Uplight moment (U9, "badge earned").
+  - It covers the screens: the tester's "You" tab, the leaderboard, and the builder's review with a track record and one helpful mark per session.
+  - It ends with the anti-gaming rules and 13 open questions.
+  - The boards are on the private design canvas, page "Next · reputation (proposal)".
+- **Review:** the boards went through two critique rounds (21 and 23 findings, all fixed) and a final verification. This PR's docs were reviewed too; the verdict is in `docs/reviews/reputation-proposal/`.
+- Nothing here changes A9, B1, B2, the plan's Money row or any approval.
+
 ## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)
 - **Hamza's decision, through the parent's clarification:** Pocket QA may delete only its own app-managed objects in `pocketqa-evidence`, for failed-upload cleanup and user-requested (account) deletion. No automatic expiry, no other buckets, no bulk purge. Backup retention is not part of it.
 - **Implemented:**
