@@ -1,6 +1,8 @@
 # Reputation layer: design proposal (Lens)
 
-**Status: proposal, not a decision.** Contributor design, 2026-10-05. No code, API, contract or data changes.
+**Status: proposal, not a decision.** Contributor design, 2026-10-05.
+
+**Built on the live rules (2026-10-05, `feat/lens-badges`):** the medallion (§4, Appendix A) and the four badges' glyphs, the badge list and hero on the Reputation screen, and the Leaderboard (§6.2: the top three on the first card, your row pinned below). They use Hamza's rules as they are (points, quality score, the opt-in leaderboard), plus one additive API field, `Reputation.progress`, the count toward each badge. Everything else here is still a proposal waiting for the decisions in §9: point values, tiers, levels, held points, U9, Sharp eye, the You tab and the builder's track-record card. `docs/design/badge-proposals.md` says what was built.
 
 **Where the request came from.** Hamza's message of 2026-10-05, relayed by claymorius-wq, asked for points, badges and a leaderboard. In his words:
 - "Points: earned reputation—not cash or a promised token."
@@ -375,7 +377,7 @@ The research also brings measures for the build itself:
 15. **The research's other rules:** adopt Wilson reliability (for Reliable tester or ranking), a device-class Device specialist at 8, the weighted 90-day score, or identity checks for badges (§8 table)?
 
 ## 10. If this is approved: where it would land
-These are suggestions to check against Hamza's plan. None of this exists yet.
+These are suggestions to check against Hamza's plan. Built since, on the live rules (`feat/lens-badges`, 2026-10-05): the medallion, the badge row and the hero on the Reputation screen, the Lens leaderboard (its rows, the top card and your pinned row), the four badge glyphs, and the count toward each badge (`Reputation.progress`, contract 0.6.1). Parts of the API and export items existed before that branch: the 90-day opt-in leaderboard (`rankLeaderboard`), and points, badges and the leaderboard row in the export (`ExportReputation`). The rest of this list does not exist yet.
 - **API.**
   - A points ledger beside `apps/api/src/ledger.ts`. It must stay separate from the credits ledger, so points can never post to a credit account. It is append-only, with reversal entries for voided sessions, and every entry carries its rule (accepted test, helpful, finding, on time, clean run) and its `participation_id`.
   - Badge awards with their tier and `earnedAt`, plus the tester's `lastSeenBadgeAt`.

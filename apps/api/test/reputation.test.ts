@@ -39,6 +39,10 @@ describe('H1/H5/H6: points only for accepted work, once, with no cash value', ()
     expect(r).toMatchObject({ points: 15, noCashValue: true });
     expect(r.events.map((e) => e.kind).sort()).toEqual(['accepted', 'helpful']);
     expect(r.badges.map((x) => x.id)).toContain('first_accepted');
+    // Every badge with the count toward it, earned exactly when it is listed (the app's badge shelf).
+    expect(r.progress.map((x) => x.id)).toEqual(['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist']);
+    expect(r.progress[0]).toEqual({ id: 'first_accepted', earned: true, current: 1, target: 1 });
+    expect(r.progress.find((x) => x.id === 'helpful_feedback')).toEqual({ id: 'helpful_feedback', earned: false, current: 1, target: 3 });
     // A rejection and a dispute: no points lost, no penalty.
     const { b: b2, s: s2 } = await study();
     const p2 = await submit(u, s2.id);

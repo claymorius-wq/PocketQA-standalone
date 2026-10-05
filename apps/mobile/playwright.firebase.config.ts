@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { introSeen } from './e2e/introSeen';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,13 +16,17 @@ const firebaseEnv = [
   'FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099',
 ].join(' ');
 
+/** The web preview's origin: the base URL, and where the intro is marked seen. */
+const WEB = 'http://localhost:8090';
+
 export default defineConfig({
   testDir: './e2e-firebase',
   timeout: 180_000,
   expect: { timeout: 20_000 },
   workers: 1,
   reporter: [['list']],
-  use: { baseURL: 'http://localhost:8090', trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'] },
+  // The intro opens once per browser at "/": specs start past it (e2e/introSeen.ts).
+  use: { baseURL: WEB, trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'], storageState: introSeen(WEB) },
   webServer: [
     {
       command: `POCKETQA_DATA_DIR=${dataDir} ${firebaseEnv} pnpm --filter @pocket-qa/api start`,

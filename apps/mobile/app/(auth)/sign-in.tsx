@@ -327,7 +327,7 @@ export default function SignIn() {
             <View testID="demo-accounts">
               <View style={styles.demoHead}>
                 <Text variant="heading">Shared demo preview</Text>
-                <Text variant="small" tone="muted">Pick a role and press Sign in. Demo accounts are shared with every visitor; data is synthetic, devnet and test credits only.</Text>
+                <Text variant="small" tone="muted">Pick a role, then sign in. These accounts are shared with every visitor.</Text>
               </View>
               <Segmented
                 options={demo.map((a) => ({ value: a.role, label: ROLE_LABEL[a.role], glyph: ROLE_GLYPH[a.role] }))}

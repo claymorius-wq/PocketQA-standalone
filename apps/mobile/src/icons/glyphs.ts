@@ -269,6 +269,25 @@ export const GLYPHS = {
     { s: 'M16 5.4V8 M16 24V26.6', w: 2.2 },
     { s: 'M12.2 10.2H10.2A5.8 5.8 0 0 0 10.2 21.8H12.2 M19.8 10.2H21.8A5.8 5.8 0 0 1 21.8 21.8H19.8', w: 3.6 },
   ],
+  // Reputation badges (docs/design/reputation-layer.md §4; the boards' lens-rep.mjs REP_GLYPHS, its thin
+  // tubes split into their own parts). They sit on the medallion's face, never in a tile.
+  // First accepted test: a round seal plate with a check cut through it (not the My work tray).
+  accepted: [{ f: 'M5 16a11 11 0 1 0 22 0a11 11 0 1 0 -22 0ZM12.36 14.04L14.43 16.12L19.78 10.31A2.2 2.2 0 0 1 23.02 13.29L14.57 22.48L9.24 17.16A2.2 2.2 0 0 1 12.36 14.04Z' }],
+  // Reliable tester: a tuning fork tilted 15°, the reference others are tuned against (never a Y).
+  reliable: [
+    { s: 'M10.36 4.79L12.54 12.9A3.7 3.7 0 0 0 19.69 10.99L17.51 2.87', w: 4 },
+    { s: 'M17.07 15.52L19.58 24.89', w: 3.8, f: 'M16.75 26.63a3.3 3.3 0 1 0 6.6 0a3.3 3.3 0 1 0 -6.6 0Z' },
+  ],
+  // Helpful feedback: a note bubble with its tail and two ruled lines cut through.
+  helpful: [
+    { f: 'M8.6 5.6H23.4A3.4 3.4 0 0 1 26.8 9V18.4A3.4 3.4 0 0 1 23.4 21.8H15L9.6 26.6A0.7 0.7 0 0 1 8.4 26.1V21.8A3.4 3.4 0 0 1 5.2 18.4V9A3.4 3.4 0 0 1 8.6 5.6ZM10.2 12.5L21.8 12.5A1.1 1.1 0 0 0 21.8 10.3L10.2 10.3A1.1 1.1 0 0 0 10.2 12.5ZM10.2 17.1L17 17.1A1.1 1.1 0 0 0 17 14.9L10.2 14.9A1.1 1.1 0 0 0 10.2 17.1Z' },
+  ],
+  // Device specialist: the device slab with a loupe standing in front of its lower right.
+  deviceSpec: [
+    { f: 'M9 3.2H17a3.6 3.6 0 0 1 3.6 3.6V23.2a3.6 3.6 0 0 1 -3.6 3.6H9a3.6 3.6 0 0 1 -3.6 -3.6V6.8a3.6 3.6 0 0 1 3.6 -3.6ZM9.4 6.9H16.6a1.5 1.5 0 0 1 1.5 1.5V20a1.5 1.5 0 0 1 -1.5 1.5H9.4a1.5 1.5 0 0 1 -1.5 -1.5V8.4a1.5 1.5 0 0 1 1.5 -1.5ZM11.2 5.7L14.8 5.7A0.65 0.65 0 0 0 14.8 4.4L11.2 4.4A0.65 0.65 0 0 0 11.2 5.7Z' },
+    { s: 'M15.7 19.6a4.9 4.9 0 1 0 9.8 0a4.9 4.9 0 1 0 -9.8 0Z', w: 3.4 },
+    { f: 'M22.96 24.64L26.06 27.74A1.9 1.9 0 0 0 28.74 25.06L25.64 21.96A1.9 1.9 0 0 0 22.96 24.64Z' },
+  ],
   // S6 (A-Disputes "balance weighs"): DISPUTES_PARTS, the disputes glyph above in four pieces. The
   // post and the beam are its first two parts verbatim; the pans are its third part split in two.
   dPost: [{ s: 'M16 9v14.5', w: 4, f: 'M12.4 23.6H19.6a1.9 1.9 0 0 1 1.9 1.9V25.5a1.9 1.9 0 0 1 -1.9 1.9H12.4a1.9 1.9 0 0 1 -1.9 -1.9V25.5a1.9 1.9 0 0 1 1.9 -1.9Z' }],

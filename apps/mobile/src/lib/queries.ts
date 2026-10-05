@@ -28,7 +28,8 @@ export const useParticipationTransfers = (id: string) =>
     enabled: !!id,
     refetchInterval: (q) => (q.state.data?.items.some((t) => t.status === 'pending' || t.status === 'awaiting_signature') ? 4000 : false),
   });
-export const useReputation = () => useQuery({ queryKey: ['reputation'], queryFn: () => api('myReputation') });
+/** A tester's own reputation. Testers only: anyone else passes `enabled: false` (the route would refuse them). */
+export const useReputation = ({ enabled = true }: { enabled?: boolean } = {}) => useQuery({ queryKey: ['reputation'], queryFn: () => api('myReputation'), enabled });
 export const useLeaderboard = () => useQuery({ queryKey: ['leaderboard'], queryFn: () => api('leaderboard') });
 /** Escrow payment states move on their own (the settlement worker): poll while one is still open. */
 export const useMyPayouts = () =>

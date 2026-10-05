@@ -1,7 +1,8 @@
 import { Redirect, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSession } from '../../src/auth/SessionProvider';
-import { stampArrival } from '../../src/motion/entrance';
+import { stampArrival, type InitialArrival } from '../../src/motion/entrance';
+import { authArrival, cameFromIntro } from '../../src/onboarding/intro';
 import { disarmU1, u1Armed, u1PassAt } from '../../src/screens/authParts';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { ArrivalContext } from '../../src/ui';
@@ -44,9 +45,26 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
-      // Sign in is the launch, the only screen with the light dip and the staggered steps (§11.3);
-      // Sign up arrives with a push like any stack screen. Returns to either play back.
-      screenLayout={({ route, children }) => <ArrivalContext.Provider value={route.name === 'sign-in' ? 'launch' : null}>{children}</ArrivalContext.Provider>}
+      // getState() during render returns the state being rendered, so `first` is read from the
+      // stack the screen mounts into. That relies on React Navigation's render-phase workaround
+      // (a FIXME in useNavigationHelpers); the unit tests stub getState and wouldn't catch a change.
+      screenLayout={({ route, navigation, children }) => (
+        <AuthArrival name={route.name} first={navigation.getState().routes[0]?.key === route.key}>
+          {children}
+        </AuthArrival>
+      )}
     />
   );
+}
+
+/**
+ * How each auth screen opens, decided once when it mounts. The launch (the light dip and the
+ * staggered steps, §11.3) belongs to the first screen of a visit: the intro on a first visit,
+ * Sign in otherwise, and only while it is the first screen of the auth stack. Sign in reached
+ * from the intro (which it replaces) or pushed from Sign up arrives with a push, like any screen
+ * after the first; Sign up always does. Returns to any of them play back.
+ */
+function AuthArrival({ name, first, children }: { name: string; first: boolean; children: ReactNode }) {
+  const [spec] = useState<InitialArrival | null>(() => authArrival(name, first, cameFromIntro()));
+  return <ArrivalContext.Provider value={spec}>{children}</ArrivalContext.Provider>;
 }

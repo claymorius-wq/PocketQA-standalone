@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCEPTED_POINTS,
+  BADGE_IDS,
+  badgeProgress,
   badgesFor,
+  HELPFUL_MIN_MARKS,
   HELPFUL_POINTS,
   LEADERBOARD_MIN_DECIDED,
+  RELIABLE_MIN_DECIDED,
+  RELIABLE_MIN_SCORE,
+  SPECIALIST_MIN_ACCEPTED,
   planApprovalPoints,
   planReversal,
   pointsTotal,
@@ -101,6 +107,64 @@ describe('badges', () => {
   it('Device Specialist after 3 accepted tests on one platform, named for it', () => {
     const b = badgesFor({ work: [...work(3, 'accepted', { platform: 'android' }), ...work(2, 'accepted', { platform: 'ios' })], events: [], nowMs: NOW });
     expect(b.find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'Android specialist' });
+  });
+
+  it('Device Specialist on a tie goes to the platform counted first', () => {
+    const input = { work: [...work(3, 'accepted', { platform: 'ios' }), ...work(3, 'accepted', { platform: 'android' })], events: [], nowMs: NOW };
+    expect(badgesFor(input).find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'iOS specialist' });
+    expect(badgeProgress(input).find((x) => x.id === 'device_specialist')).toMatchObject({ earned: true, current: 3 });
+    // Either order: the first counted, not the first by name.
+    const mirrored = { ...input, work: [...work(3, 'accepted', { platform: 'android' }), ...work(3, 'accepted', { platform: 'ios' })] };
+    expect(badgesFor(mirrored).find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'Android specialist' });
+  });
+});
+
+describe('badgeProgress: the counts toward each badge, by the badges’ own rules', () => {
+  const helpful = (n: number): PointsEvent[] => Array.from({ length: n }, (_, i) => ({ id: `h${i}`, participationId: `p${i}`, kind: 'helpful', points: 5, reversesId: null, platform: 'web' }));
+  const byId = (p: ReturnType<typeof badgeProgress>) => Object.fromEntries(p.map((x) => [x.id, x]));
+
+  it('lists every badge in order, nothing earned for a new tester', () => {
+    const p = badgeProgress({ work: [], events: [], nowMs: NOW });
+    expect(p.map((x) => x.id)).toEqual([...BADGE_IDS]);
+    expect(p.every((x) => !x.earned && x.current === 0)).toBe(true);
+    expect(p.map((x) => x.target)).toEqual([1, RELIABLE_MIN_DECIDED, HELPFUL_MIN_MARKS, SPECIALIST_MIN_ACCEPTED]);
+  });
+
+  it('counts toward each rule and caps at the target', () => {
+    const p = byId(badgeProgress({ work: [...work(2, 'accepted', { platform: 'android' }), ...work(4, 'accepted', { platform: 'ios' })], events: helpful(2), nowMs: NOW }));
+    expect(p.first_accepted).toMatchObject({ earned: true, current: 1, target: 1 });
+    expect(p.reliable_tester).toMatchObject({ current: 5, target: 5 });
+    expect(p.helpful_feedback).toMatchObject({ earned: false, current: 2, target: 3 });
+    // The platform with the most accepted tests counts.
+    expect(p.device_specialist).toMatchObject({ earned: true, current: 3, target: 3 });
+  });
+
+  it('Reliable tester: a full count is not the badge while the quality score is below its bar', () => {
+    const p = byId(badgeProgress({ work: [...work(5, 'accepted'), ...work(5, 'rejected')], events: [], nowMs: NOW }));
+    expect(p.reliable_tester).toMatchObject({ earned: false, current: 5, target: 5 });
+    expect(reputationStats([...work(5, 'accepted'), ...work(5, 'rejected')], NOW).qualityScore).toBeLessThan(RELIABLE_MIN_SCORE);
+  });
+
+  it('a reversed helpful mark no longer counts', () => {
+    const events: PointsEvent[] = [...helpful(3), { id: 'r', participationId: 'p0', kind: 'reversal', points: -5, reversesId: 'h0', platform: 'web' }];
+    expect(byId(badgeProgress({ work: [], events, nowMs: NOW })).helpful_feedback).toMatchObject({ earned: false, current: 2 });
+  });
+
+  it('earned means a full count; a full count is the badge, except Reliable tester, which also needs the quality bar', () => {
+    const histories = [
+      { work: [], events: [] },
+      { work: work(1, 'accepted'), events: [] },
+      { work: [...work(9, 'accepted', { platform: 'android' }), ...work(1, 'rejected')], events: helpful(4) },
+      { work: work(3, 'accepted', { reversed: true }), events: helpful(1) },
+      { work: [...work(5, 'accepted'), ...work(5, 'rejected')], events: helpful(3) },
+      { work: [...work(3, 'accepted', { platform: 'ios' }), ...work(3, 'accepted', { platform: 'web' })], events: helpful(2) },
+    ];
+    for (const h of histories) {
+      for (const x of badgeProgress({ ...h, nowMs: NOW })) {
+        if (x.earned) expect(x.current).toBe(x.target);
+        if (x.id !== 'reliable_tester' && x.current === x.target) expect(x.earned).toBe(true);
+      }
+    }
   });
 });
 

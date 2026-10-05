@@ -37,7 +37,9 @@ export type { GlyphVariant } from './material';
 export const LUCIDE_TO_GLYPH = {
   AlertTriangle: 'warning',
   ArrowRight: 'forward',
-  // Reputation (badge and leaderboard glyphs fall back to existing Lens glyphs until badge assets exist).
+  // Reputation's Lucide icons elsewhere in the app (Trophy: the leaderboard button and its empty
+  // state; Award: the reputation button on Credits). The badges themselves draw their own glyphs
+  // (accepted, reliable, helpful, deviceSpec) in a Medallion.
   Award: 'approve',
   BadgeCheck: 'approve',
   Trophy: 'users',

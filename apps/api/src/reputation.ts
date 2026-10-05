@@ -1,5 +1,5 @@
 import type { Reputation } from '@pocket-qa/contracts';
-import { badgesFor, LEADERBOARD_MIN_DECIDED, planApprovalPoints, planReversal, pointsTotal, rankLeaderboard, REPUTATION_WINDOW_DAYS, reputationStats, type DecidedWork, type NewPointsEvent, type PointsEvent } from '@pocket-qa/domain';
+import { badgeProgress, badgesFor, LEADERBOARD_MIN_DECIDED, planApprovalPoints, planReversal, pointsTotal, rankLeaderboard, REPUTATION_WINDOW_DAYS, reputationStats, type DecidedWork, type NewPointsEvent, type PointsEvent } from '@pocket-qa/domain';
 import type { DB } from './db';
 import { iso, newId } from './util';
 import type { ParticipationRow, StudyRow } from './views';
@@ -114,6 +114,7 @@ export function reputationView(db: DB, userId: string, nowMs: number): Reputatio
     noCashValue: true,
     events: rows.map((r) => ({ kind: r.kind, points: r.points, createdAt: r.created_at, studyTitle: (titleOf.get(r.participation_id) as { title: string }).title })),
     badges: badgesFor({ work, events, nowMs }),
+    progress: badgeProgress({ work, events, nowMs }),
     stats: { ...reputationStats(work, nowMs), windowDays: REPUTATION_WINDOW_DAYS },
     leaderboard: { optedIn, alias: profile?.alias ?? null, rank, minDecided: LEADERBOARD_MIN_DECIDED },
   };

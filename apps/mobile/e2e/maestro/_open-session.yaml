@@ -8,6 +8,8 @@ appId: com.reshareai.pocketqa
       notifications: ${NOTIFICATIONS || 'allow'}
       # Narration needs the microphone; MIC=deny exercises the refusal path.
       microphone: ${MIC || 'allow'}
+# A fresh install shows the intro once before Sign in (main #10).
+- runFlow: _skip-intro.yaml
 # A cold start on a loaded host can take longer than Maestro's default wait.
 - extendedWaitUntil:
     visible:

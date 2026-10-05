@@ -16,8 +16,9 @@ export type ScreenInfo = {
   /** A stack screen under the Lens stack header (titles use display-stack, §5). */
   stack: boolean;
   /**
-   * Launch (Sign in only) staggers each step and dips the light. Every other arrival moves the
-   * content root as one (src/motion/entrance.ts), so steps that mount with it stay still.
+   * Launch (the first auth screen of a visit: the intro, or Sign in) staggers each step and dips
+   * the light. Every other arrival moves the content root as one (src/motion/entrance.ts), so
+   * steps that mount with it stay still.
    * Absent: staggered (a bare ScreenContext, as in tests).
    */
   staggered?: boolean;
@@ -31,9 +32,9 @@ export const ScreenContext = createContext<ScreenInfo | null>(null);
 
 /**
  * How the screens under a layout open (§M3). Layouts set it where the route alone decides (the
- * auth stack gives Sign in `launch`; the role tabs give the first tab after sign-in `replace`,
- * with the U1 hand-off). A Screen's own `entrance` prop wins. Without either, a Screen in the
- * tabs opens with `tab` and any other with `push`.
+ * auth stack gives the first screen of a visit `launch`; the role tabs give the first tab after
+ * sign-in `replace`, with the U1 hand-off). A Screen's own `entrance` prop wins. Without either,
+ * a Screen in the tabs opens with `tab` and any other with `push`.
  */
 export type ArrivalSpec = InitialArrival | { arrival: InitialArrival; handoff?: Handoff };
 export const ArrivalContext = createContext<ArrivalSpec | null>(null);
@@ -116,6 +117,31 @@ export function Enter({ step, delay, children, style, collapse }: {
       </Animated.View>
     </EnterContext.Provider>
   );
+}
+
+/**
+ * For a part that plays its own entrance inside a Screen (the intro's lens and title words): the
+ * ms left until `at` on the screen's wave, or null when it should not move at all, by Enter's rule
+ * (it mounts with a root arrival, which carries it). Decided once, on mount; 0 outside a Screen.
+ */
+export function useEntranceDelay(at: number): number | null {
+  const screen = useContext(ScreenContext);
+  const [delay] = useState<number | null>(() => {
+    if (!screen) return 0;
+    const now = Date.now();
+    if (screen.staggered === false && now <= (screen.settledAt ?? 0)) return null;
+    return Math.max(0, at - joinWave(screen.wave, now));
+  });
+  return delay;
+}
+
+/**
+ * A direct child of Screen that plays its own entrance: Screen lays it out as a step but never
+ * moves it, so the `Enter`s inside it join the screen's wave with nothing compounding them (the
+ * intro's pager, whose pages stagger their own lens, title and steps). Anywhere else it is a fragment.
+ */
+export function OwnEntrance({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
 
 /** True when this component mounted after its screen's entrance window (a notice after a mutation). */

@@ -41,6 +41,10 @@ async function gatedPage(colorScheme = 'light') {
   if (!CONVENIENCE) await page.fill('#pw', gatePassword);
   await page.click('button[type=submit]');
   await page.waitForURL((u) => !u.pathname.startsWith('/__gate'));
+  // A fresh browser meets the intro once before Sign in (the real visitor path): check it, skip it.
+  const intro = await page.getByTestId('welcome-screen').waitFor({ timeout: 30_000 }).then(() => true, () => false);
+  check('a first visit opens the intro before Sign in', intro);
+  if (intro) await page.getByTestId('intro-skip').click();
   return { ctx, page };
 }
 
