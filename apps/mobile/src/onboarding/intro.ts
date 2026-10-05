@@ -32,7 +32,7 @@ export async function markIntroSeen(): Promise<void> {
 // Read by the auth layout when Sign in mounts, a few renders after the replace.
 let leftAt = -Infinity;
 
-/** The intro is leaving for Sign in (or Sign up, which opens over it). */
+/** The intro is leaving for Sign in, which takes its place. (Sign up opens over the intro and needs no hand-over.) */
 export function noteIntroLeft(now = Date.now()): void {
   leftAt = now;
 }
