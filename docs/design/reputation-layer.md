@@ -377,7 +377,7 @@ The research also brings measures for the build itself:
 15. **The research's other rules:** adopt Wilson reliability (for Reliable tester or ranking), a device-class Device specialist at 8, the weighted 90-day score, or identity checks for badges (§8 table)?
 
 ## 10. If this is approved: where it would land
-These are suggestions to check against Hamza's plan. None of this exists yet.
+These are suggestions to check against Hamza's plan. Built since, on the live rules (`feat/lens-badges`, 2026-10-05): the medallion, the badge row and the hero on the Reputation screen, the four badge glyphs, and the count toward each badge (`Reputation.progress`, contract 0.6.1). The rest of this list does not exist yet.
 - **API.**
   - A points ledger beside `apps/api/src/ledger.ts`. It must stay separate from the credits ledger, so points can never post to a credit account. It is append-only, with reversal entries for voided sessions, and every entry carries its rule (accepted test, helpful, finding, on time, clean run) and its `participation_id`.
   - Badge awards with their tier and `earnedAt`, plus the tester's `lastSeenBadgeAt`.

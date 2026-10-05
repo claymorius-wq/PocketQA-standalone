@@ -677,7 +677,7 @@ Branch `feat/lens-badges` at `3ba55de`, from main `ae0b501`. Playwright ran thro
   $ pnpm check:secrets
   check:secrets FAILED (89 finding(s) in 909 files):
   ```
-  All 89 are the devnet pilot receipts already on main (`docs/reviews/wallet-rewards/`), none in this change.
+  All 89 are in the devnet pilot receipts on main (`docs/reviews/wallet-rewards/`), none in this change. The cause is this Windows checkout (`core.autocrlf=true`): git writes the pinned receipts with CRLF line endings, so their sha256 no longer matches `PINNED_EVIDENCE` and they are scanned as unpinned files. The committed blobs are unchanged: `devnet-pilot-receipt-run1.md` hashes to `e680ba0c…` on disk and to the pinned `373a8ca5…` as committed.
   ```
   $ node scripts/preview/assert-no-secrets.mjs --repo
   secret check: 0 values, 909 files, 0 occurrences

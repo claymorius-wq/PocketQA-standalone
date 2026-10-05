@@ -1,6 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { BadgeProgress } from '@pocket-qa/contracts';
 import { lintCopy } from '@pocket-qa/domain';
-import { arcShare, BADGES, keyBadge, medalLabel, progressText } from '../src/lib/badges';
+import { act, renderHook } from '@testing-library/react-native';
+import { arcShare, BADGES, forgetSeenBadges, keyBadge, medalLabel, progressText, useNewBadges } from '../src/lib/badges';
 
 // What the app says and draws for each badge: the lead badge, counts in words, the arc, the label.
 
@@ -35,10 +37,68 @@ describe('badges', () => {
     expect(medalLabel('Helpful feedback', p('helpful_feedback', 2, 3), { isNew: false, qualityScore: 60 })).toBe('Helpful feedback, locked. 2 of 3 helpful marks');
   });
 
+  it('the medallion with no count known says so, and no count', () => {
+    expect(medalLabel('Helpful feedback', p('helpful_feedback', 0, 1), { isNew: false, qualityScore: 60, counted: false })).toBe('Helpful feedback, not earned yet');
+  });
+
   it('the copy promises nothing and names no money', () => {
     const text = Object.values(BADGES)
       .flatMap((b) => [b.name, b.rule, b.unit(1), b.unit(3)])
       .join('\n');
     expect(lintCopy(text)).toEqual([]);
+  });
+});
+
+describe('useNewBadges', () => {
+  const KEY = 'pocketqa.badgesSeen.t1';
+  const flush = () => act(() => new Promise((r) => setTimeout(r, 20)));
+  // The storage mock's functions are jest.fn()s shared by every test: fail them once, never for good.
+  const storage = AsyncStorage as unknown as { getItem: jest.Mock; setItem: jest.Mock };
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+    storage.setItem.mockClear();
+  });
+
+  it('new once: shown on the first visit, recorded, and not the next', async () => {
+    const first = await renderHook(() => useNewBadges('t1', ['first_accepted']));
+    await flush();
+    expect([...first.result.current]).toEqual(['first_accepted']);
+    expect(JSON.parse((await AsyncStorage.getItem(KEY))!)).toEqual(['first_accepted']);
+    const next = await renderHook(() => useNewBadges('t1', ['first_accepted']));
+    await flush();
+    expect(next.result.current.size).toBe(0);
+  });
+
+  it('storage that can’t be read shows nothing as new, and writes nothing', async () => {
+    storage.getItem.mockRejectedValueOnce(new Error('denied'));
+    const set = storage.setItem;
+    const r = await renderHook(() => useNewBadges('t1', ['first_accepted']));
+    await flush();
+    expect(r.result.current.size).toBe(0);
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('a stored value that isn’t a list of ids counts as none seen, and is rewritten', async () => {
+    for (const bad of ['{}', 'not json', '[1, null]']) {
+      await AsyncStorage.setItem(KEY, bad);
+      const r = await renderHook(() => useNewBadges('t1', ['helpful_feedback']));
+      await flush();
+      expect([...r.result.current]).toEqual(['helpful_feedback']);
+      expect(JSON.parse((await AsyncStorage.getItem(KEY))!)).toEqual(['helpful_feedback']);
+    }
+  });
+
+  it('a record that can’t be written still shows the badge as new now', async () => {
+    storage.setItem.mockRejectedValueOnce(new Error('full'));
+    const r = await renderHook(() => useNewBadges('t1', ['first_accepted']));
+    await flush();
+    expect([...r.result.current]).toEqual(['first_accepted']);
+  });
+
+  it('deleting the account forgets the record', async () => {
+    await AsyncStorage.setItem(KEY, '["first_accepted"]');
+    await forgetSeenBadges('t1');
+    expect(await AsyncStorage.getItem(KEY)).toBeNull();
+    await expect(forgetSeenBadges(undefined)).resolves.toBeUndefined();
   });
 });

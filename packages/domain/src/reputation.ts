@@ -83,8 +83,11 @@ function badgeCounts(input: BadgeInput) {
 }
 
 export function badgesFor(input: BadgeInput): Badge[] {
+  return badgesFrom(badgeCounts(input));
+}
+
+function badgesFrom({ accepted, stats, helpful, top }: ReturnType<typeof badgeCounts>): Badge[] {
   const badges: Badge[] = [];
-  const { accepted, stats, helpful, top } = badgeCounts(input);
   if (accepted >= 1) badges.push({ id: 'first_accepted', label: 'First accepted test', description: 'A builder accepted your first test.' });
   if (stats.decided >= RELIABLE_MIN_DECIDED && stats.qualityScore >= RELIABLE_MIN_SCORE) {
     badges.push({ id: 'reliable_tester', label: 'Reliable tester', description: 'Consistently accepted work over the last 90 days.' });
@@ -108,8 +111,9 @@ export function badgesFor(input: BadgeInput): Badge[] {
 export type BadgeProgress = { id: Badge['id']; earned: boolean; current: number; target: number };
 
 export function badgeProgress(input: BadgeInput): BadgeProgress[] {
-  const earned = new Set(badgesFor(input).map((b) => b.id));
-  const { accepted, stats, helpful, top } = badgeCounts(input);
+  const c = badgeCounts(input);
+  const earned = new Set(badgesFrom(c).map((b) => b.id));
+  const { accepted, stats, helpful, top } = c;
   const counts: Record<Badge['id'], [number, number]> = {
     first_accepted: [accepted, 1],
     reliable_tester: [stats.decided, RELIABLE_MIN_DECIDED],

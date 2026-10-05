@@ -383,6 +383,9 @@ export type GlassRecipes = {
 const RIM_L1 = (k: number) => lin(135, s(0, '#D6E0FF', f3(0.5 * k)), s(0.3, '#8C7BFF', f3(0.26 * k)), s(0.62, '#463A96', 0.16), s(1, '#1E1A46', 0.1));
 const CARD_FILL = lin(160, s(0, '#1C1942'), s(0.45, '#16143A'), s(1, '#110F2E'));
 const CARD_BLOOM = (k: number) => rad(1.2, 0.8, 0, 0, s(0, '#6F9BFF', f3(0.1 * k)), s(0.5, '#6F9BFF', 0));
+// The L-1 well's floor (with its far wall's bloom) and rim; the medallion's socket is the same well.
+const WELL_FLOOR: GradientSpec[] = [lin(160, s(0, '#07061A'), s(1, '#0C0B24')), rad(0.9, 1.2, 1, 1, s(0, '#6F9BFF', 0.14), s(0.6, '#6F9BFF', 0))];
+const WELL_RIM = lin(135, s(0, '#7A74A8'), s(0.45, '#7A74A8'), s(1, '#A0BAFF'));
 
 const UPLIGHT_SPILL = '0 14px 30px -10px rgba(141,176,255,0.6)';
 const PRIMARY_SHADOW = 'inset 0 1px 0 rgba(255,255,255,0.65), inset -2px -3px 6px rgba(60,70,170,0.35), 8px 12px 26px -10px rgba(111,155,255,0.55), 2px 3px 6px -2px rgba(2,1,10,0.7)';
@@ -459,8 +462,8 @@ export const glassDark: GlassRecipes = {
   },
   well: {
     radius: radius.well,
-    fill: [lin(160, s(0, '#07061A'), s(1, '#0C0B24')), rad(0.9, 1.2, 1, 1, s(0, '#6F9BFF', 0.14), s(0.6, '#6F9BFF', 0))],
-    rim: [lin(135, s(0, '#7A74A8'), s(0.45, '#7A74A8'), s(1, '#A0BAFF'))],
+    fill: WELL_FLOOR,
+    rim: [WELL_RIM],
     shadow: 'inset 3px 4px 8px rgba(2,1,10,0.80), inset -1px -1px 0 rgba(150,175,255,0.16)',
   },
   wellDark: {
@@ -574,8 +577,8 @@ export const glassDark: GlassRecipes = {
   recordCore: { face: rad(0.5, 0.5, 0.5, 0.5, s(0, '#FFF3FB'), s(0.5, '#F6B6E0'), s(1, '#A983F2')), glow: '#F3A6DD' },
   medal: {
     socket: {
-      floor: [lin(160, s(0, '#07061A'), s(1, '#0C0B24')), rad(0.9, 1.2, 1, 1, s(0, '#6F9BFF', 0.14), s(0.6, '#6F9BFF', 0))],
-      rim: lin(135, s(0, '#7A74A8'), s(0.45, '#7A74A8'), s(1, '#A0BAFF')),
+      floor: WELL_FLOOR,
+      rim: WELL_RIM,
       shadow: (k) => `inset ${f3(2.4 * k)}px ${f3(3.2 * k)}px ${f3(6.4 * k)}px rgba(2,1,10,0.8), inset -1px -1px 0 rgba(150,175,255,0.16)`,
     },
     arc: { track: 'rgba(160,186,255,0.18)', fill: lin(135, s(0, '#E4EAFF'), s(0.5, '#B4B3FF'), s(1, '#8C7BFF')) },
@@ -664,5 +667,6 @@ export const glassLight: GlassRecipes = {
   },
   flute: { ...glassDark.flute, shadow: undefined },
   recordCore: glassDark.recordCore,
+  // Never drawn: with glass off, Medallion draws flat from the palette (reputation-layer.md §5). Kept for the type.
   medal: glassDark.medal,
 };

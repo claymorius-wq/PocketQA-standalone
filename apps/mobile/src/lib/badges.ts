@@ -66,19 +66,35 @@ export function medalLabel(name: string, p: BadgeProgress, opts: { isNew: boolea
 
 const seenKey = (userId: string) => `pocketqa.badgesSeen.${userId}`;
 
+/** The ids this device has shown; `null` when storage can't be read. A value that isn't a list of ids counts as none (and is rewritten). */
 async function readSeen(userId: string): Promise<BadgeId[] | null> {
+  let raw: string | null;
   try {
-    const raw = await AsyncStorage.getItem(seenKey(userId));
-    return raw ? (JSON.parse(raw) as BadgeId[]) : [];
+    raw = await AsyncStorage.getItem(seenKey(userId));
   } catch {
     return null;
   }
+  try {
+    const v: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(v) ? (v.filter((x) => typeof x === 'string') as BadgeId[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Forget which badges this device has shown an account (deleting it leaves nothing of it here). */
+export async function forgetSeenBadges(userId: string | null | undefined): Promise<void> {
+  if (!userId) return;
+  await AsyncStorage.removeItem(seenKey(userId)).catch(() => {});
 }
 
 /**
- * The earned badges that are new on this visit: earned, and never shown here before. Decided once
- * per visit (when the earned list first arrives) and then recorded, so "New" shows this time and not
- * the next. Storage that can't be read or written shows nothing as new.
+ * The earned badges that are new on this visit: earned, and never shown on this device before.
+ * Decided once per visit (when the earned list first arrives) and then recorded, so "New" shows this
+ * time and not the next. Storage that can't be read shows nothing as new; if the record can't be
+ * written, the badge shows as new again next time. A first visit on a device (a new phone, a
+ * reinstall) shows every earned badge as new once. Signing out keeps the record (badge ids only), so
+ * "New" stays true after signing back in; deleting the account clears it (`forgetSeenBadges`).
  */
 export function useNewBadges(userId: string | null | undefined, earned: readonly BadgeId[] | undefined): ReadonlySet<BadgeId> {
   const [fresh, setFresh] = useState<ReadonlySet<BadgeId>>(() => new Set());

@@ -108,6 +108,12 @@ describe('badges', () => {
     const b = badgesFor({ work: [...work(3, 'accepted', { platform: 'android' }), ...work(2, 'accepted', { platform: 'ios' })], events: [], nowMs: NOW });
     expect(b.find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'Android specialist' });
   });
+
+  it('Device Specialist on a tie goes to the platform counted first', () => {
+    const input = { work: [...work(3, 'accepted', { platform: 'ios' }), ...work(3, 'accepted', { platform: 'android' })], events: [], nowMs: NOW };
+    expect(badgesFor(input).find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'iOS specialist' });
+    expect(badgeProgress(input).find((x) => x.id === 'device_specialist')).toMatchObject({ earned: true, current: 3 });
+  });
 });
 
 describe('badgeProgress: the counts toward each badge, by the badges’ own rules', () => {
@@ -141,16 +147,20 @@ describe('badgeProgress: the counts toward each badge, by the badges’ own rule
     expect(byId(badgeProgress({ work: [], events, nowMs: NOW })).helpful_feedback).toMatchObject({ earned: false, current: 2 });
   });
 
-  it('earned is exactly what badgesFor lists, for any history', () => {
+  it('earned means a full count; a full count is the badge, except Reliable tester, which also needs the quality bar', () => {
     const histories = [
+      { work: [], events: [] },
       { work: work(1, 'accepted'), events: [] },
       { work: [...work(9, 'accepted', { platform: 'android' }), ...work(1, 'rejected')], events: helpful(4) },
       { work: work(3, 'accepted', { reversed: true }), events: helpful(1) },
+      { work: [...work(5, 'accepted'), ...work(5, 'rejected')], events: helpful(3) },
+      { work: [...work(3, 'accepted', { platform: 'ios' }), ...work(3, 'accepted', { platform: 'web' })], events: helpful(2) },
     ];
     for (const h of histories) {
-      const input = { ...h, nowMs: NOW };
-      const listed = badgesFor(input).map((b) => b.id).sort();
-      expect(badgeProgress(input).filter((x) => x.earned).map((x) => x.id).sort()).toEqual(listed);
+      for (const x of badgeProgress({ ...h, nowMs: NOW })) {
+        if (x.earned) expect(x.current).toBe(x.target);
+        if (x.id !== 'reliable_tester' && x.current === x.target) expect(x.earned).toBe(true);
+      }
     }
   });
 });

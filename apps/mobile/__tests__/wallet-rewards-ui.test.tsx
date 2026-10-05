@@ -20,9 +20,10 @@ jest.mock('lucide-react-native', () =>
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 const mockPush = jest.fn();
-const mockBack = jest.fn();
-jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a), back: () => mockBack() } }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'tester-1', role: 'tester' } }) }));
+const mockDismissTo = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a), dismissTo: (...a: unknown[]) => mockDismissTo(...a) } }));
+let mockUser = { id: 'tester-1', role: 'tester' };
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser }) }));
 const mockApi = jest.fn();
 jest.mock('../src/api/client', () => {
   class ApiError extends Error {
@@ -35,11 +36,24 @@ jest.mock('../src/api/client', () => {
   return { ApiError, api: (...a: unknown[]) => mockApi(...a) };
 });
 let mockRep: Reputation;
+let mockRepError: Error | null = null;
+const mockRepOptions: unknown[] = [];
 let mockBoard: { items: { rank: number; alias: string; qualityScore: number; decided: number; badges: string[] }[]; windowDays: number; minDecided: number };
 jest.mock('../src/lib/queries', () => ({
-  useReputation: () => ({ isLoading: false, error: null, data: mockRep, refetch: jest.fn() }),
+  // As React Query would: a disabled query never fetches and has no data.
+  useReputation: (options?: { enabled?: boolean }) => {
+    mockRepOptions.push(options);
+    return options?.enabled === false ? { isLoading: false, error: null, data: undefined, refetch: jest.fn() } : { isLoading: false, error: mockRepError, data: mockRep, refetch: jest.fn() };
+  },
   useLeaderboard: () => ({ isLoading: false, error: null, data: mockBoard, refetch: jest.fn() }),
 }));
+
+/** Whether a host view above `node` is one accessibility element (VoiceOver never visits inside one). */
+type HostNode = { type: unknown; props: Record<string, unknown>; parent: HostNode | null };
+function insideAccessibleView(node: HostNode): boolean {
+  for (let p = node.parent; p; p = p.parent) if (typeof p.type === 'string' && p.props.accessible === true) return true;
+  return false;
+}
 
 const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } };
 function tree(node: ReactNode) {
@@ -204,6 +218,10 @@ describe('Reputation and leaderboard', () => {
   beforeEach(async () => {
     // Which badges this device has shown its tester ("New") starts empty for each test.
     await AsyncStorage.clear();
+    mockUser = { id: 'tester-1', role: 'tester' };
+    mockRepError = null;
+    mockRepOptions.length = 0;
+    mockDismissTo.mockReset();
     mockRep = {
       points: 25,
       noCashValue: true,
@@ -255,9 +273,10 @@ describe('Reputation and leaderboard', () => {
     expect(screen.getByTestId('badge-helpful_feedback')).toHaveTextContent(/Helpful feedback.*Builders mark your feedback helpful 3 times\..*1 of 3 helpful marks/);
     expect(screen.getByTestId('badge-reliable_tester')).toHaveTextContent(/2 of 5 decided tests/);
     expect(screen.getByTestId('badge-device_specialist')).toHaveTextContent(/2 of 3 accepted tests on one platform/);
-    // The hero: the hardest badge earned, as one image with one label.
+    // The hero: the hardest badge earned, announced once (the medallion itself is silent).
     expect(screen.getByTestId('reputation-hero')).toHaveTextContent(/TOP BADGE.*First accepted test/);
-    expect(screen.getByLabelText(/^First accepted test, earned/)).toBeTruthy();
+    expect(screen.getByTestId('reputation-hero-badge').props.accessibilityLabel).toMatch(/^Top badge: First accepted test, earned/);
+    expect(screen.queryByLabelText(/^First accepted test, earned/)).toBeNull();
     // Points carry the word, and no currency.
     expect(screen.getByTestId('reputation-events')).toHaveTextContent(/\+10 points/);
   });
@@ -266,7 +285,7 @@ describe('Reputation and leaderboard', () => {
     await render(tree(<ReputationScreen />));
     await settle();
     expect(screen.getByTestId('badge-first_accepted-new')).toBeTruthy();
-    expect(screen.getByLabelText('First accepted test, earned, new')).toBeTruthy();
+    expect(screen.getByLabelText('Top badge: First accepted test, earned, new')).toBeTruthy();
     await screen.unmount();
     await render(tree(<ReputationScreen />));
     await settle();
@@ -298,14 +317,37 @@ describe('Reputation and leaderboard', () => {
     mockRep = { ...mockRep, leaderboard: { optedIn: true, alias: 'Dee', rank: 4, minDecided: 3 } };
     await render(tree(<LeaderboardScreen />));
     expect(screen.getByTestId('leaderboard-row-1').props.accessibilityLabel).toMatch(/the top one Reliable tester/);
+    for (const rank of [1, 2, 3]) expect(within(screen.getByTestId('leaderboard-top')).getByTestId(`leaderboard-row-${rank}`)).toBeTruthy();
+    expect(within(screen.getByTestId('leaderboard-top')).queryByTestId('leaderboard-row-4')).toBeNull();
+    expect(within(screen.getByTestId('leaderboard-rest')).getByTestId('leaderboard-row-4')).toBeTruthy();
     expect(screen.getByTestId('leaderboard-you')).toHaveTextContent(/You · Dee.*Rank 4 of 4 · Quality 34/);
+  });
+
+  it('a builder or admin sees the board with no row of their own, and never asks for a tester’s reputation', async () => {
+    mockUser = { id: 'builder-1', role: 'builder' };
+    await render(tree(<LeaderboardScreen />));
+    expect(screen.getByTestId('leaderboard-row-1')).toBeTruthy();
+    expect(screen.queryByTestId('leaderboard-you')).toBeNull();
+    expect(mockRepOptions).toContainEqual({ enabled: false });
+    expect(mockRepOptions).not.toContainEqual({ enabled: true });
+  });
+
+  it('no pinned row while your reputation failed to load (it would show stale numbers)', async () => {
+    mockRepError = new Error('offline');
+    await render(tree(<LeaderboardScreen />));
+    expect(screen.getByTestId('leaderboard-row-1')).toBeTruthy();
+    expect(screen.queryByTestId('leaderboard-you')).toBeNull();
   });
 
   it('hidden or not ranked yet, the pinned row says so, and Show me goes back to the settings', async () => {
     await render(tree(<LeaderboardScreen />));
     expect(screen.getByTestId('leaderboard-you')).toHaveTextContent(/You’re hidden\. Your points and badges still count\./);
+    expect(screen.getByTestId('leaderboard-you-place').props.accessibilityLabel).toBe('You. You’re hidden. Your points and badges still count.');
+    // Show me is a button of its own, outside the place's one accessibility element.
+    expect(insideAccessibleView(screen.getByTestId('leaderboard-show-me'))).toBe(false);
     await act(async () => fireEvent.press(screen.getByTestId('leaderboard-show-me')));
-    expect(mockBack).toHaveBeenCalled();
+    // Back to the settings, or to them in this screen's place when there is no history.
+    expect(mockDismissTo).toHaveBeenCalledWith('/reputation');
     await screen.unmount();
     mockRep = { ...mockRep, leaderboard: { optedIn: true, alias: 'Tara', rank: null, minDecided: 3 } };
     await render(tree(<LeaderboardScreen />));

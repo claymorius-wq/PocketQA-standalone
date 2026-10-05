@@ -11,7 +11,7 @@ import { arcShare, BADGES, keyBadge, medalLabel, progressText, useNewBadges, typ
 import { useLeaderboard, useReputation } from '../lib/queries';
 import { radius } from '../theme/tokens';
 import { Button, Card, Checkbox, EmptyState, Field, Notice, QueryState, Screen, Text } from '../ui';
-import { Hairline, KeyValue, KeyValueList, Medallion, SectionHeader } from '../ui/patterns';
+import { Hairline, KeyValue, KeyValueList, Medallion, plural, SectionHeader } from '../ui/patterns';
 
 // Tester reputation (plan workstreams E/F; the Lens design in docs/design/reputation-layer.md, on
 // the rules that are live): points for accepted work, the four badges as medallions, and the
@@ -63,13 +63,18 @@ function ReputationBody({ r }: { r: Reputation }) {
   return (
     <View style={styles.page}>
       <Card k={1} style={styles.hero} testID="reputation-hero">
-        <View style={styles.heroTop}>
+        {/* One announcement for the badge: the block speaks for its medallion and its text. */}
+        <View
+          style={styles.heroTop}
+          accessible
+          accessibilityLabel={`${lead ? 'Top badge' : 'First badge'}: ${medalLabel(hero.name, hero.p, { isNew: hero.isNew, qualityScore: r.stats.qualityScore, counted: hero.counted })}`}
+          testID="reputation-hero-badge"
+        >
           <Medallion
             glyph={BADGES[hero.id].glyph}
             size="hero"
             state={hero.p.earned ? (hero.isNew ? 'new' : 'earned') : 'locked'}
             progress={hero.counted ? arcShare(hero.p, r.stats.qualityScore) : 0}
-            label={medalLabel(hero.name, hero.p, { isNew: hero.isNew, qualityScore: r.stats.qualityScore, counted: hero.counted })}
             testID="reputation-hero-medal"
           />
           <View style={styles.heroText}>
@@ -227,26 +232,29 @@ function LeaderboardSettings({ r }: { r: Reputation }) {
 const TOP = 3;
 
 export function LeaderboardScreen() {
+  const { user } = useSession();
   const q = useLeaderboard();
-  const me = useReputation();
+  // Only a tester has a place on the board: a builder or an admin may look, with no row of their own.
+  const me = useReputation({ enabled: user?.role === 'tester' });
   return (
     <Screen
       title="Leaderboard"
       subtitle="Ranked by quality over the last 90 days, never by volume or money."
       testID="leaderboard-screen"
-      // Your own place, pinned: once the board and your settings are both in.
-      dock={q.data && me.data ? <YouDock board={q.data} r={me.data} /> : null}
+      // Your own place, pinned: once the board and your settings are both in, and while neither
+      // has failed (a failed refresh keeps old data, which the board then no longer shows).
+      dock={q.data && me.data && !q.error && !me.error ? <YouDock board={q.data} r={me.data} /> : null}
     >
       <QueryState query={q} empty={(d) => (d.items.length === 0 ? <EmptyState icon={Trophy} title="No one yet" body="Testers appear here after they opt in and have enough decided tests." /> : null)}>
         {(d) => (
           <View style={styles.list} testID="leaderboard-list">
-            <Card k={1} style={styles.boardCard}>
+            <Card k={1} style={styles.boardCard} testID="leaderboard-top">
               {d.items.slice(0, TOP).map((row, i) => (
                 <BoardRow key={row.rank} row={row} first={i === 0} />
               ))}
             </Card>
             {d.items.length > TOP ? (
-              <Card k={0.8} style={styles.boardCard}>
+              <Card k={0.8} style={styles.boardCard} testID="leaderboard-rest">
                 {d.items.slice(TOP).map((row, i) => (
                   <BoardRow key={row.rank} row={row} first={i === 0} />
                 ))}
@@ -264,7 +272,7 @@ type Row = Leaderboard['items'][number];
 /** One ranked tester, read as one sentence: rank, alias, the key badge, quality and decided tests. */
 function BoardRow({ row, first }: { row: Row; first: boolean }) {
   const lead = keyBadge(row.badges);
-  const badges = `${row.badges.length} badge${row.badges.length === 1 ? '' : 's'}`;
+  const badges = plural(row.badges.length, 'badge', 'badges');
   const name = lead ? BADGES[lead].name : null;
   return (
     <View
@@ -305,20 +313,26 @@ function YouDock({ board, r }: { board: Leaderboard; r: Reputation }) {
       : `Not ranked yet: ${Math.min(r.stats.decided, lb.minDecided)} of ${lb.minDecided} decided tests in the last ${board.windowDays} days`;
   return (
     <GlassBlur radius={radius.overlay} style={styles.dock} testID="leaderboard-you">
-      <View style={styles.dockRow} accessible accessibilityLabel={`You. ${line}`}>
-        {lb.optedIn && lb.rank ? (
-          <Text variant="meta" tone="muted" style={styles.rank}>
-            {lb.rank}
-          </Text>
-        ) : null}
-        <Medallion glyph={lead ? BADGES[lead].glyph : 'accepted'} size="row" state={lead ? 'earned' : 'locked'} />
-        <View style={styles.flex}>
-          <Text variant="heading">{lb.optedIn && lb.alias ? `You · ${lb.alias}` : 'You'}</Text>
-          <Text variant="small" tone="muted">
-            {line}
-          </Text>
+      <View style={styles.dockRow}>
+        {/* Your place reads as one sentence; Show me stays a button of its own beside it (inside an
+            accessible view, VoiceOver could never reach it). */}
+        <View style={styles.dockPlace} accessible accessibilityLabel={`You. ${line}`} testID="leaderboard-you-place">
+          {lb.optedIn && lb.rank ? (
+            <Text variant="meta" tone="muted" style={styles.rank}>
+              {lb.rank}
+            </Text>
+          ) : null}
+          <Medallion glyph={lead ? BADGES[lead].glyph : 'accepted'} size="row" state={lead ? 'earned' : 'locked'} />
+          <View style={styles.flex}>
+            <Text variant="heading">{lb.optedIn && lb.alias ? `You · ${lb.alias}` : 'You'}</Text>
+            <Text variant="small" tone="muted">
+              {line}
+            </Text>
+          </View>
         </View>
-        {lb.optedIn ? null : <Button label="Show me" size="compact" variant="secondary" onPress={() => router.back()} testID="leaderboard-show-me" accessibilityHint="Opens your leaderboard settings" />}
+        {/* Back to the settings; with no history (a refresh, a new tab, a deep link) they open in
+            this screen's place. */}
+        {lb.optedIn ? null : <Button label="Show me" size="compact" variant="secondary" onPress={() => router.dismissTo('/reputation')} testID="leaderboard-show-me" accessibilityHint="Opens your leaderboard settings" />}
       </View>
     </GlassBlur>
   );
@@ -342,8 +356,10 @@ const styles = StyleSheet.create({
   list: { gap: 14 },
   boardCard: { paddingHorizontal: 14, paddingVertical: 4 },
   boardRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 10 },
-  rank: { width: 22, textAlign: 'center' },
+  // Three digits fit; a longer rank widens its own row rather than wrapping.
+  rank: { minWidth: 22, textAlign: 'center' },
   score: { alignItems: 'flex-end' },
   dock: { paddingHorizontal: 14, paddingVertical: 10 },
   dockRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dockPlace: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 12 },
 });
