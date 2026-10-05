@@ -159,8 +159,14 @@ export const StudyInput = z.object({
 });
 
 // ---------- wallet-funded escrow (ADR 0007): SIMULATED settlement only in this phase ----------
-/** `off` everywhere by default; production refuses anything else. No live provider exists yet. */
-export const SettlementMode = z.enum(['off', 'simulated']);
+/**
+ * `off` everywhere by default; production refuses anything else. `squads_devnet` is the bounded
+ * devnet feasibility pilot (ADR 0007 §10): devnet test USDC only, test keys simulate every role.
+ */
+export const SettlementMode = z.enum(['off', 'simulated', 'squads_devnet']);
+/** How a given study settles: a local simulation, or the Squads devnet pilot (no value either way). */
+export const SettlementKind = z.enum(['simulated', 'squads_devnet']);
+export type SettlementKind = z.infer<typeof SettlementKind>;
 export type SettlementMode = z.infer<typeof SettlementMode>;
 /** Whole token base units (USDC: 6 decimals, 1 USDC = 1,000,000). Never fractional. */
 export const TokenUnits = z.number().int().nonnegative().max(1_000_000_000_000);
@@ -217,7 +223,7 @@ export const StudyPayment = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('test_credits') }),
   z.object({
     mode: z.literal('escrow'),
-    settlement: z.literal('simulated'),
+    settlement: SettlementKind,
     asset: z.literal('USDC'),
     decimals: z.literal(6),
     network: z.string(),
@@ -234,7 +240,7 @@ export type StudyPayment = z.infer<typeof StudyPayment>;
 /** What a tester is offered for an approved test. */
 export const StudyReward = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('test_credits'), credits: PositiveCredits }),
-  z.object({ kind: z.literal('token'), asset: z.literal('USDC'), decimals: z.literal(6), units: PositiveTokenUnits, settlement: z.literal('simulated') }),
+  z.object({ kind: z.literal('token'), asset: z.literal('USDC'), decimals: z.literal(6), units: PositiveTokenUnits, settlement: SettlementKind }),
 ]);
 export type StudyReward = z.infer<typeof StudyReward>;
 
@@ -307,7 +313,7 @@ export const Payout = z.object({
   asset: z.literal('USDC'),
   decimals: z.literal(6),
   destination: z.string(),
-  settlement: z.literal('simulated'),
+  settlement: SettlementKind,
   /** `confirmed` is the only settled state; with simulation it means "settled (simulated)", never "paid". */
   status: SettlementStatus,
   signature: z.string().nullable(),
@@ -358,7 +364,7 @@ export const EscrowFunding = z.object({
   mint: z.string(),
   vault: z.string(),
   reference: z.string(),
-  settlement: z.literal('simulated'),
+  settlement: SettlementKind,
   status: EscrowFundingStatus,
   signature: z.string().nullable(),
   source: z.string().nullable(),
@@ -369,7 +375,7 @@ export const EscrowFunding = z.object({
 });
 export type EscrowFunding = z.infer<typeof EscrowFunding>;
 export const SimulatedSignature = z.string().regex(/^sim[A-Za-z0-9]{16,80}$/);
-export const SubmitFundingSignatureBody = z.object({ signature: SimulatedSignature });
+export const SubmitFundingSignatureBody = z.object({ signature: z.union([SimulatedSignature, Base58Signature]) });
 export const SimulatedWalletPayment = z.object({ signature: SimulatedSignature, settlement: z.literal('simulated') });
 export const PutTaskNoteBody = z.object({ note: z.string().trim().max(2000) });
 export const WithdrawBody = z.object({ reason: z.string().trim().max(500).optional() });
@@ -511,7 +517,7 @@ export const AuditEntry = z.object({
 /** Everything the requester owns, and nothing anyone else owns. Media is listed, not inlined. */
 /** Token amounts in exports: exact decimal strings of base units (USDC: 6 decimals), never floats. */
 export const TokenUnitsString = z.string().regex(/^(0|[1-9]\d*)$/);
-const ExportAsset = { asset: z.literal('USDC'), decimals: z.literal(6), settlement: z.literal('simulated') };
+const ExportAsset = { asset: z.literal('USDC'), decimals: z.literal(6), settlement: SettlementKind };
 /**
  * The money of wallet-funded studies, least data (ADR 0007). Rows are strict: no provider-internal
  * fields (attempt keys, idempotency keys), and a builder's rows never carry a tester's identity,

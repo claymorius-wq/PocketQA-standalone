@@ -1,4 +1,4 @@
-import { formatUnits, parseUnits, paymentState, rewardText, tokenAmount } from '../src/lib/money';
+import { devnetExplorerTx, formatUnits, parseUnits, paymentState, PILOT_DISCLOSURE, rewardText, tokenAmount } from '../src/lib/money';
 
 // Token amounts are whole base units end to end; the app formats and parses them with string
 // arithmetic only, never floating point (pqa-qa matrix I2).
@@ -46,5 +46,21 @@ describe('labels say simulation, never paid', () => {
       expect(`${s.label} ${s.detail}`).toMatch(/simulat/i);
     }
     expect(states[3]!.detail).toContain('No token account');
+  });
+});
+
+describe('the Squads devnet pilot (ADR 0007 §10): devnet test USDC, no value, never paid or trustless', () => {
+  it('names the asset as devnet test USDC', () => {
+    expect(tokenAmount(1_000_000, 'squads_devnet')).toBe('1.00 devnet test USDC');
+    expect(rewardText({ kind: 'token', asset: 'USDC', decimals: 6, units: 2_500_000, settlement: 'squads_devnet' })).toBe('2.50 devnet test USDC');
+  });
+
+  it('every payment state says devnet, and the settled one says no value and the pilot disclosure', () => {
+    const states = (['pending', 'submitted', 'confirmed', 'failed'] as const).map((status) => paymentState({ status, failureReason: null, settlement: 'squads_devnet' }));
+    expect(states.map((s) => s.label)).toEqual(['Payment pending · devnet pilot', 'Payment submitted · devnet pilot', 'Settled on devnet · test USDC, no value', 'Payment failed · devnet pilot']);
+    for (const s of states) expect(`${s.label} ${s.detail}`).not.toMatch(/\bpaid\b|trustless|simulation|simulated/i);
+    expect(states[2]!.detail).toMatch(/test keys simulate all roles; not independent custody/);
+    expect(PILOT_DISCLOSURE).toMatch(/Devnet test USDC, no value\. Pilot: test keys simulate all roles.*not independent custody.*two of three signers/);
+    expect(devnetExplorerTx('Sig1')).toBe('https://explorer.solana.com/tx/Sig1?cluster=devnet');
   });
 });

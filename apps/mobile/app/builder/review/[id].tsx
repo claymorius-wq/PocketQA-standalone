@@ -207,7 +207,9 @@ function ReviewInner() {
                   body={
                     kind === 'approve'
                       ? p.reward.kind === 'token'
-                        ? 'The reward is sent once, from the study escrow to the tester’s saved wallet (simulated: no funds move). This can’t be undone.'
+                        ? p.reward.settlement === 'squads_devnet'
+                          ? 'The reward is sent once, from the study vault on devnet to the tester’s saved wallet, signed by Pocket QA and you (two of three; devnet test USDC, no value; pilot test keys simulate all roles). This can’t be undone.'
+                          : 'The reward is sent once, from the study escrow to the tester’s saved wallet (simulated: no funds move). This can’t be undone.'
                         : 'The tester is credited once. This can’t be undone.'
                       : 'Give a clear reason. The tester can dispute within 7 days.'
                   }

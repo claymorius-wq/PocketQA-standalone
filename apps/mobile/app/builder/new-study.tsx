@@ -10,7 +10,7 @@ import { CreateStudyBody, type Platform as P } from '@pocket-qa/contracts';
 import { lintCopy } from '@pocket-qa/domain';
 import { api, ApiError } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
-import { formatUnits, parseUnits } from '../../src/lib/money';
+import { formatUnits, parseUnits, PILOT_DISCLOSURE, unitName } from '../../src/lib/money';
 import { GlassBlur, GlassSurface, useSweepOnEnable, Well } from '../../src/glass';
 import { GradientRule, PASS_THROUGH, useSvgId } from '../../src/glass/paint';
 import { useCrossfade } from '../../src/motion';
@@ -62,9 +62,12 @@ function NewStudyInner() {
   const [langs, setLangs] = useState('en');
   const [reward, setReward] = useState('50');
   const [slots, setSlots] = useState('5');
-  // Wallet escrow is offered only where the server runs (simulated) settlement (ADR 0007).
+  // Wallet escrow is offered only where the server runs settlement (ADR 0007): the simulation, or
+  // the Squads devnet pilot (§10, devnet test USDC with no value).
   const { features } = useSession();
-  const escrowOffered = features.settlement === 'simulated';
+  const escrowOffered = features.settlement !== 'off';
+  const pilot = features.settlement === 'squads_devnet';
+  const unit = unitName(pilot ? 'squads_devnet' : 'simulated');
   const [mode, setMode] = useState<'test_credits' | 'escrow'>('test_credits');
   const escrow = escrowOffered && mode === 'escrow';
   const [rewardUsdc, setRewardUsdc] = useState('1.00');
@@ -148,7 +151,7 @@ function NewStudyInner() {
     <Screen
       testID="new-study-screen"
       title="New study"
-      subtitle={escrow ? 'Saved as a draft. You fund it from your wallet (simulated) before publishing.' : 'Saved as a draft. Publishing reserves reward × slots from your test credits.'}
+      subtitle={escrow ? pilot ? 'Saved as a draft. You fund it with devnet test USDC (no value) from your wallet before publishing.' : 'Saved as a draft. You fund it from your wallet (simulated) before publishing.' : 'Saved as a draft. Publishing reserves reward × slots from your test credits.'}
       // The Screen's dock: it ends the form above the dock, blurs it, moves with the arrival and steps
       // aside while the keyboard is up (so it never covers the field being typed in).
       dockPlacement="edge"
@@ -240,15 +243,21 @@ function NewStudyInner() {
               </View>
             ) : null}
             {escrow ? (
-              <Notice tone="info" title="Simulation" testID="escrow-sim-notice">
-                Wallet funding and rewards are simulated in this build: no wallet is charged and no funds move. You fund the study before publishing; each approved test sends its reward from the study escrow to the tester’s saved wallet.
-              </Notice>
+              pilot ? (
+                <Notice tone="info" title="Devnet pilot" testID="escrow-pilot-notice">
+                  {`You fund the study before publishing, from your linked wallet to the study’s Squads vault on Solana devnet; each approved test sends its reward from the vault to the tester’s saved wallet. ${PILOT_DISCLOSURE}`}
+                </Notice>
+              ) : (
+                <Notice tone="info" title="Simulation" testID="escrow-sim-notice">
+                  Wallet funding and rewards are simulated in this build: no wallet is charged and no funds move. You fund the study before publishing; each approved test sends its reward from the study escrow to the tester’s saved wallet.
+                </Notice>
+              )
             ) : null}
             <Card k={0.8} style={styles.rewardCard}>
               <View style={styles.rewardRow}>
                 <View style={styles.rewardCell}>
                   {escrow ? (
-                    <Field label="Reward per accepted test (simulated USDC)" value={rewardUsdc} onChangeText={setRewardUsdc} numeral invalid={rewardUsdc.trim() !== '' && rewardUnits === null} testID="study-reward-usdc" />
+                    <Field label={`Reward per accepted test (${unit})`} value={rewardUsdc} onChangeText={setRewardUsdc} numeral invalid={rewardUsdc.trim() !== '' && rewardUnits === null} testID="study-reward-usdc" />
                   ) : (
                     <Field label="Reward per tester" value={reward} onChangeText={setReward} keyboardType="number-pad" numeral invalid={schemaBad('rewardCredits', reward)} testID="study-reward" />
                   )}
@@ -264,7 +273,7 @@ function NewStudyInner() {
               {escrow ? (
                 <View style={styles.budget} accessibilityLiveRegion="polite">
                   <Text variant="bodySm" tone="muted">
-                    Reward pool: <Text variant="meta" testID="study-pool">{rewardUnits && Number(slots) > 0 ? `${formatUnits(rewardUnits * Number(slots))} simulated USDC` : '—'}</Text>
+                    Reward pool: <Text variant="meta" testID="study-pool">{rewardUnits && Number(slots) > 0 ? `${formatUnits(rewardUnits * Number(slots))} ${unit}` : '—'}</Text>
                   </Text>
                   <Text variant="small" tone="muted">Plus the disclosed platform fee per approved test. The exact amount to fund is shown on the study before you fund it. Unused rewards and their fees are returned to your wallet when the study closes.</Text>
                 </View>

@@ -297,7 +297,7 @@ export function auditView(row: AuditRow): z.infer<typeof AuditEntry> {
 /** What a tester is offered: test credits, or a (simulated-settlement) token reward. */
 export function rewardView(db: DB, row: StudyRow): StudyReward {
   if (row.payment_mode !== 'escrow') return { kind: 'test_credits', credits: row.reward_credits };
-  return { kind: 'token', asset: 'USDC', decimals: 6, units: row.reward_credits, settlement: 'simulated' };
+  return { kind: 'token', asset: 'USDC', decimals: 6, units: row.reward_credits, settlement: escrowOf(db, row.id)?.settlement ?? 'simulated' };
 }
 
 /** Builder view of how a study is paid for; escrow books only for the owner (views are owner-scoped). */
@@ -309,7 +309,7 @@ export function paymentView(db: DB, row: StudyRow, nowMs: number): StudyPayment 
   const refund = db.prepare(`SELECT status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(row.id) as { status: SettlementRow['status']; amount_units: number } | undefined;
   return {
     mode: 'escrow',
-    settlement: 'simulated',
+    settlement: esc.settlement,
     asset: 'USDC',
     decimals: 6,
     network: esc.network,
@@ -333,7 +333,7 @@ export function payoutView(db: DB, s: SettlementRow): Payout {
     asset: 'USDC',
     decimals: 6,
     destination: s.destination,
-    settlement: 'simulated',
+    settlement: escrowOf(db, s.study_id)?.settlement ?? 'simulated',
     status: s.status,
     signature: s.signature,
     failureReason: s.failure_reason,
@@ -355,7 +355,7 @@ export function fundingView(db: DB, f: FundingRow): EscrowFunding {
     mint: esc.mint,
     vault: esc.vault,
     reference: f.reference,
-    settlement: 'simulated',
+    settlement: esc.settlement,
     status: f.status,
     signature: f.signature,
     source: f.source,

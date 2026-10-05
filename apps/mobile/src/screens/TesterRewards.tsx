@@ -10,7 +10,7 @@ import { PaymentStateCard } from './PaymentState';
 /**
  * Under the tester's Credits: the link to reputation, and (where settlement runs) the rewards of
  * wallet-funded studies with their payment state. Money and points are shown apart, and the
- * rewards are labelled as a simulation.
+ * rewards are labelled by their settlement (a simulation, or the devnet pilot: no value).
  */
 export function TesterRewards() {
   const { features } = useSession();
@@ -20,7 +20,7 @@ export function TesterRewards() {
       <Button label="Reputation and badges" icon={Award} variant="secondary" onPress={() => router.push('/reputation')} testID="open-reputation" />
       {features.settlement !== 'off' && payouts.data?.items.length ? (
         <View testID="tester-wallet-rewards">
-          <SectionHeader title="Wallet rewards · simulation" />
+          <SectionHeader title={features.settlement === 'squads_devnet' ? 'Wallet rewards · devnet pilot, no value' : 'Wallet rewards · simulation'} />
           <View style={styles.list}>
             {payouts.data.items.map((p) => (
               <View key={p.id} style={styles.item}>

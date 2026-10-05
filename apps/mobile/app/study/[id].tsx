@@ -7,7 +7,7 @@ import { StyleSheet, Text as RNText, View } from 'react-native';
 import { REWARD_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
-import { formatUnits, tokenAmount } from '../../src/lib/money';
+import { formatUnits, tokenAmount, unitName, type Settlement } from '../../src/lib/money';
 import { GlassSurface, Well } from '../../src/glass';
 import { GlassTile } from '../../src/icons';
 import { recordingCapability } from '../../src/lib/capability';
@@ -31,10 +31,10 @@ import { Hairline, SectionHeader, TaskList } from '../../src/ui/patterns';
  * The board's reward readout: the numeral with its unit stacked under it in a narrow lens well
  * (padding 6 18 9 14), read as one phrase. The shared RewardWell only lays out in a row.
  */
-function StudyReward({ amount, units }: { amount: number; units?: number }) {
+function StudyReward({ amount, units, settlement }: { amount: number; units?: number; settlement?: Settlement }) {
   const { colors, type } = useTheme();
   const value = units !== undefined ? formatUnits(units) : amount.toLocaleString('en-US');
-  const unit = units !== undefined ? 'simulated USDC' : amount === 1 ? 'test credit' : 'test credits';
+  const unit = units !== undefined ? unitName(settlement) : amount === 1 ? 'test credit' : 'test credits';
   return (
     <Well style={styles.well} accessible accessibilityRole="text" accessibilityLabel={`${value} ${unit}`}>
       <RNText style={[type.numeral, { color: colors.numeral }]}>{value}</RNText>
@@ -86,7 +86,7 @@ function StudyDetailInner() {
             </View>
             <GlassSurface level="card" style={styles.reward}>
               <View style={styles.rewardRow}>
-                <StudyReward amount={s.rewardCredits} units={s.reward.kind === 'token' ? s.reward.units : undefined} />
+                <StudyReward amount={s.rewardCredits} units={s.reward.kind === 'token' ? s.reward.units : undefined} settlement={s.reward.kind === 'token' ? s.reward.settlement : undefined} />
                 <Text variant="meta" tone="muted" style={styles.slots}>{s.slotsRemaining} slot{s.slotsRemaining === 1 ? '' : 's'} left</Text>
               </View>
               <View style={styles.disclaimer}>
@@ -132,7 +132,7 @@ function StudyDetailInner() {
                         <Checkbox
                           checked={walletOk}
                           onChange={setWalletOk}
-                          label={`Send this study’s reward (${tokenAmount(token.units)}) only to my wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)}. It can’t be changed after I join.`}
+                          label={`Send this study’s reward (${tokenAmount(token.units, token.settlement)}) only to my wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)}. It can’t be changed after I join.`}
                           testID="consent-reward-wallet"
                         />
                       </View>

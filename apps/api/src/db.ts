@@ -375,6 +375,38 @@ const MIGRATIONS: string[] = [
   );
   CREATE UNIQUE INDEX leaderboard_alias ON leaderboard_profiles(lower(alias)) WHERE alias IS NOT NULL;
   `,
+  // 7: the Squads devnet feasibility pilot (ADR 0007 §10). study_escrows is rebuilt to allow the
+  // 'squads_devnet' kind (SQLite can't alter a CHECK; no table references study_escrows). A
+  // payment names the second signer (the builder normally; the arbiter for an overturned dispute
+  // or an absent builder). squads_attempts pins one Squads transaction index per settlement,
+  // persisted BEFORE anything is sent, so every retry re-drives the same on-chain transaction.
+  `
+  CREATE TABLE study_escrows_v7 (
+    study_id TEXT PRIMARY KEY REFERENCES studies(id),
+    settlement TEXT NOT NULL CHECK (settlement IN ('simulated','squads_devnet')),
+    network TEXT NOT NULL,
+    mint TEXT NOT NULL,
+    vault TEXT NOT NULL UNIQUE,
+    fee_bps INTEGER NOT NULL CHECK (fee_bps BETWEEN 0 AND 10000),
+    funding_wallet TEXT,
+    created_at TEXT NOT NULL,
+    multisig TEXT,
+    vault_authority TEXT
+  );
+  INSERT INTO study_escrows_v7 (study_id, settlement, network, mint, vault, fee_bps, funding_wallet, created_at)
+    SELECT study_id, settlement, network, mint, vault, fee_bps, funding_wallet, created_at FROM study_escrows;
+  DROP TABLE study_escrows;
+  ALTER TABLE study_escrows_v7 RENAME TO study_escrows;
+  ALTER TABLE settlements ADD COLUMN cosigner TEXT NOT NULL DEFAULT 'builder' CHECK (cosigner IN ('builder','arbiter'));
+  CREATE TABLE squads_attempts (
+    settlement_id TEXT PRIMARY KEY REFERENCES settlements(id),
+    multisig TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    execute_signature TEXT,
+    created_at INTEGER NOT NULL,
+    UNIQUE (multisig, tx_index)
+  );
+  `,
 ];
 
 /** How many migrations this code ships; tools compare it with a live database's schema. */

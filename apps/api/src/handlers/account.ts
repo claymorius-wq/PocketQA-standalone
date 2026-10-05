@@ -309,7 +309,7 @@ export const accountHandlers = {
         const now = ctx.deps.now();
         db.prepare(`UPDATE escrow_fundings SET status = 'expired' WHERE study_id = ? AND status = 'awaiting_payment'`).run(s.id);
         db.prepare(`UPDATE studies SET status = 'closed', closed_at = ? WHERE id = ?`).run(iso(now), s.id);
-        authorizeRefund(db, { ...s, status: 'closed' }, now, user.id);
+        authorizeRefund(db, { ...s, status: 'closed' }, now, user.id, 'arbiter');
       }
       // The leaderboard pseudonym goes with the account; points stay append-only under the
       // now-anonymous id (like ledger postings, ADR 0002).

@@ -28,8 +28,14 @@ const deps = {
     // preview) start without them.
     identity: config.firebase ? (await import('./identity/firebase')).firebaseIdentity(config.firebase) : null,
     store: config.r2 ? (await import('./storage/r2')).r2Store(config.r2) : localStore(join(config.dataDir, 'media')),
-    // ADR 0007: only the local SIMULATED settlement exists; production refuses it in loadConfig.
-    settlement: config.features.settlement === 'simulated' ? new SimulatedSettlement(db, Date.now) : null,
+    // ADR 0007: the local SIMULATED settlement, or the Squads DEVNET pilot (§10: devnet test USDC,
+    // test keys simulate every role). loadConfig refuses both in production.
+    settlement:
+      config.features.settlement === 'simulated'
+        ? new SimulatedSettlement(db, Date.now)
+        : config.features.settlement === 'squads_devnet'
+          ? (await import('./settlement/squads/pilot')).squadsDevnetPilot(db, Date.now, config.pilotKeysDir!)
+          : null,
 };
 const app = await buildApp(deps, { logger: loggerOptions() });
 // Lets db:restore see a running API whatever port it uses (inc4 review P3-3).
@@ -42,7 +48,7 @@ const sweep = () =>
   sweepStorage({ db, store: deps.store, now: Date.now }).catch(() => app.log.warn('storage sweep failed; will retry'));
 void sweep();
 const sweeper = setInterval(sweep, 60_000);
-// Escrow settlement (simulated): verify fundings, send and confirm payouts and refunds, and
+// Escrow settlement (simulated or the devnet pilot): verify fundings, send and confirm payouts and refunds, and
 // reconcile the books. Imbalances are logged as alerts for the operator.
 let settling = false;
 const settle = async () => {

@@ -167,7 +167,7 @@ describe('SettingsScreen states', () => {
     await settle();
     expect(api).toHaveBeenCalledWith('exportMe');
     expect(screen.getByTestId('export-done')).toBeTruthy();
-    expect(screen.getByText('1 participations, 0 studies, 0 evidence items, 0 ledger entries, 1 wallet escrow records (simulated), 2 reputation events.')).toBeTruthy();
+    expect(screen.getByText('1 participations, 0 studies, 0 evidence items, 0 ledger entries, 1 wallet escrow records (each labelled with its settlement), 2 reputation events.')).toBeTruthy();
   });
 
   it('a linked wallet shows the address and Unlink, with the Linked pill', async () => {

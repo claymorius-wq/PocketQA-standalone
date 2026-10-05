@@ -1,0 +1,22 @@
+# Squads devnet pilot adapter: TDD evidence (2026-10-05, Node v24.21.0, worktree feat/wallet-rewards)
+
+## RED: tests written before the adapter existed
+$ npx vitest run test/squads-adapter.test.ts
+Error: Cannot find module '../src/settlement/squads/adapter' imported from /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/apps/api/test/squads-adapter.test.ts
+      Tests  no tests
+## Mutation checks: each guard removed in turn (scratchpad mutate.py, one exact occurrence each); the suites must fail
+mutant 'skip transfer check': Tests  8 failed | 32 passed (40)
+mutant 'forget the claimed index': Tests  6 failed | 34 passed (40)
+mutant 'execute again after executed': Tests  2 failed | 38 passed (40)
+mutant 'skip pins in submit': Tests  3 failed | 37 passed (40)
+mutant 'ignore amount': Tests  1 failed | 39 passed (40)
+mutant 'ignore index gap': Tests  1 failed | 39 passed (40)
+mutant 'skip config check in submit': Tests  1 failed | 39 passed (40)
+mutant 'skip recorded-settlement check': Tests  2 failed | 38 passed (40)
+mutant 'skip balance check': Tests  1 failed | 39 passed (40)
+mutant 'skip builder key check': Tests  2 failed | 38 passed (40)
+
+## GREEN
+$ npx vitest run test/squads-adapter.test.ts test/squads-api.test.ts
+Test Files  2 passed (2)
+Tests  40 passed (40)

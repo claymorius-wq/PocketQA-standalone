@@ -143,6 +143,7 @@ export default function Discover() {
                     objective={s.objective}
                     rewardCredits={s.rewardCredits}
                     rewardUnits={s.reward.kind === 'token' ? s.reward.units : undefined}
+                    rewardSettlement={s.reward.kind === 'token' ? s.reward.settlement : undefined}
                     taskCount={s.taskCount}
                     slotsRemaining={s.slotsRemaining}
                     onPress={() => router.push(`/study/${s.id}`)}

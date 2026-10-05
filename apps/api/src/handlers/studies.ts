@@ -141,8 +141,9 @@ export const studyHandlers = {
          VALUES (?,?,?,?,?,?,?,?,?,?,1,'draft',?)`,
       ).run(id, user.id, b.title, b.objective, b.buildUnderTest ?? null, JSON.stringify(b.deviceCriteria), escrow ? escrow.rewardUnits : b.rewardCredits, escrow ? 'escrow' : 'test_credits', b.slots, b.consentText, iso(ctx.deps.now()));
       if (escrow) {
-        db.prepare(`INSERT INTO study_escrows (study_id, settlement, network, mint, vault, fee_bps, created_at) VALUES (?, 'simulated', ?, ?, ?, ?, ?)`).run(
+        db.prepare(`INSERT INTO study_escrows (study_id, settlement, network, mint, vault, fee_bps, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
           id,
+          settlement!.mode,
           settlement!.network,
           settlement!.mint,
           settlement!.vaultFor(id),

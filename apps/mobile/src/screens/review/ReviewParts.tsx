@@ -5,7 +5,7 @@ import type { Finding, Participation } from '@pocket-qa/contracts';
 import { FlutedLens, GlassSurface, useUplight, Well } from '../../glass';
 import { GradientRule } from '../../glass/paint';
 import { GlassTile } from '../../icons';
-import { formatUnits, tokenAmount } from '../../lib/money';
+import { formatUnits, tokenAmount, unitName } from '../../lib/money';
 import { credits, statusLabel } from '../../lib/format';
 import type { useStudyDisputes } from '../../lib/queries';
 import { DUR, UPLIGHT } from '../../theme/motion';
@@ -26,8 +26,8 @@ export function ReviewHead({ p }: { p: Participation }) {
   const token = p.reward.kind === 'token' ? p.reward : null;
   const n = p.rewardCredits;
   // "50 test credits on approval": the numeral and its unit lines are one phrase for screen readers.
-  const phrase = `${token ? tokenAmount(token.units) : credits(n)} on approval`;
-  const unit = token ? 'simulated USDC' : creditsSuffix(n).trim();
+  const phrase = `${token ? tokenAmount(token.units, token.settlement) : credits(n)} on approval`;
+  const unit = token ? unitName(token.settlement) : creditsSuffix(n).trim();
   const figure = token ? formatUnits(token.units) : n.toLocaleString('en-US');
   return (
     <View style={styles.head}>

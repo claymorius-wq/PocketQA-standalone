@@ -1,7 +1,8 @@
 import { planSettlePayout, planSettleRefund, transitionPayout } from '@pocket-qa/domain';
 import type { Deps } from '../context';
 import { audit, postEscrow, studyEscrowBooks, verifyFunding, type FundingRow, type SettlementRow } from '../escrow';
-import { SettlementFailure } from './types';
+import type { DB } from '../db';
+import { SettlementFailure, type SettlementProvider } from './types';
 
 const RETRY_MS = 5 * 60_000;
 const MAX_RETRY_MS = 3600_000;
@@ -18,7 +19,9 @@ const backoff = (attempt: number) => Math.min(MAX_RETRY_MS, RETRY_MS * 2 ** Math
  * 3. submitted transfers are polled; only `finalized` settles them (once: unique postings), a
  *    network failure marks them failed for a later attempt, and `processing` waits;
  * 4. every touched study's books are reconciled; an imbalance is returned as an alert, as is a
- *    payment that has failed ESCALATE_AFTER times or more (it keeps retrying, with backoff).
+ *    payment that has failed ESCALATE_AFTER times or more (it keeps retrying, with backoff);
+ * 5. with a network provider (the Squads devnet pilot), every study vault's on-chain balance is
+ *    compared with the books: unmatched deposits and shortfalls are alerts (`reconcileVaultOnChain`).
  * The server runs one pass at a time (a guard in server.ts); overlapping runs from other callers
  * would still be safe, because every send is idempotent per persisted attempt key.
  * Unknown errors propagate: they leave the outcome unknown, and the next run resolves it.
@@ -48,7 +51,16 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
       db.prepare(`UPDATE settlements SET status = 'submitted', attempt = attempt + 1, attempt_key = ?, signature = NULL, failure_reason = NULL WHERE id = ?`).run(key, s.id);
     }
     try {
-      const { signature } = await provider.submit({ key: key!, kind: s.kind, vault: provider.vaultFor(s.study_id), destination: s.destination, amountUnits: s.amount_units });
+      const { signature } = await provider.submit({
+        key: key!,
+        settlementId: s.id,
+        kind: s.kind,
+        studyId: s.study_id,
+        vault: provider.vaultFor(s.study_id),
+        destination: s.destination,
+        amountUnits: s.amount_units,
+        cosigner: s.cosigner,
+      });
       db.prepare('UPDATE settlements SET signature = ? WHERE id = ?').run(signature, s.id);
     } catch (e) {
       if (!(e instanceof SettlementFailure)) throw e;
@@ -71,7 +83,7 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
         } else {
           postEscrow(db, planSettleRefund({ studyId: s.study_id, funder: s.destination, amountUnits: s.amount_units }), now, s.signature);
         }
-        audit(db, 'system', `escrow.${s.kind}_settled`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${s.amount_units} units to ${s.destination} (simulated settlement)`, now);
+        audit(db, 'system', `escrow.${s.kind}_settled`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${s.amount_units} units to ${s.destination} (${provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value'})`, now);
       })();
     } else if (st === 'failed') {
       db.prepare(`UPDATE settlements SET status = 'failed', failure_reason = ?, next_attempt_at = ? WHERE id = ? AND status = 'submitted'`).run('The transfer failed on the settlement network; it will be retried.', now + backoff(s.attempt), s.id);
@@ -87,5 +99,33 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
     const books = studyEscrowBooks(db, studyId, now);
     if (!books.ok) alerts.push(`escrow books out of balance for study ${studyId}: ${JSON.stringify(books)}`);
   }
+  if (provider.vaultBalance) {
+    for (const { study_id } of db.prepare(`SELECT study_id FROM study_escrows WHERE settlement = ? AND multisig IS NOT NULL`).all(provider.mode) as { study_id: string }[]) {
+      const alert = await reconcileVaultOnChain(db, provider, study_id, now);
+      if (alert) alerts.push(alert);
+    }
+  }
   return { alerts };
+}
+
+/**
+ * R7: a study vault's balance on the network against the books. On chain the vault holds what was
+ * funded minus what was paid out and refunded; the platform fee stays in the vault (the pilot has
+ * no fee sweep). More than that is an UNMATCHED deposit: alerted only, never credited to the study
+ * or spendable by it (an operator returns it by hand). Less than that, beyond transfers that may
+ * have landed but aren't confirmed in the books yet, is a shortfall.
+ */
+export async function reconcileVaultOnChain(db: DB, provider: SettlementProvider, studyId: string, now: number): Promise<string | null> {
+  const onChain = await provider.vaultBalance!(studyId);
+  if (onChain === null) return null;
+  const books = studyEscrowBooks(db, studyId, now);
+  const expected = books.fundedUnits - books.settledUnits - books.refundedUnits;
+  const inFlight = (db.prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM settlements WHERE study_id = ? AND status IN ('submitted','failed')`).get(studyId) as { s: number }).s;
+  // A funding still being verified explains extra units until it resolves.
+  const openFunding = db.prepare(`SELECT 1 FROM escrow_fundings WHERE study_id = ? AND status IN ('awaiting_payment','pending')`).get(studyId);
+  if (onChain > expected && !openFunding) {
+    return `unmatched deposit in the vault of study ${studyId}: ${onChain - expected} units on chain that no confirmed funding credited (not credited, not spendable; return it by hand)`;
+  }
+  if (onChain < expected - inFlight) return `vault shortfall for study ${studyId}: ${expected - inFlight - onChain} units fewer on chain than the books hold`;
+  return null;
 }

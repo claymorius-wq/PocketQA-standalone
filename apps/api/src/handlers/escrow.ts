@@ -1,8 +1,8 @@
-import { randomBytes } from 'node:crypto';
 import { ownStudy } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { escrowOf, FUNDING_TTL_MS, studyQuote, verifyFunding, type FundingRow, type SettlementRow } from '../escrow';
 import type { SimulatedSettlement } from '../settlement/simulated';
+import { SettlementFailure } from '../settlement/types';
 import { fail, newId, notFound } from '../util';
 import { fundingView, payoutView } from '../views';
 
@@ -29,11 +29,26 @@ export const escrowHandlers = {
    * fee), the vault is the study's, the mint and network are the provider's. Nothing comes from
    * the client. An open request is reused rather than duplicated.
    */
-  createEscrowFunding: (ctx) => {
-    provider(ctx);
+  createEscrowFunding: async (ctx) => {
+    const p = provider(ctx);
     const db = ctx.deps.db;
     const now = ctx.deps.now();
     let id = '';
+    // The escrow must exist on the network before anyone can fund it (Squads pilot: the study's
+    // multisig and vault; idempotent). Members are fixed here: the builder's linked wallet.
+    if (p.prepareVault) {
+      const s = ownStudy(db, ctx.params.id!, me(ctx));
+      const wallet = linkedWallet(ctx);
+      if (s.payment_mode === 'escrow' && s.status === 'draft' && wallet) {
+        try {
+          const acc = await p.prepareVault({ studyId: s.id, builderWallet: wallet });
+          db.prepare('UPDATE study_escrows SET multisig = ?, vault_authority = ? WHERE study_id = ?').run(acc.multisig, acc.vaultAuthority, s.id);
+        } catch (e) {
+          if (e instanceof SettlementFailure) throw fail('FEATURE_UNAVAILABLE', e.message);
+          throw e;
+        }
+      }
+    }
     db.transaction(() => {
       const s = ownStudy(db, ctx.params.id!, me(ctx));
       const esc = escrowOf(db, s.id);
@@ -51,7 +66,7 @@ export const escrowHandlers = {
         id,
         s.id,
         studyQuote(s, esc).totalUnits,
-        `ref${randomBytes(16).toString('hex')}`,
+        p.newReference(),
         now,
         now + FUNDING_TTL_MS,
       );

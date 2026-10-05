@@ -1,9 +1,10 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { EscrowFunding, Participation, Payout, Study } from '@pocket-qa/contracts';
 import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
-import { loadConfig } from '../src/config';
+import { loadConfig, REPO_ROOT } from '../src/config';
 import { studyEscrowBooks } from '../src/escrow';
 import { runSettlement } from '../src/settlement/worker';
 import { DEVICE, makeApp, STUDY, type TestApp } from './helpers';
@@ -60,27 +61,46 @@ const testCreditRows = () => (t.db.prepare('SELECT COUNT(*) AS n FROM ledger').g
 
 describe('A: scope, honesty and fail-closed', () => {
   const base = { POCKETQA_DATA_DIR: '/tmp/pqa-escrow-cfg' };
+  const prod = {
+    ...base,
+    POCKETQA_ENV: 'production',
+    POCKETQA_AUTH_MODE: 'firebase',
+    POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-optijara',
+    POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key', // check-secrets: allow (placeholder public Firebase web config in tests)
+    POCKETQA_PUBLIC_ORIGIN: 'https://pocketqa.example',
+    POCKETQA_STORAGE: 'r2',
+    POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32),
+    POCKETQA_R2_BUCKET: 'pocketqa-evidence',
+    POCKETQA_R2_ACCESS_KEY_ID: 'key-id',
+    POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret', // check-secrets: allow (placeholder test value)
+    POCKETQA_R2_ALLOW_DELETE: '1',
+  };
   it('A1: production refuses simulated settlement; settlement is off by default and reported in /config', async () => {
     expect(loadConfig(base).features.settlement).toBe('off');
     expect(loadConfig({ ...base, POCKETQA_SETTLEMENT: 'simulated' }).features.settlement).toBe('simulated');
-    const prod = {
-      ...base,
-      POCKETQA_ENV: 'production',
-      POCKETQA_AUTH_MODE: 'firebase',
-      POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-optijara',
-      POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key', // check-secrets: allow (placeholder public Firebase web config in tests)
-      POCKETQA_PUBLIC_ORIGIN: 'https://pocketqa.example',
-      POCKETQA_STORAGE: 'r2',
-      POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32),
-      POCKETQA_R2_BUCKET: 'pocketqa-evidence',
-      POCKETQA_R2_ACCESS_KEY_ID: 'key-id',
-      POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret', // check-secrets: allow (placeholder test value)
-      POCKETQA_R2_ALLOW_DELETE: '1',
-    };
     expect(loadConfig(prod).features.settlement).toBe('off');
     expect(() => loadConfig({ ...prod, POCKETQA_SETTLEMENT: 'simulated' })).toThrow(/simulated settlement.*production/i);
     t = await makeApp({ settlement: 'simulated' });
     expect((await t.req('GET', '/config')).body.features.settlement).toBe('simulated');
+  });
+
+  it('A1b (C1): the Squads devnet pilot needs a private key directory outside the repo, takes nothing else, and never runs in production', () => {
+    const keys = mkdtempSync(join(tmpdir(), 'pqa-pilot-keys-'));
+    chmodSync(keys, 0o700);
+    const pilot = { ...base, POCKETQA_SETTLEMENT: 'squads_devnet', POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: keys };
+    expect(loadConfig(pilot)).toMatchObject({ features: { settlement: 'squads_devnet' }, pilotKeysDir: keys });
+    expect(() => loadConfig({ ...base, POCKETQA_SETTLEMENT: 'squads_devnet' })).toThrow(/PILOT_KEYS_DIR/);
+    expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: 'relative/keys' })).toThrow(/absolute/);
+    expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: join(REPO_ROOT, 'docs') })).toThrow(/outside the repository/);
+    chmodSync(keys, 0o755);
+    expect(() => loadConfig(pilot)).toThrow(/chmod 700/);
+    chmodSync(keys, 0o700);
+    // The pilot pins its RPC, mint, program and network: none can be configured.
+    expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_RPC_URL: 'https://api.mainnet-beta.solana.com' })).toThrow(/POCKETQA_SETTLEMENT_RPC_URL/);
+    expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_MINT: MAINNET_USDC_MINT })).toThrow(/POCKETQA_SETTLEMENT_MINT/);
+    // The key directory is refused outside pilot mode.
+    expect(() => loadConfig({ ...base, POCKETQA_SETTLEMENT: 'simulated', POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: keys })).toThrow(/PILOT_KEYS_DIR/);
+    expect(() => loadConfig({ ...prod, POCKETQA_SETTLEMENT: 'squads_devnet', POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: keys })).toThrow(/never run in production/);
   });
 
   it('A2: no provider, mint, RPC or network can be configured in this phase (mainnet included)', () => {

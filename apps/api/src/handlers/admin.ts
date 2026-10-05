@@ -35,7 +35,7 @@ export const adminHandlers = {
       const next = transitionParticipation(p.status, 'resolve');
       if (outcome === 'overturned' && s.payment_mode === 'escrow') {
         // The admin decides the outcome only; the amount and wallet were fixed earlier.
-        authorizePayout(db, s, p, now, me(ctx).id, `dispute ${d.id} overturned`);
+        authorizePayout(db, s, p, now, me(ctx).id, `dispute ${d.id} overturned`, 'arbiter');
       } else if (outcome === 'overturned') {
         // The disputed participation still holds its reward, so add that hold back.
         const available = budgetOf(db, s, now).available + p.reward_credits;
@@ -122,7 +122,7 @@ export const adminHandlers = {
       if (!why) throw fail('CONFLICT_STATE', 'Only stuck submissions can be decided by an admin; the study owner reviews the rest.');
       const next = transitionParticipation(p.status, decision);
       if (decision === 'approve' && s.payment_mode === 'escrow') {
-        authorizePayout(db, s, p, now, me(ctx).id, `admin decision on stuck work (${why})`);
+        authorizePayout(db, s, p, now, me(ctx).id, `admin decision on stuck work (${why})`, 'arbiter');
       } else if (decision === 'approve') {
         const available = budgetOf(db, s, now).available + p.reward_credits;
         post(db, planReward({ studyId: s.id, testerId: p.tester_id, participationId: p.id, amount: p.reward_credits, studyAvailableIncludingThis: available, kind: 'reward_credit' }), now);

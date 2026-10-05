@@ -20,7 +20,7 @@ import { participationStatuses, type ParticipationRow, type StudyRow } from './v
  * refund authorization, and funding verification. Only SIMULATED settlement exists; the provider
  * is injected (`deps.settlement`), and nothing here signs or sends.
  */
-export type EscrowRow = { study_id: string; settlement: 'simulated'; network: string; mint: string; vault: string; fee_bps: number; funding_wallet: string | null; created_at: string };
+export type EscrowRow = { study_id: string; settlement: 'simulated' | 'squads_devnet'; network: string; mint: string; vault: string; fee_bps: number; funding_wallet: string | null; created_at: string; multisig: string | null; vault_authority: string | null };
 export type FundingRow = {
   id: string;
   study_id: string;
@@ -50,6 +50,8 @@ export type SettlementRow = {
   next_attempt_at: number;
   created_at: number;
   settled_at: number | null;
+  /** Who co-signs with the Pocket QA release key (Squads pilot): the builder, or the arbiter. */
+  cosigner: 'builder' | 'arbiter';
 };
 
 export const FUNDING_TTL_MS = 30 * 60_000;
@@ -105,15 +107,15 @@ export function canReserve(db: DB, s: StudyRow, nowMs: number) {
  * payout: the frozen reward to the wallet frozen at consent. Nothing in a request can change
  * either. Called inside the caller's write transaction, while `p` still holds its funds.
  */
-export function authorizePayout(db: DB, s: StudyRow, p: ParticipationRow, nowMs: number, actorId: string, why: string) {
+export function authorizePayout(db: DB, s: StudyRow, p: ParticipationRow, nowMs: number, actorId: string, why: string, cosigner: 'builder' | 'arbiter' = 'builder') {
   const esc = escrowOf(db, s.id)!;
   const quote = studyQuote(s, esc);
   if (!p.payout_address) throw fail('INTERNAL', 'Escrow participation without a frozen payout wallet.');
   const othersHolding = holdingCount(db, s.id, nowMs) - 1;
   postEscrow(db, planAuthorizePayout({ studyId: s.id, participationId: p.id, quote, vaultAvailableIncludingThis: vaultBalance(db, s.id) - quote.perTestTotalUnits * othersHolding }), nowMs);
   db.prepare(
-    `INSERT INTO settlements (id, kind, study_id, participation_id, tester_id, destination, amount_units, status, next_attempt_at, created_at) VALUES (?, 'payout', ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-  ).run(newId(), s.id, p.id, p.tester_id, p.payout_address, quote.rewardUnits, nowMs, nowMs);
+    `INSERT INTO settlements (id, kind, study_id, participation_id, tester_id, destination, amount_units, status, next_attempt_at, created_at, cosigner) VALUES (?, 'payout', ?, ?, ?, ?, ?, 'pending', ?, ?, ?)`,
+  ).run(newId(), s.id, p.id, p.tester_id, p.payout_address, quote.rewardUnits, nowMs, nowMs, cosigner);
   audit(db, actorId, 'escrow.payout_authorized', 'participation', p.id, `${quote.rewardUnits} units to the frozen payout wallet (simulated settlement) · ${why}`, nowMs);
 }
 
@@ -125,7 +127,8 @@ export function authorizePayout(db: DB, s: StudyRow, p: ParticipationRow, nowMs:
  */
 export function paymentsExport(db: DB, userId: string) {
   const units = (n: number) => String(n);
-  const asset = { asset: 'USDC' as const, decimals: 6 as const, settlement: 'simulated' as const };
+  const kindOf = (studyId: string) => (escrowOf(db, studyId)?.settlement ?? 'simulated');
+  const asset = (studyId: string) => ({ asset: 'USDC' as const, decimals: 6 as const, settlement: kindOf(studyId) });
   const isoOrNull = (ms: number | null) => (ms === null ? null : iso(ms));
   const received = (
     db
@@ -136,7 +139,7 @@ export function paymentsExport(db: DB, userId: string) {
     studyId: x.study_id,
     studyTitle: x.title,
     amountUnits: units(x.amount_units),
-    ...asset,
+    ...asset(x.study_id),
     destination: x.destination,
     status: x.status,
     signature: x.signature,
@@ -147,7 +150,7 @@ export function paymentsExport(db: DB, userId: string) {
     id: f.id,
     studyId: f.study_id,
     amountUnits: units(f.amount_units),
-    ...asset,
+    ...asset(f.study_id),
     source: f.source,
     status: f.status,
     signature: f.signature,
@@ -157,7 +160,7 @@ export function paymentsExport(db: DB, userId: string) {
   const refunds = (db.prepare(`SELECT x.* FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'refund' AND s.builder_id = ? ORDER BY x.created_at`).all(userId) as SettlementRow[]).map((x) => ({
     studyId: x.study_id,
     amountUnits: units(x.amount_units),
-    ...asset,
+    ...asset(x.study_id),
     destination: x.destination,
     status: x.status,
     signature: x.signature,
@@ -183,19 +186,21 @@ export function paymentsExport(db: DB, userId: string) {
 }
 
 /** On close: everything left in the vault is set aside for refund to the funding wallet. */
-export function authorizeRefund(db: DB, s: StudyRow, nowMs: number, actorId: string) {
+/** `cosigner`: the builder normally; the arbiter when the builder can no longer sign (account deleted). */
+export function authorizeRefund(db: DB, s: StudyRow, nowMs: number, actorId: string, cosigner: 'builder' | 'arbiter' = 'builder') {
   const esc = escrowOf(db, s.id)!;
   const amount = vaultBalance(db, s.id);
   if (amount === 0) return;
   if (!esc.funding_wallet) throw fail('INTERNAL', 'Funded escrow without a funding wallet.');
   postEscrow(db, planAuthorizeRefund({ studyId: s.id, vaultBalanceUnits: amount }), nowMs);
-  db.prepare(`INSERT INTO settlements (id, kind, study_id, destination, amount_units, status, next_attempt_at, created_at) VALUES (?, 'refund', ?, ?, ?, 'pending', ?, ?)`).run(
+  db.prepare(`INSERT INTO settlements (id, kind, study_id, destination, amount_units, status, next_attempt_at, created_at, cosigner) VALUES (?, 'refund', ?, ?, ?, 'pending', ?, ?, ?)`).run(
     newId(),
     s.id,
     esc.funding_wallet,
     amount,
     nowMs,
     nowMs,
+    cosigner,
   );
   audit(db, actorId, 'escrow.refund_authorized', 'study', s.id, `${amount} units to the funding wallet (simulated settlement)`, nowMs);
 }
@@ -206,7 +211,7 @@ export function authorizeRefund(db: DB, s: StudyRow, nowMs: number, actorId: str
  */
 export async function verifyFunding(db: DB, provider: SettlementProvider, f: FundingRow, signature: string, nowMs: number, actorId: string): Promise<FundingRow> {
   const esc = escrowOf(db, f.study_id)!;
-  const seen = await provider.getTransfer(signature);
+  const seen = await provider.getTransfer(signature, { vault: esc.vault, reference: f.reference });
   const verdict = verifyFundingTransfer(
     { network: provider.network, mint: provider.mint, vault: esc.vault, amountUnits: f.amount_units, reference: f.reference, notBeforeMs: f.created_at },
     seen,
@@ -234,7 +239,8 @@ export async function verifyFunding(db: DB, provider: SettlementProvider, f: Fun
       // A funding that lands after its study closed (its builder deleted the account while the
       // transfer was in flight) is refunded at once to the wallet it came from.
       const study = db.prepare('SELECT * FROM studies WHERE id = ?').get(f.study_id) as StudyRow;
-      if (study.status === 'closed') authorizeRefund(db, study, nowMs, actorId);
+      // The builder can no longer sign once the study was closed by their account's deletion.
+      if (study.status === 'closed') authorizeRefund(db, study, nowMs, actorId, 'arbiter');
     }
   })();
   return db.prepare('SELECT * FROM escrow_fundings WHERE id = ?').get(f.id) as FundingRow;

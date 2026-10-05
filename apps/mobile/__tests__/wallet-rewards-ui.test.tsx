@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Linking } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Payout, Reputation, Study } from '@pocket-qa/contracts';
 import { EscrowPanel } from '../src/screens/EscrowPanel';
@@ -112,6 +112,45 @@ describe('EscrowPanel', () => {
   });
 });
 
+describe('EscrowPanel · Squads devnet pilot', () => {
+  const pilot = (over: Partial<Extract<Study['payment'], { mode: 'escrow' }>> = {}) =>
+    escrowStudy({ settlement: 'squads_devnet', network: 'solana:devnet', mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', ...over });
+
+  it('labels every amount as devnet test USDC with the pilot disclosure; never simulated, paid or trustless', async () => {
+    await render(tree(<EscrowPanel study={pilot()} />));
+    expect(screen.getByTestId('escrow-total')).toHaveTextContent('3.30 devnet test USDC');
+    expect(screen.getByTestId('escrow-trust')).toHaveTextContent(/two of three signers/);
+    expect(screen.getByTestId('escrow-trust')).toHaveTextContent(/Devnet test USDC, no value\. Pilot: test keys simulate all roles/);
+    expect(screen.getByTestId('escrow-trust')).toHaveTextContent(/not independent custody/);
+    expect(screen.getByTestId('escrow-panel')).not.toHaveTextContent(/simulation|simulated|\bpaid\b|trustless/i);
+    expect(screen.getByTestId('escrow-fund')).toHaveTextContent('Fund 3.30 devnet test USDC from wallet');
+  });
+
+  it('funding: shows the exact amount, vault and reference, then verifies the pasted signature (no stand-in wallet)', async () => {
+    const request = { id: 'f1', status: 'awaiting_payment', amountUnits: 3_300_000, vault: 'VaultAta1111111111111111111111111111111111', reference: 'Ref11111111111111111111111111111111111111111', failureReason: null };
+    mockApi.mockImplementation((name: string) => Promise.resolve(name === 'createEscrowFunding' ? request : { ...request, status: 'confirmed' }));
+    await render(tree(<EscrowPanel study={pilot()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-fund')));
+    await settle();
+    expect(screen.getByTestId('escrow-pilot-amount')).toHaveTextContent('3.30 devnet test USDC');
+    expect(screen.getByTestId('escrow-pilot-vault')).toHaveTextContent(request.vault);
+    expect(screen.getByTestId('escrow-pilot-reference')).toHaveTextContent(request.reference);
+    await act(async () => fireEvent.changeText(screen.getByTestId('escrow-pilot-signature'), '  5sig  '));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-pilot-verify')));
+    await settle();
+    expect(mockApi.mock.calls.map((c) => c[0])).toEqual(['createEscrowFunding', 'submitFundingSignature']);
+    expect(mockApi.mock.calls[1]![1]).toEqual({ params: { id: 'f1' }, body: { signature: '5sig' } });
+  });
+
+  it('funded: the books and refund say devnet', async () => {
+    const balances = { fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 0, settledUnits: 2_000_000, feesUnits: 200_000, pendingRefundUnits: 0, refundedUnits: 1_100_000 };
+    await render(tree(<EscrowPanel study={pilot({ funded: true, balances, fundingWallet: 'Wa11etAddress1234567890', refund: { status: 'confirmed', amountUnits: 1_100_000 } })} />));
+    expect(screen.getByTestId('escrow-funded')).toHaveTextContent('Funded on devnet from Wa11…7890.');
+    expect(screen.getByTestId('escrow-settled')).toHaveTextContent('2.00 devnet test USDC');
+    expect(screen.getByTestId('escrow-refund')).toHaveTextContent('Refunded 1.10 devnet test USDC to the funding wallet · finalized on devnet, no value.');
+  });
+});
+
 describe('PaymentStateCard', () => {
   const base: Payout = {
     id: 'x',
@@ -142,6 +181,19 @@ describe('PaymentStateCard', () => {
     expect(screen.getByTestId('payment-state')).not.toHaveTextContent(/\bpaid\b/i);
     if (status === 'confirmed') expect(screen.getByTestId('payment-state-ref')).toHaveTextContent(/no network explorer link/);
     else expect(screen.queryByTestId('payment-state-ref')).toBeNull();
+  });
+});
+
+describe('PaymentStateCard · Squads devnet pilot', () => {
+  it('a settled devnet payout links to the devnet explorer and says no value', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const payout = { id: 'x', participationId: 'p', studyId: 's', studyTitle: 'Study', amountUnits: 1_000_000, asset: 'USDC', decimals: 6, destination: 'Dest1234567890abcd', settlement: 'squads_devnet', status: 'confirmed', signature: '5SigAbcdefghijklmnop', failureReason: null, attempts: 1, authorizedAt: '2026-10-05T00:00:00.000Z', settledAt: '2026-10-05T00:01:00.000Z' } as Payout;
+    await render(tree(<PaymentStateCard payout={payout} />));
+    expect(screen.getByTestId('payment-state')).toHaveTextContent(/Settled on devnet · test USDC, no value/);
+    expect(screen.getByTestId('payment-state')).toHaveTextContent(/1\.00 devnet test USDC to Dest…abcd/);
+    expect(screen.getByTestId('payment-state')).not.toHaveTextContent(/\bpaid\b/i);
+    await act(async () => fireEvent.press(screen.getByTestId('payment-state-explorer')));
+    expect(openURL).toHaveBeenCalledWith('https://explorer.solana.com/tx/5SigAbcdefghijklmnop?cluster=devnet');
   });
 });
 

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, isPublicHost, type AuthMode, type SettlementMode, type StorageMode } from '@pocket-qa/contracts';
 
@@ -23,6 +23,8 @@ export type Config = {
   features: { testCredits: boolean; devnetTransfers: boolean; settlement: SettlementMode };
   /** Platform fee for escrow studies, basis points of each reward (provisional; ADR 0007 §5). */
   escrowFeeBps: number;
+  /** Squads devnet pilot only (ADR 0007 §10): the test-key directory outside the repo (0700). */
+  pilotKeysDir: string | null;
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -214,12 +216,22 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // Wallet-funded escrow (ADR 0007): only local SIMULATED settlement exists. No provider, mint,
   // RPC, network or key can be configured in this phase, and production refuses the simulator.
   const settlement = (env.POCKETQA_SETTLEMENT ?? 'off') as SettlementMode;
-  if (settlement !== 'off' && settlement !== 'simulated') {
-    throw new ConfigError('POCKETQA_SETTLEMENT must be off or simulated: no devnet or real settlement provider exists in this phase (ADR 0007).');
+  if (settlement !== 'off' && settlement !== 'simulated' && settlement !== 'squads_devnet') {
+    throw new ConfigError('POCKETQA_SETTLEMENT must be off, simulated or squads_devnet (the devnet pilot): no real settlement provider exists (ADR 0007).');
   }
-  if (production && settlement !== 'off') throw new ConfigError('Simulated settlement never runs in production (ADR 0007): set POCKETQA_SETTLEMENT=off.');
-  const providerKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_SETTLEMENT_'));
-  if (providerKeys.length) throw new ConfigError(`${providerKeys.join(', ')}: no settlement provider, mint, RPC, network or key can be configured in this phase (ADR 0007).`);
+  if (production && settlement !== 'off') throw new ConfigError('Simulated settlement and the devnet pilot never run in production (ADR 0007): set POCKETQA_SETTLEMENT=off.');
+  // The only provider setting that exists is the pilot's key directory; the network, RPC, program,
+  // mint and keys are pinned in code (devnet only). Everything else is refused.
+  const providerKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_SETTLEMENT_') && !(settlement === 'squads_devnet' && k === 'POCKETQA_SETTLEMENT_PILOT_KEYS_DIR'));
+  if (providerKeys.length) throw new ConfigError(`${providerKeys.join(', ')}: no settlement provider, mint, RPC, network or key can be configured (ADR 0007); the devnet pilot takes only POCKETQA_SETTLEMENT_PILOT_KEYS_DIR.`);
+  let pilotKeysDir: string | null = null;
+  if (settlement === 'squads_devnet') {
+    const dir = env.POCKETQA_SETTLEMENT_PILOT_KEYS_DIR ?? '';
+    if (!dir || !isAbsolute(dir) || !existsSync(dir)) throw new ConfigError('The devnet pilot needs POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: an existing absolute directory of test-only keys.');
+    if (!relative(REPO_ROOT, dir).startsWith('..')) throw new ConfigError('The devnet pilot key directory must be outside the repository.');
+    if ((statSync(dir).mode & 0o077) !== 0) throw new ConfigError('The devnet pilot key directory must be readable by its owner only (chmod 700).');
+    pilotKeysDir = dir;
+  }
   const escrowFeeBps = env.POCKETQA_ESCROW_FEE_BPS === undefined ? 1000 : Number(env.POCKETQA_ESCROW_FEE_BPS);
   if (!Number.isInteger(escrowFeeBps) || escrowFeeBps < 0 || escrowFeeBps > 10_000) throw new ConfigError('POCKETQA_ESCROW_FEE_BPS must be a whole number from 0 to 10000.');
 
@@ -231,6 +243,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     trustProxy: trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
     features: { testCredits: !production, devnetTransfers: !production, settlement },
     escrowFeeBps,
+    pilotKeysDir,
     host: host as Config['host'],
     port,
     dataDir,

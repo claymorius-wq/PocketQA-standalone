@@ -138,7 +138,7 @@ function AccountData() {
       }
       const transfers = bundle.payments.received.length + bundle.payments.fundings.length + bundle.payments.refunds.length + bundle.payments.studyPayments.length;
       setExported(
-        `${bundle.participations.length} participations, ${bundle.studies.length} studies, ${bundle.evidence.length} evidence items, ${bundle.ledger.length} ledger entries, ${transfers} wallet escrow records (simulated), ${bundle.reputation.events.length} reputation events.`,
+        `${bundle.participations.length} participations, ${bundle.studies.length} studies, ${bundle.evidence.length} evidence items, ${bundle.ledger.length} ledger entries, ${transfers} wallet escrow records (each labelled with its settlement), ${bundle.reputation.events.length} reputation events.`,
       );
     },
   });

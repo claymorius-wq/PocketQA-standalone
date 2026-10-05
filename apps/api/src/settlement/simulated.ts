@@ -49,6 +49,10 @@ export class SimulatedSettlement implements SettlementProvider {
     return `sim-vault:${studyId}`;
   }
 
+  newReference() {
+    return `ref${randomBytes(16).toString('hex')}`;
+  }
+
   /** Records a simulated transfer as if a wallet had sent it; returns its signature. */
   recordTransfer(t: Partial<SimTransfer> & Pick<SimTransfer, 'source' | 'destination' | 'amountUnits' | 'reference'>, kind: 'funding' | 'payout' | 'refund' | 'other' = 'other', key: string | null = null): string {
     const signature = `sim${randomBytes(24).toString('hex')}`;
@@ -65,7 +69,7 @@ export class SimulatedSettlement implements SettlementProvider {
     if (!this.holdProcessing) this.db.prepare(`UPDATE sim_chain_transfers SET status = 'finalized' WHERE signature = ? AND status = 'processing'`).run(signature);
   }
 
-  async getTransfer(signature: string) {
+  async getTransfer(signature: string, _expect?: { vault: string; reference: string }) {
     this.settleProcessing(signature);
     const r = this.db.prepare('SELECT * FROM sim_chain_transfers WHERE signature = ?').get(signature) as
       | { network: string; mint: string; source: string; destination: string; amount_units: number; reference: string; status: SimTransfer['status']; block_time_ms: number }
@@ -75,6 +79,7 @@ export class SimulatedSettlement implements SettlementProvider {
   }
 
   async submit(req: { key: string; kind: 'payout' | 'refund'; vault: string; destination: string; amountUnits: number }) {
+    // Idempotent per attempt key, as the worker persists it before sending (simulation).
     const existing = this.db.prepare('SELECT signature FROM sim_chain_transfers WHERE idempotency_key = ?').get(req.key) as { signature: string } | undefined;
     if (existing) return { signature: existing.signature };
     if (req.kind === 'payout' && this.payoutFault) throw new SettlementFailure(FAULT_REASONS[this.payoutFault]);
