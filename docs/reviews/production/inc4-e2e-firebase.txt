@@ -12,14 +12,14 @@ i  Running script: pnpm --filter @pocket-qa/mobile exec playwright test -c playw
 
 Running 4 tests using 1 worker
 
-i  To verify the email address fb-1791110136540@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=ouBph-65f0dHuLd23IjpwGdoMc4oB9Zuszi4Tze6DtLk4c6Dq2MRRC&apiKey=fake-api-key
+i  To verify the email address fb-1791110136540@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]
   ✓  1 e2e-firebase/firebase-auth.spec.ts:19:5 › email sign-up → verify → sign in → choose a role → app; the session survives a reload (1.6s)
   ✓  2 e2e-firebase/firebase-auth.spec.ts:52:5 › the API refuses local password sign-in in firebase mode (one account system) (7ms)
-i  To verify the email address fb-resend-1791110138086@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=ScDZzzkkS_sdeynY6HKa8547B34ErL9NHcwOBwYWwo6SxcrQPPkJ6B&apiKey=fake-api-key
-i  To verify the email address fb-resend-1791110138086@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=z0wLxweZqkg-quiRO-CYRhyBy68xSHS-Xwap3wTRAubeNdNF6QJw4u&apiKey=fake-api-key
+i  To verify the email address fb-resend-1791110138086@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]
+i  To verify the email address fb-resend-1791110138086@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]
   ✓  3 e2e-firebase/firebase-auth.spec.ts:64:5 › an unverified user can resend the verification email from sign-in (ledger I4) (1.0s)
-i  To verify the email address fb-reset-1791110139094@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=3TKmr1GkfKX4ufrJU5VMqbc20F1AwfWDI5UIIQjXxdog7xS7LdwjAn&apiKey=fake-api-key
-i  To reset the password for fb-reset-1791110139094@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=resetPassword&lang=en&oobCode=ymq6L78sLcatUlqqxOQnVKfZYpS0bhA0yiIoiCUorF4X0TiLD7Txga&apiKey=fake-api-key&newPassword=NEW_PASSWORD_HERE
+i  To verify the email address fb-reset-1791110139094@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]
+i  To reset the password for fb-reset-1791110139094@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=resetPassword&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]&newPassword=NEW_PASSWORD_HERE
   ✓  4 e2e-firebase/firebase-auth.spec.ts:86:5 › password reset: same answer for known and unknown emails; the link really resets (ledger I4) (1.4s)
 
   4 passed (15.3s)

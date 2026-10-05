@@ -245,6 +245,168 @@ const MIGRATIONS: string[] = [
   INSERT OR IGNORE INTO storage_objects (object_key, created_at) SELECT storage_key, 0 FROM evidence;
   ALTER TABLE storage_deletions ADD COLUMN purpose TEXT NOT NULL DEFAULT 'unrecorded';
   `,
+  // 5: wallet-funded escrow, SIMULATED settlement only (ADR 0007). A separate money ledger in
+  // whole token base units: never mixed with test credits (ledger) or reputation points.
+  // For escrow studies `studies.reward_credits` holds the reward in token base units (the
+  // column means "reward in the study's unit"; payment_mode says which unit) and the test-credit
+  // ledger is never touched for them.
+  `
+  ALTER TABLE studies ADD COLUMN payment_mode TEXT NOT NULL DEFAULT 'test_credits' CHECK (payment_mode IN ('test_credits','escrow'));
+  -- Escrow participations: the payout wallet frozen at consent.
+  ALTER TABLE participations ADD COLUMN payout_address TEXT;
+  CREATE TABLE study_escrows (
+    study_id TEXT PRIMARY KEY REFERENCES studies(id),
+    settlement TEXT NOT NULL CHECK (settlement = 'simulated'),
+    network TEXT NOT NULL,
+    mint TEXT NOT NULL,
+    vault TEXT NOT NULL UNIQUE,
+    fee_bps INTEGER NOT NULL CHECK (fee_bps BETWEEN 0 AND 10000),
+    -- Set from the verified funding transfer; refunds go only here.
+    funding_wallet TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE escrow_fundings (
+    id TEXT PRIMARY KEY,
+    study_id TEXT NOT NULL REFERENCES studies(id),
+    amount_units INTEGER NOT NULL CHECK (amount_units > 0),
+    reference TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL CHECK (status IN ('awaiting_payment','pending','confirmed','failed','expired')),
+    -- One transfer signature funds one request, ever.
+    signature TEXT UNIQUE,
+    source TEXT,
+    failure_reason TEXT,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    confirmed_at INTEGER
+  );
+  CREATE UNIQUE INDEX escrow_one_confirmed_funding ON escrow_fundings(study_id) WHERE status = 'confirmed';
+  CREATE TABLE escrow_ledger (
+    id TEXT PRIMARY KEY,
+    tx_id TEXT NOT NULL,
+    account TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('funding','payout_authorized','fee_earned','payout_settled','refund_authorized','refund_settled')),
+    study_id TEXT NOT NULL,
+    participation_id TEXT,
+    ref TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX escrow_ledger_study ON escrow_ledger(study_id);
+  -- Idempotency: each money event happens at most once.
+  CREATE UNIQUE INDEX escrow_one_funding ON escrow_ledger(ref) WHERE kind = 'funding' AND amount > 0;
+  CREATE UNIQUE INDEX escrow_one_authorization ON escrow_ledger(participation_id) WHERE kind = 'payout_authorized' AND amount > 0;
+  CREATE UNIQUE INDEX escrow_one_settlement ON escrow_ledger(participation_id) WHERE kind = 'payout_settled' AND amount > 0;
+  CREATE UNIQUE INDEX escrow_one_refund ON escrow_ledger(study_id) WHERE kind = 'refund_authorized' AND amount > 0;
+  CREATE UNIQUE INDEX escrow_one_refund_settled ON escrow_ledger(study_id) WHERE kind = 'refund_settled' AND amount > 0;
+  CREATE TRIGGER escrow_ledger_no_update BEFORE UPDATE ON escrow_ledger BEGIN SELECT RAISE(ABORT, 'escrow ledger is append-only'); END;
+  CREATE TRIGGER escrow_ledger_no_delete BEFORE DELETE ON escrow_ledger BEGIN SELECT RAISE(ABORT, 'escrow ledger is append-only'); END;
+  -- Outbound transfers (payouts and refunds), driven by the settlement worker. The amount and
+  -- destination are fixed when the row is created and never change.
+  CREATE TABLE settlements (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('payout','refund')),
+    study_id TEXT NOT NULL REFERENCES studies(id),
+    participation_id TEXT,
+    tester_id TEXT,
+    destination TEXT NOT NULL,
+    amount_units INTEGER NOT NULL CHECK (amount_units > 0),
+    status TEXT NOT NULL CHECK (status IN ('pending','submitted','confirmed','failed')),
+    attempt INTEGER NOT NULL DEFAULT 0,
+    -- Persisted before each submission, so a crash retries with the same key (no double send).
+    attempt_key TEXT,
+    signature TEXT UNIQUE,
+    failure_reason TEXT,
+    next_attempt_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    settled_at INTEGER
+  );
+  CREATE UNIQUE INDEX settlements_one_payout ON settlements(participation_id) WHERE kind = 'payout';
+  CREATE UNIQUE INDEX settlements_one_refund ON settlements(study_id) WHERE kind = 'refund';
+  -- The SIMULATED chain (ADR 0007 §4): a local stand-in, no network, no asset.
+  CREATE TABLE sim_chain_transfers (
+    signature TEXT PRIMARY KEY,
+    network TEXT NOT NULL,
+    mint TEXT NOT NULL,
+    source TEXT NOT NULL,
+    destination TEXT NOT NULL,
+    amount_units INTEGER NOT NULL,
+    reference TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('funding','payout','refund','other')),
+    status TEXT NOT NULL CHECK (status IN ('processing','finalized','failed')),
+    idempotency_key TEXT UNIQUE,
+    block_time_ms INTEGER NOT NULL
+  );
+  `,
+  // 6: reputation (points, fraud reversals, self-dealing flags, opt-in leaderboard). Points are
+  // append-only and separate from money and test credits; they have no cash value.
+  `
+  CREATE TABLE points_events (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    participation_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('accepted','helpful','reversal')),
+    points INTEGER NOT NULL,
+    reverses_id TEXT UNIQUE REFERENCES points_events(id),
+    platform TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX points_events_user ON points_events(user_id);
+  -- One award of each kind per participation.
+  CREATE UNIQUE INDEX points_one_award ON points_events(participation_id, kind) WHERE kind IN ('accepted','helpful');
+  CREATE TRIGGER points_no_update BEFORE UPDATE ON points_events BEGIN SELECT RAISE(ABORT, 'points are append-only'); END;
+  CREATE TRIGGER points_no_delete BEFORE DELETE ON points_events BEGIN SELECT RAISE(ABORT, 'points are append-only'); END;
+  CREATE TABLE fraud_findings (
+    participation_id TEXT PRIMARY KEY REFERENCES participations(id),
+    reason TEXT NOT NULL,
+    decided_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  -- Accepted work that earned no points because it looked like self-dealing.
+  CREATE TABLE points_flags (
+    participation_id TEXT PRIMARY KEY REFERENCES participations(id),
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE leaderboard_profiles (
+    user_id TEXT PRIMARY KEY REFERENCES users(id),
+    opted_in INTEGER NOT NULL CHECK (opted_in IN (0,1)),
+    alias TEXT,
+    updated_at TEXT NOT NULL
+  );
+  CREATE UNIQUE INDEX leaderboard_alias ON leaderboard_profiles(lower(alias)) WHERE alias IS NOT NULL;
+  `,
+  // 7: the Squads devnet feasibility pilot (ADR 0007 §10). study_escrows is rebuilt to allow the
+  // 'squads_devnet' kind (SQLite can't alter a CHECK; no table references study_escrows). A
+  // payment names the second signer (the builder normally; the arbiter for an overturned dispute
+  // or an absent builder). squads_attempts pins one Squads transaction index per settlement,
+  // persisted BEFORE anything is sent, so every retry re-drives the same on-chain transaction.
+  `
+  CREATE TABLE study_escrows_v7 (
+    study_id TEXT PRIMARY KEY REFERENCES studies(id),
+    settlement TEXT NOT NULL CHECK (settlement IN ('simulated','squads_devnet')),
+    network TEXT NOT NULL,
+    mint TEXT NOT NULL,
+    vault TEXT NOT NULL UNIQUE,
+    fee_bps INTEGER NOT NULL CHECK (fee_bps BETWEEN 0 AND 10000),
+    funding_wallet TEXT,
+    created_at TEXT NOT NULL,
+    multisig TEXT,
+    vault_authority TEXT
+  );
+  INSERT INTO study_escrows_v7 (study_id, settlement, network, mint, vault, fee_bps, funding_wallet, created_at)
+    SELECT study_id, settlement, network, mint, vault, fee_bps, funding_wallet, created_at FROM study_escrows;
+  DROP TABLE study_escrows;
+  ALTER TABLE study_escrows_v7 RENAME TO study_escrows;
+  ALTER TABLE settlements ADD COLUMN cosigner TEXT NOT NULL DEFAULT 'builder' CHECK (cosigner IN ('builder','arbiter'));
+  CREATE TABLE squads_attempts (
+    settlement_id TEXT PRIMARY KEY REFERENCES settlements(id),
+    multisig TEXT NOT NULL,
+    tx_index INTEGER NOT NULL,
+    execute_signature TEXT,
+    created_at INTEGER NOT NULL,
+    UNIQUE (multisig, tx_index)
+  );
+  `,
 ];
 
 /** How many migrations this code ships; tools compare it with a live database's schema. */

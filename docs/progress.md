@@ -4,6 +4,58 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-05): Squads v4 devnet feasibility pilot (ADR 0007 §10, `feat/wallet-rewards`)
+- **LIVE gate PASSED** (pqa-qa live verdict r2 APPROVE, 2026-10-05). Its scope:
+  - devnet test USDC only, and test keys simulate every role (no independent custody or physical wallet);
+  - the lost-mapping protection is offline evidence only;
+  - devnet Squads is single-key upgradeable;
+  - the mainnet audit and deployed-bytecode match are still open;
+  - **not production-ready.**
+- **Run 1 completion (`0b66267`):** the one targeted send, a second execute of index 1, was refused on chain with Squads 6008. Nothing moved. Total pilot cost: 40,004,760 lamports of devnet SOL.
+- **Live run 1 (2026-10-05, code `dc76870`): partial.**
+  - 26 finalized transactions; R0–R8, C2 and C8 passed.
+  - The deliberate threshold refusal landed on chain with Squads 6008.
+  - The run stopped on a harness error (web3.js confirm rejection under RPC 429s).
+  - Read-only readback: the program is unchanged, the config is intact, the balances reconcile, and the cost was 0.04 devnet SOL.
+  - Fix: the confirm mapping reports a finalized failure only when the chain says so, and the scanner gets a hash-pinned allowance for public signatures. **This is awaiting pqa-qa re-review.** The double-execute refusal against the existing multisig is held until then.
+- **pqa-qa pilot OFFLINE r2 on `dc76870`: APPROVE (offline only)** (`qa-devnet-pilot-offline-verdict-r2.md`). Its P3 is done in `c3a4fd0`: the old receipt is marked superseded. **LIVE receipt gate: NOT PASSED.** The test keys are still unfunded (re-read after the approval), so no live run has happened.
+- **pqa-qa pilot OFFLINE r1: CHANGES_REQUIRED** (amended after the parent's ruling). Fixed test-first; **live runs are held** until a revised OFFLINE approval.
+  - **P1-1, double payout after a lost local mapping:** the fix is an on-chain operation id (ADR 0007 §10.1). Each vault message is exactly [TransferChecked, Memo(`pqa-op1:` + sha256 of kind|study|participation)], so identical legitimate transfers stay distinct. Multisigs have no rent collector, so records can't be closed. Recovery adopts only a single exact carrier created by Pocket QA; ambiguous or mismatched carriers are refused.
+  - **P2-1:** the browser test is fixed.
+  - **P3-1:** claims are released on stops before creation.
+  - **P3-2:** off-curve funders get no refundable wallet.
+  - **P3-3:** symlinks in the key-directory path are resolved.
+  - **P3-4:** failure copy states the devnet state actually read.
+- **Scope:** Hamza approved a bounded devnet pilot. It uses devnet test USDC (no value) and faucet devnet SOL only, and test keys simulate every role. It is not independent custody, and no physical wallet is involved. Production refuses it.
+- **Built test-first:**
+  - **Settlement mode `squads_devnet`.** Its only setting is the key directory, which must be outside the repo with mode 0700.
+  - **Migration 7:** records the multisig and vault per study and the cosigner per settlement; `squads_attempts` pins one Squads transaction index per settlement before anything is sent.
+  - **The adapter:**
+    - an autonomous 2-of-3 multisig per study, with no spending limits;
+    - payouts and refunds as one TransferChecked, decoded and matched before any approval;
+    - crash-safe re-drive of the same index;
+    - genesis, program and mint pins checked before signing;
+    - finalized balance-delta readback.
+  - **The RPC chain:** the genesis hash is re-checked before every signature.
+  - **Worker:** on-chain vault reconciliation; unmatched deposits and shortfalls raise alerts.
+  - **App:** every money label names its settlement, and the pilot disclosure is shown. Pilot funding shows the exact amount, vault and reference, and verifies a pasted signature.
+- **Live runner:** `apps/api/test-live/squads-devnet.pilot.live.test.ts` is ready. It writes a public-only receipt.
+- **Blocked on assets:** both faucets need a human. The public RPC airdrop returned 429, and the browser extension wasn't connected. The test keys hold 0 SOL and 0 devnet test USDC. The minimum human action is in `docs/reviews/wallet-rewards/faucet-request.md`. No faucet bypass and no substitute token.
+- **Unresolved by design:** the mainnet audit and deployed-bytecode match. The test fee stays in the vault (existing scope).
+
+## Current work (2026-10-05): wallet-funded escrow and reputation, local SIMULATED slice (`feat/wallet-rewards` from main `87e09d4`)
+- **Approval and scope.** Hamza approved implementation; the parent clarified the scope after pqa-qa's architecture review r1. ADR 0007 records the scope, the trust model and the authorities.
+  - Only local simulated settlement exists. A devnet or real provider is disabled until a verified provider or program is chosen and separately approved.
+  - Production refuses the simulator.
+- **Built test-first:**
+  - **Escrow money model:** whole base units; the quote with a per-test fee rounded up; double-entry postings; the invariant `funded = available + held + payable + settled + fees + pending refund + refunded`; the payout state machine; exact funding verification; an SPL balance-delta reader for a future devnet adapter.
+  - **API:** settlement config; migration 5; funding with a server-fixed amount, vault, mint and reference; publishing only once fully funded; consent freezes the payout wallet with explicit confirmation; one payout per approval, overturned dispute or admin stuck-work decision; an idempotent, crash-safe settlement worker with reconciliation alerts; refunds go only to the funding wallet; self-dealing is blocked.
+  - **Reputation:** migration 6; points only for accepted work; a builder "helpful" mark; admin fraud reversal (append-only); self-dealing flags; an opt-in, pseudonymous leaderboard ranked by the Wilson quality score; badges.
+  - **App:** escrow mode on New study; the escrow panel; payment states; consent wallet confirmation; reputation and leaderboard screens. Every money label says "simulation", and nothing says paid.
+- **Evidence:** `docs/reviews/wallet-rewards/README.md`. `pnpm verify` EXIT=0; Playwright 15/15, including the new wallet-rewards browser flow; emulator 4/4.
+- **Not done here** (later gates): live devnet evidence, real wallets on a device, an audited program or provider, mainnet, real funds and charged fees. By decision there is no clawback of settled transfers and no wallet change flow; the freeze is disclosed (ADR 0007 §8).
+- **Follow-up after pqa-qa r2:** the account export now includes payments and reputation, least data and as exact unit strings (ADR 0007 §9). Firebase E2E evidence logs are redacted.
+
 ## Reputation design and escrow research (2026-10-05, `docs/reputation-escrow-proposal`, contributor session)
 Docs only: no code, API, contract or data change.
 - **Where it comes from.** Hamza's message of 2026-10-05, relayed by claymorius-wq, set a new direction: wallet and USDC escrow payouts, points, badges and a leaderboard. His plan (`docs/plans/wallet-escrow-rewards-leaderboard.md`) isn't in the repo yet. Both documents below are inputs for it, not decisions.

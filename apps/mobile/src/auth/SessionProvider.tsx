@@ -56,7 +56,7 @@ type Session = {
 };
 const Ctx = createContext<Session | null>(null);
 const PENDING_PROFILE = 'pocketqa.pendingProfile';
-const NO_FEATURES: ClientConfig['features'] = { testCredits: false, devnetTransfers: false };
+const NO_FEATURES: ClientConfig['features'] = { testCredits: false, devnetTransfers: false, settlement: 'off' };
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();

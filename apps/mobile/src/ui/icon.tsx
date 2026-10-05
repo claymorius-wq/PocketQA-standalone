@@ -1,5 +1,8 @@
 import {
   AlertTriangle,
+  Award,
+  BadgeCheck,
+  Trophy,
   ArrowRight,
   Ban,
   Check,
@@ -67,6 +70,9 @@ export type KitIcon = GlyphName | LucideIcon | GlyphIcon;
 const LUCIDE = {
   AlertTriangle,
   ArrowRight,
+  Award,
+  BadgeCheck,
+  Trophy,
   Ban,
   Check,
   CheckSquare,

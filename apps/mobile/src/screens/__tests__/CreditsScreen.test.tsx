@@ -17,14 +17,16 @@ jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual(
 type Entry = { id: string; kind: string; amount: number; studyId: string | null; participationId: string | null; createdAt: string };
 type Data = { balance: number; entries: Entry[]; disclaimer: 'Test credits · no cash value' };
 let mockUser: { id: string; role: 'tester' | 'builder' } = { id: 'u-tester', role: 'tester' };
-let mockFeatures = { testCredits: true, devnetTransfers: true };
+let mockFeatures = { testCredits: true, devnetTransfers: true, settlement: 'off' };
 let mockData: Data = { balance: 0, entries: [], disclaimer: 'Test credits · no cash value' };
 const mockApi = jest.fn();
 jest.mock('../../auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser, features: mockFeatures }) }));
 jest.mock('../../lib/queries', () => ({
   useCredits: () => ({ isLoading: false, error: null, data: mockData, refetch: jest.fn() }),
+  useMyPayouts: () => ({ isLoading: false, error: null, data: { items: [] }, refetch: jest.fn() }),
   useFocusRefetch: () => undefined,
 }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('../../api/client', () => {
   class ApiError extends Error {
     code: string;
@@ -203,7 +205,7 @@ describe('Budget (builder)', () => {
   });
 
   it('production (no test credits): an honest funding notice, no top-up card and no top-up call (ledger D3)', async () => {
-    mockFeatures = { testCredits: false, devnetTransfers: false };
+    mockFeatures = { testCredits: false, devnetTransfers: false, settlement: 'off' };
     try {
       await renderScreen('Budget');
       expect(screen.getByTestId('funding-unavailable')).toHaveTextContent(/paying with real money isn’t enabled yet/);
@@ -211,7 +213,7 @@ describe('Budget (builder)', () => {
       expect(screen.queryByText('Add local test credits')).toBeNull();
       expect(mockApi).not.toHaveBeenCalledWith('topUp', expect.anything());
     } finally {
-      mockFeatures = { testCredits: true, devnetTransfers: true };
+      mockFeatures = { testCredits: true, devnetTransfers: true, settlement: 'off' };
     }
   });
 

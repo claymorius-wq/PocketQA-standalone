@@ -1,0 +1,6 @@
+     × a funded draft is closed and refunded to the funding wallet; an unpaid request expires 23ms
+     × a funding still in flight at deletion is credited and refunded once it confirms 21ms
+     × after 5 failed attempts the worker raises an operator alert and keeps retrying with backoff 35ms
+     × a transfer with no identifiable source wallet fails (refunds would have nowhere to go) 20ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  4 failed | 34 passed (38)

@@ -1,0 +1,11 @@
+# Run 1 completion send: offline tests for pqa-qa harness delta r1 P2-1/P2-2 (2026-10-05, Node v24.21.0)
+The send logic is new as a module (test-live/run1Completion.ts), so RED is shown by mutation: each P2 defect is put back on its own and the suite must fail.
+
+mutant 'P2-1: any error counts as the expected refusal': Tests  4 failed | 8 passed (12)
+mutant 'P2-2: an exception after the attempt reads as incomplete': Tests  3 failed | 9 passed (12)
+mutant 'P2-2: send recorded only after it landed': Tests  4 failed | 8 passed (12)
+mutant 'P2-2: the receipt says nothing was sent while pending': Tests  4 failed | 8 passed (12)
+
+## GREEN
+$ npx vitest run test/pilot-run1-completion.test.ts
+Tests  12 passed (12)

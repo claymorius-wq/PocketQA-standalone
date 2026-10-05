@@ -154,13 +154,20 @@ describe('SettingsScreen states', () => {
   });
 
   it('export shows "Export ready" with the bundle counts', async () => {
-    api.mockResolvedValue({ participations: [{}], studies: [], evidence: [], ledger: [] });
+    api.mockResolvedValue({
+      participations: [{}],
+      studies: [],
+      evidence: [],
+      ledger: [],
+      payments: { received: [{}], fundings: [], refunds: [], studyPayments: [] },
+      reputation: { events: [{}, {}] },
+    });
     await renderSettings('tester');
     await fireEvent.press(screen.getByTestId('export-data'));
     await settle();
     expect(api).toHaveBeenCalledWith('exportMe');
     expect(screen.getByTestId('export-done')).toBeTruthy();
-    expect(screen.getByText('1 participations, 0 studies, 0 evidence items, 0 ledger entries.')).toBeTruthy();
+    expect(screen.getByText('1 participations, 0 studies, 0 evidence items, 0 ledger entries, 1 wallet escrow records (each labelled with its settlement), 2 reputation events.')).toBeTruthy();
   });
 
   it('a linked wallet shows the address and Unlink, with the Linked pill', async () => {

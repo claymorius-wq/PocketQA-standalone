@@ -12,7 +12,7 @@ i  Running script: pnpm --filter @pocket-qa/mobile exec playwright test -c playw
 
 Running 2 tests using 1 worker
 
-i  To verify the email address fb-1791068939898@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=OxPVsLCaJxyuIdiw-uhoZpym2phxw9kLacQNnMmT4UrDmjWrEwhPQG&apiKey=fake-api-key
+i  To verify the email address fb-1791068939898@example.test, follow this link: http://127.0.0.1:9099/emulator/action?mode=verifyEmail&lang=en&oobCode=[REDACTED]&apiKey=[REDACTED]
   ✓  1 e2e-firebase/firebase-auth.spec.ts:19:5 › email sign-up → verify → sign in → choose a role → app; the session survives a reload (1.6s)
   ✓  2 e2e-firebase/firebase-auth.spec.ts:52:5 › the API refuses local password sign-in in firebase mode (one account system) (7ms)
 

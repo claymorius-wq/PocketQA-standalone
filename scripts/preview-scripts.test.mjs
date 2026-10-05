@@ -92,3 +92,17 @@ test('start.sh pins the shared demo to local auth and local storage (cloud revie
   const api = sh.split('\n').find((l) => l.includes('POCKETQA_API_PORT=')) ?? '';
   for (const kv of ['POCKETQA_SHARED_DEMO=1', 'POCKETQA_AUTH_MODE=local', 'POCKETQA_STORAGE=local', 'POCKETQA_WALLET_LOGIN=0']) assert.ok(api.includes(kv), kv);
 });
+
+test('start.sh pins settlement to the labelled simulation or off, never the devnet pilot (merge for user testing)', () => {
+  const sh = readFileSync(join(dir, 'preview', 'start.sh'), 'utf8');
+  const api = sh.split('\n').find((l) => l.includes('POCKETQA_API_PORT=')) ?? '';
+  // Set on the API command itself, so .env.local can't select the pilot; the key-dir variable is removed.
+  assert.ok(api.includes('POCKETQA_SETTLEMENT="$SETTLEMENT"'), 'settlement pinned on the API command');
+  assert.ok(api.includes('-u POCKETQA_SETTLEMENT_PILOT_KEYS_DIR'), 'pilot key dir removed from the environment');
+  assert.match(sh, /case "\$SETTLEMENT" in\n\s+simulated\|off\) ;;\n\s+\*\) echo "PREVIEW_SETTLEMENT must be simulated or off/);
+  assert.ok(!/squads_devnet/.test(sh.replace(/^#.*$/gm, '')), 'no executable line mentions the pilot');
+  // Running it with the pilot requested fails before anything starts.
+  const r = spawnSync('bash', [join(dir, 'preview', 'start.sh')], { env: { ...process.env, PREVIEW_PORT: '1', PREVIEW_API_PORT: '2', PREVIEW_PUBLIC_HOST: 'x', PREVIEW_SETTLEMENT: 'squads_devnet' }, encoding: 'utf8' });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /PREVIEW_SETTLEMENT must be simulated or off/);
+});

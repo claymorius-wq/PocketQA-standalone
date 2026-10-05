@@ -10,10 +10,10 @@ afterEach(async () => t?.close());
 describe('production feature gates', () => {
   it('/config reports test credits and devnet transfers as off in production, on in development', async () => {
     t = await makeApp({ production: true });
-    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features).toEqual({ testCredits: false, devnetTransfers: false });
+    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features).toEqual({ testCredits: false, devnetTransfers: false, settlement: 'off' });
     await t.close();
     t = await makeApp();
-    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features).toEqual({ testCredits: true, devnetTransfers: true });
+    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features).toEqual({ testCredits: true, devnetTransfers: true, settlement: 'off' });
   });
 
   it('test-credit top-up is refused and posts nothing; publishing then fails honestly', async () => {

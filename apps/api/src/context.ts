@@ -3,6 +3,7 @@ import type { ParsedTx } from '@pocket-qa/domain';
 import type { Config } from './config';
 import type { DB } from './db';
 import type { IdentityProvider, VerifiedIdentity } from './identity/types';
+import type { SettlementProvider } from './settlement/types';
 import type { EvidenceStore } from './storage/types';
 import type { Clock } from './util';
 import type { UserRow } from './views';
@@ -24,6 +25,8 @@ export type Deps = {
   identity: IdentityProvider | null;
   /** Evidence object store (local media directory or R2). */
   store: EvidenceStore;
+  /** Escrow settlement (ADR 0007): the SIMULATED provider, or null when settlement is off. */
+  settlement: SettlementProvider | null;
 };
 
 export type Ctx = {

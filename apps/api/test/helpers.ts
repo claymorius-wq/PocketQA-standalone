@@ -9,6 +9,13 @@ import type { Deps, DevnetRpc } from '../src/context';
 import { openDb } from '../src/db';
 import { localStore } from '../src/storage/local';
 import { r2Store } from '../src/storage/r2';
+import { SimulatedSettlement } from '../src/settlement/simulated';
+import { SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
+import type { SquadsChain } from '../src/settlement/squads/chain';
+import type { SettlementProvider } from '../src/settlement/types';
+import { ed25519 } from '@noble/curves/ed25519.js';
+import { base58 } from '@scure/base';
+import { buildSiwsMessage, type SiwsInput } from '@pocket-qa/contracts';
 import { FakeIdentity } from './fakeIdentity';
 import { FakeS3 } from './fakeS3';
 
@@ -35,7 +42,7 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -60,7 +67,9 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
       config: {
         production: opts.production ?? false,
         trustProxy: opts.trustProxy ? ['127.0.0.1', '::1'] : false,
-        features: { testCredits: !opts.production, devnetTransfers: !opts.production },
+        features: { testCredits: !opts.production, devnetTransfers: !opts.production, settlement: opts.settlement ?? 'off' },
+        escrowFeeBps: 1000,
+        pilotKeysDir: null,
         host: '127.0.0.1',
         port: 0,
         dataDir: dir,
@@ -80,7 +89,12 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
       now: () => clock.now,
       rpc,
       mediaDir,
+      settlement: null as SettlementProvider | null,
     };
+  const sim = new SimulatedSettlement(db, () => clock.now);
+  if (opts.settlement === 'simulated') deps.settlement = sim;
+  // The Squads devnet pilot adapter over an in-memory chain (never a network in this suite).
+  if (opts.settlement === 'squads_devnet') deps.settlement = new SquadsDevnetSettlement({ db, now: () => clock.now, chain: opts.squadsChain!, createSeed: opts.squadsCreateSeed ?? new Uint8Array(32).fill(9) });
   const app = await buildApp(deps, opts.captureLogs ? { logger: loggerOptions(stream) } : {});
   await app.ready();
 
@@ -132,9 +146,23 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
     });
   }
 
+  /** Links a fresh ed25519 wallet (or the given 32-byte seed's) to the account through the real SIWS flow. */
+  async function linkWallet(token: string, seed?: Uint8Array) {
+    const sk = seed ?? ed25519.utils.randomSecretKey();
+    const address = base58.encode(ed25519.getPublicKey(sk));
+    const { input } = (await req('POST', '/wallet/nonce', token, { address })).body as { input: SiwsInput };
+    const bytes = new TextEncoder().encode(buildSiwsMessage(input));
+    const b64 = (u: Uint8Array) => Buffer.from(u).toString('base64');
+    const r = await req('POST', '/wallet/link', token, { address, nonce: input.nonce, signedMessage: b64(bytes), signature: b64(ed25519.sign(bytes, sk)) });
+    if (r.status !== 200) throw new Error(`wallet link failed ${r.status} ${JSON.stringify(r.body)}`);
+    return { address, sk };
+  }
+
   return {
     app,
     db,
+    sim,
+    linkWallet,
     clock,
     rpc,
     identity,

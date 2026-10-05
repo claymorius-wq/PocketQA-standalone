@@ -1,3 +1,4 @@
+import { formatUnits, tokenAmount, unitName } from '../../src/lib/money';
 import { router } from 'expo-router';
 import { ClipboardList, Compass } from 'lucide-react-native';
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -60,7 +61,8 @@ function rewardUnit(n: number): readonly [string, string] {
 
 function SessionCard({ p }: { p: Participation }) {
   // One accessibility stop: the label opens the session, the hint reads what the card shows.
-  const hint = `${statusLabel[p.status] ?? p.status}. Joined ${when(p.consentedAt)}. ${rewardPhrase(p.rewardCredits, rewardUnit(p.rewardCredits))}.`;
+  const token = p.reward.kind === 'token' ? p.reward : null;
+  const hint = `${statusLabel[p.status] ?? p.status}. Joined ${when(p.consentedAt)}. ${token ? `${tokenAmount(token.units, token.settlement)} if approved` : rewardPhrase(p.rewardCredits, rewardUnit(p.rewardCredits))}.`;
   return (
     <Card onPress={() => router.push(`/participation/${p.id}`)} testID={`participation-card-${p.id}`} accessibilityLabel="Open session" accessibilityHint={hint} style={styles.card}>
       <View style={styles.top}>
@@ -71,7 +73,7 @@ function SessionCard({ p }: { p: Participation }) {
         <View style={styles.joined}>
           <DateText verb="Joined" iso={p.consentedAt} />
         </View>
-        <RewardWell amount={p.rewardCredits} unit={rewardUnit(p.rewardCredits)} />
+        {token ? <RewardWell amount={0} display={formatUnits(token.units)} unit={[unitName(token.settlement), 'if approved']} /> : <RewardWell amount={p.rewardCredits} unit={rewardUnit(p.rewardCredits)} />}
       </View>
     </Card>
   );

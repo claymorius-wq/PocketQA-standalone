@@ -4,6 +4,7 @@
 // the marker covers only its own line and is reserved for deliberate, non-secret
 // test fixtures that reviewers check one by one.
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -60,13 +61,35 @@ const FORBIDDEN_PATHS = [
   /(^|\/)\.cloud-local\//,
 ];
 
-export function scanText(text) {
+// Public on-chain evidence pinned by content hash: the Squads devnet pilot receipts list base58
+// TRANSACTION SIGNATURES, which have the same shape as a base58 secret key (each was read back
+// from devnet as a finalized transaction; see the receipts and the pilot readback). For these exact
+// bytes only the base58-secret-key rule is skipped; every other rule still runs, and any edit to
+// the file changes its hash and brings every finding back. Each entry is reviewed by pqa-qa.
+export const PINNED_EVIDENCE = new Map([
+  ['docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json', '5fa8fa93b066572ba82c3134097374f34335bae453186a59c3dd005d8df84422'],
+  ['docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.md', '373a8ca53f5415de6d7cef2c3d614aec4db3a580cdd2f9c803bd5b0c1651e4c2'],
+  ['docs/reviews/wallet-rewards/devnet-pilot-run1-readback.json', '5702cddd8e5f9aee7043bdd939b0867cd9258501958af8b69044d715103a22e5'],
+  ['docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json', '2bde52405b81627788e21f039a8734341a5bc39e8f3d306d750d9562ba91d14a'],
+  ['docs/reviews/wallet-rewards/devnet-pilot-run1-completion.md', '147f7cca1f00ab85604307a309bacc7e4f79f3922610405c45c8588ef8461998'],
+  // pqa-qa's live verdict r2, an exact copy: its one long token is the completion signature.
+  ['docs/reviews/wallet-rewards/qa-devnet-pilot-live-verdict-r2.md', 'a2828474b409f67c0a3c0d3cb3f94cd5e13d1195c2e5dbdb615f3ca8fc6d8cb8'],
+]);
+
+/** Rules skipped for this file's exact content (none unless it is pinned evidence with that hash). */
+export function pinnedSkips(file, buf, pins = PINNED_EVIDENCE) {
+  const want = pins.get(file);
+  return want && createHash('sha256').update(buf).digest('hex') === want ? ['base58-secret-key'] : [];
+}
+
+export function scanText(text, { skipRules = [] } = {}) {
   const hits = [];
   const kept = [];
   text.split('\n').forEach((line, i) => {
     if (line.includes(ALLOW_MARKER)) return;
     kept.push(line);
     for (const rule of LINE_RULES) {
+      if (skipRules.includes(rule.id)) continue;
       if (rule.re.test(line)) hits.push({ line: i + 1, rule: rule.id });
     }
   });
@@ -107,7 +130,7 @@ export function scanRepo(cwd = process.cwd()) {
     }
     const buf = readFileSync(`${cwd}/${file}`);
     if (buf.includes(0)) continue; // binary; data files are caught by FORBIDDEN_PATHS
-    for (const hit of scanText(buf.toString('utf8'))) findings.push(`${file}:${hit.line}: ${hit.rule}`);
+    for (const hit of scanText(buf.toString('utf8'), { skipRules: pinnedSkips(file, buf) })) findings.push(`${file}:${hit.line}: ${hit.rule}`);
   }
   return { scanned: files.length, findings };
 }

@@ -1,0 +1,35 @@
+Read-only public RPC evidence for docs/production/escrow-provider-decision.md. Lead, 2026-10-04T23:48:28Z.
+No keys, wallets or transactions. Only getAccountInfo / getMinimumBalanceForRentExemption.
+
+$ getAccountInfo SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf (mainnet) -> programData -> upgrade authority
+programData Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n authority None context slot 453408581
+
+$ getAccountInfo strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m (mainnet) -> programData -> upgrade authority
+programData 796tZf2QrH1ebZTQC1mDHYP6weDqSKuqbeyaXd64Prs authority 5u7o2WGgHckh18opTfPsqKb8E3nhDKcReBrbzUeXg2n7 context slot 453408585
+
+$ getAccountInfo 5u7o2WGgHckh18opTfPsqKb8E3nhDKcReBrbzUeXg2n7 (Streamflow upgrade authority)
+owner 11111111111111111111111111111111 executable False
+
+$ node squads-config.mjs (derive ProgramConfig PDA ["multisig","program_config"], read creation fee)
+{
+  programConfig: 'BSTq9w3kZwNwpBXJEvTZz2G9ZTNyKBvoSeXMvwb4cNZr',
+  owner: 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf',
+  authority: '8xgjL6yqGmNeMUKMBcjUug47JL2QcWY3EBrFfYeHtYFT',
+  multisigCreationFeeLamports: '0',
+  treasury: '5DH2e3cJmFpyi6mk65EGFediunm4ui6BiKNUNrhWtD1b',
+  slot: 453408589,
+  at: '2026-10-04T23:48:30.835Z'
+}
+
+$ getMinimumBalanceForRentExemption 165 (mainnet-beta)
+1488440
+$ getMinimumBalanceForRentExemption 165 (devnet)
+1488440
+
+== Added after pqa-qa r1 (2026-10-04T23:52:39Z)
+$ getAccountInfo Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n (Squads v4 program-data) on DEVNET
+authority HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK last deployed slot 446638068 read at slot 507539268
+$ getAccountInfo Fy3YMJCv… on MAINNET (last deployed slot)
+authority None last deployed slot 302582236 read at slot 453409525
+$ GET https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
+{'is_verified': False, 'message': 'On chain program not verified', 'commit': '3742e5521a3e833f24a4c6bc024dd1aa5385d010', 'is_frozen': True, 'on_chain_hash': 'd48660833989ecea3145ff726164fe640bd90696f03ce00dfd0cda258cbf2fac', 'repo_url': 'https://github.com/Squads-Protocol/v4/tree/3742e5521a3e833f24a4c6bc024dd1aa5385d010', 'last_verified_at': None}

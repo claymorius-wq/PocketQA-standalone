@@ -14,6 +14,7 @@ import { GlassTile } from '../../../src/icons';
 import { statusLabel } from '../../../src/lib/format';
 import { useStudy, useStudyDisputes, useStudyParticipations } from '../../../src/lib/queries';
 import { BudgetCard } from '../../../src/screens/BuilderStudyBudget';
+import { EscrowPanel } from '../../../src/screens/EscrowPanel';
 import { DUR } from '../../../src/theme/motion';
 import { useTheme } from '../../../src/theme/ThemeProvider';
 import { layout, radius, type Tone } from '../../../src/theme/tokens';
@@ -105,11 +106,18 @@ function BuilderStudyInner() {
     act.reset();
     setConfirm(a);
   };
+  const escrow = q.data?.payment.mode === 'escrow';
+  // The settlement's qualifier for confirmations: the simulation, or the devnet pilot (no value).
+  const qual = q.data?.payment.mode === 'escrow' && q.data.payment.settlement === 'squads_devnet' ? 'devnet test USDC, no value' : 'simulated';
   const copy: Record<Action, { title: string; body: string; label: string }> = {
-    publish: { title: 'Publish this study?', body: 'Reward × slots is reserved from your test credits, and matching testers can join.', label: 'Publish' },
+    publish: escrow
+      ? { title: 'Publish this study?', body: `Matching testers can join. Each one holds a reward and its fee from the study escrow (${qual}) until their work is decided.`, label: 'Publish' }
+      : { title: 'Publish this study?', body: 'Reward × slots is reserved from your test credits, and matching testers can join.', label: 'Publish' },
     pause: { title: 'Pause this study?', body: 'No new testers can join. Testers already in progress can finish.', label: 'Pause' },
     resume: { title: 'Resume this study?', body: 'Matching testers can join again.', label: 'Resume' },
-    close: { title: 'Close this study?', body: 'Testers who haven’t submitted are withdrawn, and unused credits return to your balance.', label: 'Close study' },
+    close: escrow
+      ? { title: 'Close this study?', body: `Testers who haven’t submitted are withdrawn, and unused rewards and fees go back to the wallet you funded from (${qual}).`, label: 'Close study' }
+      : { title: 'Close this study?', body: 'Testers who haven’t submitted are withdrawn, and unused credits return to your balance.', label: 'Close study' },
   };
   const errorMessage = act.error ? (act.error as ApiError).message : null;
   // The commit sheet's light follows the request (C4, U7); the other sheets pass no status and stay unlit.
@@ -157,7 +165,7 @@ function BuilderStudyInner() {
                     <Text variant="display">{s.title}</Text>
                     <Text tone="muted" style={styles.objective}>{s.objective}</Text>
                   </View>
-                  <BudgetCard study={s} landing={landed} settled={landed} />
+                  {s.payment.mode === 'escrow' ? <EscrowPanel study={{ ...s, payment: s.payment }} /> : <BudgetCard study={s} landing={landed} settled={landed} />}
                   <View>
                     <SectionHeader title="Tasks" />
                     <View style={styles.tasks}>
@@ -208,7 +216,7 @@ function BuilderStudyInner() {
                               <Hairline inset={0} />
                               {d.outcome ? (
                                 <Text variant="bodySm" tone="muted">
-                                  <Strong>{d.outcome === 'overturned' ? 'Overturned: the tester was credited.' : 'Upheld: your rejection stands.'}</Strong> {d.resolutionNote}
+                                  <Strong>{d.outcome === 'overturned' ? (s.payment.mode === 'escrow' ? `Overturned: the reward is released to the tester (${s.payment.mode === 'escrow' && s.payment.settlement === 'squads_devnet' ? 'devnet pilot: Pocket QA and the arbiter sign, test USDC with no value' : 'simulated'}).` : 'Overturned: the tester was credited.') : 'Upheld: your rejection stands.'}</Strong> {d.resolutionNote}
                                 </Text>
                               ) : (
                                 <Text variant="bodySm" tone="muted">Waiting for an admin.</Text>

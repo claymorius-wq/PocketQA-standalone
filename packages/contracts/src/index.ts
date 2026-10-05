@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.5.0';
+export const CONTRACT_VERSION = '0.6.0';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 
@@ -152,13 +152,39 @@ export const StudyInput = z.object({
   buildUnderTest: z.string().trim().max(500).optional(),
   tasks: z.array(TaskInput).min(1).max(20),
   deviceCriteria: DeviceCriteria,
-  rewardCredits: PositiveCredits,
+  /** Test-credit studies only; escrow studies set `payment` instead. */
+  rewardCredits: PositiveCredits.optional(),
   slots: z.number().int().min(1).max(500),
   consentText: z.string().trim().min(20).max(5000),
 });
-export const CreateStudyBody = StudyInput;
-/** Only drafts are editable. */
-export const UpdateStudyBody = StudyInput.partial();
+
+// ---------- wallet-funded escrow (ADR 0007): SIMULATED settlement only in this phase ----------
+/**
+ * `off` everywhere by default; production refuses anything else. `squads_devnet` is the bounded
+ * devnet feasibility pilot (ADR 0007 §10): devnet test USDC only, test keys simulate every role.
+ */
+export const SettlementMode = z.enum(['off', 'simulated', 'squads_devnet']);
+/** How a given study settles: a local simulation, or the Squads devnet pilot (no value either way). */
+export const SettlementKind = z.enum(['simulated', 'squads_devnet']);
+export type SettlementKind = z.infer<typeof SettlementKind>;
+export type SettlementMode = z.infer<typeof SettlementMode>;
+/** Whole token base units (USDC: 6 decimals, 1 USDC = 1,000,000). Never fractional. */
+export const TokenUnits = z.number().int().nonnegative().max(1_000_000_000_000);
+export const PositiveTokenUnits = TokenUnits.min(1);
+export const SIMULATED_SETTLEMENT_NOTICE = 'Simulation · no funds move' as const;
+export const StudyPaymentInput = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('test_credits') }),
+  z.object({ mode: z.literal('escrow'), rewardUnits: PositiveTokenUnits }),
+]);
+export type StudyPaymentInput = z.infer<typeof StudyPaymentInput>;
+const onePaymentMode = (b: { rewardCredits?: number; payment?: StudyPaymentInput }, ctx: z.RefinementCtx) => {
+  const escrow = b.payment?.mode === 'escrow';
+  if (escrow && b.rewardCredits !== undefined) ctx.addIssue({ code: 'custom', path: ['rewardCredits'], message: 'Escrow studies pay in tokens: leave rewardCredits out.' });
+  if (!escrow && b.rewardCredits === undefined) ctx.addIssue({ code: 'custom', path: ['rewardCredits'], message: 'rewardCredits is required for test-credit studies.' });
+};
+export const CreateStudyBody = StudyInput.extend({ payment: StudyPaymentInput.optional() }).superRefine(onePaymentMode);
+/** Only drafts are editable; an escrow study's terms lock once funding has started. */
+export const UpdateStudyBody = StudyInput.partial().extend({ rewardUnits: PositiveTokenUnits.optional() });
 
 export const StudyBudget = z.object({
   /** reward × slots, reserved from the builder's test-credit balance at publish. */
@@ -171,8 +197,59 @@ export const StudyBudget = z.object({
   available: Credits,
 });
 
+export const EscrowQuote = z.object({
+  rewardUnits: PositiveTokenUnits,
+  slots: z.number().int().positive(),
+  feeBps: z.number().int().min(0).max(10_000),
+  perTestFeeUnits: TokenUnits,
+  perTestTotalUnits: PositiveTokenUnits,
+  rewardPoolUnits: PositiveTokenUnits,
+  platformFeeUnits: TokenUnits,
+  totalUnits: PositiveTokenUnits,
+});
+/** funded = available + held + payable + settled + fees + pendingRefund + refunded (ADR 0007 §5). */
+export const EscrowBalances = z.object({
+  fundedUnits: TokenUnits,
+  availableUnits: TokenUnits,
+  heldUnits: TokenUnits,
+  payableUnits: TokenUnits,
+  settledUnits: TokenUnits,
+  feesUnits: TokenUnits,
+  pendingRefundUnits: TokenUnits,
+  refundedUnits: TokenUnits,
+});
+export const SettlementStatus = z.enum(['pending', 'submitted', 'confirmed', 'failed']);
+export const StudyPayment = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('test_credits') }),
+  z.object({
+    mode: z.literal('escrow'),
+    settlement: SettlementKind,
+    asset: z.literal('USDC'),
+    decimals: z.literal(6),
+    network: z.string(),
+    mint: z.string(),
+    quote: EscrowQuote,
+    funded: z.boolean(),
+    /** Builder-only books; null in tester views. */
+    balances: EscrowBalances.nullable(),
+    fundingWallet: z.string().nullable(),
+    refund: z.object({ status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+  }),
+]);
+export type StudyPayment = z.infer<typeof StudyPayment>;
+/** What a tester is offered for an approved test. */
+export const StudyReward = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('test_credits'), credits: PositiveCredits }),
+  z.object({ kind: z.literal('token'), asset: z.literal('USDC'), decimals: z.literal(6), units: PositiveTokenUnits, settlement: SettlementKind }),
+]);
+export type StudyReward = z.infer<typeof StudyReward>;
+
 export const ModerationState = z.enum(['ok', 'suspended']);
-export const Study = StudyInput.omit({ tasks: true }).extend({
+export const Study = StudyInput.omit({ tasks: true, rewardCredits: true }).extend({
+  /** Test credits per approved test; 0 for escrow studies (see `payment`/`reward`). */
+  rewardCredits: Credits,
+  payment: StudyPayment,
+  reward: StudyReward,
   id: Id,
   builderId: Id,
   status: StudyStatus,
@@ -192,7 +269,8 @@ export const StudySummary = z.object({
   id: Id,
   title: z.string(),
   objective: z.string(),
-  rewardCredits: PositiveCredits,
+  rewardCredits: Credits,
+  reward: StudyReward,
   deviceCriteria: DeviceCriteria,
   status: StudyStatus,
   publishedAt: IsoDate.nullable(),
@@ -226,6 +304,26 @@ export const ParticipationStatus = z.enum([
 ]);
 export type ParticipationStatus = z.infer<typeof ParticipationStatus>;
 
+export const Payout = z.object({
+  id: Id,
+  participationId: Id,
+  studyId: Id,
+  studyTitle: z.string(),
+  amountUnits: PositiveTokenUnits,
+  asset: z.literal('USDC'),
+  decimals: z.literal(6),
+  destination: z.string(),
+  settlement: SettlementKind,
+  /** `confirmed` is the only settled state; with simulation it means "settled (simulated)", never "paid". */
+  status: SettlementStatus,
+  signature: z.string().nullable(),
+  failureReason: z.string().nullable(),
+  attempts: z.number().int().nonnegative(),
+  authorizedAt: IsoDate,
+  settledAt: IsoDate.nullable(),
+});
+export type Payout = z.infer<typeof Payout>;
+
 export const TaskNote = z.object({ taskId: Id, note: z.string().trim().max(2000) });
 
 export const Participation = z.object({
@@ -242,12 +340,43 @@ export const Participation = z.object({
   decidedAt: IsoDate.nullable(),
   decidedBy: Id.nullable(),
   decisionReason: z.string().nullable(),
-  rewardCredits: PositiveCredits,
+  rewardCredits: Credits,
+  reward: StudyReward,
+  /** Escrow studies: the wallet frozen at consent; every payout for this participation goes here. */
+  payoutAddress: z.string().nullable(),
+  payout: Payout.nullable(),
   taskNotes: z.array(TaskNote),
 });
 export type Participation = z.infer<typeof Participation>;
 
-export const ConsentBody = z.object({ consentVersion: z.number().int().positive(), accepted: z.literal(true) });
+/** Escrow studies require `payoutAddress`: it must equal the tester's linked wallet (explicit confirmation). */
+export const ConsentBody = z.object({ consentVersion: z.number().int().positive(), accepted: z.literal(true), payoutAddress: Base58Address.optional() });
+
+
+export const EscrowFundingStatus = z.enum(['awaiting_payment', 'pending', 'confirmed', 'failed', 'expired']);
+export const EscrowFunding = z.object({
+  id: Id,
+  studyId: Id,
+  amountUnits: PositiveTokenUnits,
+  asset: z.literal('USDC'),
+  decimals: z.literal(6),
+  network: z.string(),
+  mint: z.string(),
+  vault: z.string(),
+  reference: z.string(),
+  settlement: SettlementKind,
+  status: EscrowFundingStatus,
+  signature: z.string().nullable(),
+  source: z.string().nullable(),
+  failureReason: z.string().nullable(),
+  createdAt: IsoDate,
+  expiresAt: IsoDate,
+  confirmedAt: IsoDate.nullable(),
+});
+export type EscrowFunding = z.infer<typeof EscrowFunding>;
+export const SimulatedSignature = z.string().regex(/^sim[A-Za-z0-9]{16,80}$/);
+export const SubmitFundingSignatureBody = z.object({ signature: z.union([SimulatedSignature, Base58Signature]) });
+export const SimulatedWalletPayment = z.object({ signature: SimulatedSignature, settlement: z.literal('simulated') });
 export const PutTaskNoteBody = z.object({ note: z.string().trim().max(2000) });
 export const WithdrawBody = z.object({ reason: z.string().trim().max(500).optional() });
 
@@ -324,7 +453,8 @@ export const Finding = FindingInput.extend({
 });
 export type Finding = z.infer<typeof Finding>;
 
-export const ApproveBody = z.object({ note: z.string().trim().max(1000).optional() });
+/** `helpful`: the builder marks the tester's feedback helpful (reputation only; no money). */
+export const ApproveBody = z.object({ note: z.string().trim().max(1000).optional(), helpful: z.boolean().optional() });
 export const RejectBody = z.object({ reason: z.string().trim().min(10).max(1000) });
 
 // ---------- credits ledger ----------
@@ -385,6 +515,41 @@ export const AuditEntry = z.object({
 });
 
 /** Everything the requester owns, and nothing anyone else owns. Media is listed, not inlined. */
+/** Token amounts in exports: exact decimal strings of base units (USDC: 6 decimals), never floats. */
+export const TokenUnitsString = z.string().regex(/^(0|[1-9]\d*)$/);
+const ExportAsset = { asset: z.literal('USDC'), decimals: z.literal(6), settlement: SettlementKind };
+/**
+ * The money of wallet-funded studies, least data (ADR 0007). Rows are strict: no provider-internal
+ * fields (attempt keys, idempotency keys), and a builder's rows never carry a tester's identity,
+ * wallet or participation.
+ */
+export const ExportPayments = z.object({
+  /** Tester: rewards for their own approved work, to the wallet they froze at consent. */
+  received: z.array(
+    z.strictObject({ participationId: Id, studyId: Id, studyTitle: z.string(), amountUnits: TokenUnitsString, ...ExportAsset, destination: z.string(), status: SettlementStatus, signature: z.string().nullable(), authorizedAt: IsoDate, settledAt: IsoDate.nullable() }),
+  ),
+  /** Builder: funding transfers of their own studies, from their own wallet. */
+  fundings: z.array(
+    z.strictObject({ id: Id, studyId: Id, amountUnits: TokenUnitsString, ...ExportAsset, source: z.string().nullable(), status: EscrowFundingStatus, signature: z.string().nullable(), createdAt: IsoDate, confirmedAt: IsoDate.nullable() }),
+  ),
+  /** Builder: refunds of their own studies, to the wallet that funded them. */
+  refunds: z.array(z.strictObject({ studyId: Id, amountUnits: TokenUnitsString, ...ExportAsset, destination: z.string(), status: SettlementStatus, signature: z.string().nullable(), settledAt: IsoDate.nullable() })),
+  /** Builder: each approved test's reward and fee in their studies, with no tester identity or wallet. */
+  studyPayments: z.array(z.strictObject({ studyId: Id, amountUnits: TokenUnitsString, feeUnits: TokenUnitsString, status: SettlementStatus, authorizedAt: IsoDate, settledAt: IsoDate.nullable() })),
+});
+export const BadgeId = z.enum(['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist']);
+export const Badge = z.object({ id: BadgeId, label: z.string(), description: z.string() });
+export const ExportReputation = z.object({
+  points: z.number().int(),
+  noCashValue: z.literal(true),
+  events: z.array(z.strictObject({ participationId: Id, kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate })),
+  badges: z.array(Badge),
+  leaderboard: z.strictObject({ optedIn: z.boolean(), alias: z.string().nullable() }),
+  /** Upheld fraud findings on the user's own work (the deciding admin isn't named). */
+  fraudFindings: z.array(z.strictObject({ participationId: Id, reason: z.string(), createdAt: IsoDate })),
+  /** Own accepted work that earned no points because it looked like self-dealing. */
+  withheldPoints: z.array(z.strictObject({ participationId: Id, reason: z.string(), createdAt: IsoDate })),
+});
 export const ExportBundle = z.object({
   exportedAt: IsoDate,
   user: User,
@@ -394,6 +559,8 @@ export const ExportBundle = z.object({
   findings: z.array(Finding),
   ledger: z.array(LedgerEntry),
   disputes: z.array(Dispute),
+  payments: ExportPayments,
+  reputation: ExportReputation,
 });
 export const DeleteMeBody = z.object({ confirm: z.literal('DELETE MY ACCOUNT') });
 
@@ -517,6 +684,28 @@ export type DevnetTransfer = z.infer<typeof DevnetTransfer>;
 /** Fetched from devnet by the server (genesis-checked) right before the wallet signs. */
 export const TransferBlockhash = z.object({ blockhash: Base58Address, lastValidBlockHeight: z.number().int().nonnegative() });
 
+// ---------- reputation: points, badges, leaderboard (no cash value, not tradeable) ----------
+export const PointsEventView = z.object({ kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate, studyTitle: z.string() });
+export const LEADERBOARD_WINDOW_DAYS = 90;
+export const Reputation = z.object({
+  points: z.number().int(),
+  /** Points are a reputation signal only: no cash value, not tradeable, not a token. */
+  noCashValue: z.literal(true),
+  events: z.array(PointsEventView),
+  badges: z.array(Badge),
+  stats: z.object({ accepted: z.number().int(), rejected: z.number().int(), decided: z.number().int(), qualityScore: z.number().int().min(0).max(100), windowDays: z.number().int() }),
+  leaderboard: z.object({ optedIn: z.boolean(), alias: z.string().nullable(), rank: z.number().int().positive().nullable(), minDecided: z.number().int() }),
+});
+export type Reputation = z.infer<typeof Reputation>;
+/** A pseudonym: letters, digits, spaces, - and _ only (so never an email or a wallet address). */
+export const LeaderboardAlias = z.string().trim().min(3).max(24).regex(/^[A-Za-z0-9][A-Za-z0-9 _-]*$/);
+export const LeaderboardSettingsBody = z.object({ optIn: z.boolean(), alias: LeaderboardAlias.optional() });
+/** Strict: a row carries no user id, wallet, email or evidence reference. */
+export const LeaderboardRow = z.strictObject({ rank: z.number().int().positive(), alias: z.string(), qualityScore: z.number().int().min(0).max(100), decided: z.number().int(), badges: z.array(BadgeId) });
+export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays: z.number().int(), minDecided: z.number().int() });
+export type Leaderboard = z.infer<typeof Leaderboard>;
+export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });
+
 // ---------- AI ----------
 export const AiStatus = z.object({ available: z.boolean(), provider: z.string().nullable() });
 
@@ -539,7 +728,8 @@ export const ClientConfig = z.object({
   storage: StorageMode,
   walletLogin: z.boolean(),
   /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
-  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean() }),
+  // `settlement` defaults to off: a server that predates escrow never enables it by omission.
+  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off') }),
   firebase: z
     .object({
       apiKey: z.string().min(1),
@@ -645,6 +835,16 @@ export const routes = {
   transferBlockhash: r({ method: 'GET', path: '/devnet/transfers/:id/blockhash', auth: 'builder', scope: 'study-owner', body: null, response: TransferBlockhash }),
   participationTransfers: r({ method: 'GET', path: '/participations/:id/devnet-transfers', auth: 'user', scope: 'participation-party', body: null, response: list(DevnetTransfer) }),
   aiStatus: r({ method: 'GET', path: '/ai/status', auth: 'user', scope: 'none', body: null, response: AiStatus }),
+  createEscrowFunding: r({ method: 'POST', path: '/studies/:id/escrow/fundings', auth: 'builder', scope: 'study-owner', body: null, response: EscrowFunding }),
+  getEscrowFunding: r({ method: 'GET', path: '/escrow/fundings/:id', auth: 'builder', scope: 'study-owner', body: null, response: EscrowFunding }),
+  simulatedWalletPayment: r({ method: 'POST', path: '/escrow/fundings/:id/simulated-wallet-payment', auth: 'builder', scope: 'study-owner', body: null, response: SimulatedWalletPayment }),
+  submitFundingSignature: r({ method: 'POST', path: '/escrow/fundings/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitFundingSignatureBody, response: EscrowFunding }),
+  myPayouts: r({ method: 'GET', path: '/me/payouts', auth: 'tester', scope: 'self', body: null, response: list(Payout) }),
+  adminPayouts: r({ method: 'GET', path: '/admin/payouts', auth: 'admin', scope: 'none', body: null, response: list(Payout) }),
+  myReputation: r({ method: 'GET', path: '/me/reputation', auth: 'tester', scope: 'self', body: null, response: Reputation }),
+  putLeaderboard: r({ method: 'PUT', path: '/me/leaderboard', auth: 'tester', scope: 'self', body: LeaderboardSettingsBody, response: Reputation }),
+  leaderboard: r({ method: 'GET', path: '/leaderboard', auth: 'user', scope: 'none', body: null, response: Leaderboard }),
+  adminFraud: r({ method: 'POST', path: '/admin/participations/:id/fraud', auth: 'admin', scope: 'none', body: FraudFindingBody, response: Ok }),
 } as const;
 export type RouteName = keyof typeof routes;
 

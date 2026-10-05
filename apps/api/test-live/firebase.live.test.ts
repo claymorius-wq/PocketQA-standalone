@@ -41,7 +41,7 @@ d('live Firebase Auth: dedicated project', () => {
     if (config.firebase!.projectId !== 'pocketqa-optijara') throw new Error('refusing: not the dedicated project');
     webKey = config.firebase!.webApiKey;
     mkdirSync(join(dir, 'media'));
-    app = await buildApp({ db: openDb(join(dir, 'l.sqlite')), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: firebaseIdentity(config.firebase!), store: localStore(join(dir, 'media')) });
+    app = await buildApp({ db: openDb(join(dir, 'l.sqlite')), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity: firebaseIdentity(config.firebase!), store: localStore(join(dir, 'media')), settlement: null });
     await app.ready();
   });
   afterAll(async () => {

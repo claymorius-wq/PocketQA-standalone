@@ -28,6 +28,11 @@ export const useParticipationTransfers = (id: string) =>
     enabled: !!id,
     refetchInterval: (q) => (q.state.data?.items.some((t) => t.status === 'pending' || t.status === 'awaiting_signature') ? 4000 : false),
   });
+export const useReputation = () => useQuery({ queryKey: ['reputation'], queryFn: () => api('myReputation') });
+export const useLeaderboard = () => useQuery({ queryKey: ['leaderboard'], queryFn: () => api('leaderboard') });
+/** Escrow payment states move on their own (the settlement worker): poll while one is still open. */
+export const useMyPayouts = () =>
+  useQuery({ queryKey: ['rewards'], queryFn: () => api('myPayouts'), refetchInterval: (q) => (q.state.data?.items.some((x) => x.status !== 'confirmed') ? 5000 : false) });
 export const useAiStatus = () => useQuery({ queryKey: ['ai'], queryFn: () => api('aiStatus'), staleTime: 60_000 });
 
 /**

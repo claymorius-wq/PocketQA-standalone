@@ -10,7 +10,7 @@ let users: Record<'builderA' | 'builderB' | 'testerA' | 'testerB' | 'admin', Who
 let mediaToken: string;
 
 beforeAll(async () => {
-  t = await makeApp();
+  t = await makeApp({ settlement: 'simulated' });
   const { builder, tester, study, participationId } = await seeded(t);
   const taskId = study.tasks[0].id;
   const ev = await t.upload(tester.token, participationId, PNG, { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'm1' });
@@ -41,8 +41,15 @@ beforeAll(async () => {
     )
     .run(participationId, builder.id, tester.id, new Date(t.clock.now).toISOString(), new Date(t.clock.now + 600_000).toISOString());
 
+  // A (simulated) escrow study of builder A with an open funding request, for the escrow routes.
+  await t.linkWallet(builder.token);
+  const { rewardCredits: _, ...rest } = STUDY;
+  const escrowStudy = (await t.req('POST', '/studies', builder.token, { ...rest, payment: { mode: 'escrow', rewardUnits: 1_000_000 } })).body;
+  const funding = (await t.req('POST', `/studies/${escrowStudy.id}/escrow/fundings`, builder.token)).body;
+  expect(funding.status).toBe('awaiting_payment');
+
   mediaToken = (await t.req('POST', `/evidence/${ev.body.id}/playback-token`, tester.token)).body.token;
-  ids = { study: study.id, participation: participationId, task: taskId, evidence: ev.body.id, dispute: dispute.id, transfer: 'tr1', user: testerB.id };
+  ids = { study: study.id, participation: participationId, task: taskId, evidence: ev.body.id, dispute: dispute.id, transfer: 'tr1', user: testerB.id, funding: funding.id };
   users = { builderA: builder, builderB, testerA: tester, testerB, admin };
 });
 afterAll(async () => t.close());
@@ -60,6 +67,8 @@ function pathFor(name: RouteName): string {
             ? ids.dispute
             : p.startsWith('/devnet/transfers')
               ? ids.transfer
+              : p.startsWith('/escrow/fundings')
+                ? ids.funding
               : p.startsWith('/admin/moderation/users')
                 ? ids.user
                 : 'x';
@@ -110,10 +119,11 @@ const BODY: Partial<Record<RouteName, () => unknown>> = {
   submitTransferSignature: () => ({ signature: '5'.repeat(88) }),
   openDispute: () => ({ participationId: ids.participation, reason: 'This is my dispute reason.' }),
   createUploadIntent: () => ({ kind: 'screenshot', mimeType: 'image/png', sizeBytes: 100, capturedOn: 'web', clientSegmentId: 'm-1' }),
+  submitFundingSignature: () => ({ signature: `sim${'a'.repeat(24)}` }),
 };
 
 const OWNER_SCOPED: { name: RouteName; nonOwners: (keyof typeof users)[] }[] = [
-  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash'] as RouteName[]).map(
+  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash', 'createEscrowFunding', 'getEscrowFunding', 'simulatedWalletPayment', 'submitFundingSignature'] as RouteName[]).map(
     (name) => ({ name, nonOwners: ['builderB'] as (keyof typeof users)[] }),
   ),
   ...(['startParticipation', 'withdrawParticipation', 'putTaskNote', 'submitParticipation', 'uploadEvidence', 'openDispute', 'createUploadIntent', 'completeUploadIntent'] as RouteName[]).map((name) => ({

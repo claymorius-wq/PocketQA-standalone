@@ -508,6 +508,105 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
   - 26 objects before and 26 after, identical (`live/r2-scoped-delete.txt`).
 - **Production start smoke:** EXIT=0 (`live/prod-start-smoke.txt`).
 
+## 2026-10-05: wallet-funded escrow and reputation, local simulated slice (`feat/wallet-rewards`)
+Full outputs are in `docs/reviews/wallet-rewards/`.
+- **`pnpm verify`:** EXIT=0. Secrets: 802 files, no findings. Tests: scripts 57, contracts 17, domain 215, API 470 plus 2 skipped, mobile 1069.
+- **Playwright:** 15/15 EXIT=0, including `e2e/wallet-rewards.spec.ts` with the API on `POCKETQA_SETTLEMENT=simulated`. The wallet-rewards spec alone ran 5/5 after the navigation fix.
+- **Firebase emulator E2E:** 4/4, EXIT=0.
+- **No network, devnet, key or cloud access** was used by any of this.
+
+## 2026-10-05: Squads v4 devnet pilot, adapter and runner (ADR 0007 §10; lead, `feat/wallet-rewards`, commits `5d5d431`, `a58ec6b` and the C10 test)
+Full outputs are in `docs/reviews/wallet-rewards/`.
+- **Adapter TDD** (`pilot-adapter-tdd.txt`):
+  - **RED:** the module was missing.
+  - **Mutation check:** I removed each of ten guards in turn (transfer match, claimed index, executed re-drive, pins, amount, index gap, config, recorded settlement, vault balance, builder key). Every removal fails at least one test.
+  - **GREEN:** 40/40 across the fake-chain adapter and API suites.
+- **Offline RPC chain round trip** (`test/squads-rpc-chain.test.ts`): 6/6. What `RpcSquadsChain` proposes decodes, through the Squads SDK codecs, to exactly the planned TransferChecked. Nothing is signed off devnet.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`).
+  - Secrets scan: 835 files, no findings.
+  - Tests: contracts 17, domain 216, API 527 plus 2 skipped, mobile 1075.
+- **Network calls made:**
+  - Read-only public devnet RPC: genesis, balances, program-data account.
+  - No faucet call since the recorded 429s. No transaction was sent.
+- **Live runner dry run with the test keys:**
+  ```
+  $ POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts
+  Error: BLOCKED: needs ≥ 0.2 devnet SOL on Pocket QA DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS (has 0 lamports) and ≥ 3.4 devnet test USDC on builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn (has no token account). Nothing was sent.
+  ```
+  - Receipt: `devnet-pilot-receipt.md` (outcome: failed, BLOCKED).
+  - Squads program data at that time: last deploy slot 446638068; upgrade authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`; account sha256 `5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37`.
+- **Not yet evidenced:** every on-chain step (R1 to R8 live). They wait for faucet funding (`faucet-request.md`).
+
+## 2026-10-05: pilot offline r1 fixes (P1-1 operation id, P2-1, P3-1 to P3-4); lead, `feat/wallet-rewards`
+Full outputs are in `docs/reviews/wallet-rewards/`. **No live devnet run** was made (parent hold).
+- **RED, against the pre-fix adapter `3023657`:** 9 failing tests. They cover lost-mapping recovery after create, approve and execute, plus a completed payout; claim ownership; ambiguity; claim release; and an off-curve funding source.
+- **Mutation check:** 23 mutants, each of the 23 guards removed in turn (operation-id matching, creator, recovery scan, ambiguity, ownership, release, memo pin, rent collector, chain-state copy and the earlier guards). **All 23 fail at least one test.**
+- **GREEN:** the three Squads suites pass 78/78 (`pilot-adapter-tdd.txt`).
+- **P3-3, symlinked key directory:** RED on the old `config.ts` ("expected … outside the repository", got the chmod error), then GREEN.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`).
+  - Secrets: 836 files, no findings.
+  - Tests: scripts 58, contracts 17, domain 216, API 558 plus 2 skipped, mobile 1075.
+- **Playwright** (`playwright.txt`): **15/15 passed (1.9 min), EXIT=0**, including `e2e/wallet-rewards.spec.ts` with the P2-1 fix.
+  - The run regenerated the `browser/` screenshots; they are committed as this candidate's evidence.
+  - The `gate-a` and `remaining-scope` screenshots it touched were restored from Git.
+- **Read-only devnet RPC calls** (for the source check in ADR 0007 §10.1): `getAccountInfo` of `MemoSq4gq…` (executable, BPFLoader2) and of `Memo4c2p…` (executable, upgradeable; not used).
+
+## 2026-10-05: live devnet pilot run 1 (partial) and the harness fix (lead, `feat/wallet-rewards`)
+- **Live run 1, code `dc76870`, before the run** (re-read by the lead):
+  - devnet genesis;
+  - Pocket QA held 5,000,000,000 lamports;
+  - the builder held 20,000,000 test-USDC units;
+  - the key files are 0600 in a 0700 directory.
+- **What happened** (`docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.{md,json}`, raw; `devnet-pilot-run1-readback.md`, the lead's supplement):
+  - 26 transactions landed, all finalized.
+  - These checks passed: R0, R1, R2, R3, R4, R5, R6, R7, R8, P1-1, C2 and C8.
+  - **The expected on-chain threshold refusal passed:** signature `4KNLFE1e…` at slot 507704742, error Custom 6008.
+  - **It stopped on a harness error:** under public-RPC 429s, web3.js `confirmTransaction` rejects with the raw error instead of returning it.
+- **`pnpm verify` after `cc2f746`: EXIT 1.** `check:secrets` flagged the raw receipts' base58 transaction signatures (secret-key shape). **That commit went in despite the failed scan, because a pipe hid the exit code.**
+  - All 27 long tokens were checked: each is a transaction signature, 26 from receipt steps read back as finalized, plus the refusal signature.
+  - Fixed with a hash-pinned evidence allowance (`scripts/check-secrets.mjs` `PINNED_EVIDENCE`, tested) and a per-line marker in the readback (`59f721d`).
+- **Read-only readback** (`apps/api/scripts/squads-pilot-readback.ts`; output in `devnet-pilot-run1-readback.json`):
+  - program data unchanged;
+  - multisig config intact, rent collector null;
+  - proposals 1–3 Executed with 2 approvals each, proposal 4 Active with 1;
+  - balances reconcile exactly;
+  - Pocket QA spent 39,999,760 lamports in all (fees 170,000 across 27 transactions, including the failed one).
+- **Fix:**
+  - `RpcSquadsChain.send` states a failure as finalized only when the chain status is finalized; otherwise it reports "outcome unknown". The runner does the same.
+  - RED (2 tests against `rpcChain.ts` at `dc76870`), then GREEN 15/15 (`pilot-confirm-mapping-tdd.txt`).
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`): secrets 844 files, no findings; scripts 59; contracts 17; domain 216; API 560 plus 2 skipped; mobile 1075.
+- **Playwright not re-run** for this delta: no app code or simulated-mode path changed (it changes `rpcChain.ts`, live tests, the read-only script and the scanner).
+- **No further sends.** The targeted double-execute refusal (`test-live/squads-devnet.pilot-run1-complete.live.test.ts`) waits for pqa-qa's re-review.
+
+## 2026-10-05: run 1 completion send, fixes for pqa-qa harness-delta r1 P2-1/P2-2 (lead)
+- **The send logic is now `apps/api/test-live/run1Completion.ts`, tested offline:** `apps/api/test/pilot-run1-completion.test.ts`, 12/12 (`pilot-completion-tdd.txt`).
+  - Only `{InstructionError:[0,{Custom:6008}]}` counts as refused-as-expected. Any other error is `unexpected-error`; a finalized result with no error is `NOT-refused`.
+  - The signature comes from the signed transaction and is recorded before broadcast. Any exception after the attempt, or a status that isn't finalized, gives `unknown` with that signature, never "Nothing was sent".
+  - Mutation check: each of the four defects, put back alone, fails 3 or 4 tests.
+- **The live test now records** a clean-tree flag and requires the tree to be clean. `rpcChain.ts` gets the comment pqa-qa asked for (finalized with no error after a confirm rejection maps to unknown).
+- **`pnpm verify`:** EXIT=0. Secrets: 847 files, no findings. Tests: scripts 59, contracts 17, domain 216, API 572 plus 2 skipped, mobile 1075.
+- **pqa-qa reviews** (exact copies): `qa-devnet-pilot-live-verdict-r1.md` and `qa-devnet-pilot-harness-delta-verdict-r1.md`.
+- **No send has been made.**
+
+## 2026-10-05: run 1 completion send (pqa-qa harness-delta r2 APPROVE of `0b66267`; lead)
+**Command** (one send, no retry), from a clean tree at `0b66267`:
+```
+$ cd apps/api && POCKETQA_LIVE_SQUADS_RUN1_COMPLETE=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot-run1-complete.live.test.ts
+Test Files  1 passed (1)   Tests  1 passed (1)   EXIT=0
+```
+
+**Result:** outcome `refused-as-expected` (`devnet-pilot-run1-completion.{md,json}`).
+- Signature `3zNWsdDxaSwMxx9Y…` at slot 507709054: finalized, err `{"InstructionError":[0,{"Custom":6008}]}`, fee 5,000 lamports.
+- Pre-checks equal post-checks: tester A 1,000,000 and vault 210,000; program data at slot 446638068 with sha256 `5c866bde…0d37`.
+- The multisig is still autonomous: threshold 2, time lock 0, rent collector null.
+
+**Scanner:** the completion receipt's hashes are pinned (`PINNED_EVIDENCE`), since it lists a public signature.
+
+**Pilot cost to date:** 39,999,760 + 5,000 = **40,004,760 lamports** of devnet SOL. Test USDC used: 3.31, of which 2.00 went to testers, 1.10 was refunded, and 0.21 stays in the vault (fee plus the unmatched deposit).
+
+**pqa-qa verdict copied exactly:** `qa-devnet-pilot-harness-delta-verdict-r2.md`.
+
+
 
 ## 2026-10-05: Reputation design proposal and USDC escrow research, docs only (contributor session, claymorius-wq; Windows 11 clone of `docs/reputation-escrow-proposal` at `5a39a77`)
 
@@ -524,3 +623,19 @@ $ bash docs/reviews/reputation-proposal/research-recheck.sh   (read-only JSON-RP
   USDC mints (mainnet EPjF…, devnet 4zMM…): owner Tokenkeg…, decimals 6, freeze authority set
 Tests: not run (no code changed).
 ```
+
+## 2026-10-05: combined candidate for user testing (merge of origin/main `8cc03dc`, plus preview guards); lead
+- **Merge `a85c674`** (parents `23b9221` and `8cc03dc`). Main brought only docs: the reputation design proposal and escrow research.
+  - Conflicts were only in `docs/progress.md` and `docs/verification.md`, two sections added at the same place. Both were kept in full, and every line each side added was checked as present (progress 21/21 and 52/52; verification 16/16 and 98/98).
+- **Preview guards** (in `9dfb376`):
+  - **Config A1c:** the shared demo refuses `squads_devnet`. RED ("expected to throw"), then GREEN, 40/40 in `escrow.test.ts`.
+  - **`start.sh`:** `PREVIEW_SETTLEMENT` is pinned to `simulated` or `off` on the API command, and the pilot key-dir variable is removed. RED (1 fail), then GREEN, 5/5 in `preview-scripts.test.mjs`.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`). Secrets: 872 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1075.
+- **Playwright:** 15/15, EXIT=0 (`playwright.txt`). The `gate-a` and `remaining-scope` screenshots were restored from Git afterwards.
+- **Preview rehearsal** (isolated `.preview-test/merge-smoke*`, ports 3591/3592, stopped by PID 53055 with no listeners left):
+  - `init-preview` OK; `build-web.sh` secret check found 0 occurrences.
+  - `/config` reported `settlement: 'simulated'`.
+  - `seed-demo` OK; `smoke.mjs` passed all 20 checks.
+- **Database upgrade check:** a database created by main's `db.ts` (`87e09d4`, schema v4) with rows, opened by the new code, went to v7 with rows intact, integrity `ok`, and no foreign-key violations.
+- **Backup command check:** the guide's `db:backup` form, run against the rehearsal database into the scratchpad, printed the file and its sha256.
+

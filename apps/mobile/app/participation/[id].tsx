@@ -19,6 +19,8 @@ import { TransferCard } from '../../src/wallet/TransferCard';
 import { useSession } from '../../src/auth/SessionProvider';
 import { recordingCapability } from '../../src/lib/capability';
 import { bytes, credits, statusLabel, when } from '../../src/lib/format';
+import { rewardText } from '../../src/lib/money';
+import { PaymentStateCard } from '../../src/screens/PaymentState';
 import { useEvidence, useFindings, useMyDisputes, useParticipation, useTesterStudy } from '../../src/lib/queries';
 import { takeHandoff } from '../../src/motion/entrance';
 import { DUR, SIGNATURE, UPLIGHT } from '../../src/theme/motion';
@@ -129,7 +131,7 @@ function SessionHeader({ p, study }: { p: Participation; study: TesterStudyView 
       <View style={styles.headerText}>
         <Text variant="display">{study.title}</Text>
         <RNText style={[type.disclaimer, { color: colors.textMuted }]}>
-          <RNText style={{ color: colors.text }}>{credits(p.rewardCredits)}</RNText> · {REWARD_DISCLAIMER}
+          <RNText style={{ color: colors.text }}>{rewardText(p.reward)}</RNText> · {REWARD_DISCLAIMER}
         </RNText>
       </View>
     </View>
@@ -443,8 +445,11 @@ function ApprovedNotice({ p, rise }: { p: Participation; rise: boolean }) {
     // ≥ 32dp of ground below a lit subject (§U): 8 here plus the 24dp section gap.
     <View style={styles.litWrap}>
       <Notice tone="success" title="Approved" testID="approved-notice" uplight={light}>
-        {`${credits(p.rewardCredits)} added to your balance. Test credits have no cash value.`}
+        {p.reward.kind === 'token'
+          ? 'The reward is released from the study escrow to the wallet you confirmed when you joined. Its state is below.'
+          : `${credits(p.rewardCredits)} added to your balance. Test credits have no cash value.`}
       </Notice>
+      {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
     </View>
   );
 }
@@ -506,6 +511,7 @@ function Decision({ p }: { p: Participation }) {
       {p.status === 'submitted' ? <Notice tone="info" title="Awaiting review" testID="awaiting-review">The builder will approve or reject your work. You’ll see the decision here.</Notice> : null}
       {/* A Notice that mounts after the screen's arrival rises in by itself. */}
       {p.status === 'approved' ? <ApprovedNotice p={p} rise={approvedInView} /> : null}
+      {p.status === 'resolved' && p.payout ? <PaymentStateCard payout={p.payout} testID="payment-state-dispute" /> : null}
       {p.status === 'rejected' ? (
         <View style={styles.rejected}>
           <Notice tone="danger" title="Rejected" testID="rejected-notice">{`Reason: ${p.decisionReason ?? '—'}`}</Notice>

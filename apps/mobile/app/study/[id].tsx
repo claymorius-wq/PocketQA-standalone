@@ -6,6 +6,8 @@ import { useState, type ReactNode } from 'react';
 import { StyleSheet, Text as RNText, View } from 'react-native';
 import { REWARD_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../src/api/client';
+import { useSession } from '../../src/auth/SessionProvider';
+import { formatUnits, tokenAmount, unitName, type Settlement } from '../../src/lib/money';
 import { GlassSurface, Well } from '../../src/glass';
 import { GlassTile } from '../../src/icons';
 import { recordingCapability } from '../../src/lib/capability';
@@ -29,10 +31,10 @@ import { Hairline, SectionHeader, TaskList } from '../../src/ui/patterns';
  * The board's reward readout: the numeral with its unit stacked under it in a narrow lens well
  * (padding 6 18 9 14), read as one phrase. The shared RewardWell only lays out in a row.
  */
-function StudyReward({ amount }: { amount: number }) {
+function StudyReward({ amount, units, settlement }: { amount: number; units?: number; settlement?: Settlement }) {
   const { colors, type } = useTheme();
-  const value = amount.toLocaleString('en-US');
-  const unit = amount === 1 ? 'test credit' : 'test credits';
+  const value = units !== undefined ? formatUnits(units) : amount.toLocaleString('en-US');
+  const unit = units !== undefined ? unitName(settlement) : amount === 1 ? 'test credit' : 'test credits';
   return (
     <Well style={styles.well} accessible accessibilityRole="text" accessibilityLabel={`${value} ${unit}`}>
       <RNText style={[type.numeral, { color: colors.numeral }]}>{value}</RNText>
@@ -56,9 +58,15 @@ function StudyDetailInner() {
   const q = useTesterStudy(id);
   const qc = useQueryClient();
   const [agreed, setAgreed] = useState(false);
+  // Wallet-funded studies: the tester confirms which wallet this study's reward goes to; it is
+  // frozen at consent and can't be redirected later (ADR 0007).
+  const { user } = useSession();
+  const wallet = user?.wallet?.address ?? null;
+  const [walletOk, setWalletOk] = useState(false);
+  const token = q.data?.reward.kind === 'token' ? q.data.reward : null;
   const cap = recordingCapability();
   const consent = useMutation({
-    mutationFn: (v: number) => api('consent', { params: { id }, body: { consentVersion: v, accepted: true } }),
+    mutationFn: (v: number) => api('consent', { params: { id }, body: { consentVersion: v, accepted: true, ...(token && wallet ? { payoutAddress: wallet } : {}) } }),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ['eligible'] });
       qc.invalidateQueries({ queryKey: ['participations'] });
@@ -78,12 +86,16 @@ function StudyDetailInner() {
             </View>
             <GlassSurface level="card" style={styles.reward}>
               <View style={styles.rewardRow}>
-                <StudyReward amount={s.rewardCredits} />
+                <StudyReward amount={s.rewardCredits} units={s.reward.kind === 'token' ? s.reward.units : undefined} settlement={s.reward.kind === 'token' ? s.reward.settlement : undefined} />
                 <Text variant="meta" tone="muted" style={styles.slots}>{s.slotsRemaining} slot{s.slotsRemaining === 1 ? '' : 's'} left</Text>
               </View>
               <View style={styles.disclaimer}>
                 <Hairline inset={0} />
-                <Text variant="disclaimer" tone="muted" testID="reward-disclaimer">{REWARD_DISCLAIMER}. Test credits have no cash value.</Text>
+                <Text variant="disclaimer" tone="muted" testID="reward-disclaimer">
+                  {s.reward.kind === 'token'
+                    ? `${REWARD_DISCLAIMER}. Wallet-funded study: the reward is held in the study escrow and released after the builder approves. Simulation in this build: no funds move.`
+                    : `${REWARD_DISCLAIMER}. Test credits have no cash value.`}
+                </Text>
               </View>
             </GlassSurface>
             {s.buildUnderTest ? (
@@ -114,6 +126,24 @@ function StudyDetailInner() {
                   <View style={styles.agree}>
                     <Checkbox checked={agreed} onChange={setAgreed} label="I have read and agree to this consent text." testID="consent-checkbox" />
                   </View>
+                  {token ? (
+                    wallet ? (
+                      <View style={styles.agree}>
+                        <Checkbox
+                          checked={walletOk}
+                          onChange={setWalletOk}
+                          label={`Send this study’s reward (${tokenAmount(token.units, token.settlement)}) only to my wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)}. It can’t be changed after I join.`}
+                          testID="consent-reward-wallet"
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.error}>
+                        <Notice tone="warning" title="Link a wallet first" testID="consent-needs-wallet">
+                          This study sends its reward to a wallet you link in Settings. Link one, then come back to join.
+                        </Notice>
+                      </View>
+                    )
+                  ) : null}
                   {consent.error ? (
                     <View style={styles.error}>
                       <Notice tone="danger" title="Couldn’t join" testID="consent-error">{(consent.error as ApiError).message}</Notice>
@@ -122,7 +152,7 @@ function StudyDetailInner() {
                   <Button
                     label="Consent and join"
                     onPress={() => consent.mutate(s.consentVersion)}
-                    disabled={!agreed}
+                    disabled={!agreed || (!!token && (!wallet || !walletOk))}
                     loading={consent.isPending}
                     // S4 only when it enables: the U2 Commit pass follows the fire, on the session (§11.5).
                     sweepOnFire={false}

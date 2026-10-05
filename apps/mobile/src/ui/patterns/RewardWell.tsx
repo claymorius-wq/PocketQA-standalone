@@ -10,6 +10,8 @@ export type RewardWellProps = {
    * "test credits"); two lines stack beside it (My work: "test credits" / "if approved").
    */
   unit?: string | readonly [string, string];
+  /** A preformatted figure instead of `amount` (token rewards: "1.50"). */
+  display?: string;
   testID?: string;
   style?: StyleProp<ViewStyle>;
 };
@@ -27,11 +29,11 @@ export function rewardPhrase(amount: number, unit: RewardWellProps['unit'] = 'te
  * (BalanceHero). The well always sits inside a pressable card, which is the one accessibility
  * stop: the card's hint carries `rewardPhrase()`, so the well is never a second, inert stop.
  */
-export function RewardWell({ amount, unit = 'test credits', testID, style }: RewardWellProps) {
+export function RewardWell({ amount, unit = 'test credits', display, testID, style }: RewardWellProps) {
   const { colors, type } = useTheme();
   const lines = typeof unit === 'string' ? [unit] : unit;
   const stacked = lines.length > 1;
-  const value = amount.toLocaleString('en-US');
+  const value = display ?? amount.toLocaleString('en-US');
   return (
     <Well testID={testID} style={[styles.well, style]}>
       <View style={[styles.row, stacked ? styles.center : styles.baseline]}>
