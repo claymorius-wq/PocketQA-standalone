@@ -7,7 +7,8 @@ import { BottomTabBarHeightContext } from 'expo-router/tabs';
 import type { NativeStackHeaderProps } from 'expo-router/native-stack';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
 import { dark as darkColors } from '../../theme/tokens';
-import { ArrivalContext, Button, ConfirmSheet, focusRingCss, LensStackHeader, lensStackScreenOptions, Screen, Segmented, SHEET_PENDING_ESCAPE_MS } from '..';
+import { ArrivalContext, Button, ConfirmSheet, focusRingCss, LensStackHeader, lensStackScreenOptions, OwnEntrance, Screen, Segmented, SHEET_PENDING_ESCAPE_MS } from '..';
+import { Enter } from '../screen';
 import { ListRow } from '../patterns';
 
 // Navigation choreography and the canonical chrome (CONSISTENCY C1, C2, C4, §M3).
@@ -102,6 +103,29 @@ describe('screen arrivals (§11.3, §M3)', () => {
     expect(pose(hostParent(screen.getByTestId('first')))).toMatchObject({ opacity: 0, y: 10 });
     await advance(800);
     expect(pose(hostParent(screen.getByTestId('first')))).toMatchObject({ opacity: 1, y: 0 });
+  });
+
+  it('an OwnEntrance step is laid out but never moved, and an Enter inside it joins the launch wave', async () => {
+    await renderIn(
+      <Screen testID="s" entrance="launch">
+        <RNText testID="first">a</RNText>
+        <OwnEntrance>
+          <RNText testID="own">b</RNText>
+          <Enter step={2}>
+            <RNText testID="inner">c</RNText>
+          </Enter>
+        </OwnEntrance>
+      </Screen>,
+    );
+    // A plain step waits for its slot; the OwnEntrance step is a plain column at rest.
+    expect(pose(hostParent(screen.getByTestId('first')))).toMatchObject({ opacity: 0, y: 10 });
+    const own = StyleSheet.flatten(hostParent(screen.getByTestId('own')).props.style as never) as Record<string, unknown>;
+    expect(own).not.toHaveProperty('opacity');
+    expect(own).not.toHaveProperty('transform');
+    // Its own step rises at its slot on the same wave, with nothing compounding it.
+    expect(pose(hostParent(screen.getByTestId('inner')))).toMatchObject({ opacity: 0, y: 10 });
+    await advance(800);
+    expect(pose(hostParent(screen.getByTestId('inner')))).toMatchObject({ opacity: 1, y: 0 });
   });
 
   it('a layout can give its screens an arrival (the auth stack gives Sign in launch)', async () => {

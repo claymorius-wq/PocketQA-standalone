@@ -51,7 +51,7 @@
 **Decision (Hamza, confirmed in-session).** Easier access was requested and accepted, after being told that it removes meaningful access protection:
 - The gate password is set to a simple, known value.
 - The password is **prefilled** on the gate page.
-- After the gate, the app's sign-in screen is prefilled with the demo tester. A Tester/Builder/Admin picker fills the matching demo sign-in, and the visitor still presses Sign in.
+- After the gate, the app's sign-in screen is prefilled with the demo tester. (Since 2026-10-05 a first visit passes the intro once on the way, `app/(auth)/welcome.tsx`: Skip, or Explore the demo on its last page, leads to that Sign in.) A Tester/Builder/Admin picker fills the matching demo sign-in, and the visitor still presses Sign in.
 
 **What this means, stated plainly.** For anyone who has the URL, the gate is now a **publicly discoverable convenience, not access protection or privacy**.
 - Treat everything in the preview as public: the synthetic studies, notes and reasons, and the shared demo accounts, including the shared admin.

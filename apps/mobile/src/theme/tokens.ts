@@ -136,9 +136,24 @@ export const layout = {
   sheetPadding: 24,
   statusBarReserve: 44,
   headerTextTop: 58,
+  /** Web in a browser tab: the browser draws its status bar outside the page, so the band shrinks to this. */
+  webStatusBand: 10,
   tabBarInset: 12,
   tabBarHeight: 74,
 } as const;
+
+/**
+ * The status band at the top of a screen, where nothing but the status bar sits.
+ * - **Native:** the boards' 44dp whatever the device's inset (Android's is 24), so titles sit
+ *   where the boards put them.
+ * - **Web:** the page starts below the browser's own status bar, so reserving 44 more left an
+ *   empty band above every title. The band is the safe-area inset instead: 0 in a browser tab
+ *   (with `webStatusBand` of breathing room), the status bar's height when the app runs full
+ *   screen from a home screen (`viewport-fit=cover`).
+ */
+export function statusBand(insetTop: number, web: boolean): number {
+  return web ? Math.max(insetTop, layout.webStatusBand) : Math.max(insetTop, layout.statusBarReserve);
+}
 
 /**
  * Corner radii. `sm`/`md`/`lg`/`pill` are the pre-Lens keys the app already uses; the rest are the

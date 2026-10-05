@@ -28,7 +28,7 @@ import { ENTRANCE_WINDOW, useArrival, type InitialArrival } from '../motion/entr
 import { useSheetFocus } from '../motion/sheet';
 import { DUR } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { layout, radius, space, touch, TOUCH, type Tone as GlassTone } from '../theme/tokens';
+import { layout, radius, space, statusBand, touch, TOUCH, type Tone as GlassTone } from '../theme/tokens';
 import { FocusPressable } from './focus';
 import { type KitIcon } from './icon';
 import { HEADER_ROW_BOTTOM } from './StackHeader';
@@ -37,7 +37,7 @@ import { SheetActions, SheetFailure } from './patterns/DecisionBar';
 import { EmptyPanel, ErrorPanel } from './patterns/EmptyPanel';
 import { LensShimmer } from './patterns/LensShimmer';
 import { SectionHeader } from './patterns/SectionHeader';
-import { ArrivalContext, arrivalOf, Enter, ScreenContext, type ScreenInfo } from './screen';
+import { ArrivalContext, arrivalOf, Enter, OwnEntrance, ScreenContext, type ScreenInfo } from './screen';
 import { Text } from './text';
 
 // The shared UI kit in the Lens visual system (docs/decisions/0006-lens-visual-system.md;
@@ -55,7 +55,7 @@ export { glyphNameFor, KitIconView, type KitIcon } from './icon';
 export { LensStackHeader, lensStackScreenOptions } from './StackHeader';
 export { LensTabBar } from './TabBar';
 export { FocusPressable, FocusRingStyles, focusRingCss, useFocusRing } from './focus';
-export { ArrivalContext, useScreenFocused, type ArrivalSpec } from './screen';
+export { ArrivalContext, OwnEntrance, useScreenFocused, type ArrivalSpec } from './screen';
 export { Text } from './text';
 export { Button, type ButtonProps, type ButtonSize } from './button';
 export { Card } from './card';
@@ -89,7 +89,8 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   /**
    * How this screen opens (§11.3, CONSISTENCY §M3). Default: the layout's ArrivalContext, else
    * `tab` inside the role tabs and `push` anywhere else. `launch` (the light dip and the
-   * staggered steps) belongs to Sign in alone. Returns to the screen play `back` or `tab` by themselves.
+   * staggered steps) belongs to the first auth screen of a visit (the intro, or Sign in).
+   * Returns to the screen play `back` or `tab` by themselves.
    */
   entrance?: InitialArrival;
   /**
@@ -188,19 +189,28 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   // `fill`: the steps that take the free room (the ScreenSpacers, else the last step).
   const spacers = fill ? list.filter(isScreenSpacer).length : 0;
   const grows = (child: ReactNode, i: number) => fill && (spacers > 0 ? isScreenSpacer(child) : i === list.length - 1);
-  const items = list.map((child, i) => (
-    <Enter
-      key={isValidElement(child) && child.key != null ? child.key : i}
-      step={i}
-      style={grows(child, i) ? [styles.step, styles.grow] : styles.step}
-      collapse={header || i > 0 ? styles.collapseTop : i < list.length - 1 ? styles.collapseBottom : undefined}
-    >
-      {child}
-    </Enter>
-  ));
+  const items = list.map((child, i) => {
+    const key = isValidElement(child) && child.key != null ? child.key : i;
+    const style = grows(child, i) ? [styles.step, styles.grow] : styles.step;
+    // An OwnEntrance child choreographs itself: laid out as a step, never moved by it.
+    if (ownsEntrance(child)) {
+      return (
+        <View key={key} style={style}>
+          {child}
+        </View>
+      );
+    }
+    return (
+      <Enter key={key} step={i} style={style} collapse={header || i > 0 ? styles.collapseTop : i < list.length - 1 ? styles.collapseBottom : undefined}>
+        {child}
+      </Enter>
+    );
+  });
   // Tab roots: the boards reserve a 44dp status band and put the title 14 below it, whatever the
   // device's own inset (Android's is 24), so the header text sits where the boards put it.
-  const top = stack ? headerHeight + STACK_CONTENT_GAP : Math.max(insets.top, layout.statusBarReserve) + layout.headerTextTop - layout.statusBarReserve - insets.top;
+  // On web the band is only the page's own safe-area inset (statusBand): the browser draws its
+  // status bar outside the page.
+  const top = stack ? headerHeight + STACK_CONTENT_GAP : statusBand(insets.top, WEB) + layout.headerTextTop - layout.statusBarReserve - insets.top;
   // With a dock, the content ends `dockClearance` above the dock's top edge (never less than the usual bottom room).
   const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance : 0;
   // Web: the content also runs at least `focusFloor` past the end, so the last controls can be
@@ -213,7 +223,7 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   const focusRoom = WEB && scroll ? webScrollPadding(stack ? top : 0, pad.paddingBottom) : undefined;
   return (
     <ScreenContext.Provider value={info}>
-      {/* The light dips only on a launch (Sign in); the ground never moves with an arrival. */}
+      {/* The light dips only on a launch (the intro or Sign in); the ground never moves with an arrival. */}
       <Ground enter={staggered}>
         {handoff ? <HandoffTail onDone={() => setHandoff(false)} /> : null}
         <Animated.View style={[styles.fill, arrival.style]}>
@@ -271,6 +281,7 @@ export function ScreenSpacer({ minHeight = 0, testID }: { minHeight?: number; te
 }
 
 const isScreenSpacer = (child: ReactNode) => isValidElement(child) && child.type === ScreenSpacer;
+const ownsEntrance = (child: ReactNode) => isValidElement(child) && child.type === OwnEntrance;
 
 /** The title block's default gap to the content (dp): the admin boards' 20, rounded to the 22 the screens settled on. */
 const HEADER_GAP = 22;

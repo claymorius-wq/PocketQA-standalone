@@ -1,0 +1,16 @@
+# A fresh install opens the intro (Welcome) once before Sign in. Wait for whichever comes first
+# (a cold start can take a while: bundle, fonts, session restore, then the storage read), then
+# skip the intro if that is what showed. An install that has already seen it goes straight on.
+appId: com.reshareai.pocketqa
+---
+- extendedWaitUntil:
+    visible:
+      id: "welcome-screen|sign-in-screen"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: intro-skip
+    commands:
+      - tapOn:
+          id: intro-skip

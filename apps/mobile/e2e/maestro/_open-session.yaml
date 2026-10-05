@@ -6,6 +6,7 @@ appId: com.reshareai.pocketqa
     # Maestro grants every runtime permission by default; NOTIFICATIONS lets a flow deny it.
     permissions:
       notifications: ${NOTIFICATIONS || 'allow'}
+- runFlow: _skip-intro.yaml
 - tapOn:
     id: sign-in-email
 - inputText: ${EMAIL}
