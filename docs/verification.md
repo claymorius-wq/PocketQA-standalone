@@ -623,3 +623,19 @@ $ bash docs/reviews/reputation-proposal/research-recheck.sh   (read-only JSON-RP
   USDC mints (mainnet EPjF…, devnet 4zMM…): owner Tokenkeg…, decimals 6, freeze authority set
 Tests: not run (no code changed).
 ```
+
+## 2026-10-05: combined candidate for user testing (merge of origin/main `8cc03dc`, plus preview guards); lead
+- **Merge `a85c674`** (parents `23b9221` and `8cc03dc`). Main brought only docs: the reputation design proposal and escrow research.
+  - Conflicts were only in `docs/progress.md` and `docs/verification.md`, two sections added at the same place. Both were kept in full, and every line each side added was checked as present (progress 21/21 and 52/52; verification 16/16 and 98/98).
+- **Preview guards** (in `9dfb376`):
+  - **Config A1c:** the shared demo refuses `squads_devnet`. RED ("expected to throw"), then GREEN, 40/40 in `escrow.test.ts`.
+  - **`start.sh`:** `PREVIEW_SETTLEMENT` is pinned to `simulated` or `off` on the API command, and the pilot key-dir variable is removed. RED (1 fail), then GREEN, 5/5 in `preview-scripts.test.mjs`.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`). Secrets: 872 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1075.
+- **Playwright:** 15/15, EXIT=0 (`playwright.txt`). The `gate-a` and `remaining-scope` screenshots were restored from Git afterwards.
+- **Preview rehearsal** (isolated `.preview-test/merge-smoke*`, ports 3591/3592, stopped by PID 53055 with no listeners left):
+  - `init-preview` OK; `build-web.sh` secret check found 0 occurrences.
+  - `/config` reported `settlement: 'simulated'`.
+  - `seed-demo` OK; `smoke.mjs` passed all 20 checks.
+- **Database upgrade check:** a database created by main's `db.ts` (`87e09d4`, schema v4) with rows, opened by the new code, went to v7 with rows intact, integrity `ok`, and no foreign-key violations.
+- **Backup command check:** the guide's `db:backup` form, run against the rehearsal database into the scratchpad, printed the file and its sha256.
+
