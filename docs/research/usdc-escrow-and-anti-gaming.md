@@ -2,9 +2,16 @@
 
 For Hamza · 2026-10-05 · research for a devnet-first build · not legal advice
 
-> **Status: research, not a decision.** Nothing here changes the plan, the ledger or any approval. The repo still says "no escrow, custody, smart contracts, real payouts, or paid services" (`docs/plans/pocket-qa-execution-plan.md`), and production gate A9 is still open (§7.1).
+> **Status: research, not a decision.** Nothing here changes the plan, the ledger or any approval. The plan still says "No escrow, custody, smart contracts, real payouts, or paid services" (`docs/plans/pocket-qa-execution-plan.md`), and production gate A9 is still open (§7.1).
 >
-> **Provenance.** Written on 2026-10-05 for claymorius-wq by a research subagent of the contributor session (Claude Code, `claude-opus-5-5`). It read the repo and the chain read-only. Before it was committed, the session lead re-checked these claims: rent for 165 bytes is 1,488,440 lamports on mainnet and devnet; Squads v4 has a null upgrade authority; both USDC mints are classic SPL Token mints with 6 decimals and a freeze authority; Civic Pass end dates; Streamflow fees; and the SIMD-0437 schedule. No transaction was sent and no account was created.
+> **The request.** Hamza's message of 2026-10-05, relayed by claymorius-wq, asked for this escrow direction. In his words: "We should reuse a suitable audited escrow system if we can verify one, rather than rush a custom contract holding real money."
+>
+> **Provenance.**
+> - Written on 2026-10-05 for claymorius-wq by a research subagent of the contributor session (Claude Code, `claude-opus-5-5`). It read the repo and the chain read-only. No transaction was sent and no account was created.
+> - The session lead re-checked these claims: rent; the Squads v4 upgrade authority on both clusters; both USDC mints; the Civic Pass end dates; Streamflow's fees; and the SIMD-0437 schedule.
+> - A separate review re-checked 18 claims. Both checks and their output are in `docs/reviews/reputation-proposal/`.
+>
+> **Related.** The product proposal for points, badges and the leaderboard is [`docs/design/reputation-layer.md`](../design/reputation-layer.md). Where it differs from §6 here, it governs for the product; its §8 lists each difference.
 
 **Labels**
 - **OBSERVED:** seen in a primary source. [S#] points to §8 (all sources accessed 2026-10-05).
@@ -23,8 +30,10 @@ A label at the start of a list, table or subsection covers all of it, unless an 
    - Testers sign to bind their payout wallet.
    - Admins can only "pay the tester of record" or "return to pool".
    - Points stay off-chain.
-2. **No audited off-the-shelf escrow fits (INTERPRETATION; I can't prove none exists).** Squads v4 is the best-audited building block: four firms reviewed it in 2023–2024, and it has been immutable since November 2024 (OBSERVED [S2][S4][S6][S1]). But it controls *who signs*, not *where money goes*. Whoever can outvote the builder can send funds anywhere.
-3. **This respects your "no rushed custom contract" rule (INTERPRETATION).**
+2. **No audited off-the-shelf escrow fits (INTERPRETATION; I can't prove none exists).** Squads v4 is the best-audited building block: four firms reviewed it in 2023–2024, and **on mainnet** it has been immutable since November 2024 (OBSERVED [S2][S4][S6][S1]).
+   - **On devnet,** where a pilot would run, the same program is still upgradeable and runs a different binary (OBSERVED [S1]). Devnet results therefore don't validate the audited mainnet build (§3.5).
+   - Squads controls *who signs*, not *where money goes*. Whoever can outvote the builder can send funds anywhere.
+3. **This respects Hamza's preference: "rather than rush a custom contract holding real money" (INTERPRETATION).**
    - The pilot holds only devnet USDC.
    - Mainnet waits for an audit, caps, monitoring, legal review and your approvals (§3.5, §7.1).
    - If you want no custom code at all, the fallback is a Squads 2-of-3 vault (§3.6).
@@ -45,7 +54,7 @@ Cells without a label are INTERPRETATION.
 | Option | Custody: who can move funds | Audits | Maturity | Fit: release / hold / refund / fee | Cost per payout | Devnet | Effort | Main risk |
 |---|---|---|---|---|---|---|---|---|
 | **A. Custom study vault + Squads roles** (recommended) | Program rules. Admins can choose only between the tester of record and the pool. The upgrade key can change the rules | None yet; required before mainnet | New | Exact fit, on-chain | 1 batchable tx, plus tester account rent if missing | Yes | High: Rust/Anchor, tests, audit | Bugs; upgrade key |
-| **B. Squads v4 vault as escrow** | Anyone who reaches the threshold, to any address. Spending limits allow capped transfers without a vote; an empty destination list means "any address". Time lock up to 3 months. Approved payouts can be cancelled by a threshold vote (OBSERVED [S5][S34]) | Trail of Bits 2023-10-19; OtterSec 2023/2024; Neodyme through 2024-12-10; Certora with formal verification through 2024-11 (OBSERVED [S2][S6]). Upgrade authority null (OBSERVED [S1]). OtterSec verify API: "not verified" (OBSERVED [S7]) | Live since Oct 2023; Squads claims ~$10B secured (OBSERVED [S4]) | Proposals per payout batch; a hold means not proposing. The rules live off-chain | On-chain creation fee 0 (OBSERVED [S1]); the app docs cite 0.1 SOL (OBSERVED [S8]); ~3–4 txs per batch | Yes (OBSERVED [S3]) | Medium: `@sqds/multisig` (OBSERVED [S9]) | Pocket QA keys can outvote the builder and pay anyone |
+| **B. Squads v4 vault as escrow** | Anyone who reaches the threshold, to any address. Spending limits allow capped transfers without a vote; an empty destination list means "any address". Time lock up to 3 months. Approved payouts can be cancelled by a threshold vote (OBSERVED [S5][S34]) | Trail of Bits 2023-10-19; OtterSec 2023 and 2024; Neodyme through 2024-12-10; Certora with formal verification through 2024-11 (OBSERVED [S2][S6]). Mainnet upgrade authority null; on devnet it is set, and the binary differs (OBSERVED [S1]). OtterSec verify API: "not verified" (OBSERVED [S7]) | Live since Oct 2023; Squads claims ~$10B secured (OBSERVED [S4]) | Proposals per payout batch; a hold means not proposing. The rules live off-chain | On-chain creation fee 0 (OBSERVED [S1]); the app docs cite 0.1 SOL (OBSERVED [S8]); ~3–4 txs per batch | Yes (OBSERVED [S3]) | Medium: `@sqds/multisig` (OBSERVED [S9]) | Pocket QA keys can outvote the builder and pay anyone |
 | **C. Squads Smart Account** | Policies, including direct debits (OBSERVED [S10]) | OtterSec 2025-05-21; Certora Jan 2025, v0.1 (OBSERVED [S11]) | Newer; upgradeable (OBSERVED [S1]) | No arbiter-escrow policy found (unverified) | Not researched | Yes (OBSERVED [S10]) | Medium–high | Young |
 | **D. Streamflow vesting** | Escrow per contract. The sender may cancel: unlocked funds go to the recipient, locked funds return to the sender (OBSERVED [S12]) | Neodyme 2024-05-16: nothing medium or above (OBSERVED [S12]). FYEO and OPCODES, undated (OBSERVED [S13]) | Upgradeable; a 3-of-5 Squads multisig held the key in 2024 (OBSERVED [S12][S1]) | Poor: time-based unlocks, fixed recipient, no arbiter | 0.16 SOL + 0.19% (OBSERVED [S14]); the SDK says 0.09 SOL (OBSERVED [S15]) | Yes (OBSERVED [S15]) | Low–medium | Costs more than the reward |
 | **E. Solana Pay** | None. Transaction requests return a server-built transaction, optionally partly signed (OBSERVED [S16]) | n/a | A spec | Funding only; the spec covers no escrow or refunds (OBSERVED [S16]) | Network fees | Yes | Low | Wallets warn on PDA recipients (OBSERVED [S17]) |
@@ -95,7 +104,7 @@ The service key pays fees and rent, but it has no authority over funds.
 3. **Identity, recording, upload.** The tester passes the identity gate (§6.1), records and uploads. The server stores hashes of the files.
 4. **Submit.** The tester signs `submit`, which reserves a slot.
 5. **Approve.** The builder signs `approve([ids])`. Each tester gets 1 USDC (an account is created if missing), and the treasury gets 0.10 USDC.
-6. **Reject.** The builder signs `reject(id, reason_hash)`. A 72-hour dispute window opens.
+6. **Reject.** The builder signs `reject(id, reason_hash)`. The dispute window opens: 7 days in the repo today (`DISPUTE_WINDOW_MS`, which applies only to rejections). Its length on chain is a decision for Hamza.
 7. **Dispute.** The tester signs `open_dispute`. The funds stay reserved.
 8. **Resolve.** The arbiter runs `resolve(id, PayTester | ReturnToPool)`. There is no other destination.
 9. **No response.**
@@ -128,6 +137,9 @@ This matches the repo's `pending → confirmed | failed | expired`, where only s
 7. Alerts, a daily chain-to-ledger reconciliation, and an incident runbook.
 8. Legal sign-off (§5.2), and published refund and dispute rules.
 9. Your written approvals (§7.1).
+10. **A re-check of the exact mainnet binaries.** Devnet results don't validate mainnet.
+    - On devnet, Squads v4 (`SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`) still has an upgrade authority (`HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`). Its last deploy was at slot 446,638,068, a different binary from mainnet's frozen one, deployed at slot 302,582,236 (OBSERVED [S1]).
+    - Before any mainnet step, confirm the hash and authority of every program the vault relies on.
 
 ### 3.6 Fallback: Squads only
 
@@ -194,6 +206,8 @@ INTERPRETATION:
 - **Laundering:** fake studies could disguise transfers between colluding wallets. That makes anti-collusion work compliance work too.
 
 ### 5.2 Questions for a lawyer (flags only)
+
+**Not legal advice.** These are questions to ask counsel, not answers.
 
 1. **FinCEN 2019 guidance.**
    - A multisig provider without "total independent control" of funds isn't a money transmitter; one with that control is (OBSERVED §4.2.2 [S37]).
@@ -265,6 +279,8 @@ Disputed work counts only if the admin rules for the tester. The ledger is appen
 
 ### 6.5 Leaderboard and badges (HYPOTHESIS)
 
+The product proposal ([`docs/design/reputation-layer.md`](../design/reputation-layer.md)) replaces these criteria for the product. Its §8 table lists where it differs and why, and its §9 asks Hamza about each difference.
+
 **Reliability, R:** the 95% Wilson lower bound of accepted ÷ (accepted + upheld rejections + no-shows). The Wilson bound weighs quality against sample size (OBSERVED method [S53]).
 
 **90-day score:** R × Σ (1, or 1.5 if marked helpful) ÷ k, where k is the acceptance's position among acceptances from the same builder.
@@ -310,19 +326,21 @@ Disputed work counts only if the admin rules for the tester. The ledger is appen
 
 **How a pilot fits (INTERPRETATION)**
 
-- **The pilot works with either A9 option.** In both cases, production funding stays on test credits.
+- **The pilot works with either A9 option.** In both cases, production pays no rewards: under (a) studies run at reward 0, and under (b) nothing publishes. Test credits stay off in production (the ledger's D3).
   - **Under (a):** production runs volunteer studies. The pilot runs only on non-production builds with test accounts, under the plan's "Devnet · no real value" label (OBSERVED [S56]). Volunteer studies also give early anti-gaming data (HYPOTHESIS).
   - **Under (b):** the pilot is the only place where rewarded studies run.
-- **The plan as written still blocks the pilot.** CLAUDE.md restricts only *mainnet* escrow, but the plan bans escrow and smart contracts outright.
+- **The plan as written still blocks the pilot.** The plan bans escrow and smart contracts outright.
+- **CLAUDE.md may also apply to a devnet vault.** It lists "smart-contract custody" with no cluster attached, beside "mainnet escrow" and "real payouts". A devnet program that holds tokens is arguably smart-contract custody, so it may need that separate approval too, not just a plan amendment.
 - **The SGT check reads mainnet.** That conflicts with "No mainnet code path" unless you approve a read-only exception.
+- **The copy rules would change.** The plan's Copy row ("Reward if approved · Not guaranteed") and its banned-phrase linter, which blocks earnings promises in app copy and builder text, were written for test credits. A USDC pilot needs both revisited.
 
 **Approvals, in order** (the order is INTERPRETATION; the quoted terms are yours):
 
 1. **A9:** choose (a) or (b). No money is involved.
-2. **Plan amendment:** devnet-only "escrow" and "smart contracts", with no real value.
+2. **Plan amendment:** devnet-only "escrow" and "smart contracts", with no real value. Add a recorded approval of devnet "smart-contract custody" (see above), and the copy-rule changes.
 3. **Optional:** "SGT/Seeker attestation", as a read-only mainnet lookup.
 4. **"Paid services" and "billing":** for counsel, the audit, and identity or RPC vendors. All of these come before any real money.
-5. **B2:** "Real compensation, payments", "custody" and "mainnet", each recorded explicitly, after the §3.5 gates. Only then can B1 move from test credits to funded studies.
+5. **B2:** "Real compensation, payments", "custody" and "mainnet", each recorded explicitly, after the §3.5 gates. Only then could B1 be revisited for paid studies.
 
 ## 8. Sources (all accessed 2026-10-05)
 
@@ -330,7 +348,7 @@ Disputed work counts only if the admin rules for the tester. The ledger is appen
   - `getMinimumBalanceForRentExemption` for 0, 100, 165, 200 and 300 bytes.
   - `getAccountInfo` for:
     - USDC: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (mainnet) and `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU` (devnet);
-    - Squads v4: `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`, its program data, and its ProgramConfig `BSTq9w3kZwNwpBXJEvTZz2G9ZTNyKBvoSeXMvwb4cNZr`;
+    - Squads v4: `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`, its program data `Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n` (mainnet: no upgrade authority, deployed at slot 302,582,236; devnet: authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`, deployed at slot 446,638,068), and its ProgramConfig `BSTq9w3kZwNwpBXJEvTZz2G9ZTNyKBvoSeXMvwb4cNZr`;
     - Smart Account: `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`;
     - Streamflow: `strmRqUCoQUgGUan5YhzUZa6KqdzwX5L6FpUxfmKg5m` (mainnet) and `HqDGZjaVRXJ9MGRQEw7qDc2rAr6iH1n1kAQdCZaCMfMZ` (devnet);
     - SAS: `22zoJMtdu4tQc2PzL74ZUT7FrwgB1Udec8DdW4yw4BdG`;
@@ -339,7 +357,7 @@ Disputed work counts only if the admin rules for the tester. The ledger is appen
 - **S3.** Squads v4 GitHub. https://github.com/Squads-Protocol/v4
 - **S4.** Squads docs, *How secure is Squads*. https://docs.squads.so/main/security/how-secure-is-squads
 - **S5.** Squads v4 source: `spending_limit.rs`, `multisig.rs`, `proposal.rs` and `program_config.rs`. https://github.com/Squads-Protocol/v4/tree/main/programs/squads_multisig_program/src/state
-- **S6.** Squads v4 audit reports: Trail of Bits 2023-10-19; OtterSec Jul–Sep 2023; Neodyme 2024-12-10; Certora Nov 2024. https://github.com/Squads-Protocol/v4/tree/main/audits
+- **S6.** Squads v4 audit reports: Trail of Bits 2023-10-19; OtterSec 2023 and 2024; Neodyme 2024-12-10; Certora Nov 2024. https://github.com/Squads-Protocol/v4/tree/main/audits
 - **S7.** OtterSec verify API. https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf
 - **S8.** Squads docs, *Create a Squad*. https://docs.squads.so/main/getting-started/create-a-squad
 - **S9.** Squads docs, *Quickstart*. https://docs.squads.so/main/development/introduction/quickstart
@@ -397,5 +415,5 @@ Disputed work counts only if the admin rules for the tester. The ledger is appen
 - **S53.** Evan Miller, *How Not To Sort By Average Rating* (2009). https://www.evanmiller.org/how-not-to-sort-by-average-rating.html
 - **S54.** `reshareai/pocket-qa` at `87e09d4`, `docs/production/parent-access-actions.md` (A9), read from the local clone with `git show`.
 - **S55.** `reshareai/pocket-qa` at `87e09d4`, `docs/production/acceptance-ledger.md` (B1, B2).
-- **S56.** `reshareai/pocket-qa` at `87e09d4`, `docs/plans/pocket-qa-execution-plan.md` (§2 Money and Web3, §5.1, Phase 6, §10).
+- **S56.** `reshareai/pocket-qa` at `87e09d4`, `docs/plans/pocket-qa-execution-plan.md` (§2 Money, Web3 and Copy, §5.1, §5.3, Phase 6, §10).
 - **S57.** `reshareai/pocket-qa` at `87e09d4`, `CLAUDE.md`.

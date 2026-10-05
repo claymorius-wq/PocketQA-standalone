@@ -1,0 +1,247 @@
+=== demo as of 2026-10-05T12:00
+{
+ "name": "Demo Tester",
+ "track": {
+  "decided": 1,
+  "accepted": 1,
+  "onTime": 1,
+  "lostDisputes": 0,
+  "rejected": 0,
+  "overturned": 0,
+  "late": 0,
+  "awaiting": 0,
+  "inProgress": 1
+ },
+ "points": {
+  "posted": 0,
+  "held": 150,
+  "heldUntil": "2026-10-10T14:24",
+  "last90": 0,
+  "heldGroups": [
+   {
+    "postsAt": "2026-10-10T14:24",
+    "points": 150,
+    "sessions": [
+     "demo-checkout"
+    ]
+   }
+  ]
+ },
+ "level": {
+  "n": 1,
+  "name": "Observer",
+  "toNext": 300,
+  "next": "Examiner"
+ },
+ "run": {
+  "current": 1,
+  "best": 1,
+  "cleanRuns": []
+ },
+ "keyBadge": {
+  "id": "first",
+  "tier": 0
+ },
+ "newest": "first",
+ "badges": {
+  "first": {
+   "state": "earned",
+   "tier": 0,
+   "have": 1,
+   "need": 1,
+   "isNew": true,
+   "earnedAt": "2026-10-03T14:24",
+   "label": "First accepted test, earned October 3, new"
+  },
+  "reliable": {
+   "state": "locked",
+   "tier": 0,
+   "have": 1,
+   "need": 3,
+   "isNew": false,
+   "earnedAt": null,
+   "label": "Reliable tester, locked. 1 of 3 on-time sessions in a row toward tier I"
+  },
+  "helpful": {
+   "state": "locked",
+   "tier": 0,
+   "have": 0,
+   "need": 1,
+   "isNew": false,
+   "earnedAt": null,
+   "label": "Helpful feedback, locked. 0 of 1 sessions marked helpful toward tier I"
+  },
+  "device": {
+   "state": "locked",
+   "tier": 0,
+   "have": 1,
+   "need": 5,
+   "isNew": false,
+   "earnedAt": null,
+   "label": "Device specialist, locked. 1 of 5 accepted tests on one device toward this badge",
+   "device": "Web · Browser",
+   "builders": 1
+  },
+  "sharp": {
+   "state": "locked",
+   "tier": 0,
+   "have": 1,
+   "need": 3,
+   "isNew": false,
+   "earnedAt": null,
+   "label": "Sharp eye, locked. 1 of 3 accepted findings toward tier I"
+  }
+ },
+ "leaderboard": {
+  "eligible": false,
+  "postedSessions": 0,
+  "builders": 0,
+  "need": {
+   "posted": 5,
+   "builders": 2
+  },
+  "points90": 0,
+  "rank": null,
+  "of": 239,
+  "hidden": false
+ },
+ "builders": 1
+}
+sessions:
+  demo-onboarding in-progress decided undefined counted false capped false run null pts 0  postsAt null  earned []
+  demo-checkout approved decided 2026-10-03T14:24 counted true capped false run 1 pts 150 Accepted test 100 + Accepted finding 30 + On time 20 postsAt 2026-10-10T14:24 HELD earned [{"id":"first","tier":0}]
+=== elif as of 2026-10-05T12:00
+{
+ "name": "Elif K.",
+ "track": {
+  "decided": 16,
+  "accepted": 14,
+  "onTime": 13,
+  "lostDisputes": 1,
+  "rejected": 1,
+  "overturned": 1,
+  "late": 1,
+  "awaiting": 0,
+  "inProgress": 0
+ },
+ "points": {
+  "posted": 1910,
+  "held": 240,
+  "heldUntil": "2026-10-10T14:31",
+  "last90": 640,
+  "heldGroups": [
+   {
+    "postsAt": "2026-10-10T14:31",
+    "points": 240,
+    "sessions": [
+     "elif-16"
+    ]
+   }
+  ]
+ },
+ "level": {
+  "n": 3,
+  "name": "Inspector",
+  "toNext": 590,
+  "next": "Analyst"
+ },
+ "run": {
+  "current": 10,
+  "best": 10,
+  "cleanRuns": [
+   "elif-11",
+   "elif-16"
+  ]
+ },
+ "keyBadge": {
+  "id": "reliable",
+  "tier": 2
+ },
+ "newest": "reliable",
+ "badges": {
+  "first": {
+   "state": "earned",
+   "tier": 0,
+   "have": 1,
+   "need": 1,
+   "isNew": false,
+   "earnedAt": "2026-05-06T15:20",
+   "label": "First accepted test, earned May 6"
+  },
+  "reliable": {
+   "state": "progress",
+   "tier": 2,
+   "have": 10,
+   "need": 25,
+   "isNew": true,
+   "earnedAt": "2026-10-03T14:31",
+   "label": "Reliable tester, tier II, earned October 3, new"
+  },
+  "helpful": {
+   "state": "progress",
+   "tier": 1,
+   "have": 3,
+   "need": 5,
+   "isNew": false,
+   "earnedAt": "2026-05-26T14:45",
+   "label": "Helpful feedback, tier I, earned May 26. 3 of 5 toward tier II"
+  },
+  "device": {
+   "state": "earned",
+   "tier": 0,
+   "have": 5,
+   "need": 5,
+   "isNew": false,
+   "earnedAt": "2026-06-05T17:05",
+   "label": "Device specialist, earned June 5",
+   "device": "Pixel 6a · Android 14",
+   "builders": 6
+  },
+  "sharp": {
+   "state": "progress",
+   "tier": 1,
+   "have": 9,
+   "need": 10,
+   "isNew": false,
+   "earnedAt": "2026-06-12T15:35",
+   "label": "Sharp eye, tier I, earned June 12. 9 of 10 toward tier II"
+  }
+ },
+ "leaderboard": {
+  "eligible": true,
+  "postedSessions": 13,
+  "builders": 6,
+  "need": {
+   "posted": 5,
+   "builders": 2
+  },
+  "points90": 640,
+  "rank": 12,
+  "of": 240,
+  "hidden": false
+ },
+ "builders": 6
+}
+sessions:
+  elif-01 approved decided 2026-05-06T15:20 counted true capped false run 1 pts 120 Accepted test 100 + On time 20 postsAt 2026-05-13T15:20  earned [{"id":"first","tier":0}]
+  elif-02 approved decided 2026-05-12T13:40 counted true capped false run 0 pts 130 Accepted test 100 + Accepted finding 30 postsAt 2026-05-19T13:40  earned []
+  elif-03 rejected decided 2026-05-15T11:05 counted false capped false run 0 pts 0  postsAt null  earned []
+  elif-04 overturned decided 2026-05-22T16:10 counted true capped false run 1 pts 120 Accepted test 100 + On time 20 postsAt 2026-05-29T16:10  earned []
+  elif-05 approved decided 2026-05-26T14:45 counted true capped false run 2 pts 160 Accepted test 100 + Helpful feedback 40 + On time 20 postsAt 2026-06-02T14:45  earned [{"id":"helpful","tier":1}]
+  elif-06 upheld decided 2026-06-02T11:30 counted false capped false run 0 pts 0  postsAt null  earned []
+  elif-07 approved decided 2026-06-05T17:05 counted true capped false run 1 pts 150 Accepted test 100 + Accepted finding 30 + On time 20 postsAt 2026-06-12T17:05  earned [{"id":"device","tier":0}]
+  elif-08 approved decided 2026-06-09T12:20 counted true capped false run 2 pts 120 Accepted test 100 + On time 20 postsAt 2026-06-16T12:20  earned []
+  elif-09 approved decided 2026-06-12T15:35 counted true capped false run 3 pts 150 Accepted test 100 + Accepted finding 30 + On time 20 postsAt 2026-06-19T15:35  earned [{"id":"reliable","tier":1},{"id":"sharp","tier":1}]
+  elif-10 approved decided 2026-06-18T10:50 counted true capped false run 4 pts 120 Accepted test 100 + On time 20 postsAt 2026-06-25T10:50  earned []
+  elif-11 approved decided 2026-06-24T16:15 counted true capped false run 5 pts 200 Accepted test 100 + Accepted finding 30 + On time 20 + Clean run 50 postsAt 2026-07-01T16:15  earned []
+  elif-12 approved decided 2026-07-20T14:00 counted true capped false run 6 pts 150 Accepted test 100 + Accepted finding 30 + On time 20 postsAt 2026-07-27T14:00  earned []
+  elif-13 approved decided 2026-08-12T11:25 counted true capped false run 7 pts 160 Accepted test 100 + Helpful feedback 40 + On time 20 postsAt 2026-08-19T11:25  earned []
+  elif-14 approved decided 2026-09-02T16:40 counted true capped false run 8 pts 180 Accepted test 100 + Accepted findings 60 + On time 20 postsAt 2026-09-09T16:40  earned []
+  elif-15 approved decided 2026-09-22T15:10 counted true capped false run 9 pts 150 Accepted test 100 + Accepted finding 30 + On time 20 postsAt 2026-09-29T15:10  earned []
+  elif-16 approved decided 2026-10-03T14:31 counted true capped false run 10 pts 240 Accepted test 100 + Helpful feedback 40 + Accepted finding 30 + On time 20 + Clean run 50 postsAt 2026-10-10T14:31 HELD earned [{"id":"reliable","tier":2}]
+=== elif at review time 2026-10-03T14:30: track {"decided":15,"accepted":13,"onTime":12,"lostDisputes":1,"rejected":1,"overturned":1,"late":1,"awaiting":1,"inProgress":0} badges sharp 1 8 / 10 device earned reliable 1 9/10 level 3 posted 1910
+=== elif as of Oct 2: reliable 1 9/10 helpful 1 2/5 sharp 1 8/10
+=== leaderboard top [{"name":"mira.k","level":5,"points":2480,"badge":{"id":"reliable","tier":3},"you":false,"rank":1,"tied":false},{"name":"Tomás R.","level":4,"points":1960,"badge":{"id":"sharp","tier":2},"you":false,"rank":2,"tied":false},{"name":"Ines W.","level":4,"points":1420,"badge":{"id":"helpful","tier":3},"you":false,"rank":3,"tied":true}] you {"name":"Elif K.","level":3,"points":640,"badge":{"id":"reliable","tier":2},"you":true,"rank":12,"tied":false} of 240
+=== leaderboard demo you null of 239 demo lb {"eligible":false,"postedSessions":0,"builders":0,"need":{"posted":5,"builders":2},"points90":0,"rank":null,"of":239,"hidden":false}
+=== U9 {"after":1020,"sheet":420,"at":540,"lift":560,"fade":320,"rise":560,"settle":700,"glint":420,"glintDur":560,"roll":560,"rollDur":560,"stagger":40,"seat":420,"row":480,"rest":0.45}
+=== sample labels: Sharp eye, locked. 2 of 3 accepted findings toward tier I | Reliable tester, tier II, earned October 3

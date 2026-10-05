@@ -1,0 +1,3 @@
+mainnet-beta: programData Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n, account bytes 1470461, last deploy slot 302582236, upgrade-authority flag 0, program bytes (trailing zeros trimmed) 980161, sha256 d48660833989ecea3145ff726164fe640bd90696f03ce00dfd0cda258cbf2fac
+devnet: programData Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n, account bytes 1774845, last deploy slot 446638068, upgrade-authority flag 1, program bytes (trailing zeros trimmed) 980145, sha256 57a8d2d7ef5409df250415135f29f83da876e5adf5a2e5b5752e323cfb4f2f74
+OtterSec verify API (https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf): is_verified false, on_chain_hash d48660833989ecea3145ff726164fe640bd90696f03ce00dfd0cda258cbf2fac, is_frozen true

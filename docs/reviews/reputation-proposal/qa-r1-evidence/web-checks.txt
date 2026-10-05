@@ -1,0 +1,25 @@
+Web spot checks for review r1 (2026-10-05). Reviewer's own notes; short paraphrases, not copies of the sources.
+
+S31 https://solana.com/upgrades/reduced-rent
+  SIMD-0437: 6,960 -> 696 lamports per byte, five feature gates. Step 1 live on mainnet 2026-09-03; step 2 (27% cut) mainnet mid-September 2026; steps 3-5 expected in Agave 4.4, November 2026. Rent described as a fully refundable bond.
+  Consistent with the RPC: 5,080 lamports/byte today = 6,960 x 0.73 (steps 1-2 applied).
+S14 https://docs.streamflow.finance/en/articles/9675153-costs-of-using-streamflow
+  Vesting: 0.16 SOL per contract + 0.19% token fee, plus 0.0147 SOL network fee. Page updated 2026-08-14.
+S15 streamflow js-sdk constants.ts: DEFAULT_CREATION_FEE_SOL = 90_000_000 lamports (0.09 SOL); DEFAULT_STREAMFLOW_FEE = 0.19.
+S49 https://www.civic.com/blog/an-update-on-civic-pass (2025-06-11): CAPTCHA and ID verification end 2025-07-01; uniqueness and liveness end 2025-07-31.
+S4 https://docs.squads.so/main/security/how-secure-is-squads: v4 launched October 2023, immutable since November 2024; "$10 billion" secured.
+S2 docs page: ToB 2023; Neodyme 2023; OtterSec 2023; Certora Oct 2023 and Dec 2023; Neodyme 2024; OtterSec 2024.
+S6 GitHub audits folder: certora x3, neodyme x3, ottersec x3, trail_of_bits x1.
+  neodyme_squads_v4_report_2024_final.pdf: dated December 10, 2024 (text and PDF metadata).
+  certora_..._2024_final.pdf: "Security Assessment & Formal Verification Report ... November 2024".
+  ottersec_squads_v4_report_2024_final.pdf: text dated September 22nd, 2023 (PDF metadata 2024-12-03).
+S7 https://verify.osec.io/status/SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf: is_verified false, is_frozen true, on_chain_hash d4866083... (matches the mainnet program hash in squads-binary.txt).
+S5 Squads v4 source: spending_limit.rs "If empty, funds can be sent to any address."; multisig.rs MAX_TIME_LOCK = 3 months.
+S28 https://faucet.circle.com/: 20 USDC every 2 hours, per address, per blockchain.
+S27 Circle USDC addresses: Solana mainnet EPjFWdd5...Dt1v, Solana devnet 4zMMC9...DncDU.
+S35 https://areta.market/solana: $1M initiative, capped at 30% of the quote; no end date or open/closed status on the page.
+S26 https://github.com/solana-foundation/kora: audited by Runtime Verification; main may contain unaudited commits; users can pay fees in USDC and other tokens.
+S42/S43 Solana Mobile docs: SGT is Token Extensions, minted once per device into the Seed Vault Wallet's primary account, transferable only between the user's own wallet accounts (permissioned); verify with SIWS + RPC and store the mint; Platform.constants.Model can be spoofed; no third-party hardware attestation API on the page.
+S37 FinCEN FIN-2019-G001: section 4.2.2 is "Multiple-signature wallet providers"; section 4.4 is "CVC Money Transmission Services Provided Through Decentralized Applications (DApps)". The four-criteria test includes "total independent control over the value".
+
+Not checked: World ID (S44-S46), SAS news (S48), Gibwork (S24), Superteam (S25), Twilio (S40), Play Integrity (S41), MiCA text (S38), ToB report date, Neodyme Streamflow report (S12), Solana Pay spec (S16-S17).
