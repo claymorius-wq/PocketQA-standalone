@@ -26,7 +26,8 @@ final class NotConfiguredException: Exception, @unchecked Sendable {
  *  - takePendingAsync(tag): that session's finished clips, LISTED in place in the App Group
  *    container until JS deletes the file (after upload or discard), so a remount or a process
  *    restart loses nothing (pqa-qa r1 P2-A). Each carries its voice verdict (videoMs, voiceMs,
- *    voiceComplete), measured by the extension from the finished file (P1);
+ *    voiceComplete, voiceLostMs), measured by the extension from the finished file and the
+ *    microphone buffer timestamps (P1, pipeline r1 P2-C);
  *  - takeInterruptedAsync(tag): that session's recordings cut off mid-way (extension killed,
  *    truncated file swept), each counted once;
  *  - isRecording(): the extension's shared state (heartbeat-checked);
@@ -99,6 +100,7 @@ public class ScreenCaptureModule: Module {
           "videoMs": e.videoMs,
           "voiceMs": e.voiceMs,
           "voiceComplete": e.voiceComplete,
+          "voiceLostMs": e.voiceLostMs,
         ]
       }
     }

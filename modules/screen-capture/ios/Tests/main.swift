@@ -77,12 +77,14 @@ test("the voice verdict travels with the clip") {
   let s = store(dir)
   let ok = recorded(s), cut = recorded(s)
   s.markComplete(ok, durationMs: 7000, tag: "p1", reason: "user", voice: FULL)
-  s.markComplete(cut, durationMs: 391_700, tag: "p1", reason: "user", voice: VoiceVerdict(videoMs: 391_720, voiceMs: 202_687, complete: false))
+  s.markComplete(cut, durationMs: 391_700, tag: "p1", reason: "user", voice: VoiceVerdict(videoMs: 391_720, voiceMs: 202_687, complete: false, lostMs: 1_500))
   let by = Dictionary(uniqueKeysWithValues: s.pending(tag: "p1").map { ($0.file.lastPathComponent, $0) })
   check(by[ok.lastPathComponent]?.voiceComplete == true, "complete")
   check(by[cut.lastPathComponent]?.voiceComplete == false, "incomplete")
   check(by[cut.lastPathComponent]?.voiceMs == 202_687, "voiceMs")
   check(by[cut.lastPathComponent]?.videoMs == 391_720, "videoMs")
+  check(by[cut.lastPathComponent]?.voiceLostMs == 1_500, "voiceLostMs persisted")
+  check(by[ok.lastPathComponent]?.voiceLostMs == 0, "nothing lost")
 }
 
 test("an unmeasured clip is never treated as narrated (missing fields => false)") {
@@ -96,6 +98,7 @@ test("an unmeasured clip is never treated as narrated (missing fields => false)"
   let g = recorded(s)
   try Data(#"{"durationMs":1000,"tag":"p1","reason":"user","createdAt":1000000}"#.utf8).write(to: g.deletingPathExtension().appendingPathExtension("meta"))
   check(s.pending(tag: "p1").first { $0.file.lastPathComponent == g.lastPathComponent }?.voiceComplete == false, "old meta")
+  check(s.pending(tag: "p1").first { $0.file.lastPathComponent == g.lastPathComponent }?.voiceLostMs == 0, "old meta: voiceLostMs 0")
 }
 
 test("another session never sees the clip; an empty tag lists nothing") {
@@ -240,6 +243,62 @@ test("the voice must cover the video within 1 s or 2 %") {
   check(!VoiceCheck.covers(videoMs: 600_000, audioMs: 587_000), "beyond 2 %")
   check(!VoiceCheck.covers(videoMs: 391_720, audioMs: 202_687), "the rotation failure")
   check(!VoiceCheck.covers(videoMs: 5_000, audioMs: nil), "no audio")
+}
+
+test("audio lost inside the clip has its own tight bound (pqa-qa pipeline r1 P2-C)") {
+  // The edge tolerance (max 1 s, 2 %) is for encoder start-up and tail; narration missing in the
+  // MIDDLE gets no such allowance: > 1 s lost in total, or any single gap > 0.5 s, is incomplete.
+  let ok = VoiceCheck.inspect(fixture("apple-complete.mp4"), lostMs: 400, maxGapMs: 0)
+  check(ok?.complete == true && ok?.lostMs == 400, "400 ms lost in small pieces: \(String(describing: ok))")
+  let lost = VoiceCheck.inspect(fixture("apple-complete.mp4"), lostMs: 1_200, maxGapMs: 0)
+  check(lost?.complete == false && lost?.lostMs == 1_200, "1.2 s lost in total")
+  check((4700...4900).contains(lost?.voiceMs ?? -1), "lost audio doesn't count as voice: \(String(describing: lost))")
+  let gap = VoiceCheck.inspect(fixture("apple-complete.mp4"), lostMs: 600, maxGapMs: 600)
+  check(gap?.complete == false, "one 0.6 s gap")
+  check(!VoiceCheck.covers(videoMs: 600_000, audioMs: 600_000, lostMs: 12_000, maxGapMs: 0), "12 s lost mid-clip on 10 min used to pass the edge rule")
+  check(VoiceCheck.covers(videoMs: 600_000, audioMs: 595_000, lostMs: 900, maxGapMs: 400), "within both bounds")
+  check(!VoiceCheck.covers(videoMs: 600_000, audioMs: 600_000, lostMs: 501, maxGapMs: 501), "gap just over 0.5 s")
+}
+
+// MARK: AudioGaps (mic sample-buffer timestamps; the iOS counterpart of Android's AudioClock)
+
+test("contiguous microphone buffers lose nothing; small timestamp jitter is not a gap") {
+  var g = AudioGaps()
+  var t = 0.0
+  for i in 0..<200 {
+    let jitter = (i % 3 == 0) ? 4.0 : -3.0
+    g.appended(ptsMs: t + jitter, durationMs: 21.3)
+    t += 21.3
+  }
+  check(g.lostMs == 0 && g.maxGapMs == 0, "lost \(g.lostMs) max \(g.maxGapMs)")
+}
+
+test("a timestamp gap inside the clip is measured; several add up; the longest is kept") {
+  var g = AudioGaps()
+  g.appended(ptsMs: 0, durationMs: 20)
+  g.appended(ptsMs: 20, durationMs: 20)
+  g.appended(ptsMs: 640, durationMs: 20)    // 600 ms missing
+  g.appended(ptsMs: 660, durationMs: 20)
+  g.appended(ptsMs: 980, durationMs: 20)    // 300 ms missing
+  check(g.lostMs == 900, "total \(g.lostMs)")
+  check(g.maxGapMs == 600, "max \(g.maxGapMs)")
+}
+
+test("a gap shorter than one buffer (and the 50 ms floor) is jitter, not loss") {
+  var g = AudioGaps()
+  g.appended(ptsMs: 0, durationMs: 85)
+  g.appended(ptsMs: 85 + 70, durationMs: 85)   // 70 ms late, buffer is 85 ms
+  check(g.lostMs == 0, "jitter \(g.lostMs)")
+  g.appended(ptsMs: 240 + 90, durationMs: 85)  // 90 ms late: beyond one buffer
+  check(g.lostMs == 90 && g.maxGapMs == 90, "loss \(g.lostMs)")
+}
+
+test("a broadcast pause chosen by the tester is not counted as lost voice") {
+  var g = AudioGaps()
+  g.appended(ptsMs: 0, durationMs: 20)
+  g.resumed()
+  g.appended(ptsMs: 30_000, durationMs: 20)
+  check(g.lostMs == 0 && g.maxGapMs == 0, "pause \(g.lostMs)")
 }
 
 test("inspect gives the verdict for a file") {

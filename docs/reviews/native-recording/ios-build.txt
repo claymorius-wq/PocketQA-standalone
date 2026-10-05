@@ -335,3 +335,53 @@ $ xcrun simctl list devices booted
 
 ## Plainly
 System broadcast cannot run in the iOS Simulator, so nothing here shows a recording. The device gate is a physical iPhone, plus an Apple team whose provisioning profiles include the App Group group.com.reshareai.pocketqa for BOTH com.reshareai.pocketqa and com.reshareai.pocketqa.Broadcast. No 'iPhone verified' claim is made.
+
+## 13. Round 3: pqa-qa pipeline r1 P2-C (lead 30a98d9): voice lost INSIDE the clip. Light work only (no xcodebuild/pod/prebuild/simulator).
+### RED
+$ swiftc -o $SCRATCH/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift   # RED r3 (P2-C): AudioGaps, lostMs/maxGapMs, voiceLostMs not yet written
+   8 error: cannot find 'AudioGaps' in scope
+   2 error: extra argument 'lostMs' in call
+   2 error: extra arguments at positions #2, #3 in call
+   2 error: value of type 'PendingStore.Entry' has no member 'voiceLostMs'
+### GREEN
+$ swiftc -o $SCRATCH/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift && $SCRATCH/pqa-broadcast-tests
+ok a finished clip stays listed for its session until JS deletes the file
+ok the voice verdict travels with the clip
+ok an unmeasured clip is never treated as narrated (missing fields => false)
+ok another session never sees the clip; an empty tag lists nothing
+ok forget deletes the clip and everything kept about it
+ok a truncated file (extension killed mid-broadcast) is swept and its session is told once
+ok an empty recording is never offered
+ok clips and notices expire after a day
+ok signing out clears every clip and notice except the file being written
+ok a meta whose video is gone is dropped; corrupt metas and temp files are swept
+ok the recordings directory is excluded from device backups
+ok reads video and audio track durations from the file (index at the end or the front, ffmpeg or Apple muxer)
+ok a voice that stops early is measured
+ok no audio track is reported as no audio; an unreadable or missing file is nil
+ok the voice must cover the video within 1 s or 2 %
+ok audio lost inside the clip has its own tight bound (pqa-qa pipeline r1 P2-C)
+ok contiguous microphone buffers lose nothing; small timestamp jitter is not a gap
+ok a timestamp gap inside the clip is measured; several add up; the longest is kept
+ok a gap shorter than one buffer (and the 50 ms floor) is jitter, not loss
+ok a broadcast pause chosen by the tester is not counted as lost voice
+ok inspect gives the verdict for a file
+ok the box parser agrees with AVFoundation on every fixture
+ok the extension accepts only a tag the app set moments ago, and only once (no Control Centre starts)
+ok isRecording follows the extension's heartbeat, so a killed extension does not look live
+ok signing out forgets a pending session tag (the next user's broadcast can't inherit it)
+ok each stop is reported once, with its reason
+ok no microphone buffers in the first 3 s: refuse (Microphone off in the picker)
+ok only digital silence in the first 3 s also counts as no microphone
+ok narration heard: ok; then the microphone goes away mid-session: mic lost
+ok a pause (broadcastPaused) does not count as a lost microphone after resuming
+ok capture size keeps the aspect, caps the long edge and uses even dimensions
+ok digital silence detection
+32 tests, 0 failures
+exit=0
+### Extension typecheck (iOS Simulator SDK)
+$ xcrun --sdk iphonesimulator swiftc -typecheck -target arm64-apple-ios16.4-simulator -application-extension -module-name PocketQaBroadcast modules/screen-capture/ios-extension/SampleHandler.swift modules/screen-capture/ios/BroadcastShared.swift
+exit=0 (no diagnostics)
+### Module typecheck: NOT re-run this round. It needs the ExpoModulesJSI build intermediates that only an xcodebuild produces (scratch from build 12 is gone; rebuild not allowed now). The module change is one Int64 entry (voiceLostMs) in the clip map; it is compiled by the next xcodebuild.
+### Plugin jest
+Tests:       14 passed, 14 total

@@ -94,6 +94,8 @@ final class PendingStore {
     let voiceMs: Int64
     /// False unless the finished file was measured and its voice covers the video.
     let voiceComplete: Bool
+    /// Audio lost inside the clip (gaps between microphone buffers), 0 when unknown.
+    let voiceLostMs: Int64
   }
 
   private struct Meta: Codable {
@@ -105,6 +107,7 @@ final class PendingStore {
     let videoMs: Int64?
     let voiceMs: Int64?
     let voiceComplete: Bool?
+    let voiceLostMs: Int64?
   }
 
   /// `.rec` (started) and `.lost` (cut off) notices.
@@ -175,7 +178,8 @@ final class PendingStore {
       return false
     }
     let meta = Meta(durationMs: durationMs, tag: tag, reason: reason, createdAt: now(),
-                    videoMs: voice?.videoMs ?? durationMs, voiceMs: voice?.voiceMs ?? 0, voiceComplete: voice?.complete == true)
+                    videoMs: voice?.videoMs ?? durationMs, voiceMs: voice?.voiceMs ?? 0, voiceComplete: voice?.complete == true,
+                    voiceLostMs: voice?.lostMs ?? 0)
     let ok = write(meta, to: sibling(video, "meta"))
     try? fm.removeItem(at: sibling(video, "rec"))
     return ok
@@ -185,7 +189,7 @@ final class PendingStore {
     guard let m = load(Meta.self, meta) else { return nil }
     let video = sibling(meta, "mp4")
     return Entry(file: video, durationMs: m.durationMs, sizeBytes: size(video), tag: m.tag, reason: m.reason, createdAt: m.createdAt,
-                 videoMs: m.videoMs ?? 0, voiceMs: m.voiceMs ?? 0, voiceComplete: m.voiceComplete == true)
+                 videoMs: m.videoMs ?? 0, voiceMs: m.voiceMs ?? 0, voiceComplete: m.voiceComplete == true, voiceLostMs: m.voiceLostMs ?? 0)
   }
 
   /// The finished clips of this session whose files still exist (an empty tag matches nothing).
@@ -266,25 +270,34 @@ struct VoiceVerdict {
   let videoMs: Int64
   let voiceMs: Int64
   let complete: Bool
+  /// Audio lost inside the clip (AudioGaps), already excluded from voiceMs.
+  var lostMs: Int64 = 0
 }
 
 /**
  * Does a finished recording carry the tester's voice for its whole length? (pqa-qa r1 P1; the same
  * rule as Android VoiceCheck.kt). An encoder can keep writing video after the audio stalled, so each
  * finalised file is measured from its own index: the audio track must cover the video within
- * max(1 s, 2 %). A clip that fails is still offered for review, marked "voice incomplete", and JS
+ * max(1 s, 2 %) at the edges (encoder start-up and tail), AND audio lost INSIDE the clip must stay
+ * within maxLostMs in total with no single gap over maxGapMs, whatever the clip length (pqa-qa
+ * pipeline r1 P2-C: 12 s missing mid-way through a 10-minute clip used to pass). A clip that fails is still offered for review, marked "voice incomplete", and JS
  * won't keep or upload it as narrated evidence.
  */
 enum VoiceCheck {
-  static func covers(videoMs: Int64, audioMs: Int64?) -> Bool {
-    guard let audioMs = audioMs else { return false }
+  static let maxLostMs: Int64 = 1000
+  static let maxGapMs: Int64 = 500
+
+  static func covers(videoMs: Int64, audioMs: Int64?, lostMs: Int64 = 0, maxGapMs: Int64 = 0) -> Bool {
+    guard let audioMs = audioMs, lostMs <= Self.maxLostMs, maxGapMs <= Self.maxGapMs else { return false }
     return videoMs - audioMs <= max(1000, videoMs * 2 / 100)
   }
 
   /// Nil when the file isn't a readable MP4 with a video track (a truncated file has no index).
-  static func inspect(_ file: URL) -> VoiceVerdict? {
+  /// `lostMs`/`maxGapMs` come from AudioGaps: the track can span the clip with audio missing inside it.
+  static func inspect(_ file: URL, lostMs: Int64 = 0, maxGapMs: Int64 = 0) -> VoiceVerdict? {
     guard let t = Mp4Tracks.read(file) else { return nil }
-    return VoiceVerdict(videoMs: t.videoMs, voiceMs: t.audioMs ?? 0, complete: covers(videoMs: t.videoMs, audioMs: t.audioMs))
+    let voice = t.audioMs.map { max(0, $0 - lostMs) } ?? 0
+    return VoiceVerdict(videoMs: t.videoMs, voiceMs: voice, complete: covers(videoMs: t.videoMs, audioMs: t.audioMs, lostMs: lostMs, maxGapMs: maxGapMs), lostMs: lostMs)
   }
 }
 
@@ -572,4 +585,34 @@ func captureSize(width: Int, height: Int, maxEdge: Int) -> (width: Int, height: 
   let short = Int(Double(min(width, height)) * Double(maxEdge) / Double(long))
   let (w, h) = width >= height ? (maxEdge, short) : (short, maxEdge)
   return (max(w / 2 * 2, 2), max(h / 2 * 2, 2))
+}
+
+/**
+ * Microphone audio lost INSIDE the clip, from the timestamps of the `.audioMic` buffers actually
+ * appended to the file (the iOS counterpart of Android's AudioClock; pqa-qa pipeline r1 P2-C).
+ * ReplayKit can drop buffers when the extension falls behind, and the writer skips buffers when its
+ * input isn't ready: either way the file's audio track still spans the clip, with a hole in it.
+ * A buffer starting later than the previous one ended by more than its own length (floor 50 ms) is
+ * a gap; smaller offsets are timestamp jitter, compared buffer to buffer so they never accumulate.
+ * A pause the tester chose (broadcastPaused/Resumed) is not lost voice.
+ */
+struct AudioGaps {
+  static let minGapMs = 50.0
+  private var lastEndMs: Double?
+  private(set) var lostMs: Int64 = 0
+  private(set) var maxGapMs: Int64 = 0
+
+  mutating func appended(ptsMs: Double, durationMs: Double) {
+    if let end = lastEndMs {
+      let gap = ptsMs - end
+      if gap > max(durationMs, Self.minGapMs) {
+        let ms = Int64(gap.rounded())
+        lostMs += ms
+        maxGapMs = max(maxGapMs, ms)
+      }
+    }
+    lastEndMs = max(lastEndMs ?? -.infinity, ptsMs + durationMs)
+  }
+
+  mutating func resumed() { lastEndMs = nil }
 }
