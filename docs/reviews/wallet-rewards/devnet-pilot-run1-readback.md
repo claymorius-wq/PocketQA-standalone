@@ -97,7 +97,7 @@ Measured account rent (lamports):
 | Proposal (358 bytes) | 2,468,880 per payment |
 
 **Per payout or refund:** 5,140,960 lamports of permanent rent, plus fees.
-- The fees were 5,000 per single-signer transaction and 10,000 per member approval (the payer plus the member). In run 1 that made 35,000 per payment.
+- The fees, from the receipt fees at index 1: create 5,000, proposal 5,000, Pocket QA's approval 5,000 (the payer is the member), the cosigner's approval 10,000 (payer plus member), execute 5,000. That makes **30,000 per payment**.
 - A payee without a token account adds 1,488,440 (paid by Pocket QA).
 
 **Per study:** 1,823,720 for the multisig plus 1,488,440 for the vault token account.
