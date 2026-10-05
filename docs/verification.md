@@ -670,3 +670,31 @@ Full outputs are in `docs/reviews/screen-recording/`.
 - **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
   - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
 
+## 2026-10-05: intro before Sign in, its opening and pager motion, intro reviews r1 and r2 (contributor session, claymorius-wq; Windows 11, Node v24.21.0, pnpm 10.32.1)
+Branch `feat/intro-walkthrough` at `1f33290` plus the r2 fixes (the working tree of the commit after this entry). Playwright ran through a git-ignored mirror of `playwright.config.ts` on private ports (API 8788, web 8091, fake RPC 8900), against a fresh `expo export` of the tree.
+- **Checks** (verbatim summary lines):
+  ```
+  $ pnpm check:secrets
+  check:secrets FAILED (89 finding(s) in 911 files):
+  ```
+  All 89 are in the devnet pilot receipts already on main: `devnet-pilot-receipt-run1.md` (29), `devnet-pilot-receipt-run1.json` (29), `devnet-pilot-run1-readback.json` (27), `devnet-pilot-run1-completion.json` (2), `devnet-pilot-run1-completion.md` (1) and `qa-devnet-pilot-live-verdict-r2.md` (1), all under `docs/reviews/wallet-rewards/`. None is in this change.
+  ```
+  $ node scripts/preview/assert-no-secrets.mjs --repo
+  secret check: 18 values, 911 files, 0 occurrences
+  $ pnpm typecheck        exit=0 (contracts, domain, api, mobile: Done)
+  $ pnpm lint             exit=0
+  ```
+- **Unit tests:**
+  ```
+  $ pnpm --filter @pocket-qa/mobile test
+  Test Suites: 57 passed, 57 total
+  Tests:       1229 passed, 1229 total
+  $ pnpm -r --if-present test
+  packages/contracts: Tests 17 passed (17)
+  packages/domain:    Tests 216 passed (216)
+  apps/api:           7 failed (admin-scripts, db-scripts, backup, config.bind, admin-grant, escrow A1b, operations SIGTERM)
+  ```
+  The 7 API failures are the same on a clean checkout of main `ae0b501` on this machine (Windows paths and process signals); none touches this change.
+- **Playwright:** 27 passed (3.6m), EXIT=0, all specs of the branch: 21 mobile-web, including the 6 in `intro.spec.ts`, plus 6 desktop-recorder.
+- **An earlier full run** of `0f9135e` failed one spec, 26/27: on the web, Back from Sign up returned to the intro. expo-router ran the same-tick `replace` and `push` as one history step. Commit `1f33290` opens Sign up over the intro on purpose. Re-run of `intro.spec.ts` alone: 6 passed.
+- **Not run here:** Maestro flows on a device (no emulator on this machine; `__tests__/maestro-flows.test.ts` parses all 26 and checks each cleared-state launch skips the intro), and the Seeker frame budget for the intro's swipe.

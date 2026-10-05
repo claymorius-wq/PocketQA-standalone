@@ -42,6 +42,17 @@ export function cameFromIntro(now = Date.now()): boolean {
   return now - leftAt <= ARRIVAL_STAMP_TTL;
 }
 
+/**
+ * Someone with a session (signed in, restored, or reached through a deep link that never opens
+ * `/`) already knows the app: the intro never shows them after they sign out. The root layout
+ * calls this for the whole app.
+ */
+export function useIntroSeenWithSession(signedIn: boolean): void {
+  useEffect(() => {
+    if (signedIn) void markIntroSeen();
+  }, [signedIn]);
+}
+
 /** `null` until storage answers; then whether the intro has been seen. */
 export function useIntroSeen(): boolean | null {
   const [seen, setSeen] = useState<boolean | null>(null);

@@ -28,6 +28,8 @@ test('a first visit walks through the intro to Sign in, and the next visit skips
   await expect(page.getByTestId('intro-label')).toHaveText('POCKET QA');
   await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('intro-label')).toHaveText('FOR TESTERS');
+  // Screen readers hear the page that settled (a polite live region on the web).
+  await expect(page.getByTestId('intro-announcer')).toHaveText('Page 2 of 3. Test apps on your own phone');
   await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
   // The last page: Create an account, and Sign in in the corner where Skip was.
@@ -61,6 +63,8 @@ test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sig
   await join.goBack();
   await expect(join.getByTestId('welcome-screen')).toBeVisible();
   await expect(join.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
+  // Shown again where it was, not back at the first page.
+  await expect(join.getByTestId('intro-page-builders')).toBeInViewport();
 });
 
 // Safari on a 390 × 844 iPhone leaves about 664 px with its toolbars; an iPhone SE about 548.

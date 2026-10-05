@@ -89,7 +89,8 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   /**
    * How this screen opens (§11.3, CONSISTENCY §M3). Default: the layout's ArrivalContext, else
    * `tab` inside the role tabs and `push` anywhere else. `launch` (the light dip and the
-   * staggered steps) belongs to Sign in alone. Returns to the screen play `back` or `tab` by themselves.
+   * staggered steps) belongs to the first auth screen of a visit (the intro, or Sign in).
+   * Returns to the screen play `back` or `tab` by themselves.
    */
   entrance?: InitialArrival;
   /**

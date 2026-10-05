@@ -4,8 +4,8 @@
 // Node, not the app's React Native environment, which resolves yaml's browser entry (an ES module).
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-// The workspace installs flat (pnpm-workspace.yaml: nodeLinker hoisted), so this is the yaml
-// Expo's metro-config already brings: the same parser the native gate's flows were checked with.
+// A devDependency, pinned to the version Expo's metro-config brings: the same parser the native
+// gate's flows were checked with.
 import { parseAllDocuments } from 'yaml';
 
 // The Maestro flows (e2e/maestro) only run on a device, so a flow that no longer parses would

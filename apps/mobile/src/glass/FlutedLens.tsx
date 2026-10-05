@@ -119,10 +119,9 @@ export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnM
     [shift, glintX, glintO],
   );
 
-  // With a drift, the scene travels at most until the outer rib's sample (its slice, w / m wide,
-  // sampled k × (centre − S/2) further out) reaches the edge of the padded scene: about 20 at the
-  // 104 brand lens, so the 16 of S1 is untouched. Without one, the shimmer is exactly as before.
-  const travel = Math.max(0, pad - (w / (2 * f.m) - w / 2) - f.k * (S / 2 - w / 2));
+  // With a drift, the scene travels at most `fluteTravel`: about 20 at the 104 brand lens, so the 16
+  // of S1 is untouched. Without one, the shimmer is exactly as before.
+  const travel = fluteTravel(S, n, f, pad);
   const sceneStyle = useAnimatedStyle(() => {
     const x = drift ? Math.max(-travel, Math.min(travel, shift.value + drift.value)) : shift.value;
     return { transform: [{ translateX: x }] };
@@ -186,6 +185,16 @@ export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnM
       {recording !== undefined ? <RecordCore id={`${id}core`} S={S} live={recording} /> : null}
     </View>
   );
+}
+
+/**
+ * How far (px) the scene behind an S-wide lens of n ribs can travel before a rib samples past the
+ * padded scene: the outer rib shows a slice w / m wide (w = S / n), centred k × (centre − S/2)
+ * further out than its own centre, and the scene reaches `pad` beyond the lens on each side.
+ */
+export function fluteTravel(S: number, n: number, f: { m: number; k: number }, pad: number): number {
+  const w = S / n;
+  return Math.max(0, pad - (w / (2 * f.m) - w / 2) - f.k * (S / 2 - w / 2));
 }
 
 /** The scene behind the ribs: lavender ground, ultramarine sphere, its specular. Static; memoized per rib. */

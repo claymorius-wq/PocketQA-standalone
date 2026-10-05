@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ArrowRight, LogIn, UserPlus } from 'lucide-react-native';
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Platform, ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AccessibilityInfo, Platform, Text as RNText, ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   ReduceMotion,
   useAnimatedRef,
@@ -18,56 +18,46 @@ import { useSession } from '../../src/auth/SessionProvider';
 import { FlutedLens, GlassSurface } from '../../src/glass';
 import { PASS_THROUGH } from '../../src/glass/paint';
 import { GlassTile } from '../../src/icons';
-import { joinWave } from '../../src/motion';
 import { introPages, markIntroSeen, noteIntroLeft, pageAt, type IntroPage } from '../../src/onboarding/intro';
 import { PREVIEW_BUILD } from '../../src/preview/demoAccounts';
 import { SignInDock } from '../../src/screens/authParts';
-import { DUR } from '../../src/theme/motion';
+import { DUR, INTRO } from '../../src/theme/motion';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { layout, radius } from '../../src/theme/tokens';
 import { Button, OwnEntrance, Screen, Text } from '../../src/ui';
 import { Hairline, PageDots } from '../../src/ui/patterns';
-import { Enter, ScreenContext } from '../../src/ui/screen';
+import { Enter, useEntranceDelay } from '../../src/ui/screen';
 
 // Welcome: the intro a first-time visitor sees before Sign in (src/onboarding/intro.ts). Three
 // pages: what Pocket QA is, what a tester does, what a builder does. Swipe, press Next or a dot;
-// Skip, Sign in and every way out go to Sign in (or Create an account over it) and remember that
-// the intro was seen. Never lit: nothing here is an Uplight moment.
+// Skip, Sign in and every way out go to Sign in (or Sign up over the intro) and remember that the
+// intro was seen. Never lit: nothing here is an Uplight moment.
 //
-// The opening (the launch, §11.3, on a first visit only), ms from mount:
+// The opening (the launch, §11.3, on a first visit only; INTRO in theme/motion.ts is a proposal
+// awaiting Hamza's design sign-off), ms from mount:
 //   0     the light rises first (exposure 0.6 → 1, 700 ease-lens: the Screen's launch)
-//   0     the brand lens arrives: opacity 0 → 1 (320) and scale 0.92 → 1 (700 ease-lens), with
-//         its S1 shimmer (the scene slides 16 back, the glint crosses at +220)
+//   0     the brand lens arrives: opacity 0 → 1 (dur-enter) and scale 0.92 → 1 (dur-rise
+//         ease-lens), with its S1 shimmer (the scene slides 16 back, the glint crosses at +220)
 //   80    the label row rises (the Screen's first step)
-//   80    the title, word by word: each word rises out of its own clipped line box, 30 apart,
-//         420 ease-lens (S5's masked rise, applied to words; the intro alone)
+//   80    the title, word by word, 40 apart: each word rises out of its own clipped line box
+//         over 420 ease-lens
 //   200   the body rises; 240 the dock (dots and Next)
 // All of it is done by 700 (the entrance window), the glint excepted, as on Sign in. Reduced
 // motion: every step is a 120ms fade in place; no scale, shimmer, word rise or parallax.
 //
 // Then the pager: the content follows the scroll on the UI thread. Each layer travels a little
-// more than its page (DEPTH), so a page arriving comes in as a cascade (title, body, card, then
-// its steps) and one leaving clears the same way; the brand lens refracts as it is carried (its
+// more than its page (INTRO.depth), so a page arriving comes in as a cascade (title, body, then
+// the card) and one leaving clears the same way; the brand lens refracts as it is carried (its
 // scene drifts). The label and the dots follow the scroll too. What the pages say to assistive
 // tech, the buttons and the announcement change once a page has settled, never mid-scroll.
 
-/** Share of a page width each layer travels beyond its page's own move. */
-const DEPTH = { lens: 0.32, title: 0.1, body: 0.18, card: 0.26, row: 0.06 } as const;
-/** Content a page away keeps this much less opacity at most. */
-const FADE = 0.65;
-/** The brand lens scales down this much a page away. */
-const LENS_ZOOM = 0.1;
-/** Scene drift (px) behind the brand lens's ribs a page away. */
-const LENS_DRIFT = 14;
-/** The brand lens's arrival scale. */
-const LENS_FROM = 0.92;
-/** The word rise: first word at the content's first step, 30 apart, 420 each. */
-const WORD = { start: 80, step: 30, rise: 420 } as const;
 /** Line box of the display title (40/44) plus room for descenders under the clip. */
 const WORD_DESCENT = 6;
 const WORD_TRAVEL = 44 + WORD_DESCENT;
 /** If a programmatic scroll never reports where it settled, the page settles anyway after this. */
 const SETTLE_FALLBACK = 900;
+/** No programmatic target on the UI thread. */
+const NONE = -1;
 
 type Action = 'next' | 'create' | 'demo';
 type Corner = 'skip' | 'sign-in' | null;
@@ -75,7 +65,7 @@ type Corner = 'skip' | 'sign-in' | null;
 export default function Welcome() {
   const router = useRouter();
   const { features } = useSession();
-  const { motion } = useTheme();
+  const { motion, glass } = useTheme();
   const pages = introPages({ testCredits: features.testCredits });
   const count = pages.length;
   // The page that has settled in view; mid-scroll it stays the last one that did.
@@ -85,8 +75,10 @@ export default function Welcome() {
   const pager = useAnimatedRef<Animated.ScrollView>();
   const x = useSharedValue(0);
   const reported = useSharedValue(0);
-  // Where Next or a dot is taking the pager, until it settles there.
+  // Where Next or a dot is taking the pager, until it settles there (or the user takes over). The
+  // UI thread's copy keeps a pass through a page on the way from counting as a settle.
   const target = useRef<number | null>(null);
+  const targetUI = useSharedValue(NONE);
   const fallback = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // Controls that replace one another after the first render fade in (SwapIn).
   const opened = useRef(false);
@@ -100,27 +92,42 @@ export default function Welcome() {
   const action: Action = last ? (canSignUp ? 'create' : 'demo') : 'next';
   const corner: Corner = last ? (canSignUp ? 'sign-in' : null) : 'skip';
 
+  // Worklets capture plain values only.
+  const still = motion.reduced || !glass.enabled;
   const position = useDerivedValue(() => (width > 0 ? x.value / width : 0));
-  const drift = useDerivedValue(() => (motion.reduced ? 0 : Math.max(-1, Math.min(1, position.value)) * LENS_DRIFT));
+  const drift = useDerivedValue(() => (still ? 0 : Math.max(-1, Math.min(1, position.value)) * INTRO.lensDrift));
 
   function settle(p: number) {
     target.current = null;
+    targetUI.value = NONE;
     clearTimeout(fallback.current);
     setPage(p);
   }
+  /** The user took over: their own scroll decides where the pager rests. */
+  function release() {
+    target.current = null;
+    targetUI.value = NONE;
+    clearTimeout(fallback.current);
+  }
 
-  // The pager's offset drives everything that follows the scroll; a page counts as settled once
-  // the offset rests on it (within a pixel), whoever moved it.
+  // The pager's offset drives everything that follows the scroll. A page counts as settled once
+  // the offset rests on it (within a pixel), whoever moved it; while Next or a dot is on its way,
+  // only the page it is heading to counts, so a page passed on the way never settles.
   const onScroll = useAnimatedScrollHandler(
     {
       onScroll: (e) => {
         x.value = e.contentOffset.x;
         if (width <= 0) return;
         const p = pageAt(e.contentOffset.x, width, count);
-        if (p !== reported.value && Math.abs(e.contentOffset.x - p * width) < 1) {
-          reported.value = p;
-          scheduleOnRN(settle, p);
-        }
+        if (p === reported.value || Math.abs(e.contentOffset.x - p * width) >= 1) return;
+        if (targetUI.value !== NONE && p !== targetUI.value) return;
+        reported.value = p;
+        scheduleOnRN(settle, p);
+      },
+      onBeginDrag: () => {
+        if (targetUI.value === NONE) return;
+        targetUI.value = NONE;
+        scheduleOnRN(release);
       },
     },
     [width, count],
@@ -130,11 +137,15 @@ export default function Welcome() {
     const to = Math.min(count - 1, Math.max(0, i));
     if (to === (target.current ?? page)) return;
     target.current = to;
+    targetUI.value = to;
     pager.current?.scrollTo({ x: to * width, animated: !motion.reduced });
     clearTimeout(fallback.current);
+    // A scroll that never reports where it came to rest: settle where the pager is, not where it
+    // was sent (the user may have taken it back).
     fallback.current = setTimeout(() => {
-      reported.value = to;
-      settle(to);
+      const at = pageAt(x.value, width, count);
+      reported.value = at;
+      settle(at);
     }, SETTLE_FALLBACK);
   }
 
@@ -150,19 +161,35 @@ export default function Welcome() {
     router.replace('/sign-in');
   }
 
+  // Hidden under a screen pushed over it (the web stack sets display: none), the frame reports
+  // 0×0: the pager keeps its size and stays mounted, and lands back on the settled page when shown
+  // again (a hidden scroller forgets its offset), before that frame paints.
+  const hidden = useRef(false);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width: w, height: h } = e.nativeEvent.layout;
+    if (w === 0 || h === 0) {
+      hidden.current = true;
+      return;
+    }
+    if (hidden.current) {
+      hidden.current = false;
+      pager.current?.scrollTo({ x: page * w, animated: false });
+    }
     setSize((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
   };
 
-  // A new width (split screen, a foldable, a resized window) keeps the settled page in view.
+  // A new width (split screen, a foldable, a resized window) keeps the settled page in view, and
+  // drops any scroll on its way.
   useEffect(() => {
-    if (width > 0) pager.current?.scrollTo({ x: page * width, animated: false });
+    if (width <= 0) return;
+    release();
+    pager.current?.scrollTo({ x: page * width, animated: false });
     // Only the width: page changes scroll through show() or the user's own swipe.
   }, [width]);
 
-  // The page that settled is announced: native through the screen reader, web through a polite
-  // live region (react-native-web's announceForAccessibility does nothing). Not on mount.
+  // The page that settled is announced: native through the screen reader (queued on iOS, so a
+  // focus move doesn't drop it), web through a polite live region (react-native-web's
+  // announceForAccessibility does nothing). Not on mount.
   const [announcement, setAnnouncement] = useState('');
   const announced = useRef(page);
   useEffect(() => {
@@ -170,6 +197,7 @@ export default function Welcome() {
     announced.current = page;
     const text = `Page ${page + 1} of ${count}. ${pages[page]?.title ?? ''}`;
     if (Platform.OS === 'web') setAnnouncement(text);
+    else if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibilityWithOptions(text, { queue: true });
     else AccessibilityInfo.announceForAccessibility(text);
   }, [page, count, pages]);
 
@@ -234,8 +262,9 @@ export default function Welcome() {
               {pages.map((p, i) => (
                 // Off-screen pages are hidden from assistive tech, so a screen reader reads the page in view.
                 <View key={p.key} style={{ width, height }} aria-hidden={i !== page} testID={`intro-page-${p.key}`}>
-                  {/* A page taller than the room (a short phone, a large text size) scrolls, never clips. */}
-                  <ScrollView style={styles.fill} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false} testID={`intro-scroll-${p.key}`}>
+                  {/* A page taller than the room (a short phone, a large text size) scrolls, never clips.
+                      Only the page in view is a keyboard stop (browsers focus scrollers). */}
+                  <ScrollView style={styles.fill} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false} focusable={i === page} testID={`intro-scroll-${p.key}`}>
                     <PageBody page={p} index={i} position={position} width={width} drift={drift} />
                   </ScrollView>
                 </View>
@@ -250,7 +279,8 @@ export default function Welcome() {
 
 /**
  * One page. The first page plays the opening (it is the one in view at launch); the others
- * arrive with the scroll, so they carry no entrance of their own.
+ * arrive with the scroll, so they carry no entrance of their own. Text fades with distance; the
+ * glass (the lens, the steps card) never does, because its layers would show through each other.
  */
 function PageBody({ page, index, position, width, drift }: { page: IntroPage; index: number; position: SharedValue<number>; width: number; drift: SharedValue<number> }) {
   const opening = index === 0;
@@ -258,27 +288,27 @@ function PageBody({ page, index, position, width, drift }: { page: IntroPage; in
   return (
     <View style={styles.pageBody}>
       {page.key === 'welcome' ? (
-        <Parallax {...layer} depth={DEPTH.lens} zoom={LENS_ZOOM} style={styles.lens}>
+        <Parallax {...layer} depth={INTRO.depth.lens} zoom={INTRO.lensZoom} fade={false} style={styles.lens}>
           <LensArrival>
             <FlutedLens size={104} drift={drift} />
           </LensArrival>
         </Parallax>
       ) : null}
       <View style={styles.copy}>
-        <Parallax {...layer} depth={DEPTH.title}>
+        <Parallax {...layer} depth={INTRO.depth.title}>
           {opening ? <RisingTitle text={page.title} /> : <Text variant="display">{page.title}</Text>}
         </Parallax>
-        <Parallax {...layer} depth={DEPTH.body}>
+        <Parallax {...layer} depth={INTRO.depth.body}>
           <Opening play={opening} step={3}>
             <Text tone="muted">{page.body}</Text>
           </Opening>
         </Parallax>
       </View>
       {page.steps ? (
-        <Parallax {...layer} depth={DEPTH.card}>
+        <Parallax {...layer} depth={INTRO.depth.card} fade={false}>
           <GlassSurface level="card" k={1} style={styles.card}>
             {page.steps.map((s, i) => (
-              <Parallax key={s.title} {...layer} depth={DEPTH.row * (i + 1)}>
+              <View key={s.title}>
                 {i > 0 ? <Hairline inset={0} style={styles.rule} /> : null}
                 <View style={styles.step}>
                   <GlassTile name={s.glyph} size="list" />
@@ -289,7 +319,7 @@ function PageBody({ page, index, position, width, drift }: { page: IntroPage; in
                     </Text>
                   </View>
                 </View>
-              </Parallax>
+              </View>
             ))}
           </GlassSurface>
         </Parallax>
@@ -303,22 +333,20 @@ function Opening({ play, step, children }: { play: boolean; step: number; childr
   return play ? <Enter step={step}>{children}</Enter> : <>{children}</>;
 }
 
-/** The ms left until `at` on the screen's entrance wave (0 outside a Screen, or once it has passed). */
-function useWaveDelay(at: number): number {
-  const screen = useContext(ScreenContext);
-  const [delay] = useState(() => Math.max(0, at - (screen ? joinWave(screen.wave, Date.now()) : 0)));
-  return delay;
-}
-
-/** The brand lens's arrival: it fades in and settles from 0.92 while its S1 shimmer plays. */
+/**
+ * The brand lens's arrival: it fades in and settles from INTRO.lensFrom over dur-rise while its S1
+ * shimmer plays, so it is done inside the entrance window although the pager mounts a frame late.
+ */
 function LensArrival({ children }: { children: ReactNode }) {
   const { motion } = useTheme();
-  const delay = useWaveDelay(0);
-  const opacity = useSharedValue(0);
-  const scale = useSharedValue(motion.reduced ? 1 : LENS_FROM);
+  const delay = useEntranceDelay(0);
+  const moves = delay !== null;
+  const opacity = useSharedValue(moves ? 0 : 1);
+  const scale = useSharedValue(moves && !motion.reduced ? INTRO.lensFrom : 1);
   useEffect(() => {
+    if (delay === null) return;
     opacity.value = withDelay(delay, withTiming(1, motion.reduced ? motion.timing.tick : motion.timing.enter));
-    if (!motion.reduced) scale.value = withDelay(delay, withTiming(1, motion.timing.settle));
+    if (!motion.reduced) scale.value = withDelay(delay, withTiming(1, { duration: DUR.rise, easing: motion.ease.lens, reduceMotion: ReduceMotion.Never }));
     // Mount only: the arrival plays once.
   }, []);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ scale: scale.value }] }));
@@ -327,42 +355,42 @@ function LensArrival({ children }: { children: ReactNode }) {
 
 /**
  * The opening title, word by word: each word rises out of its own clipped line box. One heading
- * for assistive tech, named by the whole title; the words are hidden from it. Reduced motion: the
- * whole title fades in as an entrance step.
+ * for assistive tech, named by the whole title; the words are plain text hidden from it (never a
+ * heading each). Reduced motion, or a screen that arrives as one root: the whole title as it is.
  */
 function RisingTitle({ text }: { text: string }) {
   const { motion } = useTheme();
-  if (motion.reduced) {
-    return (
+  const delay = useEntranceDelay(INTRO.wordStart);
+  if (motion.reduced || delay === null) {
+    return motion.reduced ? (
       <Enter step={0}>
-        <Text variant="display">
-          {text}
-        </Text>
+        <Text variant="display">{text}</Text>
       </Enter>
+    ) : (
+      <Text variant="display">{text}</Text>
     );
   }
   return (
     <View accessible accessibilityRole="header" accessibilityLabel={text} style={styles.words} testID="intro-title">
       {text.split(' ').map((word, i) => (
-        <RisingWord key={i} word={word} at={WORD.start + i * WORD.step} />
+        <RisingWord key={i} word={word} delay={delay + i * INTRO.wordStep} />
       ))}
     </View>
   );
 }
 
-function RisingWord({ word, at }: { word: string; at: number }) {
-  const { motion } = useTheme();
-  const delay = useWaveDelay(at);
+function RisingWord({ word, delay }: { word: string; delay: number }) {
+  const { motion, type, colors } = useTheme();
   const rise = useSharedValue(0);
   useEffect(() => {
-    rise.value = withDelay(delay, withTiming(1, { duration: WORD.rise, easing: motion.ease.lens, reduceMotion: ReduceMotion.Never }));
+    rise.value = withDelay(delay, withTiming(1, { duration: INTRO.wordRise, easing: motion.ease.lens, reduceMotion: ReduceMotion.Never }));
     // Mount only.
   }, []);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - rise.value) * WORD_TRAVEL }] }));
   return (
     <View style={styles.wordClip} aria-hidden>
       <Animated.View style={style}>
-        <Text variant="display">{word}</Text>
+        <RNText style={[type.display, { color: colors.text }]}>{word}</RNText>
       </Animated.View>
     </View>
   );
@@ -370,25 +398,27 @@ function RisingWord({ word, at }: { word: string; at: number }) {
 
 /**
  * A layer of a page that follows the pager: `d` is how far its page is from view (−1 … 1), and
- * the layer travels `depth` of a page width beyond the page's own move, fading as it goes (and
- * scaling, with `zoom`). Reduced motion: it moves with its page, nothing more.
+ * the layer travels `depth` of a page width beyond the page's own move, fading as it goes (text
+ * only: `fade`) and scaling (with `zoom`). Reduced motion: it moves with its page, nothing more.
  */
-function Parallax({ position, index, width, depth, zoom = 0, style, children }: { position: SharedValue<number>; index: number; width: number; depth: number; zoom?: number; style?: StyleProp<ViewStyle>; children: ReactNode }) {
+function Parallax({ position, index, width, depth, zoom = 0, fade = true, style, children }: { position: SharedValue<number>; index: number; width: number; depth: number; zoom?: number; fade?: boolean; style?: StyleProp<ViewStyle>; children: ReactNode }) {
   const { motion } = useTheme();
   const still = motion.reduced;
   const animated = useAnimatedStyle(() => {
     if (still) return { opacity: 1, transform: [{ translateX: 0 }, { scale: 1 }] };
     const d = Math.max(-1, Math.min(1, position.value - index));
-    return { opacity: 1 - FADE * Math.abs(d), transform: [{ translateX: -d * width * depth }, { scale: 1 - zoom * Math.abs(d) }] };
+    return { opacity: fade ? 1 - INTRO.fade * Math.abs(d) : 1, transform: [{ translateX: -d * width * depth }, { scale: 1 - zoom * Math.abs(d) }] };
   });
   return <Animated.View style={[style, animated]}>{children}</Animated.View>;
 }
 
-/** The top row's label for one page: it cross-fades with the scroll, rising in and out by 6. */
+/** The top row's label for one page: it cross-fades with the scroll, rising in and out by 6 (in place under reduced motion). */
 function PageLabel({ text, index, position, current }: { text: string; index: number; position: SharedValue<number>; current: boolean }) {
+  const { motion } = useTheme();
+  const rise = motion.reduced ? 0 : 6;
   const style = useAnimatedStyle(() => {
     const d = position.value - index;
-    return { opacity: Math.max(0, 1 - Math.abs(d) * 2), transform: [{ translateY: Math.max(-1, Math.min(1, -d)) * 6 }] };
+    return { opacity: Math.max(0, 1 - Math.abs(d) * 2), transform: [{ translateY: Math.max(-1, Math.min(1, -d)) * rise }] };
   });
   return (
     <Animated.View style={[styles.label, style]} aria-hidden={!current}>
@@ -402,22 +432,35 @@ function PageLabel({ text, index, position, current }: { text: string; index: nu
 /**
  * A control that takes another's place (Next → Create an account, Skip → Sign in): it fades in
  * over dur-swap and takes no touches until it has arrived, so a quick second tap meant for the
- * one it replaced can't land on it. Keyed by role, so focus never carries over either. The first
- * one arrives with its entrance step (`swap` false).
+ * one it replaced can't land on it. Keyed by role. On the web, if the control it replaced had
+ * keyboard focus (focus fell to the page when it went), focus moves to it once it has arrived.
+ * The first one arrives with its entrance step (`swap` false).
  */
 function SwapIn({ swap, children }: { swap: boolean; children: ReactNode }) {
   const { motion } = useTheme();
   const [armed, setArmed] = useState(!swap);
   const opacity = useSharedValue(swap ? 0 : 1);
+  const box = useRef<View>(null);
   useEffect(() => {
     if (!swap) return;
+    // After the commit that removed the control it replaces: did focus fall to the page with it?
+    const nothingFocused = () => Platform.OS === 'web' && typeof document !== 'undefined' && (!document.activeElement || document.activeElement === document.body);
+    const lostFocus = nothingFocused();
     opacity.value = withTiming(1, motion.reduced ? motion.timing.tick : motion.timing.swap);
-    const t = setTimeout(() => setArmed(true), motion.reduced ? DUR.tick : DUR.swap);
+    const t = setTimeout(() => {
+      setArmed(true);
+      // Only if focus is still nowhere: never take it from something the user moved to meanwhile.
+      if (lostFocus && nothingFocused()) (box.current as unknown as HTMLElement | null)?.querySelector<HTMLElement>('[tabindex="0"], button')?.focus();
+    }, motion.reduced ? DUR.tick : DUR.swap);
     return () => clearTimeout(t);
     // Mount only: a swap plays once.
   }, []);
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return <Animated.View style={[style, armed ? null : PASS_THROUGH]}>{children}</Animated.View>;
+  return (
+    <Animated.View ref={box} style={[style, armed ? null : PASS_THROUGH]}>
+      {children}
+    </Animated.View>
+  );
 }
 
 const styles = StyleSheet.create({

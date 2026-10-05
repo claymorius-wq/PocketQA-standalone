@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Index from '../app/index';
 import Welcome from '../app/(auth)/welcome';
-import { cameFromIntro, introPages, noteIntroLeft, pageAt, readIntroSeen } from '../src/onboarding/intro';
+import { cameFromIntro, introPages, noteIntroLeft, pageAt, readIntroSeen, useIntroSeenWithSession } from '../src/onboarding/intro';
 import { statusBand, TOUCH } from '../src/theme/tokens';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
+import { ArrivalContext } from '../src/ui';
 
 // The intro (Welcome) a first-time visitor sees before Sign in, and the root route that opens it once.
 
@@ -39,7 +40,14 @@ const wrap = (ui: React.ReactElement) => (
 );
 
 async function renderWelcome() {
-  await render(wrap(<Welcome />));
+  // As the auth layout opens it on a first visit: the launch.
+  await render(
+    wrap(
+      <ArrivalContext.Provider value="launch">
+        <Welcome />
+      </ArrivalContext.Provider>,
+    ),
+  );
   // The pager draws once it knows its size.
   await fireEvent(screen.getByTestId('intro-pager-frame'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: WIDTH, height: 600 } } });
 }
@@ -67,7 +75,10 @@ describe('Welcome', () => {
   it('opens on the first page, with its title as one heading', async () => {
     await renderWelcome();
     expect(label()).toHaveTextContent('POCKET QA');
-    expect(screen.getByLabelText('Usability tests on real phones')).toBeTruthy();
+    // One header, named by the whole title: the rising words are text, never a heading each.
+    const headers = screen.getAllByRole('header');
+    expect(headers).toHaveLength(1);
+    expect(headers[0]!.props.accessibilityLabel).toBe('Usability tests on real phones');
     expect(screen.getByTestId('intro-skip')).toBeTruthy();
     expect(screen.getByTestId('intro-next')).toHaveTextContent('Next');
   });
@@ -103,10 +114,53 @@ describe('Welcome', () => {
     await waitFor(() => expect(label()).toHaveTextContent('POCKET QA'));
   });
 
-  it('settles anyway when a programmatic scroll never reports back', async () => {
+  it('settles anyway when a programmatic scroll never reports back: where the pager is', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-next'));
+    // Its last report was a hair short of the page (never within a pixel of it): after the
+    // fallback, the page the pager is on settles.
+    await scrollTo(0.995);
+    expect(label()).toHaveTextContent('POCKET QA');
     await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'), { timeout: 2000 });
+  });
+
+  it('Next, then dragged back before it arrived: the page it rests on stays the page', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await scrollTo(0.3);
+    await scrollTo(0);
+    // Past the fallback: nothing moves the state to where Next was heading.
+    await act(() => new Promise((r) => setTimeout(r, 1100)));
+    expect(label()).toHaveTextContent('POCKET QA');
+    expect(screen.getByTestId('intro-dot-0').props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('intro-page-welcome').props['aria-hidden']).toBe(false);
+    // Next still goes to the testers page, never past it.
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await scrollTo(1);
+    await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'));
+  });
+
+  it('a drag takes over from Next: the user’s own scroll decides', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await fireEvent(screen.getByTestId('intro-pager'), 'scrollBeginDrag', { nativeEvent: { contentOffset: { x: 100, y: 0 } } });
+    await scrollTo(0.2);
+    await scrollTo(0);
+    await act(() => new Promise((r) => setTimeout(r, 1100)));
+    expect(label()).toHaveTextContent('POCKET QA');
+  });
+
+  it('a quick second Next passing exactly over the middle page never settles it on the way', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await scrollTo(0.5);
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    // One scroll sample lands right on page 2 while Next is heading for page 3.
+    await scrollTo(1);
+    await act(() => new Promise((r) => setTimeout(r, 50)));
+    expect(label()).toHaveTextContent('POCKET QA');
+    await scrollTo(2);
+    await waitFor(() => expect(label()).toHaveTextContent('FOR BUILDERS'));
   });
 
   it('Skip goes to Sign in, remembers the intro was seen, and hands over to Sign in', async () => {
@@ -177,16 +231,16 @@ describe('Welcome', () => {
     expect(screen.getByTestId('intro-dot-0').props.accessibilityState).toMatchObject({ selected: false });
   });
 
-  it('announces a page once it settles (not on opening)', async () => {
+  it('announces a page once it settles (not on opening), queued on iOS so a focus move can’t drop it', async () => {
     // React Native's Jest setup already mocks it, so spyOn returns that mock with every earlier
-    // test's calls on it: start from none.
-    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
+    // test's calls on it: start from none. (Jest runs as iOS.)
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions').mockImplementation(() => undefined);
     announce.mockClear();
     await renderWelcome();
     await arrived();
     expect(announce).not.toHaveBeenCalled();
     await scrollTo(1);
-    await waitFor(() => expect(announce).toHaveBeenCalledWith('Page 2 of 3. Test apps on your own phone'));
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Page 2 of 3. Test apps on your own phone', { queue: true }));
     announce.mockRestore();
   });
 });
@@ -200,10 +254,17 @@ describe('the root route', () => {
     await waitFor(() => expect(screen.getByTestId('redirect')).toHaveTextContent('/sign-in'));
   });
 
-  it('never shows the intro to someone with a session, now or after they sign out', async () => {
+  it('a signed-in user goes to their tab', async () => {
     mockSession = { ready: true, user: { id: 't1', role: 'tester' }, features: { testCredits: true } };
     await render(wrap(<Index />));
     await waitFor(() => expect(screen.getByTestId('redirect')).toHaveTextContent('/discover'));
+  });
+
+  it('never shows the intro to someone who has had a session, however they reached the app', async () => {
+    const { rerender } = await renderHook(({ signedIn }: { signedIn: boolean }) => useIntroSeenWithSession(signedIn), { initialProps: { signedIn: false } });
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    expect(await readIntroSeen()).toBe(false);
+    await rerender({ signedIn: true });
     await waitFor(async () => expect(await readIntroSeen()).toBe(true));
   });
 });

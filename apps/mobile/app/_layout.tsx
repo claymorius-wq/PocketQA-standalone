@@ -9,6 +9,7 @@ import { SessionProvider, useSession } from '../src/auth/SessionProvider';
 import { FocusRingStyles, LoadingState, Notice, lensStackScreenOptions } from '../src/ui';
 import { Platform, StyleSheet, View } from 'react-native';
 import { deploymentProblem } from '../src/lib/deployment';
+import { useIntroSeenWithSession } from '../src/onboarding/intro';
 import { PREVIEW_BUILD } from '../src/preview/demoAccounts';
 import { Ground } from '../src/glass';
 import { LENS_FONTS } from '../src/theme/fonts';
@@ -20,7 +21,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function ThemedStack() {
   const { colors, scheme } = useTheme();
-  const { ready } = useSession();
+  const { ready, user } = useSession();
+  useIntroSeenWithSession(!!user);
   // Stable options: a new `header` function per render would re-render every mounted header.
   const screenOptions = useMemo(
     () => ({

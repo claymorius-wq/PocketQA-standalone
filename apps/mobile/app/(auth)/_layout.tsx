@@ -45,7 +45,11 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
-      screenLayout={({ route, children }) => <AuthArrival name={route.name}>{children}</AuthArrival>}
+      screenLayout={({ route, navigation, children }) => (
+        <AuthArrival name={route.name} first={navigation.getState().routes[0]?.key === route.key}>
+          {children}
+        </AuthArrival>
+      )}
     />
   );
 }
@@ -53,14 +57,15 @@ export default function AuthLayout() {
 /**
  * How each auth screen opens, decided once when it mounts. The launch (the light dip and the
  * staggered steps, §11.3) belongs to the first screen of a visit: the intro on a first visit,
- * Sign in otherwise. Sign in reached from the intro arrives with a push, like the intro's pages
- * before it; Sign up always does. Returns to any of them play back.
+ * Sign in otherwise, and only while it is the first screen of the auth stack. Sign in reached
+ * from the intro (which it replaces) or pushed from Sign up arrives with a push, like any screen
+ * after the first; Sign up always does. Returns to any of them play back.
  */
-function AuthArrival({ name, children }: { name: string; children: ReactNode }) {
+function AuthArrival({ name, first, children }: { name: string; first: boolean; children: ReactNode }) {
   const [spec] = useState<InitialArrival | null>(() => {
-    if (name === 'welcome') return 'launch';
-    if (name === 'sign-in') return cameFromIntro() ? 'push' : 'launch';
-    return null;
+    if (name !== 'welcome' && name !== 'sign-in') return null;
+    if (!first || (name === 'sign-in' && cameFromIntro())) return 'push';
+    return 'launch';
   });
   return <ArrivalContext.Provider value={spec}>{children}</ArrivalContext.Provider>;
 }

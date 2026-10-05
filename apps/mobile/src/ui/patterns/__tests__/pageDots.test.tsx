@@ -50,7 +50,7 @@ describe('PageDots', () => {
   it('the pill follows the scroll: whole on the page in view, shared halfway between two', async () => {
     await renderDots({ at: 1, current: 1 });
     expect([pillOpacity(0), pillOpacity(1), pillOpacity(2)]).toEqual([0, 1, 0]);
-    screen.unmount();
+    await screen.unmount();
     await renderDots({ at: 1.5, current: 1 });
     expect([pillOpacity(0), pillOpacity(1), pillOpacity(2)]).toEqual([0, 0.5, 0.5]);
   });

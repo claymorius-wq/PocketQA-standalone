@@ -8,7 +8,8 @@ import { FocusPressable } from '../focus';
 // in `primary`. The pill follows the pager's scroll position on the UI thread, so it stretches
 // from dot to dot under the finger. Only transform and opacity move (§11.1): two round caps slide
 // apart and the bar between them scales, all inside one layer whose opacity is how close its page
-// is, so the parts never double their alpha where they overlap.
+// is. That layer composites offscreen (Android applies a view's opacity to each child otherwise;
+// iOS and the web group it already), so the parts never double their alpha where they overlap.
 //
 // Each dot is a 48dp button that opens its page (TOUCH, the repo minimum). The page in view is the
 // current one: `aria-current` on the web, the selected state on native. Not on the boards yet: a
@@ -63,7 +64,7 @@ function Dot({ index, count, current, position, onPress, testID }: { index: numb
     >
       <View style={styles.slot}>
         <View style={[styles.dot, { backgroundColor: colors.borderStrong }]} />
-        <Animated.View style={[StyleSheet.absoluteFill, pill]} testID={testID ? `${testID}-pill` : undefined}>
+        <Animated.View needsOffscreenAlphaCompositing style={[StyleSheet.absoluteFill, pill]} testID={testID ? `${testID}-pill` : undefined}>
           <Animated.View style={[styles.dot, styles.cap, { backgroundColor: colors.primary }, left]} />
           <Animated.View style={[styles.bar, { backgroundColor: colors.primary }, bar]} />
           <Animated.View style={[styles.dot, styles.cap, { backgroundColor: colors.primary }, right]} />
