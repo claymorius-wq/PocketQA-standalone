@@ -1,6 +1,6 @@
 # Squads devnet pilot: faucet request (public addresses only)
 
-> **HOLD (parent ruling, 2026-10-05):** no live devnet run, even if these addresses get funded, until pqa-qa approves the revised OFFLINE candidate (operation-id fix for pilot offline r1 P1-1). `devnet-pilot-receipt.*` is the BLOCKED dry run at `5d5d431`. It predates the fix and is no pilot evidence.
+> **Status (2026-10-05):** pqa-qa approved the revised OFFLINE candidate `dc76870` (pilot offline r2), which lifts the parent's hold. **The live run is now blocked only on these faucet assets.** A read-only re-check after the approval still shows 0 lamports and no devnet USDC account. `devnet-pilot-receipt.*` is the superseded BLOCKED dry run at `5d5d431`.
 
 **Scope:** ADR 0007 §10, Hamza's approval of the bounded devnet pilot.
 

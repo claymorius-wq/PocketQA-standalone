@@ -1,5 +1,7 @@
 # Squads v4 devnet pilot: receipt
 
+> **SUPERSEDED: BLOCKED dry run at 5d5d431, before the operation-id fix (dc76870). Nothing was sent (the runner stopped at its balance check). This is not pilot evidence; the live run overwrites this file.**
+
 > Devnet test USDC, no value. Pilot: test keys simulate all roles (builder, Pocket QA, arbiter, tester); not independent custody; no physical wallet; two of three signers.
 
 Outcome: **failed** (BLOCKED: needs ≥ 0.2 devnet SOL on Pocket QA DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS (has 0 lamports) and ≥ 3.4 devnet test USDC on builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn (has no token account). Nothing was sent.). Commit `5d5d4310df361f8946f23423e6bdf85cc51d71f2`. 2026-10-05T05:19:58.880Z to 2026-10-05T05:19:59.773Z. RPC https://api.devnet.solana.com, genesis `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`.
