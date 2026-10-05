@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, PermissionsAndroid, Platform, StyleSheet } from 'react-native';
+import { AccessibilityInfo, AppState, PermissionsAndroid, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Participation } from '@pocket-qa/contracts';
 import { ThemeProvider, useTheme, type ThemePreference } from '../src/theme/ThemeProvider';
@@ -371,6 +371,36 @@ describe('Your session', () => {
       await press('record-start');
       expect(mockRecorder.showBroadcastPicker).toHaveBeenCalledTimes(1);
       expect(mockRecorder.startAsync).not.toHaveBeenCalled();
+    });
+
+    it('iPhone: coming back to Pocket QA re-reads whether a broadcast is live (Stop shown while it runs, Start once it ended)', async () => {
+      mockCapability = { available: true, mode: 'broadcast' };
+      const handlers: ((s: string) => void)[] = [];
+      jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, h: (s: string) => void) => {
+        handlers.push(h);
+        return { remove: jest.fn() };
+      }) as unknown as typeof AppState.addEventListener);
+      await renderScreen(base('in_progress'));
+      await press('record-start');
+      expect(screen.queryByTestId('record-stop')).toBeNull();
+      mockRecorder.live = true; // the extension's heartbeat: a broadcast is running
+      await act(async () => handlers.forEach((h) => h('active')));
+      expect(screen.getByTestId('record-stop')).toBeTruthy();
+      mockRecorder.live = false; // stopped from the status indicator while away
+      await act(async () => handlers.forEach((h) => h('active')));
+      expect(screen.getByTestId('record-start')).toBeTruthy();
+    });
+
+    it('iPhone: Stop reopens the system picker (its Stop Broadcast ends it) with no session tag, never the in-app stop', async () => {
+      mockCapability = { available: true, mode: 'broadcast' };
+      mockRecorder.live = true;
+      mockRecorder.stopAsync.mockImplementation(() => Promise.reject(new Error('ERR_UNSUPPORTED')));
+      await renderScreen(base('in_progress'));
+      await press('record-stop');
+      expect(mockRecorder.stopAsync).not.toHaveBeenCalled();
+      // An empty tag: the extension refuses an untagged broadcast, so this picker can only stop one.
+      expect(mockRecorder.showBroadcastPicker).toHaveBeenCalledWith('');
+      expect(screen.queryByTestId('evidence-error')).toBeNull();
     });
   });
 

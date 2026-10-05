@@ -8,6 +8,11 @@ appId: com.reshareai.pocketqa
       notifications: ${NOTIFICATIONS || 'allow'}
       # Narration needs the microphone; MIC=deny exercises the refusal path.
       microphone: ${MIC || 'allow'}
+# A cold start on a loaded host can take longer than Maestro's default wait.
+- extendedWaitUntil:
+    visible:
+      id: sign-in-email
+    timeout: 60000
 - tapOn:
     id: sign-in-email
 - inputText: ${EMAIL}

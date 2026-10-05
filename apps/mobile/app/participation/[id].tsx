@@ -310,10 +310,14 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
 
   // Finished clips the native side kept for this session (it ended while the tester was in another
   // app, or before a reload) are claimed on arrival and whenever Pocket QA comes back to the front.
+  // The live state is re-read then too: on iPhone a broadcast starts and ends in the system picker
+  // or status indicator, never in this screen (isRecording is the extension's heartbeat there).
   useEffect(() => {
     void claimPending();
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active') void claimPending();
+      if (st !== 'active') return;
+      if (recorder) setRecording(recorder.isRecording());
+      void claimPending();
     });
     return () => sub.remove();
   }, [recorder]);
@@ -366,6 +370,13 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
     }
   }
   async function stopRecording() {
+    // iPhone: only the system ends a broadcast; its picker shows "Stop Broadcast" while one runs.
+    // The empty tag replaces any pending one, and the extension refuses an untagged broadcast, so
+    // this picker can never start a recording. The clip arrives via onStopped/claimPending.
+    if (broadcast) {
+      recorder!.showBroadcastPicker?.('');
+      return;
+    }
     try {
       addClip(await recorder!.stopAsync());
       void claimPending();

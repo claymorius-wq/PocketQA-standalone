@@ -1,0 +1,43 @@
+# Android cross-app screen + voice: run 5 on emulator-5556 (own AVD PocketQA_Recorder_API36, sdk_gphone64_arm64, Android 16 / API 36)
+# Host microphone OFF for the whole run: `adb -s emulator-5556 emu avd hostmicoff` -> OK. No injector running (`pgrep -fl inject-tone` -> none).
+# Flow: apps/mobile/e2e/maestro/voice-cross-app.yaml, rc=0. Uploaded through the app's explicit 'Upload kept items' to the LOCAL API (adb reverse tcp:8787); file copied from the API's local media dir.
+
+$ shasum -a 256 uploaded-recording.mp4
+f5efbadb765bea3e0a74e91a4121f75967672b05aecde5a725cc376fd6cc0045  uploaded-recording.mp4
+
+$ ffprobe -v error -show_entries format=format_name,duration,size:stream=index,codec_type,codec_name,width,height,sample_rate,channels,duration,nb_frames -of compact uploaded-recording.mp4
+stream|index=0|codec_name=h264|codec_type=video|width=576|height=1280|duration=230.365500|nb_frames=2155
+stream|index=1|codec_name=aac|codec_type=audio|sample_rate=44100|channels=1|duration=229.645351|nb_frames=9890
+format|format_name=mov,mp4,m4a,3gp,3g2,mj2|duration=230.375100|size=12870933
+
+$ ffmpeg -i uploaded-recording.mp4 -map 0:a -af volumedetect -f null -
+n_samples: 10127360
+mean_volume: -3.0 dB
+max_volume: 0.0 dB
+
+$ per-second analysis of decoded PCM (python, 1 s windows)
+t=5s samples=44100 zero-crossings/s=440 (~220 Hz) rms=-3.02 dBFS
+t=60s samples=44100 zero-crossings/s=440 (~220 Hz) rms=-3.02 dBFS
+t=120s samples=44100 zero-crossings/s=440 (~220 Hz) rms=-3.01 dBFS
+t=200s samples=44100 zero-crossings/s=440 (~220 Hz) rms=-3.02 dBFS
+
+# Frames from the recording itself (recording-frames-152-177-198-219-226s.png; offsets into the clip):
+#  152 s Pocket QA session (Stop recording shown) | 177 s Settings | 198 s Display & touch | 219 s Clock | 226 s notification shade:
+#  'Pocket QA is recording your screen and microphone' + Stop recording. Red status-bar recording chip in every frame.
+
+# WHERE THE AUDIO COMES FROM (truthful attribution):
+# A constant full-scale 220 Hz sine (RMS -3.01 dBFS = sine at amplitude 1.0). It is the Android EMULATOR's own built-in-mic
+# fallback: AOSP device/generic/goldfish hals/audio/device_port_source.cpp, DevicePortSource::create(): for
+# AUDIO_DEVICE_IN_BUILTIN_MIC, when the tinyalsa capture source can't be created it logs "creating a tone source instead"
+# and the final fallback is RepeatGenerator(generateSinePattern(sampleRate, 220.0, 1.0)).
+# (https://android.googlesource.com/device/generic/goldfish/+/refs/heads/main/hals/audio/device_port_source.cpp, fetched 2026-10-05)
+# Pocket QA code has no tone generator (grep sine/ToneGenerator/AudioTrack: none in recorder code).
+# Observed on the same emulator (dumpsys audio, recording history):
+#   10-05 19:07:31:010 rec start riid:79 uid:10224 session:81 src:MIC not silenced pack:com.reshareai.pocketqa
+#   10-05 19:11:21:674 rec stop  riid:79 uid:10224 session:81 src:MIC not silenced pack:com.reshareai.pocketqa   (230.7 s = this clip)
+# Observed LIVE during the next recording (lifecycle run, 19:19:30), logcat of the emulator audio HAL:
+#   W android.hardware.audio@7.1-impl.ranchu: create:453 failed to create alsa source for 'AUDIO_DEVICE_IN_BUILTIN_MIC'; creating a tone source instead.
+#   dumpsys audio: session:97 -- source client=MIC, dev=1ch 44100Hz ENCODING_PCM_16BIT -- pack:com.reshareai.pocketqa -- silenced:false
+# So: the emulated microphone delivered a synthetic tone, Pocket QA captured it live via MediaRecorder AudioSource.MIC and muxed
+# it with the screen at recording time. Nothing was added after recording. It is NOT a human voice: real narration on a
+# physical phone remains a device gate. The gRPC injectAudio path (inject-tone.py) stays BLOCKED (emulator crash, see that file).
