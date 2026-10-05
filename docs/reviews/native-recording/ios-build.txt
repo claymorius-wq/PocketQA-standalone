@@ -1,0 +1,167 @@
+# pqa-ios: iOS broadcast extension build evidence (branch feat/native-voice-ios, base c648dd2)
+# Host: macOS 26.3.1; Xcode 26.4 Build version 17E192 ; CocoaPods 1.16.2; node v24.21.0
+# Simulator build only: system broadcast cannot run in the iOS Simulator; no device, no signing, no Apple account used.
+# Scratch paths shown as $SCRATCH. Full xcodebuild log is 66864 lines; excerpts below are grep'd from it unmodified.
+
+## 1. TDD RED (plugin jest test written before the plugin)
+$ npx jest __tests__/broadcast-extension-plugin.test.ts   # RED, before the plugin existed
+FAIL __tests__/broadcast-extension-plugin.test.ts
+  ● Test suite failed to run
+
+    Cannot find module '../plugins/withBroadcastExtension' from '__tests__/broadcast-extension-plugin.test.ts'
+
+      11 | const xcode = require(require.resolve('xcode', { paths: [path.dirname(require.resolve('@expo/config-plugins'))] }));
+      12 | const plist = require('@expo/plist').default;
+    > 13 | const plugin = require('../plugins/withBroadcastExtension');
+         |                ^
+      14 | /* eslint-enable @typescript-eslint/no-require-imports */
+      15 |
+      16 | const FIXTURE = path.join(__dirname, 'fixtures/ios-baseline.pbxproj');
+
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.652 s
+Ran all test suites matching /__tests__\/broadcast-extension-plugin.test.ts/i.
+
+## 2. TDD RED (Swift handoff tests written before BroadcastShared.swift)
+$ swiftc -o $SCRATCH/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift   # RED: BroadcastShared.swift empty
+modules/screen-capture/ios/Tests/main.swift:24:27: error: cannot find type 'PendingStore' in scope
+    |                           `- error: cannot find type 'PendingStore' in scope
+modules/screen-capture/ios/Tests/main.swift:25:20: error: cannot find type 'PendingStore' in scope
+    |                    `- error: cannot find type 'PendingStore' in scope
+modules/screen-capture/ios/Tests/main.swift:86:12: error: cannot find 'PendingStore' in scope
+    |            `- error: cannot find 'PendingStore' in scope
+modules/screen-capture/ios/Tests/main.swift:133:12: error: cannot find 'BroadcastState' in scope
+    |            `- error: cannot find 'BroadcastState' in scope
+$ swiftc ... (RED: resumed/captureSize not yet written)
+    |           `- error: cannot find 'captureSize' in scope
+    |     `- error: value of type 'MicWatch' has no member 'resumed'
+modules/screen-capture/ios/Tests/main.swift:201:5: error: value of type 'MicWatch' has no member 'resumed'
+modules/screen-capture/ios/Tests/main.swift:212:11: error: cannot find 'captureSize' in scope
+
+## 3. GREEN: Swift unit tests (macOS swiftc harness)
+$ swiftc -o $SCRATCH/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift && $SCRATCH/pqa-broadcast-tests
+ok a finished clip is moved to the app's cache, handed out once, then owned by JS
+ok another session never sees the clip
+ok a truncated file (extension killed mid-broadcast) is swept, the active one kept
+ok an empty recording is never offered
+ok unclaimed clips expire after a day
+ok a meta whose video is gone is dropped; stray temp files are swept
+ok a corrupt meta is ignored and swept, never crashes
+ok discard deletes a clip and its meta
+ok the extension accepts only a tag the app set moments ago, and only once (no Control Centre starts)
+ok isRecording follows the extension's heartbeat, so a killed extension does not look live
+ok each stop is reported once, with its reason
+ok no microphone buffers in the first 3 s: refuse (Microphone off in the picker)
+ok only digital silence in the first 3 s also counts as no microphone
+ok narration heard: ok; then the microphone goes away mid-session: mic lost
+ok a pause (broadcastPaused) does not count as a lost microphone after resuming
+ok capture size keeps the aspect, caps the long edge and uses even dimensions
+ok digital silence detection
+17 tests, 0 failures
+exit=0
+
+## 4. GREEN: plugin jest test
+$ cd apps/mobile && npx jest __tests__/broadcast-extension-plugin.test.ts
+PASS __tests__/broadcast-extension-plugin.test.ts
+  withBroadcastExtension: Xcode project
+    ✓ adds the PocketQaBroadcast app-extension target with the extension bundle id
+    ✓ compiles the sample handler and the shared pending store into the extension, nothing else
+    ✓ embeds the .appex into the app (PlugIns) and makes the app depend on it
+    ✓ lists the target in the project and puts its files in a PocketQaBroadcast group
+    ✓ is idempotent: running prebuild twice keeps exactly one extension target and one embed phase
+    ✓ the result is a project Xcode can parse back (writeSync round trip)
+  withBroadcastExtension: app group and Info.plist
+    ✓ reads the App Group from app.json (single source) and refuses to run without it
+    ✓ app.json declares the plugin and the App Group entitlement for the app
+    ✓ tells the app module its group and extension id through Info.plist (no hard-coded ids in Swift)
+    ✓ copies exactly the extension sources into ios/PocketQaBroadcast
+  broadcast extension sources (modules/screen-capture/ios-extension)
+    ✓ Info.plist declares a sample-buffer broadcast upload extension with SampleHandler as principal class
+    ✓ the extension has the same App Group as the app, and nothing else
+    ✓ records the microphone only (never app audio), with no network or camera code (N11)
+  expo module config
+    ✓ registers the Swift module for iOS next to the Android one
+
+Test Suites: 1 passed, 1 total
+Tests:       14 passed, 14 total
+Snapshots:   0 total
+Time:        0.831 s, estimated 6 s
+Ran all test suites matching /__tests__\/broadcast-extension-plugin.test.ts/i.
+## 5. Full mobile jest
+$ cd apps/mobile && npx jest --ci
+Test Suites: 54 passed, 54 total
+Tests:       1167 passed, 1167 total
+Snapshots:   0 total
+Time:        17.043 s, estimated 32 s
+Ran all test suites.
+
+## 6. Lint + typecheck
+$ npx eslint apps/mobile/plugins/withBroadcastExtension.js apps/mobile/__tests__/broadcast-extension-plugin.test.ts && (cd apps/mobile && npx tsc -p tsconfig.json --noEmit)
+exit=0 (no output)
+
+## 7. Reproducible prebuild (apps/mobile/ios is gitignored and regenerated)
+$ cd apps/mobile && rm -rf ios && CI=1 npx expo prebuild --platform ios --no-install
+✔ Created native directory / ✔ Updated package.json | no changes / ✔ Finished prebuild   (run earlier this session, output transcribed)
+$ ls apps/mobile/ios/PocketQaBroadcast
+BroadcastShared.swift
+Info.plist
+PocketQaBroadcast.entitlements
+SampleHandler.swift
+$ cat apps/mobile/ios/PocketQA/PocketQA.entitlements
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>com.apple.security.application-groups</key>
+    <array>
+      <string>group.com.reshareai.pocketqa</string>
+    </array>
+  </dict>
+</plist>
+$ /usr/libexec/PlistBuddy -c "Print :PocketQaAppGroup" -c "Print :PocketQaBroadcastExtension" apps/mobile/ios/PocketQA/Info.plist
+group.com.reshareai.pocketqa
+com.reshareai.pocketqa.Broadcast
+
+## 8. pod install
+$ cd apps/mobile/ios && pod install
+Installing PocketQaScreenCapture (0.1.0)
+Pod installation complete! There are 116 dependencies from the Podfile and 115 total pods installed.
+$ grep -n ScreenCaptureModule "apps/mobile/ios/Pods/Target Support Files/Pods-PocketQA/ExpoModulesProvider.swift"
+63:      (module: ScreenCaptureModule.self, name: nil),
+94:      (module: ScreenCaptureModule.self, name: nil)
+
+## 9. xcodebuild (simulator, unsigned)
+$ cd apps/mobile/ios && xcodebuild -workspace PocketQA.xcworkspace -scheme PocketQA -sdk iphonesimulator -configuration Debug -derivedDataPath $SCRATCH/dd CODE_SIGNING_ALLOWED=NO build
+--- Swift compiles of our sources:
+SwiftCompile normal arm64 Compiling\ BroadcastShared.swift apps/mobile/ios/PocketQaBroadcast/BroadcastShared.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 Compiling\ BroadcastShared.swift,\ ScreenCaptureModule.swift modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/ScreenCaptureModule.swift (in target 'PocketQaScreenCaptu
+SwiftCompile normal arm64 Compiling\ SampleHandler.swift apps/mobile/ios/PocketQaBroadcast/SampleHandler.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 apps/mobile/ios/PocketQaBroadcast/BroadcastShared.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 apps/mobile/ios/PocketQaBroadcast/SampleHandler.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+--- embedding:
+Copy $SCRATCH/dd/Build/Products/Debug-iphonesimulator/PocketQA.app/PlugIns/PocketQaBroadcast.appex $SCRATCH/dd/Build/Products/Debug-iphonesimulator/PocketQaBroadcast.appex (in target 'PocketQA' from p
+--- warnings/errors in our files (grep "warning:|error:" for SampleHandler|BroadcastShared|ScreenCaptureModule|withBroadcast):
+modules/screen-capture/ios/ScreenCaptureModule.swift:12:13: warning: class 'NotConfiguredException' must restate inherited '@unchecked Sendable' conformance
+modules/screen-capture/ios/ScreenCaptureModule.swift:5:13: warning: class 'BroadcastOnlyException' must restate inherited '@unchecked Sendable' conformance
+(build 1 above. Fixed after this build by restating '@unchecked Sendable' on both exception classes; the re-run is in section 11 once heavy builds are allowed again)
+--- result:
+** BUILD SUCCEEDED **
+
+## 10. Built product
+$ ls PocketQA.app/PlugIns && plutil -p PocketQA.app/PlugIns/PocketQaBroadcast.appex/Info.plist && lipo -archs .../PocketQaBroadcast
+PocketQaBroadcast.appex
+  "CFBundleIdentifier" => "com.reshareai.pocketqa.Broadcast"
+  "CFBundlePackageType" => "XPC!"
+  "CFBundleShortVersionString" => "0.1.0"
+  "CFBundleVersion" => "1"
+      "RPBroadcastProcessMode" => "RPBroadcastProcessModeSampleBuffer"
+    "NSExtensionPointIdentifier" => "com.apple.broadcast-services-upload"
+    "NSExtensionPrincipalClass" => "PocketQaBroadcast.SampleHandler"
+  "PocketQaAppGroup" => "group.com.reshareai.pocketqa"
+x86_64 arm64
+
+## Not proven here (device gate)
+System broadcast does not run in the iOS Simulator. Running it needs a physical iPhone and a team whose provisioning profiles include group.com.reshareai.pocketqa for BOTH com.reshareai.pocketqa and com.reshareai.pocketqa.Broadcast. No iPhone was touched; no signing/provisioning changed. No 'iPhone verified' claim is made.
