@@ -385,3 +385,116 @@ exit=0 (no diagnostics)
 ### Module typecheck: NOT re-run this round. It needs the ExpoModulesJSI build intermediates that only an xcodebuild produces (scratch from build 12 is gone; rebuild not allowed now). The module change is one Int64 entry (voiceLostMs) in the clip map; it is compiled by the next xcodebuild.
 ### Plugin jest
 Tests:       14 passed, 14 total
+
+## 14. COMBINED build at fe89787 (feat/native-voice-recording: pqa-ios 267fca4 + the lead's pipeline/UI fixes + origin/main daf0c85). Lead's GO, 2026-10-05T22:24Z; nothing else heavy running.
+# Host: macOS 26.3.1; Xcode 26.4 Build version 17E192 ; CocoaPods 1.16.2; node v24.21.0; pnpm 10.32.1.
+$ git worktree add --detach .worktrees/ios-freeze2 fe89787 && cd .worktrees/ios-freeze2 && git switch -c ios-freeze2-evidence
+$ pnpm install --frozen-lockfile
+Done in 6.6s using pnpm v10.32.1
+exit=0
+$ cd apps/mobile && CI=1 npx expo prebuild --platform ios --clean --no-install
+✔ Created native directory
+✔ Updated package.json | no changes
+✔ Finished prebuild
+exit=0
+$ cd ios && pod install
+Installing PocketQaScreenCapture (0.1.0)
+Pod installation complete! There are 116 dependencies from the Podfile and 115 total pods installed.
+exit=0
+$ xcodebuild -workspace PocketQA.xcworkspace -scheme PocketQA -sdk iphonesimulator -configuration Debug -jobs 4 -derivedDataPath $SCRATCH/freeze2/dd CODE_SIGNING_ALLOWED=NO build
+** BUILD SUCCEEDED **
+exit=0; log 80884 lines
+--- warnings: 543 unique located compiler warnings + 2 project/tool warnings; errors: 0
+--- in OUR sources (modules/screen-capture/**, apps/mobile/ios/PocketQaBroadcast/**, apps/mobile/ios/PocketQA/**): 0
+--- where the located warnings are (top):
+ 294 prebuilt React-Core-prebuilt
+  57 Pods/Headers
+  34 prebuilt ExpoFileSystem
+  34 node_modules react-native-svg
+  22 node_modules expo
+  18 node_modules react-native-gesture-handler
+--- our sources compiled (incl. the module with voiceLostMs, which round 13 could not typecheck):
+SwiftCompile normal arm64 Compiling\ BroadcastShared.swift apps/mobile/ios/PocketQaBroadcast/BroadcastShared.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 Compiling\ BroadcastShared.swift,\ ScreenCaptureModule.swift modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/ScreenCaptureModule.swift (in target 'PocketQaScreenCapture' from p
+SwiftCompile normal arm64 Compiling\ SampleHandler.swift apps/mobile/ios/PocketQaBroadcast/SampleHandler.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 apps/mobile/ios/PocketQaBroadcast/BroadcastShared.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+SwiftCompile normal arm64 apps/mobile/ios/PocketQaBroadcast/SampleHandler.swift (in target 'PocketQaBroadcast' from project 'PocketQA')
+
+## 14b. Product
+App bundle: $SCRATCH/freeze2/dd/Build/Products/Debug-iphonesimulator/PocketQA.app
+PocketQaBroadcast.appex
+  "CFBundleIdentifier" => "com.reshareai.pocketqa.Broadcast"
+      "RPBroadcastProcessMode" => "RPBroadcastProcessModeSampleBuffer"
+    "NSExtensionPointIdentifier" => "com.apple.broadcast-services-upload"
+    "NSExtensionPrincipalClass" => "PocketQaBroadcast.SampleHandler"
+  "PocketQaAppGroup" => "group.com.reshareai.pocketqa"
+app:
+  "CFBundleIdentifier" => "com.reshareai.pocketqa"
+  "PocketQaAppGroup" => "group.com.reshareai.pocketqa"
+  "PocketQaBroadcastExtension" => "com.reshareai.pocketqa.Broadcast"
+appex archs: x86_64 arm64
+
+## 14c. App Group entitlement in both targets, as generated
+485:				CODE_SIGN_ENTITLEMENTS = PocketQA/PocketQA.entitlements;
+522:				CODE_SIGN_ENTITLEMENTS = PocketQA/PocketQA.entitlements;
+551:				CODE_SIGN_ENTITLEMENTS = PocketQaBroadcast/PocketQaBroadcast.entitlements;
+714:				CODE_SIGN_ENTITLEMENTS = PocketQaBroadcast/PocketQaBroadcast.entitlements;
+$ plutil -p apps/mobile/ios/PocketQA/PocketQA.entitlements
+{
+  "com.apple.security.application-groups" => [
+    0 => "group.com.reshareai.pocketqa"
+  ]
+}
+$ plutil -p apps/mobile/ios/PocketQaBroadcast/PocketQaBroadcast.entitlements
+{
+  "com.apple.security.application-groups" => [
+    0 => "group.com.reshareai.pocketqa"
+  ]
+}
+(Unsigned build: entitlements are not signed into the binaries.)
+
+## 14d. Swift unit tests at fe89787
+$ swiftc -o $SCRATCH/freeze2/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift && $SCRATCH/freeze2/pqa-broadcast-tests
+ok a finished clip stays listed for its session until JS deletes the file
+ok the voice verdict travels with the clip
+ok an unmeasured clip is never treated as narrated (missing fields => false)
+ok another session never sees the clip; an empty tag lists nothing
+ok forget deletes the clip and everything kept about it
+ok a truncated file (extension killed mid-broadcast) is swept and its session is told once
+ok an empty recording is never offered
+ok clips and notices expire after a day
+ok signing out clears every clip and notice except the file being written
+ok a meta whose video is gone is dropped; corrupt metas and temp files are swept
+ok the recordings directory is excluded from device backups
+ok reads video and audio track durations from the file (index at the end or the front, ffmpeg or Apple muxer)
+ok a voice that stops early is measured
+ok no audio track is reported as no audio; an unreadable or missing file is nil
+ok the voice must cover the video within 1 s or 2 %
+ok audio lost inside the clip has its own tight bound (pqa-qa pipeline r1 P2-C)
+ok contiguous microphone buffers lose nothing; small timestamp jitter is not a gap
+ok a timestamp gap inside the clip is measured; several add up; the longest is kept
+ok a gap shorter than one buffer (and the 50 ms floor) is jitter, not loss
+ok a broadcast pause chosen by the tester is not counted as lost voice
+ok inspect gives the verdict for a file
+ok the box parser agrees with AVFoundation on every fixture
+ok the extension accepts only a tag the app set moments ago, and only once (no Control Centre starts)
+ok isRecording follows the extension's heartbeat, so a killed extension does not look live
+ok signing out forgets a pending session tag (the next user's broadcast can't inherit it)
+ok each stop is reported once, with its reason
+ok no microphone buffers in the first 3 s: refuse (Microphone off in the picker)
+ok only digital silence in the first 3 s also counts as no microphone
+ok narration heard: ok; then the microphone goes away mid-session: mic lost
+ok a pause (broadcastPaused) does not count as a lost microphone after resuming
+ok capture size keeps the aspect, caps the long edge and uses even dimensions
+ok digital silence detection
+32 tests, 0 failures
+exit=0
+
+## 14e. Simulators
+None created or booted by pqa-ios (build only); paired iPhone untouched.
+$ xcrun simctl list devices booted
+== Devices ==
+-- iOS 26.4 --
+
+## Plainly
+System broadcast cannot run in the iOS Simulator; nothing here shows a recording. Device gate: a physical iPhone plus an Apple team whose provisioning profiles include group.com.reshareai.pocketqa for BOTH com.reshareai.pocketqa and com.reshareai.pocketqa.Broadcast. No 'iPhone verified' claim.
