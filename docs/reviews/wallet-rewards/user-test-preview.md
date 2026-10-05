@@ -48,10 +48,11 @@ Run these in the root checkout `/Users/hamzadiaz/Projects/pocket-qa`, on the mer
 1. **Stop the running preview** the way your supervisor runs it, by its own PID or service. Never use a broad `pkill`.
 2. **Back up the preview database** to a folder outside the repo. The online backup is safe even while the API is running:
    ```
-   POCKETQA_DATA_DIR="$PWD/preview-data" POCKETQA_SHARED_DEMO=1 POCKETQA_AUTH_MODE=local POCKETQA_STORAGE=local POCKETQA_SETTLEMENT=off \
+   env -u POCKETQA_SETTLEMENT_PILOT_KEYS_DIR POCKETQA_DATA_DIR="$PWD/preview-data" POCKETQA_SHARED_DEMO=1 POCKETQA_AUTH_MODE=local POCKETQA_STORAGE=local POCKETQA_SETTLEMENT=off \
      pnpm --filter @pocket-qa/api db:backup -- --out <a backup folder outside the repo>
    ```
    - The data path is absolute, and the same local settings `start.sh` pins are set, so the root `.env.local` cloud settings don't apply.
+   - A pilot key-directory variable in the shell environment is removed (pqa-qa combined r1 P3). One in `.env.local` would still fail closed, by design.
    - The lead ran this exact form against the isolated rehearsal database, and it printed the backup file and its sha256.
    On start, migrations 5–7 upgrade it in place. The lead checked a main-schema (v4) database upgrading to v7 with rows intact, integrity `ok`, and no foreign-key violations.
 3. **Install and build:**
