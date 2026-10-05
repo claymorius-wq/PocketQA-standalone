@@ -710,6 +710,7 @@ export const LeaderboardAlias = z.string().trim().min(3).max(24).regex(/^[A-Za-z
 export const LeaderboardSettingsBody = z.object({ optIn: z.boolean(), alias: LeaderboardAlias.optional() });
 /** Strict: a row carries no user id, wallet, email or evidence reference. */
 export const LeaderboardRow = z.strictObject({ rank: z.number().int().positive(), alias: z.string(), qualityScore: z.number().int().min(0).max(100), decided: z.number().int(), badges: z.array(BadgeId) });
+/** `items` is the whole ranking, not a page: the app reads "Rank N of M" from its length. Add a `total` before paging it. */
 export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays: z.number().int(), minDecided: z.number().int() });
 export type Leaderboard = z.infer<typeof Leaderboard>;
 export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });

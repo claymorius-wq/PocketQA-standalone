@@ -53,7 +53,7 @@ describe('useNewBadges', () => {
   const KEY = 'pocketqa.badgesSeen.t1';
   const flush = () => act(() => new Promise((r) => setTimeout(r, 20)));
   // The storage mock's functions are jest.fn()s shared by every test: fail them once, never for good.
-  const storage = AsyncStorage as unknown as { getItem: jest.Mock; setItem: jest.Mock };
+  const storage = AsyncStorage as unknown as { getItem: jest.Mock; setItem: jest.Mock; removeItem: jest.Mock };
   beforeEach(async () => {
     await AsyncStorage.clear();
     storage.setItem.mockClear();
@@ -100,5 +100,8 @@ describe('useNewBadges', () => {
     await forgetSeenBadges('t1');
     expect(await AsyncStorage.getItem(KEY)).toBeNull();
     await expect(forgetSeenBadges(undefined)).resolves.toBeUndefined();
+    // Storage that refuses never blocks the sign-out that follows.
+    storage.removeItem.mockRejectedValueOnce(new Error('denied'));
+    await expect(forgetSeenBadges('t1')).resolves.toBeUndefined();
   });
 });

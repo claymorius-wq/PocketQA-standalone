@@ -41,7 +41,7 @@ The count toward each badge comes from the API (`Reputation.progress`, domain `b
 - **Which badge leads** (the hero and each leaderboard row). Today it is the hardest one earned: Reliable tester, then Device specialist, Helpful feedback, First accepted test. Two things to decide:
   - §6.1 of the reputation design asks for the latest badge; the API keeps no `earnedAt`, so "latest" can't be shown yet.
   - On the live rules Device specialist comes almost by itself to a tester with one device (any 3 accepted tests on one platform), while Helpful feedback needs builders to mark the work. Keep this order, swap those two, or add `earnedAt` and lead with the newest (§9 Q12).
-- **The leaderboard's size.** Every ranked tester is one row with a medallion (about 5 SVG canvases a row, in a list that isn't virtualised). That is fine at today's numbers. Before it grows: measure on the Seeker, then cap the list (for example the top 50 and your own row) or move it to a virtualised list.
+- **The leaderboard's size.** Every ranked tester is one row with a medallion (about 5 SVG canvases a row, in a list that isn't virtualised). That is fine at today's numbers. Before it grows: measure on the Seeker, then cap the list (for example the top 50 and your own row) or move it to a virtualised list. A cap needs a `total` in the leaderboard response first: the pinned row's "Rank N of M" takes M from the list it is given.
 
 **Not built (proposals in `reputation-layer.md`, waiting for the decisions in its §9):**
 - tiers and beads;

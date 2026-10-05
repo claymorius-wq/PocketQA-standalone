@@ -9,6 +9,7 @@ import { useSession } from '../auth/SessionProvider';
 import { GlassBlur } from '../glass';
 import { arcShare, BADGES, keyBadge, medalLabel, progressText, useNewBadges, type BadgeId } from '../lib/badges';
 import { useLeaderboard, useReputation } from '../lib/queries';
+import { useTheme } from '../theme/ThemeProvider';
 import { radius } from '../theme/tokens';
 import { Button, Card, Checkbox, EmptyState, Field, Notice, QueryState, Screen, Text } from '../ui';
 import { Hairline, KeyValue, KeyValueList, Medallion, plural, SectionHeader } from '../ui/patterns';
@@ -55,6 +56,7 @@ function badgeViews(r: Reputation, fresh: ReadonlySet<BadgeId>): BadgeView[] {
 
 function ReputationBody({ r }: { r: Reputation }) {
   const { user } = useSession();
+  const { type } = useTheme();
   const fresh = useNewBadges(user?.id, r.badges.map((b) => b.id));
   const views = badgeViews(r, fresh);
   const lead = keyBadge(r.badges.map((b) => b.id));
@@ -81,7 +83,10 @@ function ReputationBody({ r }: { r: Reputation }) {
             <Text variant="label" tone="muted">
               {lead ? 'TOP BADGE' : 'FIRST BADGE'}
             </Text>
-            <Text variant="title">{hero.name}</Text>
+            {/* The title's face, not a heading: the badge is content, under the screen's own title. */}
+            <Text variant="heading" style={type.title}>
+              {hero.name}
+            </Text>
             <BadgeState view={hero} qualityScore={r.stats.qualityScore} />
           </View>
         </View>
@@ -234,8 +239,10 @@ const TOP = 3;
 export function LeaderboardScreen() {
   const { user } = useSession();
   const q = useLeaderboard();
-  // Only a tester has a place on the board: a builder or an admin may look, with no row of their own.
-  const me = useReputation({ enabled: user?.role === 'tester' });
+  // Only a tester has a place on the board: a builder or an admin may look, with no row of their own
+  // (checked here too, not left to an empty cache).
+  const tester = user?.role === 'tester';
+  const me = useReputation({ enabled: tester });
   return (
     <Screen
       title="Leaderboard"
@@ -243,7 +250,7 @@ export function LeaderboardScreen() {
       testID="leaderboard-screen"
       // Your own place, pinned: once the board and your settings are both in, and while neither
       // has failed (a failed refresh keeps old data, which the board then no longer shows).
-      dock={q.data && me.data && !q.error && !me.error ? <YouDock board={q.data} r={me.data} /> : null}
+      dock={tester && q.data && me.data && !q.error && !me.error ? <YouDock board={q.data} r={me.data} /> : null}
     >
       <QueryState query={q} empty={(d) => (d.items.length === 0 ? <EmptyState icon={Trophy} title="No one yet" body="Testers appear here after they opt in and have enough decided tests." /> : null)}>
         {(d) => (
@@ -271,6 +278,7 @@ type Row = Leaderboard['items'][number];
 
 /** One ranked tester, read as one sentence: rank, alias, the key badge, quality and decided tests. */
 function BoardRow({ row, first }: { row: Row; first: boolean }) {
+  const { type } = useTheme();
   const lead = keyBadge(row.badges);
   const badges = plural(row.badges.length, 'badge', 'badges');
   const name = lead ? BADGES[lead].name : null;
@@ -293,7 +301,10 @@ function BoardRow({ row, first }: { row: Row; first: boolean }) {
         <Text variant="small" tone="muted">{`${row.decided} decided · ${badges}`}</Text>
       </View>
       <View style={styles.score}>
-        <Text variant="title">{row.qualityScore}</Text>
+        {/* The title's face, not a heading (the web would make every score an h1). */}
+        <Text variant="heading" style={type.title}>
+          {row.qualityScore}
+        </Text>
         <Text variant="small" tone="muted">
           quality
         </Text>
@@ -330,9 +341,9 @@ function YouDock({ board, r }: { board: Leaderboard; r: Reputation }) {
             </Text>
           </View>
         </View>
-        {/* Back to the settings; with no history (a refresh, a new tab, a deep link) they open in
-            this screen's place. */}
-        {lb.optedIn ? null : <Button label="Show me" size="compact" variant="secondary" onPress={() => router.dismissTo('/reputation')} testID="leaderboard-show-me" accessibilityHint="Opens your leaderboard settings" />}
+        {/* Back to the settings it was opened from; with no history (a refresh, a new tab, a deep
+            link) Reputation opens in this screen's place, at its top. */}
+        {lb.optedIn ? null : <Button label="Show me" size="compact" variant="secondary" onPress={() => router.dismissTo('/reputation')} testID="leaderboard-show-me" accessibilityHint="Opens Reputation, with your leaderboard settings" />}
       </View>
     </GlassBlur>
   );

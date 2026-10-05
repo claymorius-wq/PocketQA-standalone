@@ -66,7 +66,7 @@ export function medalLabel(name: string, p: BadgeProgress, opts: { isNew: boolea
 
 const seenKey = (userId: string) => `pocketqa.badgesSeen.${userId}`;
 
-/** The ids this device has shown; `null` when storage can't be read. A value that isn't a list of ids counts as none (and is rewritten). */
+/** The ids this device has shown; `null` when storage can't be read. A value that isn't a list of ids counts as none (rewritten the next time a badge is new). */
 async function readSeen(userId: string): Promise<BadgeId[] | null> {
   let raw: string | null;
   try {

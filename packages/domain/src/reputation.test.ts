@@ -113,6 +113,9 @@ describe('badges', () => {
     const input = { work: [...work(3, 'accepted', { platform: 'ios' }), ...work(3, 'accepted', { platform: 'android' })], events: [], nowMs: NOW };
     expect(badgesFor(input).find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'iOS specialist' });
     expect(badgeProgress(input).find((x) => x.id === 'device_specialist')).toMatchObject({ earned: true, current: 3 });
+    // Either order: the first counted, not the first by name.
+    const mirrored = { ...input, work: [...work(3, 'accepted', { platform: 'android' }), ...work(3, 'accepted', { platform: 'ios' })] };
+    expect(badgesFor(mirrored).find((x) => x.id === 'device_specialist')).toMatchObject({ label: 'Android specialist' });
   });
 });
 
