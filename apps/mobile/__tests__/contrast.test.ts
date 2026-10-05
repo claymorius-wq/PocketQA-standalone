@@ -1,4 +1,5 @@
-import { dark, glassDark, glassLight, light, type GlassRecipes, type GlassSurface, type Palette, type Tone } from '../src/theme/tokens';
+import { FACE } from '../src/icons/material';
+import { dark, glassDark, glassLight, light, type GlassRecipes, type GlassSurface, type GradientStop, type Palette, type Tone } from '../src/theme/tokens';
 
 // WCAG 2.1 relative luminance and contrast ratio.
 function lum(hex: string): number {
@@ -139,6 +140,26 @@ describe.each([
   const rows = glassCases(g, p).flatMap(([surface, fgs, bgs]) => fgs.flatMap((fg) => bgs.map((bg) => [surface, fg, bg] as const)));
   it.each(rows)('%s: %s on %s ≥ 4.5:1', (_surface, fg, bg) => {
     expect(ratio(p[fg], bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+// The badge medallion (reputation-layer.md §4, Appendix A), dark: its glyph and its progress arc
+// are non-text UI, so each clears 3:1 against the glass behind it, every opaque stop against every
+// opaque stop. Light draws it flat from palette pairs already above (primary and textMuted on
+// surface and surfaceAlt).
+describe('dark medallion contrast (non-text UI ≥ 3:1)', () => {
+  const m = glassDark.medal;
+  const opaque = (stops: readonly GradientStop[]) => stops.filter((st) => st.opacity === 1).map((st) => st.color);
+  const pairs = (fgs: string[], bgs: string[]) => fgs.flatMap((fg) => bgs.map((bg) => [fg, bg] as const));
+  it.each(pairs(opaque(FACE.lit), opaque(m.lit.face[0]!.stops)))('the lit glyph %s on the lit face %s', (fg, bg) => {
+    expect(ratio(fg, bg)).toBeGreaterThanOrEqual(3);
+  });
+  // The locked glyph is drawn at 0.8 over its face.
+  it.each(pairs(opaque(FACE.muted), opaque(m.unlit.face[0]!.stops)))('the muted glyph %s (at 0.8) on the unlit face %s', (fg, bg) => {
+    expect(ratio(over(fg, 0.8, bg), bg)).toBeGreaterThanOrEqual(3);
+  });
+  it.each(pairs(opaque(m.arc.fill.stops), opaque(m.socket.floor[0]!.stops)))('the arc %s on the socket floor %s', (fg, bg) => {
+    expect(ratio(fg, bg)).toBeGreaterThanOrEqual(3);
   });
 });
 

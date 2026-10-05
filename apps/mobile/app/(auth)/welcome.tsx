@@ -94,6 +94,12 @@ export default function Welcome() {
   const canSignUp = !PREVIEW_BUILD;
   const action: Action = last ? (canSignUp ? 'create' : 'demo') : 'next';
   const corner: Corner = last ? (canSignUp ? 'sign-in' : null) : 'skip';
+  // A slot left empty (the shared preview's last page has no corner) drops the focus it carried,
+  // so a control that returns much later never takes it: a carry lives for the commit that swaps
+  // its slot. (After the leaving control's cleanup, in the same commit.)
+  useLayoutEffect(() => {
+    if (!corner) carryCorner.current = false;
+  }, [corner]);
 
   // Worklets capture plain values only.
   const still = motion.reduced || !glass.enabled;
@@ -167,8 +173,8 @@ export default function Welcome() {
   // Hidden under a screen pushed over it (the web stack sets display: none), the frame reports
   // 0×0: the pager keeps its size and stays mounted, so it is on the settled page in the first
   // frame shown again. Chromium, Firefox and WebKit restore a re-shown scroller's offset themselves
-  // (checked; e2e/intro.spec.ts reads that first frame). For one that doesn't, the pager is
-  // re-aligned here, once the layout arrives (a frame late).
+  // (a one-off probe, docs/verification.md); e2e/intro.spec.ts reads that first frame in Chromium.
+  // For an engine that doesn't, the pager is re-aligned here, once the layout arrives (a frame late).
   const hidden = useRef(false);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width: w, height: h } = e.nativeEvent.layout;

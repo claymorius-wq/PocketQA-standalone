@@ -45,4 +45,5 @@ export { DecisionBar, SheetActions, SheetFailure, type DecisionAction, type Deci
 export { EmptyPanel, ErrorPanel, type EmptyPanelProps, type ErrorPanelProps, type StateIcon } from './EmptyPanel';
 export { LensShimmer, type LensShimmerProps } from './LensShimmer';
 export { PageDots, type PageDotsProps } from './PageDots';
+export { arcPath, MEDAL_SIZES, medalGeometry, Medallion, type MedallionProps, type MedalSize, type MedalState } from './Medallion';
 export { Spinner } from '../spinner';

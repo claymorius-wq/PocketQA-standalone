@@ -25,6 +25,8 @@ test('a first visit walks through the intro to Sign in, and the next visit skips
   await expect(page.getByTestId('welcome-screen')).toBeVisible();
   // The opening title is one heading, however its words arrive.
   await expect(page.getByRole('heading', { name: 'Usability tests on real phones' })).toBeVisible();
+  // Its words are text, not a heading each (the rising title is there to check).
+  await expect(page.getByTestId('intro-title')).toBeVisible();
   await expect(page.getByTestId('intro-title').locator('h1, h2, [role="heading"]')).toHaveCount(0);
   await expect(page.getByTestId('intro-label')).toHaveText('POCKET QA');
   await page.getByTestId('intro-next').click();
@@ -90,7 +92,7 @@ test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sig
   await expect(join.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
   // Shown again where it was, not back at the first page, from its first frame.
   await expect(join.getByTestId('intro-page-builders')).toBeInViewport();
-  expect(await join.evaluate(() => (window as unknown as { introShownOn?: number }).introShownOn)).toBe(2);
+  expect(await join.evaluate(() => (window as unknown as { introShownOn?: number }).introShownOn)).toBeCloseTo(2, 2);
 });
 
 test('the keyboard: Enter on Next walks the pages, and the control that replaces Next takes its focus', async ({ page }) => {

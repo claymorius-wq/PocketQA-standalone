@@ -5,6 +5,7 @@ import type { DeviceProfile } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { GradientRule } from '../glass/paint';
+import { forgetSeenBadges } from '../lib/badges';
 import { useAiStatus } from '../lib/queries';
 import { useTheme, type ThemePreference } from '../theme/ThemeProvider';
 import { Button, Card, ConfirmSheet, Field, Notice, Screen, Segmented, StatusPill, Text } from '../ui';
@@ -120,7 +121,7 @@ function DeviceForm() {
 }
 
 function AccountData() {
-  const { signOut } = useSession();
+  const { user, signOut } = useSession();
   const { colors } = useTheme();
   const [confirm, setConfirm] = useState(false);
   const [phrase, setPhrase] = useState('');
@@ -144,7 +145,10 @@ function AccountData() {
   });
   const del = useMutation({
     mutationFn: () => api('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } }),
-    onSuccess: () => signOut(),
+    onSuccess: async () => {
+      await forgetSeenBadges(user?.id);
+      await signOut();
+    },
   });
   // The rose hairline between keeping your data and deleting it, lit at its near end.
   const roseRule = [

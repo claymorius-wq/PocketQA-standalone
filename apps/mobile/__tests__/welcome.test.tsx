@@ -117,7 +117,7 @@ describe('Welcome', () => {
     await waitFor(() => expect(label()).toHaveTextContent('POCKET QA'));
   });
 
-  it('settles anyway when a programmatic scroll never reports back: where the pager is', async () => {
+  it('settles anyway when a programmatic scroll never reports back', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-next'));
     // Its last report was a hair short of the page (never within a pixel of it): after the

@@ -139,6 +139,8 @@ describe('Auth layout', () => {
 });
 
 describe('how each auth screen opens', () => {
+  // The intro's hand-over stamp is module state: forget it, so no later test inherits it.
+  afterEach(() => noteIntroLeft(-Infinity));
   function Arrival() {
     return <Text testID="arrival">{String(useContext(ArrivalContext))}</Text>;
   }

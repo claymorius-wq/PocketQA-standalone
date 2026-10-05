@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -196,6 +197,19 @@ describe('SettingsScreen states', () => {
     expect(screen.getByText('Couldn’t delete')).toBeTruthy();
     expect(screen.getByText('Wait until your submitted work is reviewed and disputes are resolved.')).toBeTruthy();
     expect(mockSession.signOut).not.toHaveBeenCalled();
+  });
+
+  it('a deleted account signs out, and this device forgets which badges it showed that account', async () => {
+    api.mockResolvedValue({ deleted: true });
+    await AsyncStorage.setItem('pocketqa.badgesSeen.u1', '["first_accepted"]');
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('delete-account'));
+    await fireEvent.changeText(screen.getByTestId('delete-phrase'), 'DELETE MY ACCOUNT');
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } });
+    expect(mockSession.signOut).toHaveBeenCalledTimes(1);
+    expect(await AsyncStorage.getItem('pocketqa.badgesSeen.u1')).toBeNull();
   });
 
   it('Sign out signs out directly (no sheet)', async () => {

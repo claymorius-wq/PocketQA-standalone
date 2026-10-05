@@ -131,7 +131,11 @@ test('builder funds a wallet escrow study (simulated); tester joins with a froze
   await expect(tester.getByTestId('tester-wallet-rewards')).toContainText('1.50 simulated USDC');
   await tester.getByTestId('open-reputation').click();
   await expect(tester.getByTestId('reputation-points')).toHaveText('15');
-  await expect(tester.getByTestId('badge-first_accepted')).toBeVisible();
+  // The approval earned the first badge (every badge has a row, so check it is earned): what it
+  // was earned for, Earned, and the hero leads with it.
+  await expect(tester.getByTestId('badge-first_accepted')).toContainText('A builder accepted your first test.');
+  await expect(tester.getByTestId('badge-first_accepted')).toContainText('Earned');
+  await expect(tester.getByTestId('reputation-hero')).toContainText('TOP BADGE');
   await tester.getByTestId('leaderboard-optin').click();
   await tester.getByTestId('leaderboard-alias').fill(`Tara ${run.slice(-4)}`);
   await tester.getByTestId('leaderboard-save').click();

@@ -45,8 +45,9 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
-      // getState() during render returns the state being rendered (React Navigation keeps it
-      // current for this), so `first` is read from the stack the screen mounts into.
+      // getState() during render returns the state being rendered, so `first` is read from the
+      // stack the screen mounts into. That relies on React Navigation's render-phase workaround
+      // (a FIXME in useNavigationHelpers); the unit tests stub getState and wouldn't catch a change.
       screenLayout={({ route, navigation, children }) => (
         <AuthArrival name={route.name} first={navigation.getState().routes[0]?.key === route.key}>
           {children}
