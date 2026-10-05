@@ -21,7 +21,8 @@ Docs only: no code, API, contract or data change.
     - A polish pass then fixed the rest of one of them and the seven small issues the verification found.
     - Promoting the new glyphs into the main Lens glyph set waits for Hamza.
     - The records are in `docs/reviews/reputation-proposal/`.
-- **Review:** docs review r1 was CHANGES_REQUIRED (0 P1, 10 P2, 11 P3). The fixes followed, and the verdicts are in `docs/reviews/reputation-proposal/`.
+- **Review:** docs review r1 was CHANGES_REQUIRED (0 P1, 10 P2, 11 P3), fixed in `80d9bed`. r2 was APPROVE with six P3s, fixed in `5a39a77` without re-review. The verdicts and the candidate summary are in `docs/reviews/reputation-proposal/`.
+- **Checks on `5a39a77`:** check:secrets, assert-no-secrets, typecheck and lint pass (`docs/verification.md`). No tests ran, because no code changed.
 - Nothing here changes A9, B1, B2, the plan's Money row or any approval.
 
 ## Current work (2026-10-04, night): scoped R2 deletion, A5 (`feat/web-launch-e2e`, candidate `2adea53`)

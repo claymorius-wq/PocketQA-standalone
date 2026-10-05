@@ -508,3 +508,19 @@ This applies pqa-qa web-launch-qa-r1 (APPROVE, P3s only). Outputs are redacted f
   - 26 objects before and 26 after, identical (`live/r2-scoped-delete.txt`).
 - **Production start smoke:** EXIT=0 (`live/prod-start-smoke.txt`).
 
+
+## 2026-10-05: Reputation design proposal and USDC escrow research, docs only (contributor session, claymorius-wq; Windows 11 clone of `docs/reputation-escrow-proposal` at `5a39a77`)
+
+Raw output is in `docs/reviews/reputation-proposal/` (`checks.txt`, `research-recheck.txt`). Local paths are shortened to `<repo>`.
+
+```
+$ pnpm check:secrets                                   check:secrets passed: 769 committable files scanned, no findings.
+$ node scripts/preview/assert-no-secrets.mjs --repo    secret check: 18 values, 769 files, 0 occurrences
+$ pnpm typecheck                                       contracts, domain, api, mobile: Done (exit 0)
+$ pnpm lint                                            exit 0
+$ bash docs/reviews/reputation-proposal/research-recheck.sh   (read-only JSON-RPC, no transaction)
+  rent 0 B = 650240 and 165 B = 1488440 lamports on mainnet and devnet
+  Squads v4 program data: mainnet authority null (deploy slot 302582236); devnet authority HM5y4mz3… (deploy slot 446638068)
+  USDC mints (mainnet EPjF…, devnet 4zMM…): owner Tokenkeg…, decimals 6, freeze authority set
+Tests: not run (no code changed).
+```

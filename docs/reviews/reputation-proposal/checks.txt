@@ -1,0 +1,41 @@
+$ git rev-parse --short HEAD
+5a39a77
+$ node --version
+v24.21.0
+$ pnpm --version
+10.32.1
+
+$ pnpm check:secrets
+
+> pocket-qa@ check:secrets <repo>
+> node scripts/check-secrets.mjs
+
+check:secrets passed: 769 committable files scanned, no findings.
+exit: 0
+
+$ node scripts/preview/assert-no-secrets.mjs --repo
+secret check: 18 values, 769 files, 0 occurrences
+exit: 0
+
+$ pnpm typecheck
+
+> pocket-qa@ typecheck <repo>
+> pnpm -r --if-present typecheck
+
+Scope: 5 of 6 workspace projects
+packages/contracts typecheck$ tsc -p tsconfig.json
+packages/contracts typecheck: Done
+packages/domain typecheck$ tsc -p tsconfig.json
+packages/domain typecheck: Done
+apps/mobile typecheck$ tsc -p tsconfig.json
+apps/api typecheck$ tsc -p tsconfig.json
+apps/api typecheck: Done
+apps/mobile typecheck: Done
+exit: 0
+
+$ pnpm lint
+
+> pocket-qa@ lint <repo>
+> eslint .
+
+exit: 0
