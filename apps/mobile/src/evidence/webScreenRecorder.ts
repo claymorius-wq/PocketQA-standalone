@@ -12,8 +12,10 @@ import type { Capability } from '../lib/capability';
  *   for only after a screen is chosen.
  * - T3: if the microphone fails, the screen share is stopped. Video is never recorded without the
  *   narration the user expects.
- * - T4: every request carries a generation number. An answer that arrives after a dispose, discard
- *   or new start stops its own tracks and changes nothing.
+ * - T4: every request carries a generation number. An answer that arrives after a dispose, discard,
+ *   cancel or new start stops its own tracks and changes nothing. A prompt may never be answered
+ *   (MDN getUserMedia), so both asking states offer Cancel, and the browser's "Stop sharing" ends an
+ *   attempt that is still waiting for the microphone (pqa-qa r1 P2-1).
  * - T5: ONE stream (screen video plus one mic audio track) is built before recording and never
  *   changed. Adding or removing a track mid-recording fails with InvalidModificationError (W3C).
  * - T7, T8: every stop path keeps the draft, and stops every track exactly once. There is one object
@@ -172,6 +174,13 @@ export class WebScreenRecorder {
       return this.set({ kind: 'error', message: `The browser returned no video to record. ${NOTHING}` });
     }
     this.tracks = [...display.getTracks()];
+    // The browser's "Stop sharing" while the mic prompt is still open ends the attempt.
+    const early = () => {
+      if (gen !== this.gen || this.s.kind !== 'requesting-mic') return;
+      this.abandon(`You stopped sharing before recording started. ${NOTHING}`);
+    };
+    video.addEventListener('ended', early);
+    this.detach = [() => video.removeEventListener('ended', early)];
     this.set({ kind: 'requesting-mic' });
     this.env.mediaDevices.getUserMedia(MIC_OPTIONS).then(
       (mic) => this.withMic(gen, video, mic),
@@ -215,6 +224,8 @@ export class WebScreenRecorder {
     }
     this.recorder = rec;
     this.startedAt = this.env.now();
+    // Recording's own listeners replace the early one.
+    this.detach.forEach((d) => d());
     const onScreenEnd = () => this.finish(gen, 'screen-ended');
     const onMicEnd = () => this.finish(gen, 'mic-ended');
     video.addEventListener('ended', onScreenEnd);
@@ -238,6 +249,17 @@ export class WebScreenRecorder {
     const elapsedMs = this.env.now() - this.startedAt;
     if (elapsedMs >= this.maxDurationMs) return this.finish(gen, 'max-duration');
     this.set({ kind: 'recording', elapsedMs, bytes: this.bytes });
+  }
+
+  /** Cancel while the browser is still asking (share dialog or microphone prompt). */
+  cancel() {
+    if (this.s.kind === 'requesting-screen' || this.s.kind === 'requesting-mic') this.abandon(`Cancelled. ${NOTHING}`);
+  }
+  /** Ends an attempt before recording: later answers are stale, held tracks are released. */
+  private abandon(notice: string) {
+    this.gen++;
+    this.releaseAll();
+    this.set({ kind: 'ready', notice });
   }
 
   /** User Stop. */

@@ -32,3 +32,19 @@ mutant 'sign-out registry ignored': Tests:       1 failed, 38 passed, 39 total
 Tests:       51 passed, 51 total
 ℹ pass 36
 ℹ fail 0
+
+## pqa-qa r1 fixes (2026-10-05)
+### RED: the new tests against the r1 code (9b9d631): cancel while asking, Stop sharing while the mic prompt hangs, early-listener replacement, card Cancel, closed-card Start over
+$ npx jest __tests__/web-screen-recorder.test.ts __tests__/web-recorder-card.test.tsx
+Tests:       6 failed, 52 passed, 58 total
+### The decode gate (P2-2) is new as a helper: shown by mutation
+### Mutation checks on the r1 fixes
+mutant 'P2-1: cancel keeps the chosen screen': Tests:       2 failed, 42 passed, 44 total
+mutant 'P2-1: cancel ignored while asking for the mic': Tests:       1 failed, 43 passed, 44 total
+mutant 'P2-1: no Stop-sharing listener before the mic answers': Tests:       1 failed, 43 passed, 44 total
+mutant 'P2-2: any stderr tolerated': Tests:       6 failed, 3 passed, 9 total
+mutant 'P2-2: exit code ignored': Tests:       1 failed, 8 passed, 9 total
+mutant 'P2-2: muxer name not pinned': Tests:       1 failed, 8 passed, 9 total
+mutant 'P2-1: early listener not replaced at recording' (after tightening the test): Tests:       1 failed, 43 passed, 44 total
+### GREEN
+Tests:       67 passed, 67 total

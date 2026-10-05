@@ -28,6 +28,9 @@ class FakeTrack {
   removeEventListener(type: string, fn: () => void) {
     this.listeners = this.listeners.filter((l) => l !== fn);
   }
+  get listenerCount() {
+    return this.listeners.length;
+  }
   /** What the browser does when the user presses its own "Stop sharing" (not fired by stop()). */
   end() {
     this.listeners.forEach((l) => l());
@@ -243,6 +246,61 @@ describe('cancel and denial', () => {
     await flush();
     expect(odd.stopped).toBe(1);
     expect(r.state.kind).toBe('error');
+  });
+});
+
+describe('cancel while the browser is asking (pqa-qa r1 P2-1: a prompt may never be answered)', () => {
+  it('Cancel while the share dialog is open returns to ready; a screen chosen later is released at once', async () => {
+    const { r } = make();
+    r.start();
+    r.cancel();
+    expect(r.state).toEqual({ kind: 'ready', notice: 'Cancelled. Nothing was recorded.' });
+    display.resolve(new FakeStream([screenTrack]));
+    await flush();
+    expect(screenTrack.stopped).toBe(1);
+    expect(calls).toHaveLength(1);
+  });
+  it('Cancel while the microphone prompt is unanswered releases the screen at once; a late mic is released too', async () => {
+    const { r } = make();
+    r.start();
+    display.resolve(new FakeStream([screenTrack]));
+    await flush();
+    expect(r.state.kind).toBe('requesting-mic');
+    r.cancel();
+    expect(screenTrack.stopped).toBe(1);
+    expect(r.state).toEqual({ kind: 'ready', notice: 'Cancelled. Nothing was recorded.' });
+    mic.resolve(new FakeStream([micTrack]));
+    await flush();
+    expect(micTrack.stopped).toBe(1);
+    expect(FakeRecorder.last).toBeNull();
+    // A new attempt works normally afterwards.
+    expect(() => r.start()).not.toThrow();
+  });
+  it('the browser’s Stop sharing while the mic prompt is open ends the attempt (the listener exists before the mic answers)', async () => {
+    const { r } = make();
+    r.start();
+    display.resolve(new FakeStream([screenTrack]));
+    await flush();
+    screenTrack.end();
+    expect(screenTrack.stopped).toBe(1);
+    expect(r.state).toEqual({ kind: 'ready', notice: 'You stopped sharing before recording started. Nothing was recorded.' });
+    mic.resolve(new FakeStream([micTrack]));
+    await flush();
+    expect(micTrack.stopped).toBe(1);
+    expect(FakeRecorder.last).toBeNull();
+  });
+  it('cancel does nothing outside the asking states', async () => {
+    const { r } = await recording();
+    r.cancel();
+    expect(r.state.kind).toBe('recording');
+  });
+  it('the early Stop-sharing listener is replaced once recording starts (no double handling)', async () => {
+    const { r } = await recording();
+    expect(screenTrack.listenerCount).toBe(1);
+    screenTrack.end();
+    await flush();
+    expect(r.state).toMatchObject({ kind: 'review', endedBy: 'screen-ended' });
+    expect(screenTrack.stopped).toBe(1);
   });
 });
 

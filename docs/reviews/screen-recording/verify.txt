@@ -1,9 +1,9 @@
-# pnpm verify (2026-10-05, Node v24.21.0; exit code captured directly: EXIT=0)
-check:secrets passed: 888 committable files scanned, no findings.
+# pnpm verify after the pqa-qa r1 fixes (2026-10-05, Node v24.21.0; exit code captured directly: EXIT=0)
+check:secrets passed: 897 committable files scanned, no findings.
 ℹ tests 60
 ℹ pass 60
 ℹ fail 0
 packages/contracts test:       Tests  17 passed (17)
 packages/domain test:       Tests  216 passed (216)
 apps/api test:       Tests  573 passed | 2 skipped (575)
-apps/mobile test: Tests:       1129 passed, 1129 total
+apps/mobile test: Tests:       1145 passed, 1145 total

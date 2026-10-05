@@ -27,10 +27,13 @@ Plan and citations: `docs/plans/web-screen-audio-recording.md`.
 | Phone or tablet browser | "Screen recording in the browser works on a computer only; mobile browsers don't support it. Use the Android app to record on a phone, or attach screenshots or clips." |
 | Page not on HTTPS, or the browser lacks screen sharing or `MediaRecorder` | An honest "not available" reason, with the attach option still there |
 | The share dialog is cancelled | "Screen sharing was cancelled or blocked. Nothing was recorded." Start stays available |
+| The tester presses **Cancel** while the browser is asking (share dialog or microphone prompt) | "Cancelled. Nothing was recorded." Any screen already chosen is released. Browsers may leave a prompt unanswered forever (MDN), so Cancel is always offered while asking |
+| The browser's **Stop sharing** while the microphone prompt is still open | "You stopped sharing before recording started. Nothing was recorded." The screen is released |
 | The microphone is blocked or missing | The screen share **is stopped**: "… Narration is required, so the screen share was stopped and nothing was recorded …". Try again after allowing the mic |
 | The browser's **Stop sharing**, the mic unplugged, or a browser error | Recording ends and the **draft is kept**, with the reason shown |
 | 15 minutes or 500 MB reached | Recording stops and the **draft is kept**, with the reason shown |
 | Leaving the session, signing out, or closing the page | Screen and mic are released; nothing is kept |
+| The page comes back from the browser's back/forward cache after being hidden | "This recording was closed (the page was hidden or you signed out). Nothing was kept." **Start over** gives a fresh recorder and asks for consent again |
 
 ## Evidence (this candidate)
 - **Unit and component tests** (`apps/mobile/__tests__/web-screen-recorder.test.ts`, 39; `web-recorder-card.test.tsx`, 12):
@@ -54,6 +57,31 @@ Plan and citations: `docs/plans/web-screen-audio-recording.md`.
   - `pnpm verify` EXIT=0 (`verify.txt`);
   - Playwright 19/19 (`playwright.txt`): the 15 mobile-web flows still show the honest "computer only" message, plus the 4 recorder tests.
 - **Screenshots:** consent (light), recording (light and dark), review (light and dark), mic refused (light).
+
+## Known limitation: no duration in the WebM header
+Chrome's `MediaRecorder` writes WebM without a duration in the header, so ffprobe reports `duration=N/A` for the file.
+- **Players are unaffected:** the browser's player, VLC and ffmpeg compute the length while reading. pqa-qa measured A/V end timestamps of 11.999 s and 12.101 s for a 12 s recording.
+- **The in-page player** may show its length only once played or seeked; the test seeks to the end to read 3.9 s.
+- **When decoding to the null muxer,** ffmpeg can note "non monotonically increasing dts"; that concerns the discarded output, not decoding.
+  - The decode gate tolerates only that exact line from the null muxer (`apps/mobile/e2e/ffmpegCheck.ts`, unit-tested).
+  - Anything else fails: another stderr line, a decoder or demuxer error, or a nonzero exit.
+- **Possible future fix:** rewrite the header (remuxing) before download. Not in this MVP.
+
+## Public preview smoke (synthetic, non-destructive)
+`scripts/preview/recorder-smoke.mjs` runs headless Chromium with fake media devices, so no real desktop or microphone is captured. It reads the gate password and the demo tester's sign-in from `.preview/access.txt` and never prints them. It checks:
+1. The `permissions-policy` header: microphone and display capture for self, camera off.
+2. Gate login, and sign-in as the demo tester.
+3. That a demo study page says "Browser recording available". If the tester has no open study, this is reported as INFO and skipped.
+4. A 1.5 s synthetic capture-and-record probe on the real origin, through a real click.
+
+It creates or joins nothing and changes no data:
+- **Join mode rejected:** an earlier join-and-withdraw mode was tried in rehearsal and dropped, because a withdrawn participation can't be re-joined. It would leave the shared demo tester with no studies.
+- **Rehearsal:** on fresh synthetic data, the existing `smoke.mjs` passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
+
+```
+PREVIEW_URL=https://pocketqa.optijara.ai node scripts/preview/recorder-smoke.mjs
+```
+Run it after deployment from a machine with the preview's `.preview/access.txt`, with Playwright's Chromium installed.
 
 ## What these tests do not prove
 The browser tests use **Chromium's fake media devices**:

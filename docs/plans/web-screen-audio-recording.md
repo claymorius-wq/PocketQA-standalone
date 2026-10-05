@@ -90,6 +90,12 @@ Each failure has its own honest reason. The native path keeps using `recordingCa
 
 **Microphone failure (T3):** if the mic is denied or fails, every display track is stopped, and the state becomes `error`, retryable: "Microphone needed for narration … nothing was recorded". Video is never recorded silently without audio.
 
+**Cancel while asking (pqa-qa r1 P2-1):** a prompt may never be answered [M3]. So:
+- both asking states offer **Cancel**, which bumps the generation, releases any chosen screen and returns to ready;
+- the screen track's `ended` listener is attached as soon as the screen is chosen, so the browser's "Stop sharing" while the mic prompt is open ends the attempt.
+
+**Closed card:** if the controller is disposed while its card is still mounted (back/forward-cache restore after `pagehide`, or sign-out), the card says so and offers **Start over** with a fresh controller and fresh consent.
+
 **Generation token (T4):** `start()`, `dispose()`, discard and a new start each bump a generation counter. A promise that settles under an old generation stops its own tracks at once and changes nothing.
 
 **One stream (T5):** `new MediaStream([displayVideoTrack, micAudioTrack])` is built once, before `start()`, and never changed (it would fail with `InvalidModificationError` [M5]). The audio is narration only; tab and system audio aren't recorded, and the UI says so.

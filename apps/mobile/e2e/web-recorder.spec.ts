@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { decodeProblems, knownWarnings } from './ffmpegCheck';
 
 // The desktop web recorder in REAL Chromium (MediaRecorder, getDisplayMedia, getUserMedia), with
 // SYNTHETIC media from the browser's fake-device flags (playwright.config.ts, desktop-recorder):
@@ -44,7 +45,7 @@ async function seed(request: APIRequestContext) {
 }
 
 /** Records how the page calls the media APIs, and keeps the streams so the test can check release. */
-async function instrument(page: Page, mic: 'allow' | 'deny' = 'allow') {
+async function instrument(page: Page, mic: 'allow' | 'deny' | 'hang' = 'allow') {
   await page.addInitScript((micMode) => {
     const w = window as unknown as { __pqa: { displayCalls: { active: boolean | null }[]; micCalls: number; display: MediaStream | null; mic: MediaStream | null } };
     w.__pqa = { displayCalls: [], micCalls: 0, display: null, mic: null };
@@ -58,6 +59,8 @@ async function instrument(page: Page, mic: 'allow' | 'deny' = 'allow') {
     md.getUserMedia = (o?: MediaStreamConstraints) => {
       w.__pqa.micCalls++;
       if (micMode === 'deny') return Promise.reject(new DOMException('Permission denied', 'NotAllowedError'));
+      // A microphone prompt the user never answers (MDN: the promise may never settle).
+      if (micMode === 'hang') return new Promise<MediaStream>(() => {});
       return gum(o).then((s) => ((w.__pqa.mic = s), s));
     };
   }, mic);
@@ -157,16 +160,16 @@ test('record a synthetic screen with a synthetic microphone, stop, replay, downl
   expect(download.suggestedFilename()).toMatch(/^pocketqa-recording-\d{8}-\d{6}\.webm$/);
   const file = join(tmpdir(), `pqa-web-recording-${run}.webm`);
   await download.saveAs(file);
-  const probe = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=index,codec_type,codec_name,width,height,sample_rate,channels', '-show_entries', 'format=format_name,size', '-of', 'compact', file]).toString();
+  const probe = execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=index,codec_type,codec_name,width,height,sample_rate,channels', '-show_entries', 'format=format_name,size,duration', '-of', 'compact', file]).toString();
   const streams = probe.split('\n').filter((l) => l.startsWith('stream|'));
   expect(streams.filter((l) => l.includes('codec_type=video'))).toHaveLength(1);
   expect(streams.filter((l) => l.includes('codec_type=audio'))).toHaveLength(1);
   expect(probe).toMatch(/codec_name=(vp9|vp8|h264)\|codec_type=video/);
   expect(probe).toMatch(/codec_name=(opus|aac)\|codec_type=audio/);
   // Decodes end to end without errors, and the narration track is not silent (the fake mic's tone).
+  // Decodes end to end: only the known null-muxer DTS note is tolerated (ffmpegCheck.ts, unit-tested).
   const decode = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-f', 'null', '-'], { encoding: 'utf8' });
-  expect(decode.status).toBe(0);
-  expect(decode.stderr.trim()).toBe('');
+  expect(decodeProblems(decode.status, decode.stderr)).toEqual([]);
   const vol = spawnSync('ffmpeg', ['-hide_banner', '-i', file, '-af', 'volumedetect', '-vn', '-f', 'null', '-'], { encoding: 'utf8' });
   const mean = Number(/mean_volume: (-?[\d.]+) dB/.exec(vol.stderr)?.[1]);
   const max = Number(/max_volume: (-?[\d.]+) dB/.exec(vol.stderr)?.[1]);
@@ -176,7 +179,8 @@ test('record a synthetic screen with a synthetic microphone, stop, replay, downl
     `# Web recorder, real Chromium MediaRecorder on SYNTHETIC media (fake devices), ${new Date().toISOString()}\n` +
       `# downloaded through the app as ${download.suggestedFilename()} (${statSync(file).size} bytes)\n` +
       `$ ffprobe -v error -show_entries stream=... -show_entries format=format_name,size -of compact <file>\n${probe}` +
-      `$ ffmpeg -v error -i <file> -f null -   → exit ${decode.status}, stderr ${JSON.stringify(decode.stderr.trim())} (decoded without errors)\n` +
+      `$ ffmpeg -v error -i <file> -f null -   → exit ${decode.status}, problems [] (known null-muxer DTS notes tolerated: ${knownWarnings(decode.stderr)})\n` +
+      `$ ffprobe format duration → ${probe.match(/duration=([^|\n]+)/)?.[1] ?? 'not reported'} (MediaRecorder WebM carries no duration header; players compute it, see usability-guide.md)\n` +
       `$ ffmpeg -i <file> -af volumedetect -vn -f null -   → mean_volume ${mean} dB, max_volume ${max} dB (the fake microphone's tone; not silence)\n` +
       `replay in page: ${JSON.stringify(replay)}\n`,
   );
@@ -225,6 +229,40 @@ test('a refused microphone stops the screen share and records nothing (T3)', asy
   await expect(page.getByTestId('web-rec-review')).toHaveCount(0);
   await expect(page.getByTestId('web-rec-start')).toBeEnabled(); // retry stays possible
   await shot(page, 'web-recorder-mic-denied-light');
+  await ctx.close();
+});
+
+test('an unanswered microphone prompt can be cancelled: the screen is released, nothing recorded (pqa-qa r1 P2-1)', async ({ browser, request }) => {
+  const { email, participationId } = await seed(request);
+  const ctx = await browser.newContext({ colorScheme: 'light' });
+  const page = await ctx.newPage();
+  await instrument(page, 'hang');
+  await openSession(page, email, participationId);
+  await page.getByTestId('web-rec-consent').click();
+  await page.getByTestId('web-rec-start').click();
+  await expect(page.getByTestId('web-rec-status')).toContainText('Allow the microphone');
+  expect(await tracksState(page)).toEqual(['video:live']);
+  await shot(page, 'web-recorder-mic-pending-light');
+  await page.getByTestId('web-rec-cancel').click();
+  await expect(page.getByTestId('web-rec-error')).toContainText('Cancelled. Nothing was recorded.');
+  expect(await tracksState(page)).toEqual(['video:ended']);
+  await expect(page.getByTestId('web-rec-start')).toBeEnabled();
+  await ctx.close();
+});
+
+test('the browser’s “Stop sharing” while the microphone prompt hangs ends the attempt (pqa-qa r1 P2-1)', async ({ browser, request }) => {
+  const { email, participationId } = await seed(request);
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await instrument(page, 'hang');
+  await openSession(page, email, participationId);
+  await page.getByTestId('web-rec-consent').click();
+  await page.getByTestId('web-rec-start').click();
+  await expect(page.getByTestId('web-rec-status')).toContainText('Allow the microphone');
+  await page.evaluate(() => (window as unknown as { __pqa: { display: MediaStream } }).__pqa.display.getVideoTracks()[0]!.dispatchEvent(new Event('ended')));
+  await expect(page.getByTestId('web-rec-error')).toContainText('You stopped sharing before recording started');
+  expect(await tracksState(page)).toEqual(['video:ended']);
+  await expect(page.getByTestId('web-rec-start')).toBeEnabled();
   await ctx.close();
 });
 

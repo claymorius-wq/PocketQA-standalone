@@ -1,24 +1,82 @@
-$ pnpm --filter @pocket-qa/mobile exec playwright test   (both projects: mobile-web and desktop-recorder; WebServer npm warnings omitted; ANSI stripped)
+# Three consecutive full Playwright runs after the pqa-qa r1 fixes (P2-2: show 3 green runs). Both projects each time; WebServer npm warnings omitted; ANSI stripped.
 
-Running 19 tests using 1 worker
+## run 1
+$ pnpm --filter @pocket-qa/mobile exec playwright test
+Running 21 tests using 1 worker
   ✓   1 [mobile-web] › e2e/account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.3s)
   ✓   2 [mobile-web] › e2e/admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (20.5s)
   ✓   3 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (1.9s)
   ✓   4 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (1.5s)
-  ✓   5 [mobile-web] › e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (13.4s)
+  ✓   5 [mobile-web] › e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (13.5s)
   ✓   6 [mobile-web] › e2e/remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (1.6s)
   ✓   7 [mobile-web] › e2e/remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (3.3s)
-  ✓   8 [mobile-web] › e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (23.3s)
+  ✓   8 [mobile-web] › e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (23.2s)
   ✓   9 [mobile-web] › e2e/review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (2.4s)
-  ✓  10 [mobile-web] › e2e/review-loop.spec.ts:217:5 › offline state when the API is unreachable (2.7s)
-  ✓  11 [mobile-web] › e2e/wallet-login.spec.ts:9:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (801ms)
+  ✓  10 [mobile-web] › e2e/review-loop.spec.ts:217:5 › offline state when the API is unreachable (2.6s)
+  ✓  11 [mobile-web] › e2e/wallet-login.spec.ts:9:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (784ms)
+  ✓  12 [mobile-web] › e2e/wallet-login.spec.ts:39:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (347ms)
+  ✓  13 [mobile-web] › e2e/wallet-login.spec.ts:48:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (724ms)
+  ✓  14 [mobile-web] › e2e/wallet-login.spec.ts:66:5 › wallet chooser: with two wallets installed, the user picks one; only that wallet signs, then it is disconnected (ledger W1) (751ms)
+  ✓  15 [mobile-web] › e2e/wallet-rewards.spec.ts:27:5 › builder funds a wallet escrow study (simulated); tester joins with a frozen wallet; approval settles once; reputation updates (25.5s)
+  ✓  16 [desktop-recorder] › e2e/web-recorder.spec.ts:97:5 › record a synthetic screen with a synthetic microphone, stop, replay, download: a real file with video and audio, nothing sent (6.7s)
+  ✓  17 [desktop-recorder] › e2e/web-recorder.spec.ts:200:5 › the browser’s “Stop sharing” ends the recording and keeps the draft (dark) (5.6s)
+  ✓  18 [desktop-recorder] › e2e/web-recorder.spec.ts:218:5 › a refused microphone stops the screen share and records nothing (T3) (1.6s)
+  ✓  19 [desktop-recorder] › e2e/web-recorder.spec.ts:235:5 › an unanswered microphone prompt can be cancelled: the screen is released, nothing recorded (pqa-qa r1 P2-1) (1.7s)
+  ✓  20 [desktop-recorder] › e2e/web-recorder.spec.ts:253:5 › the browser’s “Stop sharing” while the microphone prompt hangs ends the attempt (pqa-qa r1 P2-1) (1.3s)
+  ✓  21 [desktop-recorder] › e2e/web-recorder.spec.ts:269:5 › leaving the session mid-recording releases the screen and microphone and keeps nothing (T7) (1.3s)
+  21 passed (2.2m)
+run 1 EXIT=0
+
+## run 2
+$ pnpm --filter @pocket-qa/mobile exec playwright test
+Running 21 tests using 1 worker
+  ✓   1 [mobile-web] › e2e/account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.3s)
+  ✓   2 [mobile-web] › e2e/admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (20.5s)
+  ✓   3 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (1.9s)
+  ✓   4 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (1.5s)
+  ✓   5 [mobile-web] › e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (13.5s)
+  ✓   6 [mobile-web] › e2e/remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (1.6s)
+  ✓   7 [mobile-web] › e2e/remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (3.3s)
+  ✓   8 [mobile-web] › e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (23.4s)
+  ✓   9 [mobile-web] › e2e/review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (2.5s)
+  ✓  10 [mobile-web] › e2e/review-loop.spec.ts:217:5 › offline state when the API is unreachable (2.6s)
+  ✓  11 [mobile-web] › e2e/wallet-login.spec.ts:9:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (820ms)
   ✓  12 [mobile-web] › e2e/wallet-login.spec.ts:39:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (345ms)
-  ✓  13 [mobile-web] › e2e/wallet-login.spec.ts:48:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (727ms)
-  ✓  14 [mobile-web] › e2e/wallet-login.spec.ts:66:5 › wallet chooser: with two wallets installed, the user picks one; only that wallet signs, then it is disconnected (ledger W1) (768ms)
+  ✓  13 [mobile-web] › e2e/wallet-login.spec.ts:48:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (728ms)
+  ✓  14 [mobile-web] › e2e/wallet-login.spec.ts:66:5 › wallet chooser: with two wallets installed, the user picks one; only that wallet signs, then it is disconnected (ledger W1) (755ms)
   ✓  15 [mobile-web] › e2e/wallet-rewards.spec.ts:27:5 › builder funds a wallet escrow study (simulated); tester joins with a frozen wallet; approval settles once; reputation updates (25.4s)
-  ✓  16 [desktop-recorder] › e2e/web-recorder.spec.ts:94:5 › record a synthetic screen with a synthetic microphone, stop, replay, download: a real file with video and audio, nothing sent (6.7s)
-  ✓  17 [desktop-recorder] › e2e/web-recorder.spec.ts:196:5 › the browser’s “Stop sharing” ends the recording and keeps the draft (dark) (5.7s)
-  ✓  18 [desktop-recorder] › e2e/web-recorder.spec.ts:214:5 › a refused microphone stops the screen share and records nothing (T3) (1.6s)
-  ✓  19 [desktop-recorder] › e2e/web-recorder.spec.ts:231:5 › leaving the session mid-recording releases the screen and microphone and keeps nothing (T7) (1.3s)
-  19 passed (2.1m)
-EXIT=0
+  ✓  16 [desktop-recorder] › e2e/web-recorder.spec.ts:97:5 › record a synthetic screen with a synthetic microphone, stop, replay, download: a real file with video and audio, nothing sent (6.7s)
+  ✓  17 [desktop-recorder] › e2e/web-recorder.spec.ts:200:5 › the browser’s “Stop sharing” ends the recording and keeps the draft (dark) (5.7s)
+  ✓  18 [desktop-recorder] › e2e/web-recorder.spec.ts:218:5 › a refused microphone stops the screen share and records nothing (T3) (1.6s)
+  ✓  19 [desktop-recorder] › e2e/web-recorder.spec.ts:235:5 › an unanswered microphone prompt can be cancelled: the screen is released, nothing recorded (pqa-qa r1 P2-1) (1.6s)
+  ✓  20 [desktop-recorder] › e2e/web-recorder.spec.ts:253:5 › the browser’s “Stop sharing” while the microphone prompt hangs ends the attempt (pqa-qa r1 P2-1) (1.2s)
+  ✓  21 [desktop-recorder] › e2e/web-recorder.spec.ts:269:5 › leaving the session mid-recording releases the screen and microphone and keeps nothing (T7) (1.2s)
+  21 passed (2.2m)
+run 2 EXIT=0
+
+## run 3
+$ pnpm --filter @pocket-qa/mobile exec playwright test
+Running 21 tests using 1 worker
+  ✓   1 [mobile-web] › e2e/account-delete.spec.ts:8:5 › tester exports data, deletes the account with a typed confirmation, and cannot sign in again (2.3s)
+  ✓   2 [mobile-web] › e2e/admin-dispute.spec.ts:26:5 › dispute overturned by admin credits the tester; moderation is audited (20.0s)
+  ✓   3 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, dark) (1.9s)
+  ✓   4 [mobile-web] › e2e/focus-visible.spec.ts:69:7 › keyboard focus never rests under the header scrim or the dock (New study, light) (1.5s)
+  ✓   5 [mobile-web] › e2e/remaining-scope.spec.ts:99:5 › devnet demo transfer: awaiting → pending → confirmed, and a mismatched transaction shows failed (13.5s)
+  ✓   6 [mobile-web] › e2e/remaining-scope.spec.ts:156:5 › builder sees disputes on their own study, on the study page and the review page (1.6s)
+  ✓   7 [mobile-web] › e2e/remaining-scope.spec.ts:171:5 › admin resolves a stuck submission (builder suspended) with an audited reason (3.3s)
+  ✓   8 [mobile-web] › e2e/review-loop.spec.ts:34:5 › builder creates and funds a study, tester submits consented evidence, builder reviews and approves (23.5s)
+  ✓   9 [mobile-web] › e2e/review-loop.spec.ts:198:5 › theme switch persists and unauthenticated users land on sign-in (2.4s)
+  ✓  10 [mobile-web] › e2e/review-loop.spec.ts:217:5 › offline state when the API is unreachable (2.6s)
+  ✓  11 [mobile-web] › e2e/wallet-login.spec.ts:9:5 › wallet sign-in: first time creates an account (two signIn signatures), then signs straight in (803ms)
+  ✓  12 [mobile-web] › e2e/wallet-login.spec.ts:39:5 › a wallet without Sign In With Solana is refused honestly (no signMessage fallback) (373ms)
+  ✓  13 [mobile-web] › e2e/wallet-login.spec.ts:48:5 › web wallet linking: the link message carries this origin, so a domain-checking wallet signs it (724ms)
+  ✓  14 [mobile-web] › e2e/wallet-login.spec.ts:66:5 › wallet chooser: with two wallets installed, the user picks one; only that wallet signs, then it is disconnected (ledger W1) (749ms)
+  ✓  15 [mobile-web] › e2e/wallet-rewards.spec.ts:27:5 › builder funds a wallet escrow study (simulated); tester joins with a frozen wallet; approval settles once; reputation updates (25.9s)
+  ✓  16 [desktop-recorder] › e2e/web-recorder.spec.ts:97:5 › record a synthetic screen with a synthetic microphone, stop, replay, download: a real file with video and audio, nothing sent (6.7s)
+  ✓  17 [desktop-recorder] › e2e/web-recorder.spec.ts:200:5 › the browser’s “Stop sharing” ends the recording and keeps the draft (dark) (5.7s)
+  ✓  18 [desktop-recorder] › e2e/web-recorder.spec.ts:218:5 › a refused microphone stops the screen share and records nothing (T3) (1.7s)
+  ✓  19 [desktop-recorder] › e2e/web-recorder.spec.ts:235:5 › an unanswered microphone prompt can be cancelled: the screen is released, nothing recorded (pqa-qa r1 P2-1) (1.6s)
+  ✓  20 [desktop-recorder] › e2e/web-recorder.spec.ts:253:5 › the browser’s “Stop sharing” while the microphone prompt hangs ends the attempt (pqa-qa r1 P2-1) (1.3s)
+  ✓  21 [desktop-recorder] › e2e/web-recorder.spec.ts:269:5 › leaving the session mid-recording releases the screen and microphone and keeps nothing (T7) (1.2s)
+  21 passed (2.2m)
+run 3 EXIT=0

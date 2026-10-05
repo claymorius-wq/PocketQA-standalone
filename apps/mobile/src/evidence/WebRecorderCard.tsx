@@ -30,19 +30,20 @@ export function WebRecorderCard({ locked, capability }: { locked: boolean; capab
   const [state, setState] = useState<RecorderState>({ kind: 'ready', notice: null });
   const [consented, setConsented] = useState(false);
   const ctl = useRef<WebScreenRecorder | null>(null);
-  if (cap.available && !ctl.current) ctl.current = new WebScreenRecorder(browserRecorderEnv(), { onChange: setState });
+  const fresh = () => new WebScreenRecorder(browserRecorderEnv(), { onChange: setState });
+  if (cap.available && !ctl.current) ctl.current = fresh();
 
   useEffect(() => {
-    const rec = ctl.current;
-    if (!rec) return;
-    // Leaving the page also releases the devices and drops the bytes.
-    const onHide = () => rec.dispose();
+    if (!cap.available) return;
+    // Leaving the page also releases the devices and drops the bytes. Read through the ref: a
+    // restarted card has a new controller.
+    const onHide = () => ctl.current?.dispose();
     if (Platform.OS === 'web') window.addEventListener('pagehide', onHide);
     return () => {
       if (Platform.OS === 'web') window.removeEventListener('pagehide', onHide);
-      rec.dispose();
+      ctl.current?.dispose();
     };
-  }, []);
+  }, [cap.available]);
 
   if (!cap.available) {
     return (
@@ -52,8 +53,26 @@ export function WebRecorderCard({ locked, capability }: { locked: boolean; capab
     );
   }
   const rec = ctl.current!;
+  // Closed under a still-mounted card (the page came back from the back/forward cache after
+  // pagehide, or sign-out disposed it): say so and offer a fresh start with fresh consent.
+  if (state.kind === 'disposed') {
+    const restart = () => {
+      ctl.current = fresh();
+      setConsented(false);
+      setState({ kind: 'ready', notice: null });
+    };
+    return (
+      <View style={styles.wrap} testID="web-recorder">
+        <Notice tone="warning" title="Recording" testID="web-rec-error">
+          This recording was closed (the page was hidden or you signed out). Nothing was kept.
+        </Notice>
+        <Button label="Start over" icon="record" variant="secondary" onPress={restart} testID="web-rec-restart" />
+      </View>
+    );
+  }
   const recording = state.kind === 'recording';
-  const busy = state.kind === 'requesting-screen' || state.kind === 'requesting-mic' || state.kind === 'stopping';
+  const asking = state.kind === 'requesting-screen' || state.kind === 'requesting-mic';
+  const busy = asking || state.kind === 'stopping';
   const problem = state.kind === 'error' ? state.message : state.kind === 'ready' ? state.notice : null;
 
   return (
@@ -84,6 +103,8 @@ export function WebRecorderCard({ locked, capability }: { locked: boolean; capab
             testID="web-rec-control"
           />
           <Status state={state} />
+          {/* A prompt may never be answered: the user can always back out (pqa-qa r1 P2-1). */}
+          {asking ? <Button label="Cancel" icon="reject" variant="ghost" onPress={() => rec.cancel()} testID="web-rec-cancel" /> : null}
         </>
       )}
     </View>

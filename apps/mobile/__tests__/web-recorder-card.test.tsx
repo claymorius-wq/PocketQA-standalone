@@ -13,7 +13,7 @@ jest.mock('lucide-react-native', () =>
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 const mockDownload = jest.fn();
 jest.mock('../src/evidence/localDownload', () => ({ downloadLocal: (...a: unknown[]) => mockDownload(...a) }));
-const mockCtl = { start: jest.fn(), stop: jest.fn(), discard: jest.fn(), dispose: jest.fn(), onChange: (_: RecorderState) => {} };
+const mockCtl = { start: jest.fn(), stop: jest.fn(), discard: jest.fn(), dispose: jest.fn(), cancel: jest.fn(), made: jest.fn(), onChange: (_: RecorderState) => {} };
 jest.mock('../src/evidence/webScreenRecorder', () => {
   const actual = jest.requireActual('../src/evidence/webScreenRecorder');
   return {
@@ -23,7 +23,9 @@ jest.mock('../src/evidence/webScreenRecorder', () => {
       state = { kind: 'ready', notice: null };
       constructor(_env: unknown, opts: { onChange: (s: RecorderState) => void }) {
         mockCtl.onChange = opts.onChange;
+        mockCtl.made();
       }
+      cancel = () => mockCtl.cancel();
       start = () => mockCtl.start();
       stop = () => mockCtl.stop();
       discard = () => mockCtl.discard();
@@ -90,6 +92,26 @@ describe('WebRecorderCard', () => {
     expect(screen.getByTestId('web-rec-status')).toHaveTextContent(/Choose a tab, window or screen/);
     await drive({ kind: 'requesting-mic' });
     expect(screen.getByTestId('web-rec-status')).toHaveTextContent(/Allow the microphone/);
+  });
+
+  it('while the browser is asking, Cancel is offered (pqa-qa r1 P2-1)', async () => {
+    await render(tree(<WebRecorderCard locked={false} capability={available} />));
+    await drive({ kind: 'requesting-mic' });
+    await fireEvent.press(screen.getByTestId('web-rec-cancel'));
+    expect(mockCtl.cancel).toHaveBeenCalledTimes(1);
+    await drive({ kind: 'recording', elapsedMs: 0, bytes: 0 });
+    expect(screen.queryByTestId('web-rec-cancel')).toBeNull();
+  });
+
+  it('a recorder disposed while the card is still shown (page restored from the back/forward cache) offers a fresh start (pqa-qa r1 P3)', async () => {
+    await render(tree(<WebRecorderCard locked={false} capability={available} />));
+    expect(mockCtl.made).toHaveBeenCalledTimes(1);
+    await drive({ kind: 'disposed' });
+    expect(screen.getByTestId('web-rec-error')).toHaveTextContent(/recording was closed/);
+    expect(screen.queryByTestId('web-rec-start')).toBeNull();
+    await fireEvent.press(screen.getByTestId('web-rec-restart'));
+    expect(mockCtl.made).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('web-rec-consent')).toHaveProp('accessibilityState', expect.objectContaining({ checked: false }));
   });
 
   it('recording: a live status with the timer and the cap, and Stop (T7)', async () => {

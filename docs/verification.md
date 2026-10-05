@@ -657,3 +657,16 @@ Full outputs are in `docs/reviews/screen-recording/`.
 - **`pnpm verify`:** EXIT=0 (`verify.txt`). Secrets: 888 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1129.
 - **Not exercised:** the real share dialog, a real microphone, Safari and Firefox, and a deployed HTTPS origin (`usability-guide.md`).
 
+## 2026-10-05: screen recording, fixes for pqa-qa r1 (CHANGES_REQUIRED on `9b9d631`); lead
+- **P2-1:** Cancel in both asking states; a "Stop sharing" listener from the moment a screen is chosen.
+  - Unit and card tests: RED (6 failing), then GREEN.
+  - Real Chromium: a never-settling microphone prompt can be cancelled, and the browser's Stop sharing ends it. Both release the screen track.
+- **P3:** the closed card offers Start over, with fresh consent.
+- **P2-2:** decode gate `apps/mobile/e2e/ffmpegCheck.ts`. Only the exact null-muxer DTS line is tolerated, which 9 unit tests prove (decoder and demuxer errors, other muxers, near-misses and nonzero exits all fail).
+- **Mutation:** all 7 r1-fix mutants caught.
+- **Full Playwright:** 3 consecutive runs, **21/21 each**, EXIT=0 (`docs/reviews/screen-recording/playwright.txt`). The known DTS note occurred 0 times in those runs.
+- **`pnpm verify`:** EXIT=0 (`verify.txt`). Secrets: 897 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1145.
+- **WebM duration limitation documented:** `duration=N/A` in the header (`usability-guide.md`).
+- **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
+  - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
+
