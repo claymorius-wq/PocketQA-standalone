@@ -21,7 +21,7 @@ This file is a **lead-attributed supplement**. It never rewrites the raw run 1 r
 
 Read back from devnet after the run (`getSignaturesForAddress` on Pocket QA, finalized):
 ```
-4KNLFE1egjonQb85xPGkhoEVyoScz3WyhqQi76Hg4czDLA6S7Ji5Ypk7nyzvnkTKiE3KeAB5x6T7xhNG73kseBiG slot 507704742 err {'InstructionError': [0, {'Custom': 6008}]}
+4KNLFE1egjonQb85xPGkhoEVyoScz3WyhqQi76Hg4czDLA6S7Ji5Ypk7nyzvnkTKiE3KeAB5x6T7xhNG73kseBiG slot 507704742 err {'InstructionError': [0, {'Custom': 6008}]} # public transaction signature, check-secrets: allow
 ```
 Custom 6008 is Squads `InvalidProposalStatus`, decoded with `@sqds/multisig` `errorFromCode(6008)`. The proposal was still Active, with 1 of 2 approvals. Index 4 stays Active by design.
 
