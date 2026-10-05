@@ -1,11 +1,11 @@
-import { act, render, screen } from '@testing-library/react-native';
+import { act, render, renderHook, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { AccessibilityInfo, AppState, Text as RNText } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { GlideList } from '../../ui/patterns/GlideList';
-import { Enter } from '../../ui/screen';
+import { Enter, ScreenContext, useEntranceDelay } from '../../ui/screen';
 
 // Emulator, 2026-10-05: a recording that the system stopped while the tester was in another app
 // (a phone call took the microphone) came back with its clip row and its "Recording stopped" notice
@@ -80,5 +80,24 @@ describe('entrances that start while the app is in the background', () => {
     await render(wrap(<Enter step={0} delay={0}><RNText>late notice</RNText></Enter>));
     await act(async () => {});
     expect(opacityAround('late notice')).toBe(1);
+  });
+});
+
+// pqa-qa fe89787 interim P3: the intro's own entrances (lens, rising title words) take their delay from
+// useEntranceDelay; null means "don't move". Welcome can mount while Pocket QA is off screen (signed out
+// or a session ended while the tester was in another app), so it must not start hidden then either.
+describe('useEntranceDelay off screen', () => {
+  const inScreen = ({ children }: { children: ReactNode }) => <ScreenContext.Provider value={{ wave: { start: Date.now() }, mountedAt: Date.now(), stack: false }}>{children}</ScreenContext.Provider>;
+
+  it('foreground (control): a delay on the screen wave', async () => {
+    appStateIs('active');
+    const { result } = await renderHook(() => useEntranceDelay(200), { wrapper: inScreen });
+    expect(result.current).not.toBeNull();
+  });
+
+  it.each(['background', 'inactive'] as const)('%s: null (render still)', async (st) => {
+    appStateIs(st);
+    const { result } = await renderHook(() => useEntranceDelay(200), { wrapper: inScreen });
+    expect(result.current).toBeNull();
   });
 });

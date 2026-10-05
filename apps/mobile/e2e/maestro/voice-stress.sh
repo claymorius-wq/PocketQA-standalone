@@ -9,7 +9,7 @@
 # always receives audio"), micoff (appops RECORD_AUDIO ignore), dka (always_finish_activities while
 # away), death (force-stop while recording).
 # Emulator launched with -no-audio: the host's audio (and microphone) is never touched.
-# GATE="--structure-only" when the emulator's microphone delivers digital silence (-no-audio): the
+# GATE="--structure-only" when the emulator's microphone delivers near-silence (codec noise floor) (-no-audio): the
 # gate then proves a continuous audio track only, and says so.
 # Usage: SERIAL=emulator-5556 MEDIA_DIR=<local API media dir> OUT=<dir> MODE=<mode> [GATE=...] ./voice-stress.sh
 set -u

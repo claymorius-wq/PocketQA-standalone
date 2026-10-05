@@ -4,7 +4,7 @@
   - p3 = APK `2a7c2588…` (code `30a98d9`);
   - p4 = APK `67b4e443…` (`44fea59`: the same pipeline plus the off-screen entrance fix).
 - **Emulator:** own AVD `PocketQA_Recorder_API36`, launched with `-no-audio`, so the host's audio and microphone are never touched.
-- **What these runs prove:** the guest microphone delivers **digital silence**, so every audio verdict here is **structure only**: stream durations, no timestamp gaps, and the pipeline's own `PqaCapture` stop line.
+- **What these runs prove:** the guest microphone delivers **near-silence** (no signal: the clips measure at the codec noise floor, e.g. the control run mean −91 dB, max −71 dB by volumedetect), so every audio verdict here is **structure only**: stream durations, no timestamp gaps, and the pipeline's own `PqaCapture` stop line.
 - **What they don't prove:** that a signal or a voice reaches the file. That needs a real phone, with real speech, recorded for at least 10 minutes.
 
 | Scenario | Stimulus during one live recording | `PqaCapture` stop line | Gate (structure only) | Result |

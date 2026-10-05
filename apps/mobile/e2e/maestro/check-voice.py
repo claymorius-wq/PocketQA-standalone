@@ -14,7 +14,7 @@ A clip a scenario ends on purpose by taking the microphone away (call, appops) m
 silent seconds before the app stops it; --allow-silent-tail N accepts quiet windows that start within
 the last N s. Without the flag, no quiet window is accepted anywhere.
 
---structure-only skips the signal (RMS) check, for inputs known to be digital silence (emulator
+--structure-only skips the signal (RMS) check, for inputs known to be near-silence (codec noise floor) (emulator
 -no-audio): it proves the audio track is continuous and covers the video, NOT that a voice or any
 signal was captured. Its verdict line says so.
 

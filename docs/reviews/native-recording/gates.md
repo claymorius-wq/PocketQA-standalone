@@ -5,7 +5,7 @@
 - History: the earlier MediaRecorder candidate (`c5e629d`) is superseded. Its voice stall is analysed in `docs/plans/native-capture-pipeline.md`.
 
 ## Words used here
-- **Structure only:** the emulator now runs with `-no-audio`, so its microphone delivers **digital silence**. The gate (`check-voice.py --structure-only`) then proves:
+- **Structure only:** the emulator now runs with `-no-audio`, so its microphone delivers **near-silence** (no signal: the clips measure at the codec noise floor, e.g. the control run mean −91 dB, max −71 dB by volumedetect). The gate (`check-voice.py --structure-only`) then proves:
   - one H.264 and one AAC stream;
   - |audio − video| ≤ 1 s;
   - no audio timestamp gaps (the samples held account for the duration within 0.5 s);

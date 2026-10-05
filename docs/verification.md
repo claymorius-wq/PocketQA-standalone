@@ -853,7 +853,7 @@ Gate ledger: `docs/reviews/native-recording/gates.md`. Research and design: `doc
   - Kotlin tests: PendingStore 10, VoiceCheck 9 (ran on the real emulator clips), PipelineLogic 10, CaptureMath 2; RED, then GREEN.
   - pqa-qa's pipeline review r1 P2-C, P2-D and P3s were fixed, and r2 confirmed them.
 - **UI fix** (`44fea59`): entrances that start while the app is off screen render settled. Jest background-entrance 5, RED (3 failing), then GREEN.
-- **Emulator** (`-no-audio`: the guest mic is digital silence, so the verdicts are **structure only**). Details: `docs/reviews/native-recording/android-pipeline/`.
+- **Emulator** (`-no-audio`: the guest mic is near-silence (codec noise floor), so the verdicts are **structure only**). Details: `docs/reviews/native-recording/android-pipeline/`.
   - control, stress, call, dka and death PASS;
   - micoff did not exercise mic loss;
   - combined cross-app run with main's intro: rc=0, video 49.009 s, audio 49.017 s, gaps 0, `PqaCapture` gaps 0 / lost 0, overruns 0.

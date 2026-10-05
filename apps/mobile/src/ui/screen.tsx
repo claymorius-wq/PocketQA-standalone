@@ -127,6 +127,9 @@ export function Enter({ step, delay, children, style, collapse }: {
 export function useEntranceDelay(at: number): number | null {
   const screen = useContext(ScreenContext);
   const [delay] = useState<number | null>(() => {
+    // Mounting while Pocket QA is off screen (Welcome after a sign-out or a session end that happened
+    // while the tester was in another app): don't move, as with Enter (pqa-qa fe89787 P3).
+    if (appOffScreen()) return null;
     if (!screen) return 0;
     const now = Date.now();
     if (screen.staggered === false && now <= (screen.settledAt ?? 0)) return null;
