@@ -28,7 +28,7 @@ import { ENTRANCE_WINDOW, useArrival, type InitialArrival } from '../motion/entr
 import { useSheetFocus } from '../motion/sheet';
 import { DUR } from '../theme/motion';
 import { useTheme } from '../theme/ThemeProvider';
-import { layout, radius, space, touch, TOUCH, type Tone as GlassTone } from '../theme/tokens';
+import { layout, radius, space, statusBand, touch, TOUCH, type Tone as GlassTone } from '../theme/tokens';
 import { FocusPressable } from './focus';
 import { type KitIcon } from './icon';
 import { HEADER_ROW_BOTTOM } from './StackHeader';
@@ -200,7 +200,9 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   ));
   // Tab roots: the boards reserve a 44dp status band and put the title 14 below it, whatever the
   // device's own inset (Android's is 24), so the header text sits where the boards put it.
-  const top = stack ? headerHeight + STACK_CONTENT_GAP : Math.max(insets.top, layout.statusBarReserve) + layout.headerTextTop - layout.statusBarReserve - insets.top;
+  // On web the band is only the page's own safe-area inset (statusBand): the browser draws its
+  // status bar outside the page.
+  const top = stack ? headerHeight + STACK_CONTENT_GAP : statusBand(insets.top, WEB) + layout.headerTextTop - layout.statusBarReserve - insets.top;
   // With a dock, the content ends `dockClearance` above the dock's top edge (never less than the usual bottom room).
   const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance : 0;
   // Web: the content also runs at least `focusFloor` past the end, so the last controls can be

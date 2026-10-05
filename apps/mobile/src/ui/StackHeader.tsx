@@ -9,7 +9,7 @@ import { GlassTile } from '../icons';
 import { usePressMotion } from '../motion';
 import { useArrival, type ArrivalNavigation } from '../motion/entrance';
 import { useTheme } from '../theme/ThemeProvider';
-import { layout, type Palette } from '../theme/tokens';
+import { statusBand, type Palette } from '../theme/tokens';
 import { FocusPressable } from './focus';
 import { ArrivalContext, arrivalOf } from './screen';
 
@@ -54,7 +54,8 @@ export function LensStackHeader({ navigation, route, options, back }: NativeStac
   // Back shows only when there is history to return to (`back`), exactly as main's native header:
   // a screen reached by a deep link or a web refresh shows the title alone. No new navigation path.
   // The same status-band rule as the tab roots' titles (Screen): the boards' 44 whatever the device inset.
-  const top = Math.max(insets.top, layout.statusBarReserve) + ROW_TOP;
+  // On web the band is only the page's own safe-area inset: the browser's status bar sits outside the page.
+  const top = statusBand(insets.top, Platform.OS === 'web') + ROW_TOP;
   return (
     <View style={[styles.bar, { paddingTop: top, paddingLeft: insets.left, paddingRight: insets.right }]}>
       {/* The push arrival slides the row in from +24, past the right edge; on web this frame clips it

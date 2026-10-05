@@ -1,0 +1,7 @@
+# A fresh install opens the intro (Welcome) once before Sign in. Skip it when it shows; on an
+# install that has already seen it, there is nothing to tap and the flow goes on.
+appId: com.reshareai.pocketqa
+---
+- tapOn:
+    id: intro-skip
+    optional: true
