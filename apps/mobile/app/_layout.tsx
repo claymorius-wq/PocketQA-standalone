@@ -40,7 +40,7 @@ function ThemedStack() {
   // Nothing protected renders (or fetches) until the saved session is restored.
   if (!ready) {
     return (
-      // The light arrives on Sign in (the launch, §M3), never on this start screen.
+      // The light arrives on the first auth screen (the launch, §M3: the intro or Sign in), never on this start screen.
       <Ground enter={false}>
         <View style={styles.starting}>
           <LoadingState label="Starting Pocket QA…" brand />

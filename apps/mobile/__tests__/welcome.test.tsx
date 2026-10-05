@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Index from '../app/index';
@@ -75,10 +75,13 @@ describe('Welcome', () => {
   it('opens on the first page, with its title as one heading', async () => {
     await renderWelcome();
     expect(label()).toHaveTextContent('POCKET QA');
-    // One header, named by the whole title: the rising words are text, never a heading each.
+    // One header, named by the whole title: the rising words are text, never a heading each, not
+    // even the ones hidden from assistive tech while they rise.
     const headers = screen.getAllByRole('header');
     expect(headers).toHaveLength(1);
     expect(headers[0]!.props.accessibilityLabel).toBe('Usability tests on real phones');
+    const title = screen.getByTestId('intro-title');
+    expect(within(title).queryAllByRole('header', { includeHiddenElements: true }).filter((h) => h !== title)).toHaveLength(0);
     expect(screen.getByTestId('intro-skip')).toBeTruthy();
     expect(screen.getByTestId('intro-next')).toHaveTextContent('Next');
   });
@@ -124,6 +127,17 @@ describe('Welcome', () => {
     await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'), { timeout: 2000 });
   });
 
+  it('the fallback settles where the pager rests, not where Next sent it', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    // The web reports no drag: a wheel carries the pager on to the last page while Next is still
+    // heading for the second. Resting on a page Next isn't heading for settles nothing yet.
+    await scrollTo(1.5);
+    await scrollTo(2);
+    expect(label()).toHaveTextContent('POCKET QA');
+    await waitFor(() => expect(label()).toHaveTextContent('FOR BUILDERS'), { timeout: 2000 });
+  });
+
   it('Next, then dragged back before it arrived: the page it rests on stays the page', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-next'));
@@ -143,11 +157,16 @@ describe('Welcome', () => {
   it('a drag takes over from Next: the user’s own scroll decides', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-next'));
-    await fireEvent(screen.getByTestId('intro-pager'), 'scrollBeginDrag', { nativeEvent: { contentOffset: { x: 100, y: 0 } } });
     await scrollTo(0.2);
-    await scrollTo(0);
+    await fireEvent(screen.getByTestId('intro-pager'), 'scrollBeginDrag', { nativeEvent: { contentOffset: { x: 0.2 * WIDTH, y: 0 } } });
+    // The finger holds the pager past halfway for longer than Next's fallback: nothing settles
+    // under it (Next's fallback would settle the page the pager is nearest).
+    await scrollTo(0.6);
     await act(() => new Promise((r) => setTimeout(r, 1100)));
     expect(label()).toHaveTextContent('POCKET QA');
+    // Let go: the page it comes to rest on settles.
+    await scrollTo(1);
+    await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'));
   });
 
   it('a quick second Next passing exactly over the middle page never settles it on the way', async () => {

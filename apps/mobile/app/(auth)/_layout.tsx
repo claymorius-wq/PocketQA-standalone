@@ -2,7 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSession } from '../../src/auth/SessionProvider';
 import { stampArrival, type InitialArrival } from '../../src/motion/entrance';
-import { cameFromIntro } from '../../src/onboarding/intro';
+import { authArrival, cameFromIntro } from '../../src/onboarding/intro';
 import { disarmU1, u1Armed, u1PassAt } from '../../src/screens/authParts';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { ArrivalContext } from '../../src/ui';
@@ -45,6 +45,8 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
+      // getState() during render returns the state being rendered (React Navigation keeps it
+      // current for this), so `first` is read from the stack the screen mounts into.
       screenLayout={({ route, navigation, children }) => (
         <AuthArrival name={route.name} first={navigation.getState().routes[0]?.key === route.key}>
           {children}
@@ -62,10 +64,6 @@ export default function AuthLayout() {
  * after the first; Sign up always does. Returns to any of them play back.
  */
 function AuthArrival({ name, first, children }: { name: string; first: boolean; children: ReactNode }) {
-  const [spec] = useState<InitialArrival | null>(() => {
-    if (name !== 'welcome' && name !== 'sign-in') return null;
-    if (!first || (name === 'sign-in' && cameFromIntro())) return 'push';
-    return 'launch';
-  });
+  const [spec] = useState<InitialArrival | null>(() => authArrival(name, first, cameFromIntro()));
   return <ArrivalContext.Provider value={spec}>{children}</ArrivalContext.Provider>;
 }

@@ -223,7 +223,7 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   const focusRoom = WEB && scroll ? webScrollPadding(stack ? top : 0, pad.paddingBottom) : undefined;
   return (
     <ScreenContext.Provider value={info}>
-      {/* The light dips only on a launch (Sign in); the ground never moves with an arrival. */}
+      {/* The light dips only on a launch (the intro or Sign in); the ground never moves with an arrival. */}
       <Ground enter={staggered}>
         {handoff ? <HandoffTail onDone={() => setHandoff(false)} /> : null}
         <Animated.View style={[styles.fill, arrival.style]}>

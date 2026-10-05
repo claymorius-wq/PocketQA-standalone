@@ -25,6 +25,7 @@ test('a first visit walks through the intro to Sign in, and the next visit skips
   await expect(page.getByTestId('welcome-screen')).toBeVisible();
   // The opening title is one heading, however its words arrive.
   await expect(page.getByRole('heading', { name: 'Usability tests on real phones' })).toBeVisible();
+  await expect(page.getByTestId('intro-title').locator('h1, h2, [role="heading"]')).toHaveCount(0);
   await expect(page.getByTestId('intro-label')).toHaveText('POCKET QA');
   await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('intro-label')).toHaveText('FOR TESTERS');
@@ -50,6 +51,15 @@ test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sig
   await pager.hover();
   await swipe.mouse.wheel(260, 0);
   await expect(swipe.getByTestId('intro-label')).toHaveText('FOR TESTERS');
+  // Nothing had focus, so nothing takes it when the controls swap on the last page.
+  await swipe.mouse.wheel(260, 0);
+  await expect(swipe.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
+  await expect(swipe.getByTestId('intro-sign-in')).toBeVisible();
+  await swipe.waitForTimeout(500); // past the swap's arrival (dur-swap), when a carried focus would move
+  await expect(swipe.getByTestId('intro-sign-in')).not.toBeFocused();
+  await expect(swipe.getByTestId('intro-get-started')).not.toBeFocused();
+  await swipe.mouse.wheel(-260, 0);
+  await expect(swipe.getByTestId('intro-label')).toHaveText('FOR TESTERS');
   await swipe.getByTestId('intro-skip').click();
   await expect(swipe.getByTestId('sign-in-screen')).toBeVisible();
 
@@ -59,12 +69,44 @@ test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sig
   await join.getByTestId('intro-dot-2').click();
   await join.getByTestId('intro-get-started').click();
   await expect(join.getByTestId('sign-up-screen')).toBeVisible();
+  // Where the pager is in the first frame the intro shows again: a resize observer made after the
+  // screen's own runs after it, in the same frame, before that frame paints. (Browsers restore the
+  // offset themselves; this fails if the pager is remounted on Back or left on another page.)
+  await join.evaluate(() => {
+    const frame = document.querySelector<HTMLElement>('[data-testid="intro-pager-frame"]')!;
+    const seen = window as unknown as { introShownOn?: number };
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry || entry.contentRect.width === 0) return;
+      // The first frame it shows, only: -1 when the pager isn't there (it was remounted).
+      observer.disconnect();
+      const pager = frame.querySelector<HTMLElement>('[data-testid="intro-pager"]');
+      seen.introShownOn = pager ? pager.scrollLeft / entry.contentRect.width : -1;
+    });
+    observer.observe(frame);
+  });
   // Back returns to the intro's last page (Sign up opened over it), not out of the app.
   await join.goBack();
   await expect(join.getByTestId('welcome-screen')).toBeVisible();
   await expect(join.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
-  // Shown again where it was, not back at the first page.
+  // Shown again where it was, not back at the first page, from its first frame.
   await expect(join.getByTestId('intro-page-builders')).toBeInViewport();
+  expect(await join.evaluate(() => (window as unknown as { introShownOn?: number }).introShownOn)).toBe(2);
+});
+
+test('the keyboard: Enter on Next walks the pages, and the control that replaces Next takes its focus', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('welcome-screen')).toBeVisible();
+  await page.getByTestId('intro-next').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('intro-label')).toHaveText('FOR TESTERS');
+  await expect(page.getByTestId('intro-next')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
+  // Focus stays in the dock: Create an account, never the corner's Sign in.
+  await expect(page.getByTestId('intro-get-started')).toBeFocused();
+  await expect(page.getByTestId('intro-sign-in')).not.toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('sign-up-screen')).toBeVisible();
 });
 
 // Safari on a 390 × 844 iPhone leaves about 664 px with its toolbars; an iPhone SE about 548.

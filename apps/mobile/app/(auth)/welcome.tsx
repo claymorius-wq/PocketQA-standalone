@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ArrowRight, LogIn, UserPlus } from 'lucide-react-native';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AccessibilityInfo, Platform, Text as RNText, ScrollView, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   ReduceMotion,
@@ -80,8 +80,11 @@ export default function Welcome() {
   const target = useRef<number | null>(null);
   const targetUI = useSharedValue(NONE);
   const fallback = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Controls that replace one another after the first render fade in (SwapIn).
+  // Controls that replace one another after the first render fade in (SwapIn); each slot carries
+  // keyboard focus from the control it loses to the one it gains.
   const opened = useRef(false);
+  const carryDock = useRef(false);
+  const carryCorner = useRef(false);
   useEffect(() => {
     opened.current = true;
     return () => clearTimeout(fallback.current);
@@ -162,8 +165,10 @@ export default function Welcome() {
   }
 
   // Hidden under a screen pushed over it (the web stack sets display: none), the frame reports
-  // 0×0: the pager keeps its size and stays mounted, and lands back on the settled page when shown
-  // again (a hidden scroller forgets its offset), before that frame paints.
+  // 0×0: the pager keeps its size and stays mounted, so it is on the settled page in the first
+  // frame shown again. Chromium, Firefox and WebKit restore a re-shown scroller's offset themselves
+  // (checked; e2e/intro.spec.ts reads that first frame). For one that doesn't, the pager is
+  // re-aligned here, once the layout arrives (a frame late).
   const hidden = useRef(false);
   const onLayout = (e: LayoutChangeEvent) => {
     const { width: w, height: h } = e.nativeEvent.layout;
@@ -217,7 +222,7 @@ export default function Welcome() {
           <Enter step={4}>
             <View style={styles.dock}>
               <PageDots count={count} current={page} position={position} onSelect={show} testID="intro-dots" dotTestID="intro-dot" />
-              <SwapIn key={action} swap={opened.current}>
+              <SwapIn key={action} swap={opened.current} carry={carryDock}>
                 {action === 'next' ? (
                   <Button label="Next" icon={ArrowRight} onPress={() => show((target.current ?? page) + 1)} testID="intro-next" />
                 ) : action === 'create' ? (
@@ -240,7 +245,7 @@ export default function Welcome() {
         {/* Skip leaves from any page but the last; there, Sign in is the second way in. */}
         <View style={styles.corner}>
           {corner ? (
-            <SwapIn key={corner} swap={opened.current}>
+            <SwapIn key={corner} swap={opened.current} carry={carryCorner}>
               {corner === 'skip' ? (
                 <Button label="Skip" variant="ghost" size="compact" onPress={() => leave('sign-in')} testID="intro-skip" accessibilityHint="Goes to sign in" />
               ) : (
@@ -263,8 +268,9 @@ export default function Welcome() {
                 // Off-screen pages are hidden from assistive tech, so a screen reader reads the page in view.
                 <View key={p.key} style={{ width, height }} aria-hidden={i !== page} testID={`intro-page-${p.key}`}>
                   {/* A page taller than the room (a short phone, a large text size) scrolls, never clips.
-                      Only the page in view is a keyboard stop (browsers focus scrollers). */}
-                  <ScrollView style={styles.fill} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false} focusable={i === page} testID={`intro-scroll-${p.key}`}>
+                      Pages out of view are never keyboard stops; the one in view is a stop only when
+                      it scrolls (the browser's own rule for scrollers). */}
+                  <ScrollView style={styles.fill} contentContainerStyle={styles.pageContent} showsVerticalScrollIndicator={false} focusable={i === page ? undefined : false} testID={`intro-scroll-${p.key}`}>
                     <PageBody page={p} index={i} position={position} width={width} drift={drift} />
                   </ScrollView>
                 </View>
@@ -432,25 +438,35 @@ function PageLabel({ text, index, position, current }: { text: string; index: nu
 /**
  * A control that takes another's place (Next → Create an account, Skip → Sign in): it fades in
  * over dur-swap and takes no touches until it has arrived, so a quick second tap meant for the
- * one it replaced can't land on it. Keyed by role. On the web, if the control it replaced had
- * keyboard focus (focus fell to the page when it went), focus moves to it once it has arrived.
- * The first one arrives with its entrance step (`swap` false).
+ * one it replaced can't land on it. Keyed by role. On the web, if the control it replaced held
+ * keyboard focus, focus moves to it once it has arrived: each slot carries its own focus through
+ * `carry`, so a swap in one slot never pulls focus into another. The first one arrives with its
+ * entrance step (`swap` false).
  */
-function SwapIn({ swap, children }: { swap: boolean; children: ReactNode }) {
+function SwapIn({ swap, carry, children }: { swap: boolean; carry: { current: boolean }; children: ReactNode }) {
   const { motion } = useTheme();
   const [armed, setArmed] = useState(!swap);
   const opacity = useSharedValue(swap ? 0 : 1);
   const box = useRef<View>(null);
+  // Leaving: did this control hold focus? A layout effect's cleanup runs before React detaches the
+  // control, so the focused element is still in it here.
+  useLayoutEffect(
+    () => () => {
+      if (Platform.OS === 'web' && typeof document !== 'undefined') carry.current = !!(box.current as unknown as HTMLElement | null)?.contains(document.activeElement);
+    },
+    [],
+  );
   useEffect(() => {
     if (!swap) return;
-    // After the commit that removed the control it replaces: did focus fall to the page with it?
-    const nothingFocused = () => Platform.OS === 'web' && typeof document !== 'undefined' && (!document.activeElement || document.activeElement === document.body);
-    const lostFocus = nothingFocused();
+    const take = carry.current;
+    carry.current = false;
     opacity.value = withTiming(1, motion.reduced ? motion.timing.tick : motion.timing.swap);
     const t = setTimeout(() => {
       setArmed(true);
-      // Only if focus is still nowhere: never take it from something the user moved to meanwhile.
-      if (lostFocus && nothingFocused()) (box.current as unknown as HTMLElement | null)?.querySelector<HTMLElement>('[tabindex="0"], button')?.focus();
+      // Only while focus is still on the page itself: never take it from where the user moved it.
+      if (take && (!document.activeElement || document.activeElement === document.body)) {
+        (box.current as unknown as HTMLElement | null)?.querySelector<HTMLElement>('[tabindex="0"], button')?.focus();
+      }
     }, motion.reduced ? DUR.tick : DUR.swap);
     return () => clearTimeout(t);
     // Mount only: a swap plays once.

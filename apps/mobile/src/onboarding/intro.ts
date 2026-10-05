@@ -43,6 +43,18 @@ export function cameFromIntro(now = Date.now()): boolean {
 }
 
 /**
+ * How an auth screen opens (the auth layout decides it once, when the screen mounts). The launch
+ * belongs to the first screen of a visit: the intro, or Sign in, and only as the first screen of
+ * the auth stack. Sign in that replaced the intro, or was pushed from Sign up, arrives with a push
+ * like any screen after the first. Sign up and the rest take the default (`null`: a push).
+ */
+export function authArrival(name: string, first: boolean, fromIntro: boolean): 'launch' | 'push' | null {
+  if (name !== 'welcome' && name !== 'sign-in') return null;
+  if (!first || (name === 'sign-in' && fromIntro)) return 'push';
+  return 'launch';
+}
+
+/**
  * Someone with a session (signed in, restored, or reached through a deep link that never opens
  * `/`) already knows the app: the intro never shows them after they sign out. The root layout
  * calls this for the whole app.
