@@ -15,4 +15,3 @@
 
 **Tier-ups.** On a tier-up the medallion starts lit, showing the tier already held. Only the new bead, the stacked ring and the light mark the change; a badge the tester holds is never shown as locked.
 | Done | The sheet leaves, U5 returns to 0.45, and the key pool returns to 0.72 | 240 ease-exit; 700 ease-lens |
-

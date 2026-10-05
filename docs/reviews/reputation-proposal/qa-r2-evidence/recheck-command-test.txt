@@ -1,6 +1,6 @@
 # research-recheck.txt line 5, run exactly as written (2026-10-05T08:10Z):
 $ curl https://api.mainnet-beta.solana.com -d '{"method":"getMinimumBalanceForRentExemption","params":[0]}'
- {"jsonrpc":"2.0","error":{"code":415,"message":"Invalid content-type, this application only supports application/json"}, "id": null } 
+ {"jsonrpc":"2.0","error":{"code":415,"message":"Invalid content-type, this application only supports application/json"}, "id": null }
 
 [HTTP 415]
 
