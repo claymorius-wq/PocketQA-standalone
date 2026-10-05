@@ -578,3 +578,13 @@ Full outputs are in `docs/reviews/wallet-rewards/`. **No live devnet run** was m
 - **Playwright not re-run** for this delta: no app code or simulated-mode path changed (it changes `rpcChain.ts`, live tests, the read-only script and the scanner).
 - **No further sends.** The targeted double-execute refusal (`test-live/squads-devnet.pilot-run1-complete.live.test.ts`) waits for pqa-qa's re-review.
 
+## 2026-10-05: run 1 completion send, fixes for pqa-qa harness-delta r1 P2-1/P2-2 (lead)
+- **The send logic is now `apps/api/test-live/run1Completion.ts`, tested offline:** `apps/api/test/pilot-run1-completion.test.ts`, 12/12 (`pilot-completion-tdd.txt`).
+  - Only `{InstructionError:[0,{Custom:6008}]}` counts as refused-as-expected. Any other error is `unexpected-error`; a finalized result with no error is `NOT-refused`.
+  - The signature comes from the signed transaction and is recorded before broadcast. Any exception after the attempt, or a status that isn't finalized, gives `unknown` with that signature, never "Nothing was sent".
+  - Mutation check: each of the four defects, put back alone, fails 3 or 4 tests.
+- **The live test now records** a clean-tree flag and requires the tree to be clean. `rpcChain.ts` gets the comment pqa-qa asked for (finalized with no error after a confirm rejection maps to unknown).
+- **`pnpm verify`:** EXIT=0. Secrets: 847 files, no findings. Tests: scripts 59, contracts 17, domain 216, API 572 plus 2 skipped, mobile 1075.
+- **pqa-qa reviews** (exact copies): `qa-devnet-pilot-live-verdict-r1.md` and `qa-devnet-pilot-harness-delta-verdict-r1.md`.
+- **No send has been made.**
+

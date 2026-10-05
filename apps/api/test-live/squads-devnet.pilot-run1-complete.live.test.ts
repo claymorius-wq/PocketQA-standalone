@@ -7,6 +7,7 @@ import { expect, it } from 'vitest';
 import { REPO_ROOT } from '../src/config';
 import { DEVNET_GENESIS, SQUADS_PROGRAM_DATA } from '../src/settlement/squads/pins';
 import { DEVNET_RPC, loadPilotKeys } from '../src/settlement/squads/rpcChain';
+import { sendAndClassify, sendLine, type CompletionRecord } from './run1Completion';
 
 /**
  * LIVE completion of Squads devnet pilot run 1 (ADR 0007 §10): ONE targeted send against run 1's
@@ -19,12 +20,13 @@ import { DEVNET_RPC, loadPilotKeys } from '../src/settlement/squads/rpcChain';
  * Before signing it checks: devnet genesis; program data equal to the run 1 readback; the
  * multisig config; proposal 1 Executed; the balances it will compare afterwards.
  *
- * An outcome it can't verify as finalized is recorded as unknown, and the test stops: it never
- * retries a send. The public-only receipt goes to docs/reviews/wallet-rewards/devnet-pilot-run1-completion.{json,md}.
+ * Only Squads' own refusal (InvalidProposalStatus, 6008) counts as the expected result; any other
+ * error is `unexpected-error` (the vault holds less than the transfer, so a token failure must not
+ * pass). The signature is recorded before broadcast, so any exception after the attempt is
+ * `unknown`, with the signature: never retried, never "nothing sent" (`run1Completion.ts`). The public-only receipt goes to docs/reviews/wallet-rewards/devnet-pilot-run1-completion.{json,md}.
  */
 const LIVE = process.env.POCKETQA_LIVE_SQUADS_RUN1_COMPLETE === '1';
 const DIR = join(REPO_ROOT, 'docs/reviews/wallet-rewards');
-const explorer = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 
 it.skipIf(!LIVE)('run 1 completion: a second execute of executed index 1 is refused on chain and moves nothing', { timeout: 10 * 60_000 }, async () => {
   const run1 = JSON.parse(readFileSync(join(DIR, 'devnet-pilot-receipt-run1.json'), 'utf8')) as { accounts: Record<string, string>; roles: Record<string, string> };
@@ -37,11 +39,11 @@ it.skipIf(!LIVE)('run 1 completion: a second execute of executed index 1 is refu
     what: 'Run 1 completion: a second execute of the already-executed Squads index 1 on run 1’s multisig (expected on-chain refusal).',
     disclosure: 'Devnet test USDC, no value. Pilot: test keys simulate all roles; not independent custody; no physical wallet.',
     commit: '',
+    cleanTree: false,
     at: new Date().toISOString(),
     preChecks: {} as Record<string, unknown>,
-    send: null as null | { signature: string; slot: number | null; confirmation: string; err: unknown; feeLamports: number | null; explorer: string },
     postChecks: {} as Record<string, unknown>,
-    outcome: 'incomplete' as 'incomplete' | 'refused-as-expected' | 'NOT-refused' | 'unknown',
+    ...({ send: null, outcome: 'incomplete', reason: null } as CompletionRecord),
   };
   const write = () => {
     writeFileSync(join(DIR, 'devnet-pilot-run1-completion.json'), `${JSON.stringify(out, null, 2)}\n`);
@@ -52,9 +54,9 @@ it.skipIf(!LIVE)('run 1 completion: a second execute of executed index 1 is refu
         '',
         `> ${out.disclosure}`,
         '',
-        `Outcome: **${out.outcome}**. ${out.what} Commit \`${out.commit}\`, ${out.at}.`,
+        `Outcome: **${out.outcome}**${out.reason ? ` (${out.reason})` : ''}. ${out.what} Commit \`${out.commit}\` (clean tree: ${out.cleanTree}), ${out.at}.`,
         '',
-        out.send ? `Send: [${out.send.signature.slice(0, 12)}…](${out.send.explorer}), slot ${out.send.slot}, ${out.send.confirmation}, err \`${JSON.stringify(out.send.err)}\`, fee ${out.send.feeLamports} lamports.` : 'Nothing was sent.',
+        sendLine(out),
         '',
         '```json',
         JSON.stringify({ preChecks: out.preChecks, postChecks: out.postChecks }, null, 2),
@@ -66,6 +68,8 @@ it.skipIf(!LIVE)('run 1 completion: a second execute of executed index 1 is refu
   try {
     const { execSync } = await import('node:child_process');
     out.commit = execSync('git rev-parse HEAD', { cwd: REPO_ROOT }).toString().trim();
+    out.cleanTree = execSync('git status --porcelain', { cwd: REPO_ROOT }).toString().trim() === '';
+    expect(out.cleanTree, 'the run must be on a committed, clean tree').toBe(true);
     const ms = new PublicKey(run1.accounts.multisig!);
     const tokens = async (a: string) => (await pace(), (await conn.getTokenAccountBalance(new PublicKey(a), 'finalized')).value.amount);
     const programNow = async () => {
@@ -99,26 +103,12 @@ it.skipIf(!LIVE)('run 1 completion: a second execute of executed index 1 is refu
     const { blockhash } = await conn.getLatestBlockhash('finalized');
     const tx = new VersionedTransaction(new TransactionMessage({ payerKey: pocketqa.publicKey, recentBlockhash: blockhash, instructions: [instruction] }).compileToV0Message());
     tx.sign([pocketqa]);
-    const signature = await conn.sendTransaction(tx, { skipPreflight: true, maxRetries: 5 });
-    // Finalized status read directly (paced, bounded), never inferred from a confirm rejection.
-    let st = null;
-    for (let i = 0; i < 45 && st?.confirmationStatus !== 'finalized'; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      st = (await conn.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0];
-    }
-    await pace();
-    const landed = st?.confirmationStatus === 'finalized' ? await conn.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 }) : null;
-    out.send = { signature, slot: st?.slot ?? null, confirmation: st?.confirmationStatus ?? 'not found', err: st?.err ?? null, feeLamports: landed?.meta?.fee ?? null, explorer: explorer(signature) };
-    if (st?.confirmationStatus !== 'finalized') {
-      out.outcome = 'unknown';
-      throw new Error(`outcome unknown: not finalized within 90 s (${signature}); inspect the chain, never retry blindly`);
-    }
-    out.outcome = st.err ? 'refused-as-expected' : 'NOT-refused';
+    await sendAndClassify(conn, tx, out);
+    if (out.outcome !== 'refused-as-expected') throw new Error(`completion send: ${out.outcome}: ${out.reason}`);
 
     // Post-checks: nothing moved, the program is unchanged.
     out.postChecks.balances = { testerA: await tokens(run1.accounts.testerAUsdcAta!), vault: await tokens(run1.accounts.vaultUsdcAta!) };
     out.postChecks.program = await programNow();
-    expect(out.outcome).toBe('refused-as-expected');
     expect(out.postChecks.balances).toEqual(out.preChecks.balances);
     expect(out.postChecks.program).toEqual(out.preChecks.program);
   } finally {

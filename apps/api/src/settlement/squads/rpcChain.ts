@@ -292,6 +292,8 @@ export class RpcSquadsChain implements SquadsChain {
       const { value } = await this.conn.getSignatureStatuses([signature], { searchTransactionHistory: true });
       const st = value[0];
       if (st?.err && st.confirmationStatus === 'finalized') throw new Error(`${step} failed on devnet (finalized): ${JSON.stringify(st.err)} (${signature})`);
+      // Everything else, including finalized WITHOUT an error after such a rejection, is reported as
+      // unknown: safe, since the caller re-reads chain state (and re-drives idempotently) next time.
       throw new Error(`${step} outcome unknown: the RPC reported ${JSON.stringify(e)} at ${st?.confirmationStatus ?? 'no status'}, not verified finalized (${signature})`);
     });
     if (res.value.err) throw new Error(`${step} failed on devnet (finalized): ${JSON.stringify(res.value.err)} (${signature})`);
