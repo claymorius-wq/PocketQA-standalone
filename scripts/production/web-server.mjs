@@ -70,8 +70,9 @@ function securityHeaders() {
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
     'referrer-policy': 'no-referrer',
-    // Recording happens in the Android app; the web build only picks files.
-    'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    // Microphone and screen capture for this origin only: the local-only web recorder
+    // (docs/plans/web-screen-audio-recording.md). The camera stays off.
+    'permissions-policy': 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()',
     'cross-origin-opener-policy': 'same-origin',
     'strict-transport-security': 'max-age=31536000',
   };

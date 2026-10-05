@@ -1,0 +1,22 @@
+# Recorder smoke rehearsal (2026-10-05): an isolated local preview built from this branch (.preview-test state, loopback ports 3591/3592, stopped by PID afterwards; fresh synthetic seed). Synthetic media only.
+
+$ node scripts/preview/smoke.mjs   (before)
+all checks passed
+$ PREVIEW_URL=http://localhost:3591 node scripts/preview/recorder-smoke.mjs   (run 1)
+recorder smoke 2026-10-05T12:28:16.293Z against <local rehearsal>
+PASS  permissions-policy allows microphone and display-capture for self, camera off
+PASS  gate passed
+PASS  demo tester signed in
+PASS  study page: browser recording available (desktop capability on this origin)
+PASS  synthetic capture probe on this origin: video/webm;codecs=vp8,opus, 76171 bytes
+all checks passed
+$ PREVIEW_URL=http://localhost:3591 node scripts/preview/recorder-smoke.mjs   (run 2)
+recorder smoke 2026-10-05T12:28:19.017Z against <local rehearsal>
+PASS  permissions-policy allows microphone and display-capture for self, camera off
+PASS  gate passed
+PASS  demo tester signed in
+PASS  study page: browser recording available (desktop capability on this origin)
+PASS  synthetic capture probe on this origin: video/webm;codecs=vp8,opus, 87307 bytes
+all checks passed
+$ node scripts/preview/smoke.mjs   (after)
+all checks passed

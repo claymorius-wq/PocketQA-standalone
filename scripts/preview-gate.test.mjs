@@ -104,6 +104,9 @@ describe('preview gate: nothing is served without the gate cookie', () => {
     assert.match(r.headers['content-security-policy'], /default-src 'none'/);
     assert.equal(r.headers['x-frame-options'], 'DENY');
     assert.match(r.headers['strict-transport-security'], /max-age=/);
+    // The web recorder (docs/plans/web-screen-audio-recording.md): microphone and screen capture for this
+    // origin only; the camera stays off (pqa-qa F1/T15).
+    assert.equal(r.headers['permissions-policy'], 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()');
   });
 });
 

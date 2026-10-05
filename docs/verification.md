@@ -639,3 +639,34 @@ Tests: not run (no code changed).
 - **Database upgrade check:** a database created by main's `db.ts` (`87e09d4`, schema v4) with rows, opened by the new code, went to v7 with rows intact, integrity `ok`, and no foreign-key violations.
 - **Backup command check:** the guide's `db:backup` form, run against the rehearsal database into the scratchpad, printed the file and its sha256.
 
+## 2026-10-05: desktop web screen recording with narration (lead, `feat/screen-recording` from `6028f08`)
+Full outputs are in `docs/reviews/screen-recording/`.
+- **Feasibility probe:** real Chromium 1.63 with fake devices produced `video/webm;codecs=vp9,opus`. ffprobe showed vp9 1280×720 plus opus 48 kHz; volumedetect mean −21.5 dB.
+- **TDD** (`tdd.txt`):
+  - controller: 39 tests, RED (module missing), then GREEN;
+  - card: 12 tests, RED, then GREEN;
+  - headers: RED 2 failing, then GREEN 36/36;
+  - **14/14 controller mutants caught.**
+- **Real browser** (`playwright.txt`, `ffprobe.txt`): the desktop-recorder project passed 4/4.
+  - The screen request ran inside the click (`userActivation.isActive` true), with the mic after it.
+  - The downloaded file had 1 VP9 1280×720 stream and 1 Opus 48 kHz stream; ffmpeg decoded it with exit 0 and an empty stderr; mean volume −21.3 dB.
+  - Replay ran 3.94 s; playback advanced.
+  - No POST or PUT, and no request with a body. Discard revoked the blob URL.
+  - Stop sharing kept the draft; a refused mic ended the screen track; leaving the session released both tracks.
+- **Full Playwright:** 19/19, EXIT=0 (15 mobile-web plus 4 desktop-recorder). The `gate-a`, `remaining-scope` and `wallet-rewards/browser` screenshots the run rewrote were restored from Git.
+- **`pnpm verify`:** EXIT=0 (`verify.txt`). Secrets: 888 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1129.
+- **Not exercised:** the real share dialog, a real microphone, Safari and Firefox, and a deployed HTTPS origin (`usability-guide.md`).
+
+## 2026-10-05: screen recording, fixes for pqa-qa r1 (CHANGES_REQUIRED on `9b9d631`); lead
+- **P2-1:** Cancel in both asking states; a "Stop sharing" listener from the moment a screen is chosen.
+  - Unit and card tests: RED (6 failing), then GREEN.
+  - Real Chromium: a never-settling microphone prompt can be cancelled, and the browser's Stop sharing ends it. Both release the screen track.
+- **P3:** the closed card offers Start over, with fresh consent.
+- **P2-2:** decode gate `apps/mobile/e2e/ffmpegCheck.ts`. Only the exact null-muxer DTS line is tolerated, which 9 unit tests prove (decoder and demuxer errors, other muxers, near-misses and nonzero exits all fail).
+- **Mutation:** all 7 r1-fix mutants caught.
+- **Full Playwright:** 3 consecutive runs, **21/21 each**, EXIT=0 (`docs/reviews/screen-recording/playwright.txt`). The known DTS note occurred 0 times in those runs.
+- **`pnpm verify`:** EXIT=0 (`verify.txt`). Secrets: 897 files, no findings. Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 1145.
+- **WebM duration limitation documented:** `duration=N/A` in the header (`usability-guide.md`).
+- **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
+  - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
+

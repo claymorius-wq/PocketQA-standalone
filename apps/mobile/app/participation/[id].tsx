@@ -12,6 +12,7 @@ import { DISPUTE_WINDOW_MS, uploadQueue } from '@pocket-qa/domain';
 import { api, ApiError, uploadEvidence } from '../../src/api/client';
 import { MediaPreview } from '../../src/evidence/MediaPreview';
 import { nativeRecorder } from '../../src/evidence/recorder';
+import { WebRecorderCard } from '../../src/evidence/WebRecorderCard';
 import { applySegment, removeSegment, uploadKept, type LocalSegment } from '../../src/evidence/segments';
 import { GlassBlur, GlassSurface, useUplight } from '../../src/glass';
 import { GlassTile } from '../../src/icons';
@@ -382,6 +383,13 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
         <RecordControl live={recording} onStart={startRecording} onStop={stopRecording} help={RECORDER_HELP} startDisabled={locked}>
           {attachButton}
         </RecordControl>
+      ) : Platform.OS === 'web' ? (
+        // Desktop browsers: the local-only screen and narration recorder (never uploaded);
+        // mobile and unsupported browsers get its honest reason. Native above is unchanged.
+        <>
+          <WebRecorderCard locked={locked} />
+          {attachButton}
+        </>
       ) : (
         <>
           <Notice tone="warning" title="Recording unavailable" testID="recording-unavailable">{cap.reason}</Notice>

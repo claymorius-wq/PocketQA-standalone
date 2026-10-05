@@ -3,7 +3,7 @@ import { RequireRole } from '../../src/screens/RequireRole';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowRight } from 'lucide-react-native';
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, Text as RNText, View } from 'react-native';
+import { Platform, StyleSheet, Text as RNText, View } from 'react-native';
 import { REWARD_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
@@ -11,6 +11,7 @@ import { formatUnits, tokenAmount, unitName, type Settlement } from '../../src/l
 import { GlassSurface, Well } from '../../src/glass';
 import { GlassTile } from '../../src/icons';
 import { recordingCapability } from '../../src/lib/capability';
+import { webRecordingCapability } from '../../src/evidence/webScreenRecorder';
 import { useTesterStudy } from '../../src/lib/queries';
 import { stampArrival } from '../../src/motion/entrance';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -65,6 +66,7 @@ function StudyDetailInner() {
   const [walletOk, setWalletOk] = useState(false);
   const token = q.data?.reward.kind === 'token' ? q.data.reward : null;
   const cap = recordingCapability();
+  const web = Platform.OS === 'web' ? webRecordingCapability() : ({ available: false, reason: '' } as const);
   const consent = useMutation({
     mutationFn: (v: number) => api('consent', { params: { id }, body: { consentVersion: v, accepted: true, ...(token && wallet ? { payoutAddress: wallet } : {}) } }),
     onSuccess: (p) => {
@@ -109,8 +111,13 @@ function StudyDetailInner() {
             <Block title="Recording on this device">
               {cap.available ? (
                 <Notice tone="info" title="Screen recording available">Android asks for permission every session. You review every clip and choose what to upload.</Notice>
+              ) : web.available ? (
+                // Desktop browsers: the local-only recorder in the session (docs/plans/web-screen-audio-recording.md).
+                <Notice tone="info" title="Browser recording available" testID="web-recording-available">
+                  In your session you can record a tab, window or screen you choose, with your microphone narration. It stays on this device: you replay it, then download or discard it.
+                </Notice>
               ) : (
-                <Notice tone="warning" title="Recording unavailable" testID="recording-unavailable">{cap.reason}</Notice>
+                <Notice tone="warning" title="Recording unavailable" testID="recording-unavailable">{Platform.OS === 'web' ? web.reason : cap.reason}</Notice>
               )}
             </Block>
             {s.myParticipationId ? (
