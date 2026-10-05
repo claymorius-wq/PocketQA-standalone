@@ -119,7 +119,7 @@ maestro_run _voice-keep-upload.yaml && log "uploaded" || log "upload flow FAILED
 newest=$(ls -t "$MEDIA_DIR" | head -1)
 if [ "$newest" != "$before" ]; then
   cp "$MEDIA_DIR/$newest" "$OUT/uploaded.mp4"
-  ./check-voice.py "$OUT/uploaded.mp4" "${TAIL[@]}" ${GATE:-} | tee "$OUT/check-voice.txt" | tee -a "$OUT/timeline.txt"
+  ./check-voice.py "$OUT/uploaded.mp4" ${TAIL[@]+"${TAIL[@]}"} ${GATE:-} | tee "$OUT/check-voice.txt" | tee -a "$OUT/timeline.txt"
   grep -qE '^PASS' "$OUT/check-voice.txt"; rc=$?
 else
   "${A[@]}" exec-out screencap -p > "$OUT/no-upload.png"; rc=1

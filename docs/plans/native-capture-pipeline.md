@@ -50,7 +50,7 @@ What is certain: MediaRecorder gave no signal. Its audio just ended inside a "su
 | Rotation | display mirrored at a fixed size | same; rotation never touches the audio thread |
 | Silencing by another app or a call | polled `isClientSilenced` | `AudioRecordingCallback` registered **before** `startRecording()` plus the polled active configuration; silenced 2 s → stop (reason `mic`) |
 | Dead mic or stuck thread | invisible | `Liveness`: no audio chunk for 3 s → stop (`mic`); a negative `read()` (incl. `ERROR_DEAD_OBJECT`) → stop (`mic`) |
-| Lost audio inside the track | invisible | overrun gaps and backlog drops are summed (`lostAudioMs`) and **count against the voice check**: voice = audio track − lost. The clip is "voice incomplete" past max(1 s, 2 %). |
+| Lost audio inside the track | invisible | overrun gaps and backlog drops are summed (`lostAudioMs`, longest gap `maxGapMs`). **Own tight bound** (pqa-qa pipeline r1 P2-C): more than 1 s lost in total, or any single gap over 0.5 s, means "voice incomplete", whatever the clip length. The max(1 s, 2 %) tolerance applies only to the edges (encoder start-up and tail). The copy says "Parts of your voice are missing (about N s in total)". |
 | Evidence | none | one log line per session: `PqaCapture stop ok=… audioGaps=… audioLostMs=… backlogDropped=… written audio=… video=… rejected=… bytes=…` (no content) |
 
 What we deliberately do **not** do:
@@ -70,5 +70,15 @@ Real-device confirmation is a hardware gate.
 - **`VoiceCheckTest` (+1):** lost audio counts against the voice.
 - **Emulator:** `voice-stress.sh` replays the stimuli seen at the stalls (rotation, uiautomator dump bursts, a dexopt burst, lock) during ONE live recording, driven by adb only. `MODE=control` is the same recording hands-off. Each clip goes through `check-voice.py`.
 
-## 6. Emulator infrastructure note
-Fresh emulator instances launched with the host mic switched off (`hostmicoff`) aborted inside the host's CoreAudio as the guest opened the mic. Crashpad dumps: 20:24 (pqa-qa) and 23:02 (lead), with "abort() called", `IsolatedCoreAudioClient`, `CoreAudioOrchestration`, right after "Failed to create voice `virtio-snd-mic0'". This happened with both the old and the new build. Evidence runs now use `-no-audio`: the emulator never touches host audio (so the host mic can't be reached at all), and the guest HAL falls back to its synthetic tone source.
+## 6. Evidence gate (`check-voice.py`), revised after pqa-qa pipeline r1 P2-D
+- **Durations:** the track durations alone can't see a timestamp gap (the track spans it). The gate now also compares the samples actually held with the stream duration (fail above 0.5 s), and decodes with `aresample=async=1:first_pts=0`, so a gap becomes silence the 5 s RMS windows see.
+- **RED:** `fixtures/voice-gap-3s.mp4` (a sine with a 3 s timestamp gap) PASSED the old gate. **GREEN:** it now fails. `check-voice-selftest.sh` pins 8 verdicts.
+- **Tail bug fixed:** the last window used to be treated as an "allowed tail" even without `--allow-silent-tail`.
+- **`--structure-only`** skips the signal check, for inputs known to be digital silence. Its verdict reads "PASS (structure only: continuous audio track; NO signal check)", and it is never reported as audio proof.
+
+## 7. Emulator infrastructure note
+Fresh emulator instances launched with the host mic switched off (`hostmicoff`) aborted inside the host's CoreAudio as the guest opened the mic. Crashpad dumps: 20:24 (pqa-qa) and 23:02 (lead), with "abort() called", `IsolatedCoreAudioClient`, `CoreAudioOrchestration`, right after "Failed to create voice `virtio-snd-mic0'". This happened with both the old and the new build. Two bounded alternatives were tried:
+- **`-no-audio`:** stable, and the host's audio and mic are never touched. But the guest's built-in mic then delivers **digital silence**: the HAL logs "pcm_readi was late delivering frames, inserting … us of silence", and our cross-app clip measured −120 dBFS, correctly FAILED by the gate.
+- **`-prop ro.boot.audio.tinyalsa.simulate_input=true`** (the HAL's own 300 Hz generator, `device_port_source.cpp`): not applied by this emulator (`getprop` empty).
+
+So, on the new pipeline, the emulator can prove **continuity and structure** (stream durations, no timestamp gaps, and the `PqaCapture` stats: gaps, lost ms, dropped chunks, samples written). It can **not** prove a non-silent signal: that is BLOCKED (infra) here and is part of the device gate (a real phone with real speech). The earlier non-silent emulator evidence (run 5, r3) is from the MediaRecorder build.
