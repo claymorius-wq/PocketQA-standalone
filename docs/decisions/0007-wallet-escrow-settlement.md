@@ -144,3 +144,37 @@ A transfer that someone sends to a vault but never submits for verification is n
 - **Builder:** fundings and refunds of their own studies, to and from their own wallet, plus each approved test's reward and fee **without** the tester's identity, participation or wallet.
 - **After deletion:** records follow the existing deletion policy and nothing new is retained. Points and escrow postings stay under the anonymous id, like ledger postings (ADR 0002).
 
+## 10. Squads devnet feasibility pilot: authorised scope (Hamza, 2026-10-05, relayed by the parent)
+**Hamza answered YES** to the bounded Squads devnet feasibility pilot (`docs/production/escrow-provider-decision.md` §5–6). For this pilot only, **this section supersedes the earlier devnet prohibitions** in §1 ("Not authorised… deploying a devnet escrow program; creating a platform-held devnet release key; any live devnet test-USDC transfer flow") and in §4 ("adapter disabled").
+
+**Authorised:**
+- **Keys:** fresh, dedicated, **test-only** keypairs outside Git (directory mode 0700, files 0600). Keys are never printed or logged; only public addresses are recorded.
+- **Assets:** valueless faucet **devnet SOL**, and **official devnet test USDC** (Circle mint `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`, classic Token program, 6 decimals) from Circle's public faucet. No faucet bypass; any CAPTCHA is left to a human.
+- **Accounts:** test Squads multisig vaults created on the **existing devnet Squads v4 program** (`SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`). **No new program deployment.**
+- **Flows:** funding, approval, payout, dispute, refund and unmatched-deposit reconciliation, with measured costs and signing friction.
+- **RPC:** public devnet RPC reads and writes and free faucet calls, **only for this pilot**.
+- **Adapter:** a real adapter with idempotent transaction recovery, built test-first (RED, then GREEN).
+
+**Not authorised (unchanged):**
+- personal wallets;
+- mainnet transactions;
+- real funds;
+- paid services;
+- new cloud credentials (Circle's programmatic faucet needs an account, so it is excluded);
+- public preview changes;
+- storage deletion;
+- program deployment;
+- push or merge.
+
+**Honesty rules:**
+- **All four keyholders are simulated test roles under our control:** builder, Pocket QA release key, arbiter and tester. This pilot proves the integration, costs and failure handling; it does **not** prove independent custody, a real arbiter or physical-wallet signing.
+- **Devnet's Squads program can be upgraded by a single key** (decision doc §2 A). Its program-data hash and upgrade authority are recorded before and after the run.
+- **Mainnet audit and deployed-bytecode matching remain unresolved.**
+- **Production stays fail-closed:** the pilot mode is refused in production and needs explicit non-production pilot configuration.
+
+**Checks at every signing boundary:**
+- the devnet genesis hash;
+- the Circle test mint, the classic Token program and 6 decimals;
+- policy: the exact frozen destination and reserved amount only;
+- an autonomous multisig (`config_authority` default), threshold 2 of 3, and **no spending limits**.
+
