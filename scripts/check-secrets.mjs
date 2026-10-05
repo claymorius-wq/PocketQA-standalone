@@ -72,6 +72,8 @@ export const PINNED_EVIDENCE = new Map([
   ['docs/reviews/wallet-rewards/devnet-pilot-run1-readback.json', '5702cddd8e5f9aee7043bdd939b0867cd9258501958af8b69044d715103a22e5'],
   ['docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json', '2bde52405b81627788e21f039a8734341a5bc39e8f3d306d750d9562ba91d14a'],
   ['docs/reviews/wallet-rewards/devnet-pilot-run1-completion.md', '147f7cca1f00ab85604307a309bacc7e4f79f3922610405c45c8588ef8461998'],
+  // pqa-qa's live verdict r2, an exact copy: its one long token is the completion signature.
+  ['docs/reviews/wallet-rewards/qa-devnet-pilot-live-verdict-r2.md', 'a2828474b409f67c0a3c0d3cb3f94cd5e13d1195c2e5dbdb615f3ca8fc6d8cb8'],
 ]);
 
 /** Rules skipped for this file's exact content (none unless it is pinned evidence with that hash). */

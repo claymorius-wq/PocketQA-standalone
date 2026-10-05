@@ -5,6 +5,13 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
 ## Current work (2026-10-05): Squads v4 devnet feasibility pilot (ADR 0007 §10, `feat/wallet-rewards`)
+- **LIVE gate PASSED** (pqa-qa live verdict r2 APPROVE, 2026-10-05). Its scope:
+  - devnet test USDC only, and test keys simulate every role (no independent custody or physical wallet);
+  - the lost-mapping protection is offline evidence only;
+  - devnet Squads is single-key upgradeable;
+  - the mainnet audit and deployed-bytecode match are still open;
+  - **not production-ready.**
+- **Run 1 completion (`0b66267`):** the one targeted send, a second execute of index 1, was refused on chain with Squads 6008. Nothing moved. Total pilot cost: 40,004,760 lamports of devnet SOL.
 - **Live run 1 (2026-10-05, code `dc76870`): partial.**
   - 26 finalized transactions; R0–R8, C2 and C8 passed.
   - The deliberate threshold refusal landed on chain with Squads 6008.

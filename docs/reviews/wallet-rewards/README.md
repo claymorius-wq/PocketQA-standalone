@@ -51,9 +51,15 @@
 
 ## Squads v4 devnet feasibility pilot (ADR 0007 §10 and §10.1)
 **Status:**
-- **OFFLINE: APPROVED** for exactly `dc76870`. Code stays frozen there until funding arrives.
-- **LIVE receipt gate: NOT PASSED.** No live run has happened. The test keys are unfunded: 0 SOL and no official devnet test-USDC token account, confirmed by the lead and independently by the parent.
-- **The pilot is not approved without live receipts.**
+- **LIVE receipt gate: PASSED.** pqa-qa live verdict r2 APPROVE (`qa-devnet-pilot-live-verdict-r2.md`), from its own read-only devnet readback.
+- **Code covered:** `dc76870` (run 1) and `0b66267` (the completion send); receipts at `8f0246f`.
+- **Scope stated by pqa-qa:**
+  - test keys simulate every role: no real devices, no independent custody;
+  - the adapter's lost-mapping protection is offline evidence only;
+  - the evidence is a partial run plus one targeted completion send;
+  - the devnet Squads program is upgradeable by a single key;
+  - **no production, mainnet or real-funds claim.**
+- **History:** OFFLINE approved `dc76870` (r2). Live run 1 stopped on a harness error (live r1 CHANGES_REQUIRED). The harness fix was approved at `0b66267` (harness-delta r2). The completion send at `0b66267` passed (live r2).
 
 **pqa-qa reviews** (exact copies of the reviewer's files):
 - `qa-devnet-pilot-test-matrix-r1.md`: the R0–R8 and C1–C10 checks.
@@ -66,6 +72,12 @@
 - `playwright.txt` and `browser/`: Playwright 15/15.
 - `faucet-request.md`: public addresses, the faucet attempts, and the minimum human action.
 
-**`devnet-pilot-receipt.{md,json}`:** the superseded BLOCKED dry run at `5d5d431`, from before the fix. Nothing was sent, and it is **not pilot evidence**. The funded live run overwrites it.
+**Live evidence:**
+- `devnet-pilot-receipt-run1.{md,json}`: the raw run 1 receipt, partial.
+- `devnet-pilot-run1-readback.{md,json}`: the lead's supplement and the read-only readback.
+- `devnet-pilot-run1-completion.{md,json}`: the double-execute refusal.
+- pqa-qa: `qa-devnet-pilot-live-verdict-r1.md`, `qa-devnet-pilot-harness-delta-verdict-r1.md` and `-r2.md`, `qa-devnet-pilot-live-verdict-r2.md`.
+
+The pre-fix BLOCKED dry run at `5d5d431` is in Git history only (`c3a4fd0`).
 
 **The fee:** the test platform fee stays in the study vault and is accounted for in the books and in reconciliation. No fee transfer was added (existing scope).
