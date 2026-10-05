@@ -1,0 +1,135 @@
+{
+ "mainnet": {
+  "rent": {
+   "0": 650240,
+   "100": 1158240,
+   "165": 1488440,
+   "200": 1666240,
+   "300": 2174240
+  },
+  "usdc": {
+   "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+   "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+   "type": "mint",
+   "decimals": 6,
+   "freezeAuthority": "7dGbd2QZcCKcTndnHcTL8q7SMVXAkp688NTQYwrRCrar",
+   "mintAuthority": "BJE5MMbqXjVwjAF7oxwPYXnTXDyspzZyt4vwenNw5ruG",
+   "extensions": null
+  },
+  "squadsV4": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n",
+   "tag": 3,
+   "lastDeploySlot": "302582236",
+   "upgradeAuthority": null
+  },
+  "squadsProgramConfig": {
+   "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+   "len": 144,
+   "authority": "8xgjL6yqGmNeMUKMBcjUug47JL2QcWY3EBrFfYeHtYFT",
+   "multisigCreationFeeLamports": "0",
+   "treasury": "5DH2e3cJmFpyi6mk65EGFediunm4ui6BiKNUNrhWtD1b"
+  },
+  "smartAccount": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "2g3u9qgz4adKQVN1TUoh7bbBKqaSsjXtz1yX2ptagW5T",
+   "tag": 3,
+   "lastDeploySlot": "443245754",
+   "upgradeAuthority": "HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2"
+  },
+  "streamflow": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "796tZf2QrH1ebZTQC1mDHYP6weDqSKuqbeyaXd64Prs",
+   "tag": 3,
+   "lastDeploySlot": "449063805",
+   "upgradeAuthority": "5u7o2WGgHckh18opTfPsqKb8E3nhDKcReBrbzUeXg2n7"
+  },
+  "sas": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "HqaxR5hg8yYyuM5QPiWMhSAvXGWwfDBbvthvYpqMQ73v",
+   "tag": 3,
+   "lastDeploySlot": "345635788",
+   "upgradeAuthority": "8b9gfG1UTVxaANPdrC19jnmd5XFeHFYei96eEjjFfiDP"
+  },
+  "sgtGroup": {
+   "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+   "type": "mint",
+   "extensions": [
+    "metadataPointer",
+    "groupPointer",
+    "mintCloseAuthority",
+    "tokenMetadata",
+    {
+     "tokenGroup": {
+      "maxSize": 1000000,
+      "mint": "GT22s89nU4iWFkNXj1Bw6uYhJJWDRPpShHt4Bk8f99Te",
+      "size": 121105,
+      "updateAuthority": "GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4"
+     }
+    }
+   ]
+  }
+ },
+ "devnet": {
+  "rent": {
+   "0": 650240,
+   "100": 1158240,
+   "165": 1488440,
+   "200": 1666240,
+   "300": 2174240
+  },
+  "usdc": {
+   "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+   "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+   "type": "mint",
+   "decimals": 6,
+   "freezeAuthority": "CJtyoKSLrktozQzjERTiK3btQtiTK3nN4QrqGHLidyCT",
+   "mintAuthority": "GrNg1XM2ctzeE2mXxXCfhcTUbejM8Z4z4wNVTy2FjMEz",
+   "extensions": null
+  },
+  "squadsV4": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n",
+   "tag": 3,
+   "lastDeploySlot": "446638068",
+   "upgradeAuthority": "HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK"
+  },
+  "squadsProgramConfig": {
+   "owner": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+   "len": 144,
+   "authority": "HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK",
+   "multisigCreationFeeLamports": "0",
+   "treasury": "HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK"
+  },
+  "smartAccount": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "2g3u9qgz4adKQVN1TUoh7bbBKqaSsjXtz1yX2ptagW5T",
+   "tag": 3,
+   "lastDeploySlot": "425429201",
+   "upgradeAuthority": "J496LGUhsKvBE6yRvet4FtMgxxox82fMiDKb3qtScUh2"
+  },
+  "streamflow": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "EXkBmmUF8d64usEuC8kZJq3rA2A3Tf5WUchM5QaTwh2Y",
+   "tag": 3,
+   "lastDeploySlot": "495912729",
+   "upgradeAuthority": "HCP4jd677aMUGhEXRYWkdKXHGd3LcyidHJWWxdb9TxLM"
+  },
+  "sas": {
+   "exists": true,
+   "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+   "programData": "HqaxR5hg8yYyuM5QPiWMhSAvXGWwfDBbvthvYpqMQ73v",
+   "tag": 3,
+   "lastDeploySlot": "385530432",
+   "upgradeAuthority": "47EDHLEkxw4ASr4HypUaHmnGmj7ZzRvv6HXkpXqUCfyQ"
+  },
+  "sgtGroup": null
+ }
+}

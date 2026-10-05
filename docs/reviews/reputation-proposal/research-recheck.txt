@@ -1,0 +1,32 @@
+# Output of research-recheck.sh (session lead). Web checks, read on 2026-10-05 with a page fetch, are summarized at the end.
+# Run: 2026-10-05T08:15Z
+
+$ curl -s https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getMinimumBalanceForRentExemption","params":[0]}' | node -e '<print: j.result>'
+650240
+
+$ curl -s https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getMinimumBalanceForRentExemption","params":[165]}' | node -e '<print: j.result>'
+1488440
+
+$ curl -s https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n",{"encoding":"jsonParsed","dataSlice":{"offset":0,"length":0}}]}' | node -e '<print: {authority:j.result.value.data.parsed.info.authority,lastDeploySlot:j.result.value.data.parsed.info.slot}>'
+{"authority":null,"lastDeploySlot":302582236}
+
+$ curl -s https://api.devnet.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getMinimumBalanceForRentExemption","params":[0]}' | node -e '<print: j.result>'
+650240
+
+$ curl -s https://api.devnet.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getMinimumBalanceForRentExemption","params":[165]}' | node -e '<print: j.result>'
+1488440
+
+$ curl -s https://api.devnet.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n",{"encoding":"jsonParsed","dataSlice":{"offset":0,"length":0}}]}' | node -e '<print: {authority:j.result.value.data.parsed.info.authority,lastDeploySlot:j.result.value.data.parsed.info.slot}>'
+{"authority":"HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK","lastDeploySlot":446638068}
+
+$ curl -s https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",{"encoding":"jsonParsed"}]}' | node -e '<print: {owner:j.result.value.owner,decimals:j.result.value.data.parsed.info.decimals,freezeAuthority:j.result.value.data.parsed.info.freezeAuthority}>'
+{"owner":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","decimals":6,"freezeAuthority":"7dGbd2QZcCKcTndnHcTL8q7SMVXAkp688NTQYwrRCrar"}
+
+$ curl -s https://api.devnet.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getAccountInfo","params":["4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",{"encoding":"jsonParsed"}]}' | node -e '<print: {owner:j.result.value.owner,decimals:j.result.value.data.parsed.info.decimals,freezeAuthority:j.result.value.data.parsed.info.freezeAuthority}>'
+{"owner":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","decimals":6,"freezeAuthority":"CJtyoKSLrktozQzjERTiK3btQtiTK3nN4QrqGHLidyCT"}
+
+# Web checks (summaries of the fetched pages, not raw output):
+# - https://www.civic.com/blog/an-update-on-civic-pass (2025-06-11): CAPTCHA and ID verification end 2025-07-01; uniqueness and liveness end 2025-07-31.
+# - https://docs.streamflow.finance/en/articles/9675153-costs-of-using-streamflow (updated 2026-08-14): vesting 0.16 SOL per contract + 0.19% token fee.
+# - https://solana.com/upgrades/reduced-rent: SIMD-0437 cuts lamports_per_byte 6,960 -> 696 in five feature gates; step 1 active on mainnet 2026-09-03; step 2 mid-September; steps 3-5 with Agave 4.4, expected November 2026.
+# The program-binary comparison (hashes) is in qa-r1-evidence/squads-binary.txt (review r1).
