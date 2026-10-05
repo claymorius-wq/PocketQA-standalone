@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!-- viewport-fit=cover: the page runs under the browser's bars, and the app keeps its content
+         clear of them with the safe-area insets (react-native-safe-area-context reads env()). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <!-- Browser chrome (Safari's status bar and toolbar, Chrome's address bar) takes these colours
+         until the app starts; then ThemeProvider keeps them in step with the app's own theme.
+         Dark is the Lens ground, light the flat theme's background (tokens.ts). -->
+    <meta name="theme-color" content="#0B0A1F" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <!-- Added to a home screen, the app runs full screen under a translucent status bar. Its text is
+         always white: right on the dark Lens ground. iOS reads this tag once, at launch, so it can't
+         follow the theme; in the light theme a home-screen app shows white status-bar text on the
+         light ground (a known trade-off: "default" would put an opaque bar over the dark ground). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pocket QA" />
+    <title>%WEB_TITLE%</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* The ground behind the app, so overscroll and the browser's bars never show white. */
+      html,
+      body {
+        background-color: #0b0a1f;
+      }
+      @media (prefers-color-scheme: light) {
+        html,
+        body {
+          background-color: #f6f6f4;
+        }
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  </body>
+</html>

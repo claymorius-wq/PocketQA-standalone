@@ -9,6 +9,7 @@ import { SessionProvider, useSession } from '../src/auth/SessionProvider';
 import { FocusRingStyles, LoadingState, Notice, lensStackScreenOptions } from '../src/ui';
 import { Platform, StyleSheet, View } from 'react-native';
 import { deploymentProblem } from '../src/lib/deployment';
+import { useIntroSeenWithSession } from '../src/onboarding/intro';
 import { PREVIEW_BUILD } from '../src/preview/demoAccounts';
 import { Ground } from '../src/glass';
 import { LENS_FONTS } from '../src/theme/fonts';
@@ -20,7 +21,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function ThemedStack() {
   const { colors, scheme } = useTheme();
-  const { ready } = useSession();
+  const { ready, user } = useSession();
+  useIntroSeenWithSession(!!user);
   // Stable options: a new `header` function per render would re-render every mounted header.
   const screenOptions = useMemo(
     () => ({
@@ -38,7 +40,7 @@ function ThemedStack() {
   // Nothing protected renders (or fetches) until the saved session is restored.
   if (!ready) {
     return (
-      // The light arrives on Sign in (the launch, §M3), never on this start screen.
+      // The light arrives on the first auth screen (the launch, §M3: the intro or Sign in), never on this start screen.
       <Ground enter={false}>
         <View style={styles.starting}>
           <LoadingState label="Starting Pocket QA…" brand />

@@ -80,6 +80,24 @@ export const UPLIGHT = {
   floorScaleFrom: 0.3,
   moteDuration: DUR.settle, // 700: no segment is longer than dur-settle (§11.1)
 } as const;
+/**
+ * The intro's motion (app/(auth)/welcome.tsx). A proposal awaiting Hamza's design sign-off: none
+ * of it is on the boards yet. The opening's title rises word by word, each word out of its own
+ * clipped line box, on the entrance stagger; the brand lens arrives from `lensFrom` over dur-rise.
+ * In the pager each layer travels `depth` of a page width beyond its page's own move, text fades
+ * by up to `fade` a page away (glass never fades: its layers overlap), the lens scales by
+ * `lensZoom` and the scene behind its ribs drifts by `lensDrift` px.
+ */
+export const INTRO = {
+  wordStart: STAGGER.contentStart,
+  wordStep: STAGGER.step,
+  wordRise: DUR.sheet,
+  lensFrom: 0.92,
+  depth: { lens: 0.32, title: 0.1, body: 0.18, card: 0.26 },
+  fade: 0.65,
+  lensZoom: 0.1,
+  lensDrift: 14,
+} as const;
 /** Signature-motion timings that are not plain duration tokens. */
 export const SIGNATURE = {
   glintDelay: 220,

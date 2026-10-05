@@ -8,6 +8,7 @@ appId: com.reshareai.pocketqa
 - launchApp:
     appId: com.reshareai.pocketqa
     clearState: true
+- runFlow: _skip-intro.yaml
 - tapOn:
     id: sign-in-wallet
 - extendedWaitUntil:

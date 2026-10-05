@@ -45,9 +45,10 @@ export function joinWave(wave: Wave, now: number): number {
 
 // ---------- Arrivals (§11.3 round 4, CONSISTENCY §M3) ----------
 //
-// Which entrance a screen plays depends on how it was reached. Only Sign in plays the full launch
-// above (light dip + header + staggered content). Every other arrival moves the content root
-// (header, content and dock together) as one, with no light dip and no stagger:
+// Which entrance a screen plays depends on how it was reached. Only the first auth screen of a
+// visit (the intro on a first visit, Sign in otherwise) plays the full launch above (light dip +
+// header + staggered content). Every other arrival moves the content root (header, content and
+// dock together) as one, with no light dip and no stagger:
 //   push     24 in from the right, 0 → 1, 320ms ease-lens (stack links)
 //   back     from −12 and 0.85 → 1, 240ms ease-lens (the screen a pop returns to)
 //   tab      opacity + 6 up, 240ms ease-lens (the light and the tab bar never re-enter)

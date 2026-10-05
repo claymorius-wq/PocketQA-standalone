@@ -48,6 +48,12 @@ export type FlutedLensProps = {
   /** Delay before the shimmer (ms); the glint follows 220ms later. */
   shimmerDelay?: number;
   /**
+   * Extra scene travel (px), driven by the caller on the UI thread: the intro's pager carries the
+   * lens, and the scene behind the ribs drifts with it, so the glass refracts as it moves. Added
+   * to the shimmer and clamped to the scene's padding, so no rib ever samples past its edge.
+   */
+  drift?: SharedValue<number>;
+  /**
    * The recorder lens (S2). true: the record core breathes and the ribs drift; false: the core
    * rests unlit at 0.3 (reached by the light cut, 180ms ease-exit). Omit for the brand mark.
    */
@@ -58,7 +64,7 @@ export type FlutedLensProps = {
   testID?: string;
 };
 
-export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnMount = true, shimmerDelay = 0, recording, children, style, testID }: FlutedLensProps) {
+export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnMount = true, shimmerDelay = 0, drift, recording, children, style, testID }: FlutedLensProps) {
   const { glass, motion } = useTheme();
   const id = useSvgId('fl');
   const f = glass.flute;
@@ -113,7 +119,13 @@ export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnM
     [shift, glintX, glintO],
   );
 
-  const sceneStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shift.value }] }));
+  // With a drift, the scene travels at most `fluteTravel`: about 20 at the 104 brand lens, so the 16
+  // of S1 is untouched. Without one, the shimmer is exactly as before.
+  const travel = fluteTravel(S, n, f, pad);
+  const sceneStyle = useAnimatedStyle(() => {
+    const x = drift ? Math.max(-travel, Math.min(travel, shift.value + drift.value)) : shift.value;
+    return { transform: [{ translateX: x }] };
+  });
   const glintW = (S - 2) * GLINT_WIDTH;
   const glintStyle = useAnimatedStyle(() => ({
     opacity: glintO.value,
@@ -173,6 +185,16 @@ export function FlutedLens({ size = 54, radius, ribs, shimmerKey = 0, shimmerOnM
       {recording !== undefined ? <RecordCore id={`${id}core`} S={S} live={recording} /> : null}
     </View>
   );
+}
+
+/**
+ * How far (px) the scene behind an S-wide lens of n ribs can travel before a rib samples past the
+ * padded scene: the outer rib shows a slice w / m wide (w = S / n), centred k × (centre − S/2)
+ * further out than its own centre, and the scene reaches `pad` beyond the lens on each side.
+ */
+export function fluteTravel(S: number, n: number, f: { m: number; k: number }, pad: number): number {
+  const w = S / n;
+  return Math.max(0, pad - (w / (2 * f.m) - w / 2) - f.k * (S / 2 - w / 2));
 }
 
 /** The scene behind the ribs: lavender ground, ultramarine sphere, its specular. Static; memoized per rib. */

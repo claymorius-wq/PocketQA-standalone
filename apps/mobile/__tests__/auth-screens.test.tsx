@@ -165,7 +165,8 @@ describe('Sign in, shared demo preview', () => {
     await advance(1000);
     expect(screen.getByTestId('demo-accounts')).toBeTruthy();
     expect(screen.getByText('Shared demo preview')).toBeTruthy();
-    expect(screen.getByText('Pick a role and press Sign in. Demo accounts are shared with every visitor; data is synthetic, devnet and test credits only.')).toBeTruthy();
+    // The small print under the card says synthetic data, devnet and test credits only; the card no longer repeats it.
+    expect(screen.getByText('Pick a role, then sign in. These accounts are shared with every visitor.')).toBeTruthy();
     expect(screen.getByTestId('sign-in-email').props.value).toBe('demo-tester@pocketqa.example');
     expect(screen.getByTestId('demo-role-tester').props.accessibilityState).toMatchObject({ selected: true });
 
