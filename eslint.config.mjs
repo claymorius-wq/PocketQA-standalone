@@ -24,6 +24,9 @@ export default tseslint.config(
       '**/test-results/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Gradle/Xcode outputs of the native modules (e.g. the JVM test HTML report); git ignores them too.
+      'modules/*/android/build/**',
+      'modules/*/ios/build/**',
       '**/.data/**',
     ],
   },
