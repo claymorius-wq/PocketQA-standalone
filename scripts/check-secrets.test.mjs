@@ -6,7 +6,8 @@ import { mkdtempSync, writeFileSync, rmSync, mkdirSync, symlinkSync } from 'node
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scanText, isForbiddenPath } from './check-secrets.mjs';
+import { createHash } from 'node:crypto';
+import { scanText, isForbiddenPath, pinnedSkips } from './check-secrets.mjs';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), 'check-secrets.mjs');
 // Fixtures are assembled at runtime so this file itself never contains a match.
@@ -68,6 +69,25 @@ test('allow marker covers only its own line', () => {
   assert.deepEqual(scanText(`pass` + `word = "${v}" // check-secrets: allow`), []);
   const mixed = `// check-secrets: allow\n${fx.keypairPretty}`;
   assert.ok(scanText(mixed).some((h) => h.rule === 'solana-keypair-array'));
+});
+
+test('pinned public evidence skips only the base58 rule, only for its exact bytes', () => {
+  // A transaction signature has the secret-key shape; built at runtime so this file stays clean.
+  const sig = '5'.repeat(44) + 'K'.repeat(44);
+  const text = Buffer.from(`"signature": "${sig}"\n`);
+  const hash = createHash('sha256').update(text).digest('hex');
+  const pins = new Map([['docs/evidence.json', hash]]);
+  assert.deepEqual(pinnedSkips('docs/evidence.json', text, pins), ['base58-secret-key']);
+  assert.deepEqual(scanText(text.toString(), { skipRules: pinnedSkips('docs/evidence.json', text, pins) }), []);
+  // One changed byte, or another path: the rule applies again.
+  const edited = Buffer.from(text.toString().replace('5', '6'));
+  assert.deepEqual(pinnedSkips('docs/evidence.json', edited, pins), []);
+  assert.deepEqual(pinnedSkips('docs/other.json', text, pins), []);
+  assert.ok(scanText(edited.toString(), { skipRules: pinnedSkips('docs/evidence.json', edited, pins) }).some((h) => h.rule === 'base58-secret-key'));
+  // Every other rule still runs on pinned content.
+  const token = 'gh' + 'p_' + 'a'.repeat(36);
+  assert.ok(scanText(`${sig} ${token}`, { skipRules: ['base58-secret-key'] }).some((h) => h.rule === 'github-token'));
+  assert.ok(scanText(fx.keypairPretty, { skipRules: ['base58-secret-key'] }).some((h) => h.rule === 'solana-keypair-array'));
 });
 
 test('forbidden paths', () => {

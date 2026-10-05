@@ -1,0 +1,483 @@
+{
+  "pilot": "Squads v4 devnet feasibility pilot (ADR 0007 §10)",
+  "disclosure": "Devnet test USDC, no value. Pilot: test keys simulate all roles (builder, Pocket QA, arbiter, tester); not independent custody; no physical wallet; two of three signers.",
+  "commit": "18962e344e4281e9542953c6c778535f54099820",
+  "startedAt": "2026-10-05T10:39:44.584Z",
+  "finishedAt": "2026-10-05T10:41:31.539Z",
+  "outcome": "failed",
+  "rpc": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "program": {
+    "id": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "programData": "Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n",
+    "before": {
+      "lastDeploySlot": 446638068,
+      "upgradeAuthority": "HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK",
+      "accountDataLength": 1774845,
+      "accountSha256": "5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37",
+      "programBytesTrimmedSha256": "57a8d2d7ef5409df250415135f29f83da876e5adf5a2e5b5752e323cfb4f2f74"
+    },
+    "after": null
+  },
+  "roles": {
+    "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+    "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+    "testerA": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "testerB": "8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH"
+  },
+  "accounts": {
+    "multisig": "AHj8EXYGdzEvzCugchaUprdsjGaxs951weZLvd8g5KNE",
+    "vaultAuthority": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+    "vaultUsdcAta": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+    "builderUsdcAta": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+    "testerAUsdcAta": "3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg",
+    "createKey": "6yDjZSLE2eTzyyyYhuaF4tEipPNVBBE7xxCAeTfRG1ZY",
+    "testerBUsdcAta": "FTKn1SeYNgA6MXuAfr3PApRdZEPpJZwPTW9HvXGsAmsT"
+  },
+  "multisigOnChain": {
+    "createKey": "6yDjZSLE2eTzyyyYhuaF4tEipPNVBBE7xxCAeTfRG1ZY",
+    "configAuthority": "11111111111111111111111111111111",
+    "threshold": 2,
+    "timeLock": 0,
+    "transactionIndex": "0",
+    "rentCollector": null,
+    "members": [
+      {
+        "key": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+        "mask": 2
+      },
+      {
+        "key": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+        "mask": 2
+      },
+      {
+        "key": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+        "mask": 7
+      }
+    ]
+  },
+  "spendingLimits": 0,
+  "balances": {
+    "before": {
+      "pocketqaLamports": "5000000000",
+      "builderLamports": "0",
+      "builderUsdcUnits": "20000000"
+    },
+    "after": {}
+  },
+  "steps": [
+    {
+      "step": "multisig_create",
+      "signature": "keNQ7unZzBDWXtVAvK8sqGCwTHQNmjJh8Q9utqJdmm5CAbsCSBNoE1E9UVr1fS6F59VYoCxWrCGqJPaa5JAQUzE",
+      "slot": 507704308,
+      "feeLamports": 10000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "token_account_create:BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+      "signature": "2KTmxVVEsmgE6z5CjqBmw7cfFC8AJczVzZUSmmvmPBffP5M27zia7wEQDhKESP6cMjV95MEwy1yNGr8hSb8TtCRS",
+      "slot": 507704312,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "runner:wrong_mint_setup (wrap 0.01 devnet SOL; vault-owned wSOL account)",
+      "signature": "3jRS6yqCk8DBgnfo4jqnXS1KgGFY7vtrnfUJg5Mgh74PfCwudmgkShb53K12UxEiQ7guBAoS6jsRobEM3LXRWNGd",
+      "slot": 507704317,
+      "feeLamports": 5000,
+      "by": "runner",
+      "err": null,
+      "finalized": "finalized"
+    },
+    {
+      "step": "runner:wrong_mint_funding (wSOL with the funding reference)",
+      "signature": "4CCcmmDeNDWB3isrs4fiXQEvz6nrQqa8UNNgWRc9S4YGujZ577kmjJjW6rU3trv9Ug7R35L8bBcg3Vj9BVckXqgj",
+      "slot": 507704321,
+      "feeLamports": 10000,
+      "by": "runner",
+      "err": null,
+      "finalized": "finalized"
+    },
+    {
+      "step": "runner:funding (builder wallet → study vault, 3.30 devnet test USDC)",
+      "signature": "5dp18gzHJoXyrqfZ7e5o7Go91DjrUXt8uBo45J1AsQrtSQaTPTJmAuqWjB48G9TFBBj4zLqzy93SF1eFJVrtbpkA",
+      "slot": 507704351,
+      "feeLamports": 10000,
+      "by": "runner",
+      "err": null,
+      "finalized": "finalized"
+    },
+    {
+      "step": "token_account_create:6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+      "signature": "5KETSMvcuEAiWCrhhkZp98NJCsnrRjvEx73anmpUgoFV8sNBK4cTi6HJ4cm2E41B47HkiQCrToDS8vAPRgRGUTBy",
+      "slot": 507704379,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_create:1",
+      "signature": "xrxNCqfEMkVvNTT7TDnrUZJtwyFS4aYg8ABbE3cCM6MixdnPyFKyViZYKKmxADSkqK3G7KRX34N4AqaNUdra1AD",
+      "slot": 507704392,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_create:1",
+      "signature": "5rXjYz8iiZehbuUhDqgZzcbqdidRnfStTHBEQq3LvD67iSt72oyEdoJbFhyDtAQBRJTZSSwcWSBz4iS6ArmvGAba",
+      "slot": 507704407,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:1:pocketqa",
+      "signature": "532Hif9URJXXJrR5TXAgzVL32CSw5bhboxep6YztAgt7HY5X3PGzt2UxGsmMuXRd5qJ92nR3RNRZnbV2S58Y6cC2",
+      "slot": 507704419,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:1:builder",
+      "signature": "2QDnHdb7PGEuwhGB4LVCbTvBkbBdSg2TNGL7XspaSzQm5gZfP7V8zqjHum4LDp9xvLCBcGGqLvGE7VjJC3VxbN93",
+      "slot": 507704432,
+      "feeLamports": 10000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_execute:1",
+      "signature": "5nquBJWmx3rh2uDKoaqHNPZZ9chGHs4pAgKYDU6wPTqvJmR2QJVfbZZNsXY2og7YyC2oN61pamPnd8d6aRTv4PZa",
+      "slot": 507704452,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "token_account_create:8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH",
+      "signature": "5X9YnHu3dFEG2fDic4wc9MERG4Bcrrw1PfbMFaXrTjN5PdjbGKedTPyFdWLGUZvKbXkfvSpPWZaL1t5baTvSEW1z",
+      "slot": 507704492,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_create:2",
+      "signature": "3dEzJ9dSQFrpwMDntGwiBusHQfjNXqgLxRuGXwzFCzG4jc6RkK49Zmkaymz2BLKzXUxKFSEeZ6PoP4KGP6jea9kx",
+      "slot": 507704501,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_create:2",
+      "signature": "3pZDmXht3AoFP7uC8rk8ojFwyezMrMrV1Rb7xEMZEi4mNpoAeTvXbh49dvQ8mbauTH2ifjGDQAopR7QxSfKG4Dti",
+      "slot": 507704509,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:2:pocketqa",
+      "signature": "4t67Q224Wbdi6s8oMDppFeAe1CyDZhoSrjYJhpa4CLdkJ63TCG8JoXgqQw86iekMZHtJsgFWjDpFcpWWYEDCMHtj",
+      "slot": 507704540,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:2:arbiter",
+      "signature": "4hGFdyemnk78xh25qucwt6JgoALgRnWdHhhrvDdg1unERKycHMJV8QrSRB1ZTqZ8P8in16XRfA63us5WKoR52vMg",
+      "slot": 507704545,
+      "feeLamports": 10000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_execute:2",
+      "signature": "4V7HR6dezRgFXU5kR6SJT7J4HN5mHjHJAtzXSwVXC9jKTaSPQbBgKEJVnLscbAH87UZwQsPQUoXoMMqYKG7tchUg",
+      "slot": 507704560,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_create:3",
+      "signature": "35WeTt4T5jhdRWLMxXa1eV3DU7vGVULkb55Cpz1FKQqtAgXTEZas9vnMGDScTzFL9zZGppgRRLnAHqRttfMG5o7a",
+      "slot": 507704609,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_create:3",
+      "signature": "2rUPTmha5L65heoPtPYtzb5wA6g71QTRqq9Ju21atwP4dRGKDVnAw2DdmC8G4vFExwtFCo2nSaoUcCUiXQXYpGrB",
+      "slot": 507704619,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:3:pocketqa",
+      "signature": "2XnjUnVLauvkUnaoFSEQoqpLkYPoZWsRXpLAuRsZekYL6JCnpLeRK43FNJQ76ywyaWMfkkno1MjjMh4uaDW2nmr7",
+      "slot": 507704632,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:3:builder",
+      "signature": "2WsdWrENAZipQkAF9NeVxYYP3M9g8mmfj8Vq7E1ceF2roUjocvJxMdL15ENKucKFW2h6atjQMvk3WvdEpNRWCSAs",
+      "slot": 507704641,
+      "feeLamports": 10000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "vault_transaction_execute:3",
+      "signature": "5D1cJ9TVcEpphP1BWgGGqRsDQj5CirBMfEMBD8RmCev3Moixf1KgUDx5KxAHtZKjJV2L63qhTDVaWyRYuTMPFurH",
+      "slot": 507704660,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "runner:unmatched_deposit (builder → vault, 0.01 devnet test USDC, no reference)",
+      "signature": "3njTpvNH46p12F3424WdcySgGtzVcuTYuftUSfQj9JcGnK87nvyXLhBdvBVw3pUasRuHn6xs4udrmSjLPiSxnZKa",
+      "slot": 507704683,
+      "feeLamports": 10000,
+      "by": "runner",
+      "err": null,
+      "finalized": "finalized"
+    },
+    {
+      "step": "vault_transaction_create:4",
+      "signature": "4F79PrVWT5LNrqni1xEF4rg5vKzKyQwZJHacR411EXqd5KqF3C5zYdyr6j6anUyg7baYaoK5LLgYXgZykmtQXH6c",
+      "slot": 507704720,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_create:4",
+      "signature": "4MxQkyEERz3Esv2JwPurJtNyVqKJ1E3q86hQ1xXMtDTQWwB4FZKYrH2BXE7SGHqUmE16j2NGTcyFzrSh82DUqVCf",
+      "slot": 507704724,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    },
+    {
+      "step": "proposal_approve:4:pocketqa",
+      "signature": "22KeoQaoEgYhN5iTJGNaAifXVzWT4ArjcidPrK9BTtPitXKKqTGXT1V6S1dADsm9aYgGs7hQSRqH7FwP448MPXsm",
+      "slot": 507704732,
+      "feeLamports": 5000,
+      "by": "adapter",
+      "finalized": "finalized",
+      "err": null
+    }
+  ],
+  "checks": [
+    {
+      "id": "R0",
+      "claim": "the RPC is Solana devnet (genesis pinned)",
+      "observed": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+      "ok": true
+    },
+    {
+      "id": "R1",
+      "claim": "autonomous (no config authority), threshold 2, time lock 0, no rent collector (finished transactions can’t be closed, so operation ids stay on chain)",
+      "observed": "{\"createKey\":\"6yDjZSLE2eTzyyyYhuaF4tEipPNVBBE7xxCAeTfRG1ZY\",\"configAuthority\":\"11111111111111111111111111111111\",\"threshold\":2,\"timeLock\":0,\"transactionIndex\":\"0\",\"rentCollector\":null,\"members\":[{\"key\":\"5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm\",\"mask\":2},{\"key\":\"6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn\",\"mask\":2},{\"key\":\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\",\"mask\":7}]}",
+      "ok": true
+    },
+    {
+      "id": "R1",
+      "claim": "members: builder Vote, Pocket QA Initiate+Vote+Execute, arbiter Vote",
+      "observed": "{\"5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm\":2,\"6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn\":2,\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\":7}",
+      "ok": true
+    },
+    {
+      "id": "R1",
+      "claim": "no SpendingLimit account for this multisig",
+      "observed": "0",
+      "ok": true
+    },
+    {
+      "id": "R8",
+      "claim": "a wrong-mint transfer is not credited",
+      "observed": "failed",
+      "ok": true
+    },
+    {
+      "id": "R2",
+      "claim": "funding confirmed from the builder wallet, credited exactly once",
+      "observed": "{\"id\":\"4cce63c3-bf76-4bcf-8873-17af2de20697\",\"studyId\":\"188d6b60-cf42-4b5a-9fd1-51524f25a7b3\",\"amountUnits\":3300000,\"asset\":\"USDC\",\"decimals\":6,\"network\":\"solana:devnet\",\"mint\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"vault\":\"FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz\",\"reference\":\"DNQHCtBG2F7GBd6vWyAJWkc56ja6wfJVC1F3GjYXGmQb\",\"settlement\":\"squads_devnet\",\"status\":\"confirmed\",\"signature\":\"5dp18gzHJoXyrqfZ7e5o7Go91DjrUXt8uBo45J1AsQrtSQaTPTJmAuqWjB48G9TFBBj4zLqzy93SF1eFJVrtbpkA\",\"source\":\"6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn\",\"failureReason\":null,\"createdAt\":\"2026-10-05T10:39:45.739Z\",\"expiresAt\":\"2026-10-05T11:09:45.739Z\",\"confirmedAt\":\"2026-10-05T10:39:45.739Z\"}",
+      "ok": true
+    },
+    {
+      "id": "R2",
+      "claim": "vault balance delta equals the quote",
+      "observed": "3300000",
+      "ok": true
+    },
+    {
+      "id": "R3",
+      "claim": "both payouts confirmed; the overturned dispute co-signed by the arbiter",
+      "observed": "[\"1:builder:confirmed\",\"2:arbiter:confirmed\"]",
+      "ok": true
+    },
+    {
+      "id": "P1-1",
+      "claim": "index 1: the stored vault message is [TransferChecked, Memo(operation id)] created by Pocket QA",
+      "observed": "{\"creator\":\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\",\"operation\":\"pqa-op1:681e6d5a42716b21b3519af8cb7370f93ca77a570c1aa550b50e2b85e03b8c05\",\"instructions\":2,\"program\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"opcode\":12,\"source\":\"FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz\",\"mint\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"destination\":\"3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg\",\"authority\":\"BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c\",\"amount\":\"1000000\",\"decimals\":6}",
+      "ok": true
+    },
+    {
+      "id": "R3",
+      "claim": "index 1: executed with two distinct approvals (Pocket QA and the builder)",
+      "observed": "{\"status\":\"Executed\",\"approved\":[\"6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn\",\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\"]}",
+      "ok": true
+    },
+    {
+      "id": "R6",
+      "claim": "index 1: exactly one execute despite the crash and repeated runs",
+      "observed": "1",
+      "ok": true
+    },
+    {
+      "id": "P1-1",
+      "claim": "index 2: the stored vault message is [TransferChecked, Memo(operation id)] created by Pocket QA",
+      "observed": "{\"creator\":\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\",\"operation\":\"pqa-op1:e237275b97521723091d85881585855047a41044f37f4e068af45cb58b7d6554\",\"instructions\":2,\"program\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\",\"opcode\":12,\"source\":\"FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz\",\"mint\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"destination\":\"FTKn1SeYNgA6MXuAfr3PApRdZEPpJZwPTW9HvXGsAmsT\",\"authority\":\"BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c\",\"amount\":\"1000000\",\"decimals\":6}",
+      "ok": true
+    },
+    {
+      "id": "R3",
+      "claim": "index 2: executed with two distinct approvals (Pocket QA and the arbiter)",
+      "observed": "{\"status\":\"Executed\",\"approved\":[\"5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm\",\"DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS\"]}",
+      "ok": true
+    },
+    {
+      "id": "R6",
+      "claim": "index 2: exactly one execute despite the crash and repeated runs",
+      "observed": "1",
+      "ok": true
+    },
+    {
+      "id": "R6",
+      "claim": "tester A received exactly 1.00 devnet test USDC",
+      "observed": "1000000",
+      "ok": true
+    },
+    {
+      "id": "R4",
+      "claim": "tester B (overturned dispute) received exactly 1.00 devnet test USDC",
+      "observed": "1000000",
+      "ok": true
+    },
+    {
+      "id": "R5",
+      "claim": "refund of 1.10 devnet test USDC to the funding wallet",
+      "observed": "1100000",
+      "ok": true
+    },
+    {
+      "id": "R7",
+      "claim": "the unmatched deposit is alerted",
+      "observed": "[\"unmatched deposit in the vault of study 188d6b60-cf42-4b5a-9fd1-51524f25a7b3: 10000 units on chain that no confirmed funding credited (not credited, not spendable; return it by hand)\"]",
+      "ok": true
+    },
+    {
+      "id": "C8",
+      "claim": "books: funded 3.30, settled 2.00, fees 0.20, refunded 1.10, balanced; the deposit not credited",
+      "observed": "{\"fundedUnits\":3300000,\"availableUnits\":0,\"heldUnits\":0,\"payableUnits\":0,\"settledUnits\":2000000,\"feesUnits\":200000,\"pendingRefundUnits\":0,\"refundedUnits\":1100000,\"ok\":true}",
+      "ok": true
+    },
+    {
+      "id": "C8",
+      "claim": "the vault on chain holds the fees plus the unmatched deposit",
+      "observed": "210000",
+      "ok": true
+    },
+    {
+      "id": "C2",
+      "claim": "policy-destination: refused before signing",
+      "observed": "Refused before signing: the transfer does not match its recorded settlement.",
+      "ok": true
+    },
+    {
+      "id": "C2",
+      "claim": "policy-amount: refused before signing",
+      "observed": "Refused before signing: the transfer does not match its recorded settlement.",
+      "ok": true
+    },
+    {
+      "id": "C2",
+      "claim": "no transaction was signed for the policy refusals",
+      "observed": "3njTpvNH46p12F3424WdcySgGtzVcuTYuftUSfQj9JcGnK87nvyXLhBdvBVw3pUasRuHn6xs4udrmSjLPiSxnZKa",
+      "ok": true
+    }
+  ],
+  "refusals": [
+    {
+      "id": "R8",
+      "what": "funding with the right reference and amount but wrapped SOL instead of devnet test USDC",
+      "result": "API status failed: The transfer is a different token.",
+      "signature": "4CCcmmDeNDWB3isrs4fiXQEvz6nrQqa8UNNgWRc9S4YGujZ577kmjJjW6rU3trv9Ug7R35L8bBcg3Vj9BVckXqgj"
+    },
+    {
+      "id": "policy-destination",
+      "what": "a transfer request that differs from its recorded settlement (destination)",
+      "result": "Refused before signing: the transfer does not match its recorded settlement.",
+      "signature": null
+    },
+    {
+      "id": "policy-amount",
+      "what": "a transfer request that differs from its recorded settlement (amountUnits)",
+      "result": "Refused before signing: the transfer does not match its recorded settlement.",
+      "signature": null
+    }
+  ],
+  "alerts": [
+    "unmatched deposit in the vault of study 188d6b60-cf42-4b5a-9fd1-51524f25a7b3: 10000 units on chain that no confirmed funding credited (not credited, not spendable; return it by hand)"
+  ],
+  "books": {
+    "fundedUnits": 3300000,
+    "availableUnits": 0,
+    "heldUnits": 0,
+    "payableUnits": 0,
+    "settledUnits": 2000000,
+    "feesUnits": 200000,
+    "pendingRefundUnits": 0,
+    "refundedUnits": 1100000,
+    "ok": true
+  },
+  "costs": null,
+  "commands": [
+    "cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=<pilot key dir> npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts"
+  ]
+}
