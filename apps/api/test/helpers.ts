@@ -42,7 +42,7 @@ export class FakeRpc implements DevnetRpc {
 
 export type TestApp = Awaited<ReturnType<typeof makeApp>>;
 
-export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain } = {}) {
+export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -94,7 +94,7 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
   const sim = new SimulatedSettlement(db, () => clock.now);
   if (opts.settlement === 'simulated') deps.settlement = sim;
   // The Squads devnet pilot adapter over an in-memory chain (never a network in this suite).
-  if (opts.settlement === 'squads_devnet') deps.settlement = new SquadsDevnetSettlement({ db, now: () => clock.now, chain: opts.squadsChain!, createSeed: new Uint8Array(32).fill(9) });
+  if (opts.settlement === 'squads_devnet') deps.settlement = new SquadsDevnetSettlement({ db, now: () => clock.now, chain: opts.squadsChain!, createSeed: opts.squadsCreateSeed ?? new Uint8Array(32).fill(9) });
   const app = await buildApp(deps, opts.captureLogs ? { logger: loggerOptions(stream) } : {});
   await app.ready();
 

@@ -36,3 +36,15 @@ The arbiter, tester and outsider need no assets. The Pocket QA key pays their tr
 On the two official faucet pages above, paste the address shown for each row, choose the devnet network, and submit, completing any CAPTCHA yourself. Nothing else is needed: no keys and no personal or mainnet assets.
 
 The pilot runner checks the finalized balances itself before it starts, and refuses any mint other than Circle's devnet USDC.
+
+## Runner readiness (re-checked 2026-10-05, after commit 5d5d431)
+- **Minimum the runner checks before sending anything:** at least **0.2 devnet SOL** on Pocket QA and **3.4 devnet test USDC** on the builder (3.30 to fund the study plus 0.01 for the unmatched-deposit check). One drip from each faucet covers this.
+- **Balances re-read (read-only RPC, no faucet call):** Pocket QA has 0 lamports. The builder has 0 lamports and no devnet USDC token account. **Still blocked.**
+- **Dry run with the keys:** `test-live/squads-devnet.pilot.live.test.ts` stopped at its balance check with `BLOCKED: … Nothing was sent.` Its receipt (`devnet-pilot-receipt.md`, outcome *failed: BLOCKED*) records only the genesis check and the Squads program-data state:
+  - program-data account `Fy3YMJ…sh8n`, last deploy slot 446638068, upgrade authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`;
+  - account sha256 `5c866bde…0d37`.
+- **Once funded, the run is one command:**
+  ```
+  cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts
+  ```
+  It overwrites the receipt with every signature, slot, finalized status and explorer link, plus balances, costs and the program-data state before and after.
