@@ -765,5 +765,38 @@ Branch `feat/lens-badges` at `3ba55de`, from main `ae0b501`. Playwright ran thro
   apps/api:           Tests 7 failed | 566 passed | 2 skipped (575)
   ```
   The 7 API failures are the Windows baseline that main `ae0b501` also shows on this machine (admin-scripts, db-scripts, backup, config.bind, admin-grant, escrow A1b, operations SIGTERM). `test/reputation.test.ts`, with the new `progress` assertions, passes. `domain/src/reputation.ts` coverage: 100% statements.
-- **Playwright:** 21 passed (3.7m), EXIT=0. That is 15 mobile-web specs, including `wallet-rewards.spec.ts`, which drives the new Reputation and Leaderboard screens end to end against the real local API (points, a badge, the opt-in, "Not ranked yet", the leaderboard), plus 6 desktop-recorder specs.
+- **Playwright:** 21 passed (3.7m), EXIT=0. That is 15 mobile-web specs, including `wallet-rewards.spec.ts`, which drives the new Reputation and Leaderboard screens end to end against the real local API (points, a badge row, the opt-in, "Not ranked yet", the leaderboard). That run checked only that the badge row was visible, which every badge row is; that the approval earned the badge is asserted from `0ea26a0` on (the entry below), plus 6 desktop-recorder specs.
 - **Screenshots:** `docs/reviews/lens-badges/browser/`. They come from a throwaway local API seeded with synthetic testers (aliases only), signed in as one of them.
+
+## 2026-10-05: badges review fixes, on the branch merged with main (contributor session, claymorius-wq; Windows 11, Node v24.21.0, pnpm 10.32.1)
+`feat/lens-badges` at `20060a6`. That is the r1 and r2 review fixes (`0ea26a0`, `42b431b`), then main merged in (`79340fa`, which brings the intro, #10), then the intro review r4's P3s (`20060a6`). Same harness as the badges entry above (API 8789, web 8094, fake RPC 8901, a fresh `expo export`), now with main's start-past-the-intro storage state.
+- **Checks:**
+  ```
+  $ pnpm check:secrets
+  check:secrets FAILED (89 finding(s) in 921 files):
+  $ node scripts/preview/assert-no-secrets.mjs --repo
+  secret check: 18 values, 921 files, 0 occurrences
+  $ pnpm typecheck        exit=0
+  $ pnpm lint             exit=0
+  ```
+  The 89 findings are the devnet pilot receipts, converted to CRLF by this checkout (explained above).
+- **Unit tests** (full parallel run):
+  ```
+  $ pnpm --filter @pocket-qa/mobile test
+  Test Suites: 7 failed, 53 passed, 60 total
+  Tests:       10 failed, 1275 passed, 1285 total
+  $ pnpm -r --if-present test
+  packages/contracts: Tests 17 passed (17)
+  packages/domain:    Tests 222 passed (222)
+  apps/api:           Tests 7 failed | 566 passed | 2 skipped (575)
+  ```
+  - Nine of the ten mobile failures exceeded Jest's 5 s per-test timeout. Their suites took 115–143 s in that run: builder-study, review-screen, new-study, icons, admin-screens, participation-session and auth-screens.
+  - The tenth, new-study "shows the server failure above the dock", failed right after its suite's timeout.
+  - The badges commits touch none of these suites, and since main `ae0b501` only auth-screens changed (three lines, in the intro, #10). The API failures are the Windows baseline.
+  - Re-run of the seven suites with `npx jest --maxWorkers=2`: 7 suites, 141 tests passed.
+- **Playwright** (full run): 26 passed, 2 failed (4.2m).
+  - `wallet-rewards.spec.ts` passed, including the new assertions that the approval earned the first badge: "A builder accepted your first test.", "Earned", and the hero's "TOP BADGE". This is the condition review r2 set for merging.
+  - The two failures:
+    - `intro.spec.ts` "on a short screen…": "Target page, context or browser has been closed" mid-test.
+    - `remaining-scope.spec.ts:99`: the devnet demo transfer's "CONFIRMED ON DEVNET" did not appear in time.
+  - Both passed in every earlier run. Re-run alone on the same export: 10 passed (1.0m): intro.spec.ts 7 and remaining-scope.spec.ts 3.
