@@ -74,7 +74,7 @@
 2. **`reason: 'system'` is never produced on iOS.** ReplayKit gives the extension no signal that distinguishes a system stop from the user's.
 3. **JS `recording` state on iPhone.** After `showBroadcastPicker`, the screen never sets `recording = true`, so no in-app "recording" banner appears on return (N2).
    - `isRecording()` is accurate (heartbeat).
-   - Suggestion for your screen: re-read `recorder.isRecording()` on `AppState` `active`.
+   - Resolved by the lead: the screen re-reads `recorder.isRecording()` on `AppState` `active` **in broadcast mode only** (cc70f3c). My first suggestion applied it on every platform and claimed that was harmless on Android. It wasn't: Android's consent dialog returns the app to `active` before the foreground service flags itself, so the card showed Start while recording (emulator run r2).
    - I added no event for "started" because the contract has only `onStopped`.
 4. **Orientation:** the `RPVideoSampleOrientationKey` attachment isn't applied. Landscape apps record in the buffer's native orientation. This is a device-gated follow-up.
 5. **Unmount discard shows a system alert.** The extension's only way to end itself is `finishBroadcastWithError`, so the discard path shows "Recording discarded…". This is intentional, since the tester should know capture stopped.
