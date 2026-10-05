@@ -65,14 +65,22 @@ enum DarwinObserver {
 
 /**
  * The on-disk handoff between the extension and the app, the same contract as Android's
- * PendingStore.kt (docs/plans/native-screen-voice-recording.md):
- *  - a recording is `<uuid>.mp4` in the App Group container; when the extension FINALISES it
- *    (AVAssetWriter.finishWriting completed), it writes `<uuid>.meta` (JSON: durationMs, tag,
- *    reason, createdAt) by write-then-rename, so a crash never leaves a half-written meta;
- *  - the app claims its session's clips with take(tag:into:), which MOVES each video into the app's
- *    own cache directory and then deletes the meta: each clip is handed out once;
- *  - an MP4 without a meta is truncated (the extension was killed, e.g. by its memory limit) and is
- *    deleted by sweep, never offered or uploaded; finished clips nobody claims expire after ttlMs.
+ * PendingStore.kt (docs/plans/native-screen-voice-recording.md; pqa-qa r1 P1, P2-A). In
+ * `<App Group>/recordings`, per recording `<id>`:
+ *  - `<id>.mp4`: written by the extension's AVAssetWriter;
+ *  - `<id>.rec`: written at start with the session tag. It outlives the MP4's finalisation only
+ *    when the extension died mid-recording (for example its memory limit);
+ *  - `<id>.meta`: written when the extension FINALISES the clip (replacing `.rec`): duration, tag,
+ *    stop reason, time and the voice verdict measured from the finished file (VoiceCheck);
+ *  - `<id>.lost`: left by sweep for a recording that was cut off, so its session can say so once.
+ * Every write is write-then-rename, so a crash never leaves a half-written file that is trusted.
+ *
+ * A finished clip stays LISTED for its session (pending) until its MP4 is deleted: JS deletes it
+ * after uploading or discarding, or when the tester leaves the session in the foreground. So a
+ * remount or a process restart loses nothing, and only the clip's own session sees it. JS reads and
+ * deletes the file in place (expo-file-system scopes App Group directories as read/write).
+ * Everything expires after ttlMs; clearAll runs on sign-out and account deletion. The directory is
+ * excluded from device backups.
  */
 final class PendingStore {
   struct Entry {
@@ -82,12 +90,26 @@ final class PendingStore {
     let tag: String
     let reason: String
     let createdAt: Int64
+    let videoMs: Int64
+    let voiceMs: Int64
+    /// False unless the finished file was measured and its voice covers the video.
+    let voiceComplete: Bool
   }
 
   private struct Meta: Codable {
     let durationMs: Int64
     let tag: String
     let reason: String
+    let createdAt: Int64
+    // Optional: a meta without them (unmeasured, or an older build) reads as NOT verified.
+    let videoMs: Int64?
+    let voiceMs: Int64?
+    let voiceComplete: Bool?
+  }
+
+  /// `.rec` (started) and `.lost` (cut off) notices.
+  private struct Note: Codable {
+    let tag: String
     let createdAt: Int64
   }
 
@@ -101,29 +123,26 @@ final class PendingStore {
     self.now = now
   }
 
-  func newFile() -> URL {
+  /// Creates the directory if needed and (re)applies the backup exclusion (cheap; covers older installs).
+  func ensureDir() {
     try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir.appendingPathComponent("\(UUID().uuidString).mp4")
+    var d = dir
+    var values = URLResourceValues()
+    values.isExcludedFromBackup = true
+    try? d.setResourceValues(values)
   }
 
-  private func metaOf(_ video: URL) -> URL { video.deletingPathExtension().appendingPathExtension("meta") }
-  private func videoOf(_ meta: URL) -> URL { meta.deletingPathExtension().appendingPathExtension("mp4") }
+  private func sibling(_ file: URL, _ ext: String) -> URL { dir.appendingPathComponent(id(file) + "." + ext) }
+  private func id(_ file: URL) -> String { file.deletingPathExtension().lastPathComponent }
   private func size(_ url: URL) -> Int64 { ((try? fm.attributesOfItem(atPath: url.path))?[.size] as? NSNumber)?.int64Value ?? 0 }
 
-  /// Records a finished clip; an empty or missing file is deleted instead (nothing usable was captured).
   @discardableResult
-  func markComplete(_ video: URL, durationMs: Int64, tag: String, reason: String) -> Bool {
-    guard fm.fileExists(atPath: video.path), size(video) > 0 else {
-      try? fm.removeItem(at: video)
-      return false
-    }
-    guard let data = try? JSONEncoder().encode(Meta(durationMs: durationMs, tag: tag, reason: reason, createdAt: now())) else { return false }
-    let meta = metaOf(video)
-    let tmp = dir.appendingPathComponent(meta.lastPathComponent + ".tmp")
+  private func write<T: Encodable>(_ value: T, to target: URL) -> Bool {
+    let tmp = dir.appendingPathComponent(target.lastPathComponent + ".tmp")
     do {
-      try data.write(to: tmp)
-      try? fm.removeItem(at: meta)
-      try fm.moveItem(at: tmp, to: meta)
+      try JSONEncoder().encode(value).write(to: tmp)
+      try? fm.removeItem(at: target)
+      try fm.moveItem(at: tmp, to: target)
       return true
     } catch {
       try? fm.removeItem(at: tmp)
@@ -131,50 +150,103 @@ final class PendingStore {
     }
   }
 
-  private func read(_ meta: URL) -> Meta? {
-    guard let data = try? Data(contentsOf: meta) else { return nil }
-    return try? JSONDecoder().decode(Meta.self, from: data)
+  private func load<T: Decodable>(_ type: T.Type, _ url: URL) -> T? {
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    return try? JSONDecoder().decode(type, from: data)
   }
 
   private func listing() -> [URL] {
     (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
   }
 
-  /// This session's finished clips, moved into `dest` (the app's cache): each is returned once.
-  func take(tag: String, into dest: URL) -> [Entry] {
-    try? fm.createDirectory(at: dest, withIntermediateDirectories: true)
-    var out: [Entry] = []
-    for meta in listing() where meta.pathExtension == "meta" {
-      guard let m = read(meta), m.tag == tag else { continue }
-      let video = videoOf(meta)
-      guard fm.fileExists(atPath: video.path), size(video) > 0 else {
-        try? fm.removeItem(at: meta)
-        try? fm.removeItem(at: video)
-        continue
-      }
-      let target = dest.appendingPathComponent(video.lastPathComponent)
-      // Move first, then drop the meta: if the move fails the clip stays claimable (or expires).
-      guard (try? fm.moveItem(at: video, to: target)) != nil else { continue }
-      try? fm.removeItem(at: meta)
-      out.append(Entry(file: target, durationMs: m.durationMs, sizeBytes: size(target), tag: m.tag, reason: m.reason, createdAt: m.createdAt))
-    }
-    return out.sorted { $0.createdAt < $1.createdAt }
+  /// A new recording of session `tag` (its `.rec` names the session if the extension dies).
+  func newFile(tag: String) -> URL {
+    ensureDir()
+    let video = dir.appendingPathComponent("\(UUID().uuidString).mp4")
+    write(Note(tag: tag, createdAt: now()), to: sibling(video, "rec"))
+    return video
   }
 
-  /// Deletes truncated videos (no meta, not `active`), unreadable or orphaned metas, expired clips and temp files.
+  /// Records a finished clip; an empty or missing file is deleted instead (nothing usable was captured).
+  @discardableResult
+  func markComplete(_ video: URL, durationMs: Int64, tag: String, reason: String, voice: VoiceVerdict?) -> Bool {
+    guard fm.fileExists(atPath: video.path), size(video) > 0 else {
+      forget(video)
+      return false
+    }
+    let meta = Meta(durationMs: durationMs, tag: tag, reason: reason, createdAt: now(),
+                    videoMs: voice?.videoMs ?? durationMs, voiceMs: voice?.voiceMs ?? 0, voiceComplete: voice?.complete == true)
+    let ok = write(meta, to: sibling(video, "meta"))
+    try? fm.removeItem(at: sibling(video, "rec"))
+    return ok
+  }
+
+  private func entry(_ meta: URL) -> Entry? {
+    guard let m = load(Meta.self, meta) else { return nil }
+    let video = sibling(meta, "mp4")
+    return Entry(file: video, durationMs: m.durationMs, sizeBytes: size(video), tag: m.tag, reason: m.reason, createdAt: m.createdAt,
+                 videoMs: m.videoMs ?? 0, voiceMs: m.voiceMs ?? 0, voiceComplete: m.voiceComplete == true)
+  }
+
+  /// The finished clips of this session whose files still exist (an empty tag matches nothing).
+  func pending(tag: String) -> [Entry] {
+    guard !tag.isEmpty else { return [] }
+    return listing().filter { $0.pathExtension == "meta" }
+      .compactMap(entry)
+      .filter { $0.tag == tag && $0.sizeBytes > 0 }
+      .sorted { $0.createdAt < $1.createdAt }
+  }
+
+  /// Deletes a clip and everything kept about it.
+  func forget(_ video: URL) {
+    for f in [video, sibling(video, "meta"), sibling(video, "rec"), sibling(video, "lost")] { try? fm.removeItem(at: f) }
+  }
+
+  /// How many recordings of this session were cut off (extension killed); each is reported once.
+  func takeInterrupted(tag: String) -> Int {
+    var n = 0
+    for f in listing() where f.pathExtension == "lost" {
+      if load(Note.self, f)?.tag == tag {
+        try? fm.removeItem(at: f)
+        n += 1
+      }
+    }
+    return n
+  }
+
+  /**
+   * Deletes truncated recordings (an MP4 with no meta that isn't `active`: the extension died while
+   * writing it, so it is never offered or uploaded) and leaves their session a notice; drops stray
+   * metas and temp files; expires everything older than ttlMs.
+   */
   func sweep(active: URL?) {
+    let activeId = active.map(id)
     for f in listing() {
-      switch f.pathExtension {
+      let ext = f.pathExtension
+      if ext == "tmp" {
+        try? fm.removeItem(at: f)
+        continue
+      }
+      if id(f) == activeId { continue }
+      switch ext {
       case "mp4":
-        if f.lastPathComponent != active?.lastPathComponent, read(metaOf(f)) == nil { try? fm.removeItem(at: f) }
+        if load(Meta.self, sibling(f, "meta")) == nil {
+          try? fm.removeItem(at: f)
+          try? fm.removeItem(at: sibling(f, "meta"))
+          let rec = sibling(f, "rec")
+          if let note = load(Note.self, rec) { write(Note(tag: note.tag, createdAt: now()), to: sibling(f, "lost")) }
+          try? fm.removeItem(at: rec)
+        }
+      case "rec":
+        if !fm.fileExists(atPath: sibling(f, "mp4").path) { try? fm.removeItem(at: f) }
       case "meta":
-        let m = read(f)
-        let video = videoOf(f)
-        if m == nil || !fm.fileExists(atPath: video.path) || now() - m!.createdAt > Self.ttlMs {
-          try? fm.removeItem(at: video)
+        let m = load(Meta.self, f)
+        if m == nil || !fm.fileExists(atPath: sibling(f, "mp4").path) || now() - m!.createdAt > Self.ttlMs {
+          try? fm.removeItem(at: sibling(f, "mp4"))
           try? fm.removeItem(at: f)
         }
-      case "tmp":
+      case "lost":
+        if let at = load(Note.self, f)?.createdAt, now() - at <= Self.ttlMs { continue }
         try? fm.removeItem(at: f)
       default:
         break
@@ -182,10 +254,180 @@ final class PendingStore {
     }
   }
 
-  /// Deletes one recording and its meta (a discarded or refused broadcast).
-  func discard(_ video: URL) {
-    try? fm.removeItem(at: video)
-    try? fm.removeItem(at: metaOf(video))
+  /// Sign-out and account deletion: every clip and notice goes, except the file being written.
+  func clearAll(active: URL?) {
+    let activeId = active.map(id)
+    for f in listing() where id(f) != activeId { try? fm.removeItem(at: f) }
+  }
+}
+
+/// The voice verdict measured from a finished file (persisted in the meta).
+struct VoiceVerdict {
+  let videoMs: Int64
+  let voiceMs: Int64
+  let complete: Bool
+}
+
+/**
+ * Does a finished recording carry the tester's voice for its whole length? (pqa-qa r1 P1; the same
+ * rule as Android VoiceCheck.kt). An encoder can keep writing video after the audio stalled, so each
+ * finalised file is measured from its own index: the audio track must cover the video within
+ * max(1 s, 2 %). A clip that fails is still offered for review, marked "voice incomplete", and JS
+ * won't keep or upload it as narrated evidence.
+ */
+enum VoiceCheck {
+  static func covers(videoMs: Int64, audioMs: Int64?) -> Bool {
+    guard let audioMs = audioMs else { return false }
+    return videoMs - audioMs <= max(1000, videoMs * 2 / 100)
+  }
+
+  /// Nil when the file isn't a readable MP4 with a video track (a truncated file has no index).
+  static func inspect(_ file: URL) -> VoiceVerdict? {
+    guard let t = Mp4Tracks.read(file) else { return nil }
+    return VoiceVerdict(videoMs: t.videoMs, voiceMs: t.audioMs ?? 0, complete: covers(videoMs: t.videoMs, audioMs: t.audioMs))
+  }
+}
+
+/**
+ * Track durations from an MP4's own index (moov/trak: hdlr handler type; the tkhd presented duration
+ * in the mvhd timescale, else mdhd), ported from Android's Mp4Tracks. Pure Foundation (no AVFoundation async loading in the
+ * extension); only the moov box is read, capped well under the extension's memory ceiling.
+ */
+enum Mp4Tracks {
+  struct Tracks: Equatable {
+    let videoMs: Int64
+    let audioMs: Int64?
+  }
+
+  private static let maxMoov: UInt64 = 16 * 1024 * 1024
+
+  static func read(_ file: URL) -> Tracks? {
+    guard let h = try? FileHandle(forReadingFrom: file) else { return nil }
+    defer { try? h.close() }
+    guard let moov = moov(h) else { return nil }
+    return tracks(moov)
+  }
+
+  private static func be32(_ d: Data, _ at: Int) -> UInt64 {
+    d[d.startIndex + at ..< d.startIndex + at + 4].reduce(0) { $0 << 8 | UInt64($1) }
+  }
+
+  private static func be64(_ d: Data, _ at: Int) -> UInt64 {
+    d[d.startIndex + at ..< d.startIndex + at + 8].reduce(0) { $0 << 8 | UInt64($1) }
+  }
+
+  private static func type(_ d: Data, _ at: Int) -> String {
+    String(decoding: d[d.startIndex + at ..< d.startIndex + at + 4], as: UTF8.self)
+  }
+
+  private static func moov(_ h: FileHandle) -> Data? {
+    guard let len = try? h.seekToEnd() else { return nil }
+    var pos: UInt64 = 0
+    while pos + 8 <= len {
+      guard (try? h.seek(toOffset: pos)) != nil, let head = try? h.read(upToCount: 16), head.count >= 8 else { return nil }
+      var size = be32(head, 0)
+      let t = type(head, 4)
+      var header: UInt64 = 8
+      if size == 1 {
+        guard head.count >= 16 else { return nil }
+        size = be64(head, 8)
+        header = 16
+      } else if size == 0 {
+        size = len - pos
+      }
+      if size < header || pos + size > len { return nil }
+      if t == "moov" {
+        let body = size - header
+        guard body <= maxMoov, (try? h.seek(toOffset: pos + header)) != nil, let data = try? h.read(upToCount: Int(body)), data.count == Int(body) else { return nil }
+        return data
+      }
+      pos += size
+    }
+    return nil
+  }
+
+  /// Child boxes of `d` as (type, payload) pairs.
+  private static func children(_ d: Data) -> [(String, Data)] {
+    var out: [(String, Data)] = []
+    var at = 0
+    while d.count - at >= 8 {
+      var size = Int(be32(d, at))
+      let t = type(d, at + 4)
+      var header = 8
+      if size == 1 {
+        guard d.count - at >= 16 else { break }
+        size = Int(be64(d, at + 8))
+        header = 16
+      } else if size == 0 {
+        size = d.count - at
+      }
+      if size < header || at + size > d.count { break }
+      out.append((t, d.subdata(in: d.startIndex + at + header ..< d.startIndex + at + size)))
+      at += size
+    }
+    return out
+  }
+
+  private static func tracks(_ moov: Data) -> Tracks? {
+    let boxes = children(moov)
+    let movieTimescale = boxes.first(where: { $0.0 == "mvhd" }).flatMap { timescale(mvhd: $0.1) }
+    var video: Int64?
+    var audio: Int64?
+    for (t, trak) in boxes where t == "trak" {
+      let parts = children(trak)
+      guard let mdia = parts.first(where: { $0.0 == "mdia" })?.1 else { continue }
+      let media = children(mdia)
+      guard let hdlr = media.first(where: { $0.0 == "hdlr" })?.1, hdlr.count >= 12 else { continue }
+      // The PRESENTED length (tkhd, movie timescale) honours edit lists: AVAssetWriter trims AAC
+      // priming and the last frame's tail that way (mdhd reads 6.2 s video / 6.023 s audio for a
+      // 6.0 s clip). Without a usable tkhd, the media duration (mdhd) is used.
+      let presented = parts.first(where: { $0.0 == "tkhd" }).flatMap { tkhd in movieTimescale.flatMap { durationMs(tkhd: tkhd.1, timescale: $0) } }
+      guard let ms = presented ?? media.first(where: { $0.0 == "mdhd" }).flatMap({ durationMs($0.1) }) else { continue }
+      switch type(hdlr, 8) {
+      case "vide": video = max(video ?? 0, ms)
+      case "soun": audio = max(audio ?? 0, ms)
+      default: break
+      }
+    }
+    return video.map { Tracks(videoMs: $0, audioMs: audio) }
+  }
+
+  private static func timescale(mvhd: Data) -> UInt64? {
+    guard let version = mvhd.first else { return nil }
+    let at = version == 1 ? 20 : 12
+    guard mvhd.count >= at + 4 else { return nil }
+    let ts = be32(mvhd, at)
+    return ts > 0 ? ts : nil
+  }
+
+  private static func durationMs(tkhd: Data, timescale: UInt64) -> Int64? {
+    guard let version = tkhd.first else { return nil }
+    let duration: UInt64
+    if version == 1 {
+      guard tkhd.count >= 36 else { return nil }
+      duration = be64(tkhd, 28)
+    } else {
+      guard tkhd.count >= 24 else { return nil }
+      duration = be32(tkhd, 20)
+    }
+    // 0 (fragmented files) and all-ones ("unknown") are not usable lengths.
+    guard duration > 0, duration != UInt64(UInt32.max), duration != UInt64.max, duration < UInt64(Int64.max) / 1000 else { return nil }
+    return Int64(duration * 1000 / timescale)
+  }
+
+  private static func durationMs(_ mdhd: Data) -> Int64? {
+    guard mdhd.count >= 4 else { return nil }
+    let version = mdhd[mdhd.startIndex]
+    let (timescale, duration): (UInt64, UInt64)
+    if version == 1 {
+      guard mdhd.count >= 32 else { return nil }
+      (timescale, duration) = (be32(mdhd, 20), be64(mdhd, 24))
+    } else {
+      guard mdhd.count >= 20 else { return nil }
+      (timescale, duration) = (be32(mdhd, 12), be32(mdhd, 16))
+    }
+    guard timescale > 0, duration < UInt64(Int64.max) / 1000 else { return nil }
+    return Int64(duration * 1000 / timescale)
   }
 }
 
@@ -262,6 +504,12 @@ final class BroadcastState {
     d.set(fileName, forKey: Key.activeFile)
     d.set(tag, forKey: Key.activeTag)
     heartbeat()
+  }
+
+  /// Sign-out: a tag the previous user set for a broadcast never started must not carry over.
+  func clearPendingTag() {
+    d.removeObject(forKey: Key.pendingTag)
+    d.removeObject(forKey: Key.pendingTagAt)
   }
 
   func heartbeat() { d.set(NSNumber(value: now()), forKey: Key.heartbeatAt) }

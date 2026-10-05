@@ -15,8 +15,8 @@
 | Path | What |
 |---|---|
 | `modules/screen-capture/ios/ScreenCaptureModule.swift` | Expo module `PocketQaScreenCapture` (app side) |
-| `modules/screen-capture/ios/BroadcastShared.swift` | Foundation-only, compiled into **both** the pod and the extension:<br>• PendingStore port: `<uuid>.mp4` + `<uuid>.meta` (JSON: durationMs, tag, reason, createdAt), write-then-rename<br>• `BroadcastState` (App Group UserDefaults)<br>• `MicWatch`, `captureSize`<br>• Darwin notify helpers |
-| `modules/screen-capture/ios/Tests/main.swift` | macOS `swiftc` harness, 17 tests (mirrors Android `PendingStoreTest`). Not part of the pod |
+| `modules/screen-capture/ios/BroadcastShared.swift` | Foundation-only, compiled into **both** the pod and the extension:<br>• PendingStore port (same contract as Android after pqa-qa r1): `<id>.mp4`, `<id>.rec` (tag at start), `<id>.meta` (JSON: durationMs, tag, reason, createdAt, videoMs, voiceMs, voiceComplete), `<id>.lost`; write-then-rename; directory excluded from backups<br>• `VoiceCheck` + `Mp4Tracks` (voice must cover video within max(1 s, 2 %))<br>• `BroadcastState` (App Group UserDefaults)<br>• `MicWatch`, `captureSize`<br>• Darwin notify helpers |
+| `modules/screen-capture/ios/Tests/main.swift` (+ `Tests/voice/*.mp4`) | macOS `swiftc` harness, 27 tests (mirrors Android `PendingStoreTest` and `VoiceCheckTest`). Fixtures: the lead's synthetic ffmpeg MP4s plus Apple-muxed copies (`avconvert --preset PresetPassthrough`). The parser is cross-checked against AVFoundation. Not part of the pod |
 | `modules/screen-capture/ios/PocketQaScreenCapture.podspec` | `source_files = '*.swift'`, ReplayKit |
 | `modules/screen-capture/ios-extension/SampleHandler.swift` | `RPBroadcastSampleHandler`, `AVAssetWriter` H.264 + AAC from `.audioMic` only |
 | `modules/screen-capture/ios-extension/Info.plist` | `com.apple.broadcast-services-upload`, `RPBroadcastProcessModeSampleBuffer`, `$(PRODUCT_MODULE_NAME).SampleHandler` |
@@ -32,13 +32,17 @@
   3. Forwards the tester's tap to the picker's internal button.
 
   The tester still taps **Start Broadcast** in the system sheet. There is no public "present" API, so the forwarded tap is the widely used workaround and needs device confirmation on current iOS.
-- **`takePendingAsync(tag)`**: moves that tag's finalised clips from `<group>/recordings` into `Caches/pocketqa-recordings`. It returns `{uri: file://…, durationMs, sizeBytes, mimeType: 'video/mp4'}`, each clip once.
+- **`takePendingAsync(tag)`**: that tag's finalised clips, **listed in place** in `<group>/recordings` until JS deletes the file (after upload or discard), so a remount or a process restart loses nothing (pqa-qa r1 P2-A). An empty tag lists nothing.
+  - Each clip is `{uri: file://…, durationMs, sizeBytes, mimeType: 'video/mp4', videoMs, voiceMs, voiceComplete}`.
+  - expo-file-system scopes App Group directories as read/write, so JS reads, uploads and deletes the file where it is.
+- **`takeInterruptedAsync(tag)`**: sweeps first, because the extension can die while the app lives (a live file is protected by the heartbeat). It then returns how many of that session's recordings were cut off, each counted once (`.lost` notices, 24 h).
+- **`clearAllAsync()`** (sign-out, account deletion): discards a live broadcast (Darwin discard, waits up to 3 s), forgets any pending session tag, and deletes every clip, meta and notice in the group directory.
 - **`isRecording()`**: the extension's active file **with a heartbeat under 10 s old**, so a killed extension never looks live.
 - **`onStopped`**: one event per finished broadcast, keyed by a stop sequence number. It fires from the extension's Darwin notification, or on `didBecomeActive` if the notification landed while the app was suspended. **`clip` is always `null` on iOS.** The clip arrives through `takePendingAsync`, which the screen already calls in the handler and on every return to the front. This guarantees the clip only reaches the session whose tag it carries.
 - **`stopAsync` / `startAsync`**: reject `ERR_UNSUPPORTED`. On iOS only the system stops a broadcast (red status pill or Control Centre).
 - **`discardAsync`**: if a broadcast is live, posts a Darwin "discard". The extension cancels the writer, deletes the file and ends the broadcast with "Recording discarded: you left the Pocket QA test session." The call waits up to 3 s.
-- **`purgeAsync`**: sweeps the group dir (truncated, orphaned or expired files; the live file is protected) and deletes the hand-off cache, as Android's sweep deletes claimed files.
-- **Module creation**: sweeps once. Stops from before the process started are not replayed as events, but their clips stay claimable for 24 h.
+- **`purgeAsync`**: sweeps the group dir (truncated, orphaned or expired files; the live file is protected). Finished clips stay for their session.
+- **Module creation**: sweeps once and removes the d0a857b-era `Caches/pocketqa-recordings`. Stops from before the process started are not replayed as events, but their clips stay listed for 24 h.
 
 ## Extension behaviour (checklist ties)
 - **N1, no silent start.**
@@ -56,7 +60,12 @@
   - video: H.264 High at 4 Mbps;
   - audio: AAC mono, 44.1 kHz, 128 kbps.
 - **Caps:** 15 minutes or 500 MB end the broadcast with reason `limit`, and the clip is kept. The extension can only end itself through `finishBroadcastWithError`, so the system shows the message as an error alert ("…Open Pocket QA to review your clip").
-- **Finalisation:** `broadcastFinished` (the user stop) blocks on `finishWriting`, then writes the meta and only then clears the active state. A failure to finalise is reported as reason `error` with the file deleted. Truncated files (the extension was killed) have no meta and are swept by the app.
+- **Finalisation:** `broadcastFinished` (the user stop) blocks on `finishWriting`, then measures the finished file (`VoiceCheck`), writes the meta and only then clears the active state.
+  - A file that can't be finalised or read is deleted and reported as reason `error`.
+  - A clip whose voice stops early is kept with `voiceComplete: false`.
+  - Truncated files (the extension was killed) have no meta. The app sweeps them and leaves a `.lost` notice for `takeInterruptedAsync`.
+- **Voice measurement (P1):** track lengths come from the file's own index. The extension uses each track's **presented** duration (`tkhd` in the `mvhd` timescale), because AVAssetWriter uses edit lists: `mdhd` reads 6.2 s video and 6.023 s audio for a 6.0 s Apple-muxed clip, while AVFoundation and ffprobe say 6.0 s. It falls back to `mdhd` only without a usable `tkhd`. Android's parser uses `mdhd`, which is right for MediaRecorder files, but the lead may want the same rule.
+- **Heartbeat:** the 0.5 s watchdog timer beats it, not the sample buffers. No buffers flow while a broadcast is paused, and a stale heartbeat would let a sweep take the live file for a truncated one.
 
 ## Deviations / decisions for the lead
 1. **No-microphone refusal is reported as `reason: 'error'`, `clip: null`.**

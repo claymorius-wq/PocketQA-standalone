@@ -1,7 +1,28 @@
-// Unit tests for BroadcastShared.swift (Foundation only, so they run on macOS without a simulator):
+// Unit tests for BroadcastShared.swift (Foundation only, so they run on macOS without a simulator;
+// AVFoundation is used here only as the reference for the MP4 box parser):
 //   swiftc -o /tmp/pqa-broadcast-tests modules/screen-capture/ios/BroadcastShared.swift modules/screen-capture/ios/Tests/main.swift && /tmp/pqa-broadcast-tests
-// Mirrors the Android PendingStoreTest (same on-disk handoff contract).
+// Mirrors the Android PendingStoreTest and VoiceCheckTest (same on-disk handoff and voice rule);
+// Tests/voice/*.mp4 are the lead's synthetic ffmpeg fixtures plus Apple-muxed copies (avconvert
+// --preset PresetPassthrough), since the extension's files come from AVAssetWriter.
+import AVFoundation
 import Foundation
+
+/// Reference durations from AVFoundation (macOS), to cross-check the box parser.
+func avDurations(_ url: URL) -> (video: Int64, audio: Int64) {
+  let asset = AVURLAsset(url: url)
+  let done = DispatchSemaphore(value: 0)
+  var out: (Int64, Int64) = (0, 0)
+  Task {
+    let ms = { (t: [AVAssetTrack]) async -> Int64 in
+      guard let r = try? await t.first?.load(.timeRange) else { return 0 }
+      return Int64((CMTimeGetSeconds(r.duration) * 1000).rounded())
+    }
+    out = (await ms((try? await asset.loadTracks(withMediaType: .video)) ?? []), await ms((try? await asset.loadTracks(withMediaType: .audio)) ?? []))
+    done.signal()
+  }
+  done.wait()
+  return out
+}
 
 var failures = 0
 var ran = 0
@@ -21,104 +42,221 @@ func tempDir() -> URL {
   return d
 }
 var clock: Int64 = 1_000_000
+let FULL = VoiceVerdict(videoMs: 7000, voiceMs: 6900, complete: true)
 func store(_ dir: URL) -> PendingStore { PendingStore(dir: dir, now: { clock }) }
-func recorded(_ s: PendingStore, bytes: Int = 10) -> URL {
-  let f = s.newFile()
+func recorded(_ s: PendingStore, bytes: Int = 10, tag: String = "p1") -> URL {
+  let f = s.newFile(tag: tag)
   try! Data(count: bytes).write(to: f)
   return f
 }
 func exists(_ u: URL) -> Bool { fm.fileExists(atPath: u.path) }
+func names(_ dir: URL) -> [String] { ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? []).sorted() }
 
-// MARK: PendingStore
+// MARK: PendingStore (mirrors the Android PendingStoreTest, pqa-qa r1 P2-A)
 
-test("a finished clip is moved to the app's cache, handed out once, then owned by JS") {
+test("a finished clip stays listed for its session until JS deletes the file") {
   clock = 1_000_000
-  let dir = tempDir(), cache = tempDir()
+  let dir = tempDir()
   let s = store(dir)
   let f = recorded(s)
-  check(s.markComplete(f, durationMs: 7000, tag: "p1", reason: "user"), "marked")
-  let taken = s.take(tag: "p1", into: cache)
-  check(taken.count == 1, "one clip")
-  check(taken.first?.durationMs == 7000, "duration")
-  check(taken.first?.reason == "user", "reason")
-  check(taken.first?.sizeBytes == 10, "size")
-  check(taken.first?.file.deletingLastPathComponent().standardizedFileURL == cache.standardizedFileURL, "moved into cache")
-  check(exists(taken.first!.file), "file in cache")
-  check(!exists(f), "gone from the group container")
-  check(s.take(tag: "p1", into: cache).isEmpty, "never handed out twice")
+  check(s.markComplete(f, durationMs: 7000, tag: "p1", reason: "user", voice: FULL), "marked")
+  let listed = s.pending(tag: "p1")
+  check(listed.count == 1, "one clip")
+  check(listed.first?.file.standardizedFileURL == f.standardizedFileURL, "the file itself, in place")
+  check(listed.first?.durationMs == 7000, "duration")
+  check(listed.first?.reason == "user", "reason")
+  check(listed.first?.sizeBytes == 10, "size")
+  // Still listed after a remount or a process restart: nothing is lost until JS deletes the file.
+  check(s.pending(tag: "p1").count == 1, "still listed")
+  try fm.removeItem(at: f)
+  check(s.pending(tag: "p1").isEmpty, "gone once JS deleted it")
 }
 
-test("another session never sees the clip") {
-  let dir = tempDir(), cache = tempDir()
+test("the voice verdict travels with the clip") {
+  let dir = tempDir()
   let s = store(dir)
-  _ = s.markComplete(recorded(s), durationMs: 1000, tag: "p1", reason: "user")
-  check(s.take(tag: "p2", into: cache).isEmpty, "p2 sees nothing")
-  check(s.take(tag: "p1", into: cache).count == 1, "p1 gets it")
+  let ok = recorded(s), cut = recorded(s)
+  s.markComplete(ok, durationMs: 7000, tag: "p1", reason: "user", voice: FULL)
+  s.markComplete(cut, durationMs: 391_700, tag: "p1", reason: "user", voice: VoiceVerdict(videoMs: 391_720, voiceMs: 202_687, complete: false))
+  let by = Dictionary(uniqueKeysWithValues: s.pending(tag: "p1").map { ($0.file.lastPathComponent, $0) })
+  check(by[ok.lastPathComponent]?.voiceComplete == true, "complete")
+  check(by[cut.lastPathComponent]?.voiceComplete == false, "incomplete")
+  check(by[cut.lastPathComponent]?.voiceMs == 202_687, "voiceMs")
+  check(by[cut.lastPathComponent]?.videoMs == 391_720, "videoMs")
 }
 
-test("a truncated file (extension killed mid-broadcast) is swept, the active one kept") {
-  let dir = tempDir(), cache = tempDir()
+test("an unmeasured clip is never treated as narrated (missing fields => false)") {
+  let dir = tempDir()
+  let s = store(dir)
+  let f = recorded(s)
+  s.markComplete(f, durationMs: 7000, tag: "p1", reason: "user", voice: nil)
+  check(s.pending(tag: "p1").first?.voiceComplete == false, "unmeasured")
+  check(s.pending(tag: "p1").first?.voiceMs == 0, "no voice")
+  // A meta from the d0a857b format (no voice fields) also reads as not verified.
+  let g = recorded(s)
+  try Data(#"{"durationMs":1000,"tag":"p1","reason":"user","createdAt":1000000}"#.utf8).write(to: g.deletingPathExtension().appendingPathExtension("meta"))
+  check(s.pending(tag: "p1").first { $0.file.lastPathComponent == g.lastPathComponent }?.voiceComplete == false, "old meta")
+}
+
+test("another session never sees the clip; an empty tag lists nothing") {
+  let dir = tempDir()
+  let s = store(dir)
+  s.markComplete(recorded(s), durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
+  check(s.pending(tag: "p2").isEmpty, "p2 sees nothing")
+  check(s.pending(tag: "").isEmpty, "empty tag")
+  check(s.pending(tag: "p1").count == 1, "p1 gets it")
+}
+
+test("forget deletes the clip and everything kept about it") {
+  let dir = tempDir()
+  let s = store(dir)
+  let f = recorded(s)
+  s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
+  s.forget(f)
+  check(names(dir).isEmpty, "directory empty: \(names(dir))")
+}
+
+test("a truncated file (extension killed mid-broadcast) is swept and its session is told once") {
+  let dir = tempDir()
   let s = store(dir)
   let truncated = recorded(s), active = recorded(s), done = recorded(s)
-  _ = s.markComplete(done, durationMs: 1000, tag: "p1", reason: "user")
+  s.markComplete(done, durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
   s.sweep(active: active)
   check(!exists(truncated), "truncated deleted")
   check(exists(active), "active kept")
   check(exists(done), "finished kept")
-  check(s.take(tag: "p1", into: cache).count == 1, "finished still claimable")
+  check(s.pending(tag: "p1").count == 1, "finished still listed")
+  check(s.takeInterrupted(tag: "p2") == 0, "other session")
+  check(s.takeInterrupted(tag: "p1") == 1, "told")
+  check(s.takeInterrupted(tag: "p1") == 0, "once")
 }
 
 test("an empty recording is never offered") {
-  let dir = tempDir(), cache = tempDir()
+  let dir = tempDir()
   let s = store(dir)
   let empty = recorded(s, bytes: 0)
-  check(!s.markComplete(empty, durationMs: 0, tag: "p1", reason: "user"), "refused")
+  check(!s.markComplete(empty, durationMs: 0, tag: "p1", reason: "user", voice: FULL), "refused")
   check(!exists(empty), "deleted")
-  check(s.take(tag: "p1", into: cache).isEmpty, "nothing offered")
+  check(s.pending(tag: "p1").isEmpty, "nothing offered")
+  check(names(dir).isEmpty, "no leftovers: \(names(dir))")
 }
 
-test("unclaimed clips expire after a day") {
+test("clips and notices expire after a day") {
   clock = 1_000_000
-  let dir = tempDir(), cache = tempDir()
-  let s = store(dir)
-  let f = recorded(s)
-  _ = s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user")
-  clock += PendingStore.ttlMs + 1
-  s.sweep(active: nil)
-  check(!exists(f), "expired file deleted")
-  check(s.take(tag: "p1", into: cache).isEmpty, "nothing offered")
-  clock = 1_000_000
-}
-
-test("a meta whose video is gone is dropped; stray temp files are swept") {
-  let dir = tempDir(), cache = tempDir()
-  let s = store(dir)
-  let f = recorded(s)
-  _ = s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user")
-  try fm.removeItem(at: f)
-  try Data("x".utf8).write(to: dir.appendingPathComponent("abc.meta.tmp"))
-  check(s.take(tag: "p1", into: cache).isEmpty, "nothing offered")
-  s.sweep(active: nil)
-  check(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? ["?"]).isEmpty, "directory empty")
-}
-
-test("a corrupt meta is ignored and swept, never crashes") {
-  let dir = tempDir(), cache = tempDir()
-  let s = store(dir)
-  let f = recorded(s)
-  try Data("not json".utf8).write(to: f.deletingPathExtension().appendingPathExtension("meta"))
-  check(s.take(tag: "p1", into: cache).isEmpty, "nothing offered")
-  s.sweep(active: nil)
-  check(!exists(f), "video without a valid meta deleted")
-}
-
-test("discard deletes a clip and its meta") {
   let dir = tempDir()
   let s = store(dir)
   let f = recorded(s)
-  _ = s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user")
-  s.discard(f)
-  check(((try? fm.contentsOfDirectory(atPath: dir.path)) ?? ["?"]).isEmpty, "both gone")
+  s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
+  _ = recorded(s) // truncated: leaves an "interrupted" notice
+  s.sweep(active: nil)
+  clock += PendingStore.ttlMs + 1
+  s.sweep(active: nil)
+  check(!exists(f), "expired file deleted")
+  check(s.pending(tag: "p1").isEmpty, "nothing offered")
+  check(s.takeInterrupted(tag: "p1") == 0, "notice expired")
+  check(names(dir).isEmpty, "directory empty: \(names(dir))")
+  clock = 1_000_000
+}
+
+test("signing out clears every clip and notice except the file being written") {
+  let dir = tempDir()
+  let s = store(dir)
+  s.markComplete(recorded(s, tag: "p1"), durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
+  s.markComplete(recorded(s, tag: "p9"), durationMs: 1000, tag: "p9", reason: "user", voice: FULL)
+  _ = recorded(s, tag: "p1")
+  s.sweep(active: nil)
+  let active = recorded(s, tag: "p2")
+  s.clearAll(active: active)
+  check(s.pending(tag: "p1").isEmpty && s.pending(tag: "p9").isEmpty, "clips gone")
+  check(s.takeInterrupted(tag: "p1") == 0, "notices gone")
+  let id = active.deletingPathExtension().lastPathComponent
+  check(names(dir) == ["\(id).mp4", "\(id).rec"], "only the active recording: \(names(dir))")
+  s.clearAll(active: nil)
+  check(names(dir).isEmpty, "all gone")
+}
+
+test("a meta whose video is gone is dropped; corrupt metas and temp files are swept") {
+  let dir = tempDir()
+  let s = store(dir)
+  let f = recorded(s)
+  s.markComplete(f, durationMs: 1000, tag: "p1", reason: "user", voice: FULL)
+  try fm.removeItem(at: f)
+  try Data("x".utf8).write(to: dir.appendingPathComponent("abc.meta.tmp"))
+  let g = recorded(s)
+  try Data("not json".utf8).write(to: g.deletingPathExtension().appendingPathExtension("meta"))
+  check(s.pending(tag: "p1").isEmpty, "nothing offered")
+  s.sweep(active: nil)
+  check(!exists(g), "video with a corrupt meta deleted")
+  check(names(dir).filter { !$0.hasSuffix(".lost") }.isEmpty, "only notices may remain: \(names(dir))")
+}
+
+test("the recordings directory is excluded from device backups") {
+  let dir = tempDir().appendingPathComponent("recordings")
+  let s = store(dir)
+  _ = recorded(s)
+  let v = try dir.resourceValues(forKeys: [.isExcludedFromBackupKey])
+  check(v.isExcludedFromBackup == true, "excluded")
+}
+
+// MARK: VoiceCheck (pqa-qa r1 P1; same rule and fixtures as Android VoiceCheckTest)
+
+let voiceDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("voice")
+func fixture(_ n: String) -> URL { voiceDir.appendingPathComponent(n) }
+
+test("reads video and audio track durations from the file (index at the end or the front, ffmpeg or Apple muxer)") {
+  for n in ["complete.mp4", "complete-faststart.mp4", "apple-complete.mp4"] {
+    let t = Mp4Tracks.read(fixture(n))
+    check(t?.videoMs == 6000, "\(n) video \(String(describing: t))")
+    check((5900...6100).contains(t?.audioMs ?? -1), "\(n) audio \(String(describing: t))")
+  }
+}
+
+test("a voice that stops early is measured") {
+  for n in ["voice-stops-at-2s.mp4", "apple-voice-stops-at-2s.mp4"] {
+    let t = Mp4Tracks.read(fixture(n))
+    check(t?.videoMs == 6000, "\(n) video")
+    check((1900...2100).contains(t?.audioMs ?? -1), "\(n) audio \(String(describing: t))")
+  }
+}
+
+test("no audio track is reported as no audio; an unreadable or missing file is nil") {
+  let t = Mp4Tracks.read(fixture("no-audio.mp4"))
+  check(t?.videoMs == 6000 && t?.audioMs == nil, "no audio \(String(describing: t))")
+  let junk = tempDir().appendingPathComponent("junk.mp4")
+  try Data(repeating: 7, count: 64).write(to: junk)
+  check(Mp4Tracks.read(junk) == nil, "junk")
+  check(Mp4Tracks.read(tempDir().appendingPathComponent("missing.mp4")) == nil, "missing")
+  // A truncated recording (no index written) is unreadable, never "complete".
+  let cut = tempDir().appendingPathComponent("cut.mp4")
+  try Data(try Data(contentsOf: fixture("complete.mp4")).prefix(20_000)).write(to: cut)
+  check(VoiceCheck.inspect(cut) == nil, "truncated")
+}
+
+test("the voice must cover the video within 1 s or 2 %") {
+  check(VoiceCheck.covers(videoMs: 230_366, audioMs: 229_645), "run 5")
+  check(VoiceCheck.covers(videoMs: 10_000, audioMs: 9_001), "within 1 s")
+  check(!VoiceCheck.covers(videoMs: 10_000, audioMs: 8_900), "beyond 1 s")
+  check(VoiceCheck.covers(videoMs: 600_000, audioMs: 588_500), "2 % of 10 min")
+  check(!VoiceCheck.covers(videoMs: 600_000, audioMs: 587_000), "beyond 2 %")
+  check(!VoiceCheck.covers(videoMs: 391_720, audioMs: 202_687), "the rotation failure")
+  check(!VoiceCheck.covers(videoMs: 5_000, audioMs: nil), "no audio")
+}
+
+test("inspect gives the verdict for a file") {
+  check(VoiceCheck.inspect(fixture("apple-complete.mp4"))?.complete == true, "complete")
+  let cut = VoiceCheck.inspect(fixture("apple-voice-stops-at-2s.mp4"))
+  check(cut?.complete == false && cut?.videoMs == 6000 && (1900...2100).contains(cut?.voiceMs ?? -1), "cut \(String(describing: cut))")
+  let silent = VoiceCheck.inspect(fixture("no-audio.mp4"))
+  check(silent?.complete == false && silent?.voiceMs == 0, "silent")
+}
+
+test("the box parser agrees with AVFoundation on every fixture") {
+  for n in ["complete.mp4", "complete-faststart.mp4", "apple-complete.mp4", "voice-stops-at-2s.mp4", "apple-voice-stops-at-2s.mp4", "no-audio.mp4"] {
+    let av = avDurations(fixture(n))
+    let t = Mp4Tracks.read(fixture(n))
+    check(abs((t?.videoMs ?? -1) - av.video) <= 50, "\(n) video \(String(describing: t)) vs \(av)")
+    check(abs((t?.audioMs ?? 0) - av.audio) <= 50, "\(n) audio \(String(describing: t)) vs \(av)")
+  }
 }
 
 // MARK: BroadcastState (App Group UserDefaults shared by app and extension)
@@ -154,6 +292,14 @@ test("isRecording follows the extension's heartbeat, so a killed extension does 
   clock += BroadcastState.heartbeatStaleMs + 1
   check(!st.isRecording, "stale heartbeat: not recording")
   check(st.activeFileName == nil, "stale active file is not protected from the sweep")
+}
+
+test("signing out forgets a pending session tag (the next user's broadcast can't inherit it)") {
+  clock = 1_000_000
+  let st = BroadcastState(defaults: freshDefaults(), now: { clock })
+  st.requestTag("p1")
+  st.clearPendingTag()
+  check(st.consumeTag() == nil, "cleared")
 }
 
 test("each stop is reported once, with its reason") {

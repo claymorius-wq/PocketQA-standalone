@@ -9,8 +9,9 @@ import ReplayKit
  *  - Video (H.264) plus the MICROPHONE only (`.audioMic`, AAC). App audio is ignored.
  *  - Streamed to disk with AVAssetWriter in `<App Group>/recordings/<uuid>.mp4`. Frames are never
  *    buffered in memory (an extension has a small memory ceiling).
- *  - On a finalised clip it writes `<uuid>.meta` (PendingStore, BroadcastShared.swift). The app
- *    collects it on return for local review; nothing is uploaded from here.
+ *  - On a finalised clip it measures the file's voice and video track lengths and writes
+ *    `<uuid>.meta` (PendingStore and VoiceCheck, BroadcastShared.swift). The app lists it on return
+ *    for local review; nothing is uploaded from here.
  *  - No network code and no camera.
  *  - A broadcast without a fresh Pocket QA session tag (for example one started from Control
  *    Centre) is refused, and so is one without microphone input (no silent video-only clips). In
@@ -35,6 +36,7 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var mic = MicWatch(startedAtMs: 0)
   private var startedAtMs: Int64 = 0
   private var lastBeatMs: Int64 = 0
+  private var lastSizeCheckMs: Int64 = 0
   private var paused = false
   private var finished = false
   private var timer: DispatchSourceTimer?
@@ -55,7 +57,7 @@ class SampleHandler: RPBroadcastSampleHandler {
       return
     }
     let store = PendingStore(dir: dir)
-    let file = store.newFile()
+    let file = store.newFile(tag: tag)
     self.store = store
     self.file = file
     self.tag = tag
@@ -104,9 +106,8 @@ class SampleHandler: RPBroadcastSampleHandler {
     defer { lock.unlock() }
     guard !finished, file != nil, CMSampleBufferDataIsReady(sampleBuffer) else { return }
     let now = BroadcastShared.nowMs()
-    if now - lastBeatMs >= 1000 {
-      state?.heartbeat()
-      lastBeatMs = now
+    if now - lastSizeCheckMs >= 1000 {
+      lastSizeCheckMs = now
       if let f = file, fileSize(f) >= BroadcastShared.maxBytes {
         finishLocked(reason: "limit", keep: true, message: "Pocket QA recording reached its size limit. Open Pocket QA to review your clip.")
         return
@@ -142,8 +143,15 @@ class SampleHandler: RPBroadcastSampleHandler {
   private func watchdog() {
     lock.lock()
     defer { lock.unlock() }
-    guard !finished, !paused, file != nil else { return }
+    guard !finished, file != nil else { return }
     let now = BroadcastShared.nowMs()
+    // The heartbeat comes from this timer, not from buffers: none flow while paused, and the app
+    // must never mistake a live (paused) recording for a truncated one and sweep it.
+    if now - lastBeatMs >= 1000 {
+      state?.heartbeat()
+      lastBeatMs = now
+    }
+    guard !paused else { return }
     switch mic.verdict(nowMs: now) {
     case .noMicrophone:
       finishLocked(reason: "error", keep: false, message: "Turn on Microphone in the broadcast picker and start again: Pocket QA recordings need your narration. Nothing was saved.")
@@ -213,14 +221,18 @@ class SampleHandler: RPBroadcastSampleHandler {
         _ = done.wait(timeout: .now() + 15)
         if w.status == .completed {
           let durationMs = Int64((CMTimeGetSeconds(CMTimeSubtract(lastVideoTime!, sessionStart!)) * 1000).rounded())
-          kept = store.markComplete(file, durationMs: max(durationMs, 0), tag: tag, reason: reason)
+          // Measured from the finished file's own index (pqa-qa r1 P1): a clip whose voice doesn't
+          // cover the video is still offered, marked incomplete; an unreadable file is dropped.
+          if let voice = VoiceCheck.inspect(file) {
+            kept = store.markComplete(file, durationMs: max(durationMs, 0), tag: tag, reason: reason, voice: voice)
+          }
         }
       } else if w.status == .writing {
         w.cancelWriting()
       }
-      if !kept { store.discard(file) }
+      if !kept { store.forget(file) }
     } else if let file = file {
-      store?.discard(file)
+      store?.forget(file)
     }
     // A clip that couldn't be finalised is reported as an error, never as a usable recording.
     state?.end(reason: kept || !keep ? reason : "error")
