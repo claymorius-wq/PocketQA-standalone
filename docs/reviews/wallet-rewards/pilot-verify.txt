@@ -1,14 +1,13 @@
-# pnpm verify, pilot operation-id fix tree (2026-10-05, Node v24.21.0; summary lines from the full log, ANSI stripped; no ELIFECYCLE/failed lines in the log)
-$ pnpm verify
-check:secrets passed: 836 committable files scanned, no findings.
-ℹ tests 58
-ℹ pass 58
+# pnpm verify, run-1 harness fix delta (2026-10-05, Node v24.21.0; exit code captured directly: EXIT=0)
+check:secrets passed: 844 committable files scanned, no findings.
+ℹ tests 59
+ℹ pass 59
 ℹ fail 0
 packages/contracts test:  Test Files  2 passed (2)
 packages/contracts test:       Tests  17 passed (17)
 packages/domain test:  Test Files  14 passed (14)
 packages/domain test:       Tests  216 passed (216)
 apps/api test:  Test Files  28 passed | 1 skipped (29)
-apps/api test:       Tests  558 passed | 2 skipped (560)
+apps/api test:       Tests  560 passed | 2 skipped (562)
 apps/mobile test: Test Suites: 50 passed, 50 total
 apps/mobile test: Tests:       1075 passed, 1075 total

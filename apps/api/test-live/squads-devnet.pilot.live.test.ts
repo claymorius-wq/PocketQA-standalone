@@ -186,7 +186,18 @@ d('LIVE Squads v4 devnet pilot', () => {
     tx.sign([pocketqa, ...extra.filter((k) => !k.publicKey.equals(pocketqa.publicKey))]);
     // A deliberate refusal skips preflight so the program's own rejection lands on chain as evidence.
     const signature = await conn.sendTransaction(tx, { skipPreflight: !!opts.expectFailure, maxRetries: 5 });
-    const res = await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'finalized');
+    // web3.js may REJECT with the raw on-chain error (its polling path under rate limits; live run 1)
+    // instead of returning it: both are a landed failure. Anything else (expiry) stays an error.
+    const res = await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'finalized').catch(async (e: unknown) => {
+      if (e instanceof Error) throw e;
+      // Recorded as a landed failure only once the chain reports it finalized (paced reads, bounded).
+      for (let i = 0; i < 30; i++) {
+        const st = (await conn.getSignatureStatuses([signature], { searchTransactionHistory: true })).value[0];
+        if (st?.confirmationStatus === 'finalized') return { context: { slot: st.slot }, value: { err: st.err } };
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      throw new Error(`${step}: outcome unknown, not finalized within 60 s (${signature}); inspect the chain before any retry`);
+    });
     const landed = await conn.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 });
     const err = res.value.err ? JSON.stringify(res.value.err) : null;
     receipt.steps.push({ step, signature, slot: landed?.slot ?? res.context.slot, feeLamports: landed?.meta?.fee ?? null, by: 'runner', expectFailure: opts.expectFailure, err });
@@ -412,7 +423,7 @@ d('LIVE Squads v4 devnet pilot', () => {
       receipt.outcome = 'complete';
     } catch (e) {
       receipt.outcome = 'failed';
-      receipt.failure = (e as Error).message;
+      receipt.failure = e instanceof Error ? e.message : JSON.stringify(e);
       throw e;
     }
   });

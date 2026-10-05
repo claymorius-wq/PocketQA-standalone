@@ -37,3 +37,50 @@ Custom 6008 is Squads `InvalidProposalStatus`, decoded with `@sqds/multisig` `er
 - the final balances and costs.
 
 These are completed by read-only readback and one targeted refusal against run 1's **existing** accounts, after pqa-qa re-reviews the error and runner delta. The full lifecycle is not re-run.
+
+## Read-only readback after run 1 (lead, `apps/api/scripts/squads-pilot-readback.ts`; no key loaded, nothing signed)
+```
+$ cd apps/api && npx tsx scripts/squads-pilot-readback.ts ../../docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json <the threshold-refusal signature>
+```
+The full output is `devnet-pilot-run1-readback.json`.
+
+**Program after the run (R0): unchanged from before.**
+- last deploy slot 446638068;
+- upgrade authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`;
+- account sha256 `5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37`;
+- trimmed program bytes sha256 `57a8d2d7ef5409df250415135f29f83da876e5adf5a2e5b5752e323cfb4f2f74`.
+
+**Multisig `AHj8EXYG…5KNE` (R1), as read:**
+- threshold 2, time lock 0, config authority `1111…1111` (autonomous), rent collector **null**;
+- members: arbiter mask 2, builder mask 2, Pocket QA mask 7.
+
+**Proposals:**
+| Index | Status | Approvals |
+|---|---|---|
+| 1 | Executed | builder and Pocket QA |
+| 2 | Executed | arbiter and Pocket QA (the overturned dispute) |
+| 3 | Executed | builder and Pocket QA (the refund) |
+| 4 | **Active** | Pocket QA only: the threshold-refusal check, which the program refused to execute |
+
+**Transactions:**
+- all 26 receipt signatures: finalized, no error;
+- the extra threshold-refusal signature: finalized, error `Custom 6008`.
+
+**Balances (base units; SOL in lamports):**
+| Account | Balance | Accounting |
+|---|---|---|
+| Vault USDC | 210,000 | fees 200,000 plus the unmatched deposit 10,000 (C8, R7) |
+| Builder USDC | 17,790,000 | 20,000,000 − 3,300,000 funding − 10,000 deposit + 1,100,000 refund (R5) |
+| Tester A and tester B USDC | 1,000,000 each | R3, R4, R6 |
+| Vault wSOL account | 4,788,440 lamports | the wrong-mint transfer of 3,300,000 plus the account's rent; never credited (R8) |
+| Builder | 0 lamports | Pocket QA paid every fee |
+
+**Costs (devnet SOL, no value; failed transaction included):**
+- Pocket QA went from 5,000,000,000 to 4,960,000,240 lamports: **39,999,760 spent**.
+- Of that, the 27 transactions cost 170,000 in fees.
+- The remaining 39,829,760 is rent for the new accounts plus the 10,000,000 lamports wrapped for the wrong-mint check:
+  - 3,300,000 of the wrapped amount moved into the vault-owned wSOL account;
+  - the rest stays in the builder's wSOL account.
+- The test platform fee stays in the vault, per the existing scope.
+
+**Still to do: the double-execute refusal.** A single targeted send executes the already-executed index 1 again on run 1's existing multisig (`test-live/squads-devnet.pilot-run1-complete.live.test.ts`). It runs only after pqa-qa re-reviews this delta.

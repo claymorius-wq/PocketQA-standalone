@@ -283,8 +283,18 @@ export class RpcSquadsChain implements SquadsChain {
     const signers = [this.payer, ...extraSigners.filter((k) => !k.publicKey.equals(this.payer.publicKey))];
     tx.sign(signers);
     const signature = await this.conn.sendTransaction(tx, { preflightCommitment: 'confirmed', maxRetries: 5 });
-    const res = await this.conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'finalized');
-    if (res.value.err) throw new Error(`${step} failed on devnet: ${JSON.stringify(res.value.err)} (${signature})`);
+    // web3.js returns a landed failure in `value.err`, or (on its polling path, e.g. when the
+    // websocket is rate-limited) REJECTS with that raw error object, which may come from a status
+    // read below finalized. A failure is stated as finalized only when the chain says so; otherwise
+    // the outcome is unknown (the caller re-reads chain state before doing anything else).
+    const res = await this.conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, 'finalized').catch(async (e: unknown) => {
+      if (e instanceof Error) throw e;
+      const { value } = await this.conn.getSignatureStatuses([signature], { searchTransactionHistory: true });
+      const st = value[0];
+      if (st?.err && st.confirmationStatus === 'finalized') throw new Error(`${step} failed on devnet (finalized): ${JSON.stringify(st.err)} (${signature})`);
+      throw new Error(`${step} outcome unknown: the RPC reported ${JSON.stringify(e)} at ${st?.confirmationStatus ?? 'no status'}, not verified finalized (${signature})`);
+    });
+    if (res.value.err) throw new Error(`${step} failed on devnet (finalized): ${JSON.stringify(res.value.err)} (${signature})`);
     const landed = await this.conn.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 });
     this.onSent({ step, signature, slot: landed?.slot ?? res.context.slot, feeLamports: landed?.meta?.fee ?? null });
     return signature;

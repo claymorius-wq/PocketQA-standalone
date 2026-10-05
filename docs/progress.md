@@ -5,6 +5,12 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
 ## Current work (2026-10-05): Squads v4 devnet feasibility pilot (ADR 0007 §10, `feat/wallet-rewards`)
+- **Live run 1 (2026-10-05, code `dc76870`): partial.**
+  - 26 finalized transactions; R0–R8, C2 and C8 passed.
+  - The deliberate threshold refusal landed on chain with Squads 6008.
+  - The run stopped on a harness error (web3.js confirm rejection under RPC 429s).
+  - Read-only readback: the program is unchanged, the config is intact, the balances reconcile, and the cost was 0.04 devnet SOL.
+  - Fix: the confirm mapping reports a finalized failure only when the chain says so, and the scanner gets a hash-pinned allowance for public signatures. **This is awaiting pqa-qa re-review.** The double-execute refusal against the existing multisig is held until then.
 - **pqa-qa pilot OFFLINE r2 on `dc76870`: APPROVE (offline only)** (`qa-devnet-pilot-offline-verdict-r2.md`). Its P3 is done in `c3a4fd0`: the old receipt is marked superseded. **LIVE receipt gate: NOT PASSED.** The test keys are still unfunded (re-read after the approval), so no live run has happened.
 - **pqa-qa pilot OFFLINE r1: CHANGES_REQUIRED** (amended after the parent's ruling). Fixed test-first; **live runs are held** until a revised OFFLINE approval.
   - **P1-1, double payout after a lost local mapping:** the fix is an on-chain operation id (ADR 0007 §10.1). Each vault message is exactly [TransferChecked, Memo(`pqa-op1:` + sha256 of kind|study|participation)], so identical legitimate transfers stay distinct. Multisigs have no rent collector, so records can't be closed. Recovery adopts only a single exact carrier created by Pocket QA; ambiguous or mismatched carriers are refused.

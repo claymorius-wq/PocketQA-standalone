@@ -69,6 +69,7 @@ const FORBIDDEN_PATHS = [
 export const PINNED_EVIDENCE = new Map([
   ['docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json', '5fa8fa93b066572ba82c3134097374f34335bae453186a59c3dd005d8df84422'],
   ['docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.md', '373a8ca53f5415de6d7cef2c3d614aec4db3a580cdd2f9c803bd5b0c1651e4c2'],
+  ['docs/reviews/wallet-rewards/devnet-pilot-run1-readback.json', '5702cddd8e5f9aee7043bdd939b0867cd9258501958af8b69044d715103a22e5'],
 ]);
 
 /** Rules skipped for this file's exact content (none unless it is pinned evidence with that hash). */

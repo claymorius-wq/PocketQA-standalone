@@ -148,9 +148,32 @@ describe('RpcSquadsChain', () => {
     expect(keys).toEqual([roles.pocketqa.publicKey.toBase58(), roles.arbiter.publicKey.toBase58()]);
   });
 
+  it('a rejection with the raw on-chain error is a FINALIZED failure only when the chain reports it finalized', async () => {
+    // web3.js 1.99 getTransactionConfirmationPromise: `if (value?.err) reject(value.err)`, a plain object (live run 1).
+    const status = (confirmationStatus: string | null) => async () => ({ context: { slot: 1 }, value: [confirmationStatus ? { err: { InstructionError: [0, { Custom: 6008 }] }, confirmationStatus } : null] });
+    const reject = async () => Promise.reject({ InstructionError: [0, { Custom: 6008 }] });
+    const run = async (s: string | null) => {
+      const { conn } = stub({ confirmTransaction: reject, getSignatureStatuses: status(s) });
+      return new RpcSquadsChain(conn, roles).createProposal(plan.multisig, 1n).then(() => null, (e: unknown) => e);
+    };
+    const fin = await run('finalized');
+    expect(fin).toBeInstanceOf(Error);
+    expect((fin as Error).message).toBe('proposal_create:1 failed on devnet (finalized): {"InstructionError":[0,{"Custom":6008}]} (sig1)');
+    for (const s of ['confirmed', null]) {
+      const unknown = await run(s);
+      expect(unknown).toBeInstanceOf(Error);
+      expect((unknown as Error).message).toMatch(new RegExp(`^proposal_create:1 outcome unknown: .*6008.* at ${s ?? 'no status'}, not verified finalized \\(sig1\\)$`));
+    }
+  });
+
+  it('a confirmation that fails for another reason (e.g. expiry) stays an unknown-outcome Error, never success', async () => {
+    const { conn } = stub({ confirmTransaction: async () => Promise.reject(new Error('block height exceeded')) });
+    await expect(new RpcSquadsChain(conn, roles).createProposal(plan.multisig, 1n)).rejects.toThrow(/block height exceeded/);
+  });
+
   it('reports a failed landed transaction as an error, never as success', async () => {
     const { conn } = stub({ confirmTransaction: async () => ({ context: { slot: 1 }, value: { err: { InstructionError: [0, { Custom: 6012 }] } } }) });
-    await expect(new RpcSquadsChain(conn, roles).createProposal(plan.multisig, 1n)).rejects.toThrow(/failed on devnet/);
+    await expect(new RpcSquadsChain(conn, roles).createProposal(plan.multisig, 1n)).rejects.toThrow(/failed on devnet \(finalized\)/);
   });
 
   it('accepts only the pinned upgradeable program and program-data account', async () => {

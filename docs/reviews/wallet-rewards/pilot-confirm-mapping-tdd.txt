@@ -1,0 +1,8 @@
+# Confirm-error mapping (live run 1 harness finding): RED against dc76870 rpcChain.ts, then GREEN (2026-10-05)
+$ npx vitest run test/squads-rpc-chain.test.ts
+## RED (rpcChain.ts at dc76870)
+× a rejection with the raw on-chain error is a FINALIZED failure only when the chain reports it finalized 3ms
+× reports a failed landed transaction as an error, never as success 1ms
+Tests  2 failed | 13 passed (15)
+## GREEN
+Tests  15 passed (15)
