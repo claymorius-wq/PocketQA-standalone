@@ -1,0 +1,9 @@
+[23:19:09 +0s] mode=control load={ 13.38 9.42 8.34 }
+[23:20:37 +88s] recording (projections=1)
+[23:23:07 +238s] back to Pocket QA
+[23:23:23 +254s] tapped Stop
+[23:23:40 +271s] after stop: projections=0
+10-05 23:23:11.014  3720  4183 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=8649 video=6266 rejected=0 bytes=26420453
+[23:23:40 +271s] overrun lines: 0
+[23:24:16 +307s] uploaded
+[23:24:16 +307s] EXIT=1

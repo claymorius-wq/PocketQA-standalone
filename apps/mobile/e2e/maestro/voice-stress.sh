@@ -45,13 +45,22 @@ tap_text() {
   set -- $(echo "$b" | tr '[],' '   ')
   "${A[@]}" shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
 }
+tap_id_prefix() {
+  local b
+  b=$(dump | grep -o "resource-id=\"$1[^\"]*\"[^>]*bounds=\"\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]\"" | grep -o '\[[0-9]*,[0-9]*\]\[[0-9]*,[0-9]*\]' | head -1)
+  [ -n "$b" ] || return 1
+  set -- $(echo "$b" | tr '[],' '   ')
+  "${A[@]}" shell input tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+}
 projections() { "${A[@]}" shell dumpsys media_projection | grep -c packageName; }
 away() { "${A[@]}" shell am start -a android.settings.SETTINGS >/dev/null; sleep 3; log "away in Settings"; }
 # Back to Pocket QA; if Android recreated it (dka, death), go back into this study's session.
 come_back() {
   "${A[@]}" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; sleep 6
   if ! dump | grep -q 'text="Your session"'; then
-    tap_text "$STUDY" && sleep 4 && tap_id open-session && sleep 5 && log "reopened the session from the study"
+    # A joined study is listed under My work (Discover shows only studies not joined yet); each run
+    # seeds a fresh tester, so its one participation card is this session.
+    tap_id tab-work && sleep 4 && tap_id_prefix participation-card- && sleep 6 && log "reopened the session from My work"
   fi
 }
 maestro_run() {
