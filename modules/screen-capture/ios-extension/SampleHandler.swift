@@ -34,6 +34,7 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var sessionStart: CMTime?
   private var lastVideoTime: CMTime?
   private var mic = MicWatch(startedAtMs: 0)
+  private var gaps = AudioGaps()
   private var startedAtMs: Int64 = 0
   private var lastBeatMs: Int64 = 0
   private var lastSizeCheckMs: Int64 = 0
@@ -63,6 +64,7 @@ class SampleHandler: RPBroadcastSampleHandler {
     self.tag = tag
     startedAtMs = BroadcastShared.nowMs()
     mic = MicWatch(startedAtMs: startedAtMs)
+    gaps = AudioGaps()
     state.begin(fileName: file.lastPathComponent, tag: tag)
     lastBeatMs = startedAtMs
 
@@ -91,6 +93,7 @@ class SampleHandler: RPBroadcastSampleHandler {
     lock.lock()
     paused = false
     mic.resumed(atMs: BroadcastShared.nowMs())
+    gaps.resumed()
     lock.unlock()
   }
 
@@ -126,8 +129,10 @@ class SampleHandler: RPBroadcastSampleHandler {
       if let input = videoInput, input.isReadyForMoreMediaData, input.append(sampleBuffer) { lastVideoTime = pts }
     case .audioMic:
       mic.micBuffer(atMs: now, silent: Self.isSilent(sampleBuffer))
-      if let start = sessionStart, CMTimeCompare(pts, start) >= 0, let input = audioInput, input.isReadyForMoreMediaData {
-        input.append(sampleBuffer)
+      // Only buffers that reach the file are measured: one ReplayKit dropped, or that the writer
+      // couldn't take, shows up as a timestamp gap before the next (pqa-qa pipeline r1 P2-C).
+      if let start = sessionStart, CMTimeCompare(pts, start) >= 0, let input = audioInput, input.isReadyForMoreMediaData, input.append(sampleBuffer) {
+        gaps.appended(ptsMs: CMTimeGetSeconds(pts) * 1000, durationMs: Self.durationMs(sampleBuffer))
       }
     case .audioApp:
       // Never recorded: the clip carries only the tester's own narration.
@@ -223,7 +228,7 @@ class SampleHandler: RPBroadcastSampleHandler {
           let durationMs = Int64((CMTimeGetSeconds(CMTimeSubtract(lastVideoTime!, sessionStart!)) * 1000).rounded())
           // Measured from the finished file's own index (pqa-qa r1 P1): a clip whose voice doesn't
           // cover the video is still offered, marked incomplete; an unreadable file is dropped.
-          if let voice = VoiceCheck.inspect(file) {
+          if let voice = VoiceCheck.inspect(file, lostMs: gaps.lostMs, maxGapMs: gaps.maxGapMs) {
             kept = store.markComplete(file, durationMs: max(durationMs, 0), tag: tag, reason: reason, voice: voice)
           }
         }
@@ -254,6 +259,15 @@ class SampleHandler: RPBroadcastSampleHandler {
 
   private func fileSize(_ url: URL) -> Int64 {
     ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? NSNumber)?.int64Value ?? 0
+  }
+
+  /// An audio buffer's length: its stated duration, else sample count over the sample rate.
+  private static func durationMs(_ sampleBuffer: CMSampleBuffer) -> Double {
+    let d = CMSampleBufferGetDuration(sampleBuffer)
+    if d.isValid, d.seconds > 0 { return d.seconds * 1000 }
+    guard let format = CMSampleBufferGetFormatDescription(sampleBuffer),
+          let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(format)?.pointee, asbd.mSampleRate > 0 else { return 0 }
+    return Double(CMSampleBufferGetNumSamples(sampleBuffer)) / asbd.mSampleRate * 1000
   }
 
   /// True when the buffer's samples are all exactly zero (no microphone input, see MicWatch).

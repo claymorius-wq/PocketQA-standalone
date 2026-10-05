@@ -65,6 +65,13 @@
   - A clip whose voice stops early is kept with `voiceComplete: false`.
   - Truncated files (the extension was killed) have no meta. The app sweeps them and leaves a `.lost` notice for `takeInterruptedAsync`.
 - **Voice measurement (P1):** track lengths come from the file's own index. The extension uses each track's **presented** duration (`tkhd` in the `mvhd` timescale), because AVAssetWriter uses edit lists: `mdhd` reads 6.2 s video and 6.023 s audio for a 6.0 s Apple-muxed clip, while AVFoundation and ffprobe say 6.0 s. It falls back to `mdhd` only without a usable `tkhd`. Android's parser uses `mdhd`, which is right for MediaRecorder files, but the lead may want the same rule.
+- **Voice lost inside the clip (pqa-qa pipeline r1 P2-C, lead 30a98d9):** complete now also needs ≤ 1 s lost in total and no single gap > 0.5 s, whatever the length.
+  - `AudioGaps` measures the timestamps of the `.audioMic` buffers actually appended to the file.
+  - A buffer starting later than the previous one ended by more than its own length (floor 50 ms) is a gap. Smaller offsets are jitter, compared buffer to buffer so they never accumulate.
+  - Buffers ReplayKit dropped, or that the writer couldn't take, appear as gaps.
+  - A broadcast pause the tester chose is not counted.
+  - `voiceLostMs` is persisted in the meta (missing => 0) and returned in the clip map. `voiceMs` excludes the lost audio, as on Android.
+  - The thresholds are the lead's. How ReplayKit timestamps behave under load needs a physical iPhone to confirm.
 - **Heartbeat:** the 0.5 s watchdog timer beats it, not the sample buffers. No buffers flow while a broadcast is paused, and a stale heartbeat would let a sweep take the live file for a truncated one.
 
 ## Deviations / decisions for the lead
