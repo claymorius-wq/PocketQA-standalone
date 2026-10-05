@@ -21,7 +21,7 @@ afterEach(async () => t?.close());
 const books = (studyId: string) => studyEscrowBooks(t.db, studyId, t.clock.now);
 const tokens = (owner: string) => chain.balances.get(chain.ataOf(owner)) ?? 0;
 
-async function fundedStudy(slots = 3) {
+async function fundedStudy(slots = 3, publish = true) {
   const b = await t.register('builder');
   const w = await t.linkWallet(b.token, chain.seedOf('builder'));
   expect(w.address).toBe(chain.keys.builder);
@@ -34,7 +34,7 @@ async function fundedStudy(slots = 3) {
   const sig = chain.recordFunding({ from: chain.keys.builder, toAta: f.vault, amount: f.amountUnits, reference: f.reference });
   const confirmed = (await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: sig })).body;
   expect(confirmed).toMatchObject({ status: 'confirmed', source: chain.keys.builder });
-  expect((await t.req('POST', `/studies/${study.id}/publish`, b.token)).status).toBe(200);
+  if (publish) expect((await t.req('POST', `/studies/${study.id}/publish`, b.token)).status).toBe(200);
   return { b, study, vault: f.vault as string };
 }
 
@@ -139,4 +139,15 @@ it('a wrong-mint funding transfer credits nothing (R8)', async () => {
   const r = (await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: sig })).body;
   expect(r).toMatchObject({ status: 'failed' });
   expect(books(study.id)).toMatchObject({ fundedUnits: 0, ok: true });
+});
+
+it('C10: a builder deleting their account refunds a funded draft’s vault on chain, co-signed by the arbiter', async () => {
+  const { b, study, vault } = await fundedStudy(2, false);
+  expect((await t.req('DELETE', '/me', b.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+  expect((await runSettlement(t.deps)).alerts).toEqual([]);
+  expect(t.db.prepare(`SELECT cosigner, status FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(study.id)).toEqual({ cosigner: 'arbiter', status: 'confirmed' });
+  expect(chain.sent.filter((s) => s.step.startsWith('approve:')).map((s) => s.step).sort()).toEqual(['approve:arbiter', 'approve:pocketqa']);
+  expect(chain.balances.get(vault)).toBe(0);
+  expect(tokens(chain.keys.builder)).toBe(50_000_000);
+  expect(books(study.id)).toMatchObject({ fundedUnits: 2_200_000, refundedUnits: 2_200_000, ok: true });
 });

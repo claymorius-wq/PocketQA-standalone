@@ -515,3 +515,25 @@ Full outputs are in `docs/reviews/wallet-rewards/`.
 - **Firebase emulator E2E:** 4/4, EXIT=0.
 - **No network, devnet, key or cloud access** was used by any of this.
 
+## 2026-10-05: Squads v4 devnet pilot, adapter and runner (ADR 0007 §10; lead, `feat/wallet-rewards`, commits `5d5d431`, `a58ec6b` and the C10 test)
+Full outputs are in `docs/reviews/wallet-rewards/`.
+- **Adapter TDD** (`pilot-adapter-tdd.txt`):
+  - **RED:** the module was missing.
+  - **Mutation check:** I removed each of ten guards in turn (transfer match, claimed index, executed re-drive, pins, amount, index gap, config, recorded settlement, vault balance, builder key). Every removal fails at least one test.
+  - **GREEN:** 40/40 across the fake-chain adapter and API suites.
+- **Offline RPC chain round trip** (`test/squads-rpc-chain.test.ts`): 6/6. What `RpcSquadsChain` proposes decodes, through the Squads SDK codecs, to exactly the planned TransferChecked. Nothing is signed off devnet.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`).
+  - Secrets scan: 835 files, no findings.
+  - Tests: contracts 17, domain 216, API 527 plus 2 skipped, mobile 1075.
+- **Network calls made:**
+  - Read-only public devnet RPC: genesis, balances, program-data account.
+  - No faucet call since the recorded 429s. No transaction was sent.
+- **Live runner dry run with the test keys:**
+  ```
+  $ POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts
+  Error: BLOCKED: needs ≥ 0.2 devnet SOL on Pocket QA DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS (has 0 lamports) and ≥ 3.4 devnet test USDC on builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn (has no token account). Nothing was sent.
+  ```
+  - Receipt: `devnet-pilot-receipt.md` (outcome: failed, BLOCKED).
+  - Squads program data at that time: last deploy slot 446638068; upgrade authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`; account sha256 `5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37`.
+- **Not yet evidenced:** every on-chain step (R1 to R8 live). They wait for faucet funding (`faucet-request.md`).
+

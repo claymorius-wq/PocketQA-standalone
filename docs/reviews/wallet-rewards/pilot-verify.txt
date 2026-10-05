@@ -1,0 +1,14 @@
+# pnpm verify on the pilot tree (2026-10-05, Node v24.21.0, branch feat/wallet-rewards after a58ec6b plus the C10 test; summary lines, ANSI stripped)
+$ pnpm verify
+check:secrets passed: 835 committable files scanned, no findings.
+packages/contracts test:  Test Files  2 passed (2)
+packages/contracts test:       Tests  17 passed (17)
+packages/domain test:  Test Files  14 passed (14)
+packages/domain test:       Tests  216 passed (216)
+apps/api test:  Test Files  28 passed | 1 skipped (29)
+apps/api test:       Tests  527 passed | 2 skipped (529)
+apps/mobile test: PASS __tests__/firebase-errors.test.ts
+apps/mobile test: PASS __tests__/wallet-errors.test.ts
+apps/mobile test: Test Suites: 50 passed, 50 total
+apps/mobile test: Tests:       1075 passed, 1075 total
+EXIT=0
