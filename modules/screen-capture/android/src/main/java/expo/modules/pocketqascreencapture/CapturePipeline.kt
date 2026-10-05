@@ -72,6 +72,8 @@ class CapturePipeline(private val file: File, private val width: Int, private va
   val bytes get() = gate.bytes
   /** Audio lost to overruns or a backlog the encoder couldn't keep up with. */
   val lostAudioMs get() = clock.lostUs / 1000 + backlog.dropped * CHUNK_MS
+  /** The longest single overrun gap. */
+  val maxGapMs get() = clock.maxGapUs / 1000
 
   @SuppressLint("MissingPermission") // RECORD_AUDIO is checked by the module and the service first
   fun prepare() {

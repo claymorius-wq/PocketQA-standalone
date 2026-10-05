@@ -398,6 +398,15 @@ describe('Your session', () => {
       expect(mockDeleted).toContain('file:///files/recordings/cut.mp4');
     });
 
+    it('a clip with narration missing in the middle says so (not "stops at"), and can never be kept', async () => {
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([{ ...CLIP, uri: 'file:///files/recordings/gap.mp4', videoMs: 600_000, voiceMs: 588_000, voiceComplete: false, voiceLostMs: 12_000 }]));
+      await renderScreen(base('in_progress'));
+      const row = screen.getByTestId('segment-recorded');
+      expect(row).toHaveTextContent(/Parts of your voice are missing \(about 12 s in total\)/);
+      expect(row).not.toHaveTextContent(/Voice stops at/);
+      expect(screen.queryByTestId('segment-keep')).toBeNull();
+    });
+
     it('a recorded clip without a voice verdict is treated as unverified, never as narrated', async () => {
       const { videoMs: _v, voiceMs: _m, voiceComplete: _c, ...unmeasured } = CLIP;
       mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([unmeasured]));

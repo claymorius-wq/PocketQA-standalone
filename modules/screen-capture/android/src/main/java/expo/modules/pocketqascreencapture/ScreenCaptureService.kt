@@ -162,26 +162,32 @@ class ScreenCaptureService : Service() {
     // The display stops feeding the encoder first; then both streams end and the file is finalised.
     try { display?.release() } catch (_: Exception) {}
     display = null
-    val written = try { p.stop() } catch (_: Exception) { false }
-    // The finished file is measured, then recorded as pending, BEFORE cleanup() stops protecting it
-    // as the active file: a concurrent sweep can't take it in between (pqa-qa r1 P3-2). A file with
-    // no readable index can't be played and is dropped; a clip whose voice doesn't cover the video
-    // (including audio lost to overruns) is kept for review but marked, and is never offered as
-    // narrated evidence.
-    var clip: Clip? = null
-    if (file != null) {
-      val voice = if (written) VoiceCheck.inspect(file, lostAudioMs = p.lostAudioMs) else null
-      if (voice != null && store.markComplete(file, durationMs, tag, reason, voice)) {
-        clip = Clip(file, durationMs, voice.videoMs, voice.voiceMs, voice.complete)
-      } else {
-        store.forget(file)
+    // Draining the encoders and finalising the muxer can take seconds: never on the main thread
+    // (pqa-qa pipeline r1 P3). The file stays protected as the active one until it is recorded.
+    Thread({
+      val written = try { p.stop() } catch (_: Exception) { false }
+      // The finished file is measured, then recorded as pending, BEFORE cleanup() stops protecting
+      // it as the active file: a concurrent sweep can't take it in between (pqa-qa r1 P3-2). A file
+      // with no readable index can't be played and is dropped; a clip whose voice doesn't cover the
+      // video (including audio lost inside it) is kept for review but marked, and is never offered
+      // as narrated evidence.
+      var clip: Clip? = null
+      if (file != null) {
+        val voice = if (written) VoiceCheck.inspect(file, lostAudioMs = p.lostAudioMs, maxGapMs = p.maxGapMs) else null
+        if (voice != null && store.markComplete(file, durationMs, tag, reason, voice)) {
+          clip = Clip(file, durationMs, voice.videoMs, voice.voiceMs, voice.complete, voice.lostMs)
+        } else {
+          store.forget(file)
+        }
       }
-    }
-    cleanup()
-    // A recording that couldn't be finalised or kept is an error, whatever stopped it.
-    notifyStopped(if (clip == null) "error" else reason, clip)
-    stopForeground(STOP_FOREGROUND_REMOVE)
-    stopSelf()
+      main.post {
+        cleanup()
+        // A recording that couldn't be finalised or kept is an error, whatever stopped it.
+        notifyStopped(if (clip == null) "error" else reason, clip)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+      }
+    }, "pqa-capture-finish").start()
   }
 
   private fun cleanup() {

@@ -14,10 +14,20 @@ import java.nio.ByteBuffer
  * can't be kept or uploaded as narrated evidence.
  */
 object VoiceCheck {
-  data class Verdict(val videoMs: Long, val voiceMs: Long, val complete: Boolean)
+  data class Verdict(val videoMs: Long, val voiceMs: Long, val complete: Boolean, val lostMs: Long = 0L)
 
-  fun covers(videoMs: Long, audioMs: Long?): Boolean {
+  /** Narration missing in the middle (pqa-qa pipeline r1 P2-C) has its own bound, not the edge one. */
+  const val MAX_LOST_MS = 1_000L
+  const val MAX_GAP_MS = 500L
+
+  /**
+   * The audio track must cover the video within max(1 s, 2 %) at the edges (encoder start-up and
+   * tail), AND audio lost inside the clip must stay within [MAX_LOST_MS] in total with no single gap
+   * over [MAX_GAP_MS], whatever the clip length.
+   */
+  fun covers(videoMs: Long, audioMs: Long?, lostMs: Long = 0L, maxGapMs: Long = 0L): Boolean {
     if (audioMs == null) return false
+    if (lostMs > MAX_LOST_MS || maxGapMs > MAX_GAP_MS) return false
     val tolerance = maxOf(1_000L, videoMs * 2 / 100)
     return videoMs - audioMs <= tolerance
   }
@@ -27,10 +37,10 @@ object VoiceCheck {
    * dropped inside the track (an overrun leaves a timestamp gap the muxer stretches over), so it
    * counts against the voice even though the track spans the clip.
    */
-  fun inspect(file: File, lostAudioMs: Long = 0L): Verdict? {
+  fun inspect(file: File, lostAudioMs: Long = 0L, maxGapMs: Long = 0L): Verdict? {
     val t = Mp4Tracks.read(file) ?: return null
     val voice = t.audioMs?.let { maxOf(0L, it - lostAudioMs) }
-    return Verdict(t.videoMs, voice ?: 0L, covers(t.videoMs, voice))
+    return Verdict(t.videoMs, voice ?: 0L, covers(t.videoMs, t.audioMs, lostAudioMs, maxGapMs), lostAudioMs)
   }
 }
 

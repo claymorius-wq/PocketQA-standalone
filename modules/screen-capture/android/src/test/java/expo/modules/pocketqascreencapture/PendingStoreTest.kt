@@ -44,12 +44,14 @@ class PendingStoreTest {
     val ok = recorded()
     val cut = recorded()
     store.markComplete(ok, 7000, "p1", "user", FULL)
-    store.markComplete(cut, 391_700, "p1", "user", VoiceCheck.Verdict(videoMs = 391_720, voiceMs = 202_687, complete = false))
+    store.markComplete(cut, 391_700, "p1", "user", VoiceCheck.Verdict(videoMs = 391_720, voiceMs = 202_687, complete = false, lostMs = 1_500))
     val byFile = store.pending("p1").associateBy { it.file }
     assertTrue(byFile.getValue(ok).voiceComplete)
     assertFalse(byFile.getValue(cut).voiceComplete)
     assertEquals(202_687L, byFile.getValue(cut).voiceMs)
     assertEquals(391_720L, byFile.getValue(cut).videoMs)
+    assertEquals(1_500L, byFile.getValue(cut).voiceLostMs)
+    assertEquals(0L, byFile.getValue(ok).voiceLostMs)
   }
 
   @Test fun anUnmeasuredClipIsNeverTreatedAsNarrated() {

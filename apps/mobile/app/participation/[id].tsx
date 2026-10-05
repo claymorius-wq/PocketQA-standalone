@@ -112,6 +112,10 @@ function clock(ms: number) {
  */
 function voiceProblem(c: RecordedClip): string | undefined {
   if (c.voiceComplete === true) return undefined;
+  // Narration missing in the middle (an overrun gap) is not the same as a voice that stops.
+  if (c.voiceComplete === false && (c.voiceLostMs ?? 0) > 500) {
+    return `Parts of your voice are missing (about ${Math.max(1, Math.round((c.voiceLostMs ?? 0) / 1000))} s in total): the microphone recording was interrupted, so this clip can’t be uploaded as narrated evidence. Remove it and record again.`;
+  }
   if (c.voiceComplete === false && c.videoMs && c.voiceMs) {
     return `Voice stops at ${clock(c.voiceMs)} of ${clock(c.videoMs)}: the microphone recording was cut short, so this clip can’t be uploaded as narrated evidence. Remove it and record again.`;
   }

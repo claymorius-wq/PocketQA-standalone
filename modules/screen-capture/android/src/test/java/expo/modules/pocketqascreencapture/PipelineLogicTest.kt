@@ -33,6 +33,7 @@ class PipelineLogicTest {
     assertEquals(3_010_000L, after)
     assertEquals(1, c.gaps)
     assertTrue(c.lostUs in 1_990_000L..2_010_000L)
+    assertEquals(c.lostUs, c.maxGapUs)
     assertEquals(3_020_000L, c.next(chunk, readEndUs = 3_030_000))
   }
 

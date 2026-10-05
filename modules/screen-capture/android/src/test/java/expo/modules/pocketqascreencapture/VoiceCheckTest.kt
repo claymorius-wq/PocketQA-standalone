@@ -68,14 +68,21 @@ class VoiceCheckTest {
     assertEquals(0L, silent.voiceMs)
   }
 
-  @Test fun audioTheCaptureLostToOverrunsCountsAgainstTheVoice() {
-    // The track can span the whole clip while seconds inside it were dropped (an overrun leaves a
-    // timestamp gap the muxer stretches over); the pipeline reports what it lost.
-    val ok = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 500)!!
+  @Test fun audioLostInsideTheClipHasItsOwnTightBound() {
+    // pqa-qa pipeline r1 P2-C: the edge tolerance (max 1 s, 2 %) is for encoder start-up and tail;
+    // narration missing in the MIDDLE gets no such allowance. More than 1 s lost in total, or any
+    // single gap over 0.5 s, means the voice is incomplete, whatever the clip length.
+    val ok = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 400, maxGapMs = 0)!!
     assertTrue(ok.complete)
-    val gappy = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 3_000)!!
-    assertFalse(gappy.complete)
-    assertTrue("voice ${gappy.voiceMs}", gappy.voiceMs in 2_900..3_100)
+    assertEquals(400L, ok.lostMs)
+    val lost = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 1_200, maxGapMs = 0)!!
+    assertFalse(lost.complete)
+    assertEquals(1_200L, lost.lostMs)
+    val gap = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 600, maxGapMs = 600)!!
+    assertFalse(gap.complete)
+    // On a 10-minute clip, 12 s lost in the middle used to pass the edge rule.
+    assertFalse(VoiceCheck.covers(videoMs = 600_000, audioMs = 600_000, lostMs = 12_000, maxGapMs = 0))
+    assertTrue(VoiceCheck.covers(videoMs = 600_000, audioMs = 595_000, lostMs = 900, maxGapMs = 400))
   }
 
   // The real failing clip and the real good clip from the emulator are kept privately (not in Git);

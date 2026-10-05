@@ -5,9 +5,9 @@ import { SCREEN_CAPTURE_MODULE } from '../lib/capability';
  * Result of one consented recording session (modules/screen-capture): screen video + microphone audio.
  * The voice verdict is measured natively from the finished file's own tracks: `voiceComplete` is true
  * only when the audio covers the video (within max(1 s, 2 %)). Missing means it wasn't measured, and
- * the clip is never treated as narrated.
+ * the clip is never treated as narrated. `voiceLostMs` is audio the capture lost inside the clip.
  */
-export type RecordedClip = { uri: string; durationMs: number; sizeBytes: number; mimeType: 'video/mp4'; videoMs?: number; voiceMs?: number; voiceComplete?: boolean };
+export type RecordedClip = { uri: string; durationMs: number; sizeBytes: number; mimeType: 'video/mp4'; videoMs?: number; voiceMs?: number; voiceComplete?: boolean; voiceLostMs?: number };
 /** Why a session ended: user Stop, the system (chip, lock, revoke), microphone loss, an error, or a cap. */
 export type StopReason = 'user' | 'system' | 'mic' | 'error' | 'limit';
 

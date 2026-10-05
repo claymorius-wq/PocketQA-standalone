@@ -22,6 +22,9 @@ class AudioClock(private val sampleRate: Int, private val bufferUs: Long) {
     private set
   var lostUs = 0L
     private set
+  /** The longest single gap. */
+  var maxGapUs = 0L
+    private set
 
   private fun framesUs(frames: Long) = frames * 1_000_000L / sampleRate
 
@@ -37,6 +40,7 @@ class AudioClock(private val sampleRate: Int, private val bufferUs: Long) {
       if (lagUs > bufferUs) {
         gaps++
         lostUs += lagUs
+        maxGapUs = maxOf(maxGapUs, lagUs)
         anchorUs = actualStartUs
         framesSinceAnchor = 0
       }

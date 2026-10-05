@@ -4,7 +4,7 @@ import android.content.Context
 import java.io.File
 
 /** Result of one consented recording session, with the voice verdict measured from the file. */
-data class Clip(val file: File, val durationMs: Long, val videoMs: Long, val voiceMs: Long, val voiceComplete: Boolean) {
+data class Clip(val file: File, val durationMs: Long, val videoMs: Long, val voiceMs: Long, val voiceComplete: Boolean, val voiceLostMs: Long = 0L) {
   fun toMap(): Map<String, Any> = mapOf(
     "uri" to "file://${file.absolutePath}",
     "durationMs" to durationMs,
@@ -13,10 +13,11 @@ data class Clip(val file: File, val durationMs: Long, val videoMs: Long, val voi
     "videoMs" to videoMs,
     "voiceMs" to voiceMs,
     "voiceComplete" to voiceComplete,
+    "voiceLostMs" to voiceLostMs,
   )
 
   companion object {
-    fun of(e: PendingStore.Entry) = Clip(e.file, e.durationMs, e.videoMs, e.voiceMs, e.voiceComplete)
+    fun of(e: PendingStore.Entry) = Clip(e.file, e.durationMs, e.videoMs, e.voiceMs, e.voiceComplete, e.voiceLostMs)
   }
 }
 

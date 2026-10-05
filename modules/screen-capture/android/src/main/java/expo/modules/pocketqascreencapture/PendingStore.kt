@@ -34,6 +34,8 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
     val voiceMs: Long,
     /** False unless the finished file was measured and its voice covers the video. */
     val voiceComplete: Boolean,
+    /** Audio the capture lost inside the clip (overrun gaps, dropped backlog). */
+    val voiceLostMs: Long = 0L,
   )
 
   private fun sibling(video: File, ext: String) = File(dir, video.nameWithoutExtension + ext)
@@ -75,6 +77,7 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
       setProperty("videoMs", (voice?.videoMs ?: durationMs).toString())
       setProperty("voiceMs", (voice?.voiceMs ?: 0L).toString())
       setProperty("voiceComplete", (voice?.complete == true).toString())
+      setProperty("voiceLostMs", (voice?.lostMs ?: 0L).toString())
     }
     val ok = write(sibling(video, ".meta"), p)
     sibling(video, ".rec").delete()
@@ -93,6 +96,7 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
         videoMs = p.getProperty("videoMs")?.toLongOrNull() ?: 0L,
         voiceMs = p.getProperty("voiceMs")?.toLongOrNull() ?: 0L,
         voiceComplete = p.getProperty("voiceComplete") == "true",
+        voiceLostMs = p.getProperty("voiceLostMs")?.toLongOrNull() ?: 0L,
       )
     } catch (_: Exception) {
       null
