@@ -84,3 +84,38 @@ The full output is `devnet-pilot-run1-readback.json`.
 - The test platform fee stays in the vault, per the existing scope.
 
 **Still to do: the double-execute refusal.** A single targeted send executes the already-executed index 1 again on run 1's existing multisig (`test-live/squads-devnet.pilot-run1-complete.live.test.ts`). It runs only after pqa-qa re-reviews this delta.
+
+## pqa-qa live r1 P3s (lead; read-only `getMultipleAccounts`, finalized, after the readback)
+**Rent model.** Rent can't be reclaimed: with no rent collector, Squads refuses to close finished transactions.
+
+Measured account rent (lamports):
+| Account | Rent |
+|---|---|
+| Multisig (231 bytes, once per study) | 1,823,720 |
+| Token account (165 bytes; vault USDC, each new payee, the wSOL accounts) | 1,488,440 each |
+| Vault transaction (398 bytes) | 2,672,080 per payment |
+| Proposal (358 bytes) | 2,468,880 per payment |
+
+**Per payout or refund:** 5,140,960 lamports of permanent rent, plus fees.
+- The fees were 5,000 per single-signer transaction and 10,000 per member approval (the payer plus the member). In run 1 that made 35,000 per payment.
+- A payee without a token account adds 1,488,440 (paid by Pocket QA).
+
+**Per study:** 1,823,720 for the multisig plus 1,488,440 for the vault token account.
+
+**Run 1 reconciles exactly:**
+- 1,823,720 (multisig)
+- \+ 5 × 1,488,440 (vault USDC, tester A, tester B, vault wSOL, builder wSOL)
+- \+ 4 × 5,140,960 (indexes 1–4)
+- \+ 10,000,000 (wrapped for the wrong-mint check)
+- = **39,829,760**, equal to the readback's rent-plus-wrapped figure (39,999,760 spent − 170,000 fees).
+
+**Index 4, left on purpose.** It is an Active proposal: 1 unit to tester A, carrying operation id `pqa-op1:` + sha256(`payout|<study>|pilot-threshold-refusal-check`), approved by Pocket QA only.
+- It can never execute without a second approval from the builder or arbiter test key, and the adapter never approves it, because no settlement carries its operation id.
+- Rejecting it would take two more signed sends (Squads' rejection cutoff with 3 voters and threshold 2). It is documented instead.
+- No rent collector is set, so it can't be closed.
+
+**Stranded test fixtures** (valueless devnet; not reclaimed by design or scope):
+- Vault USDC 210,000 units: the test fee of 200,000 (no fee transfer, existing scope) and the unmatched deposit of 10,000, which was alerted and never credited. The pilot implements no operator return.
+- Vault-owned wSOL: 3,300,000 lamports plus account rent, from the R8 wrong-mint check; never credited.
+- The builder's wSOL account: 6,700,000 lamports plus rent; the builder test key could unwrap it.
+- Index 4: as above.
