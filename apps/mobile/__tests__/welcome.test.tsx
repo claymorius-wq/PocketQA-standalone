@@ -1,20 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Index from '../app/index';
 import Welcome from '../app/(auth)/welcome';
-import { introPages, pageAt, readIntroSeen } from '../src/onboarding/intro';
-import { statusBand } from '../src/theme/tokens';
+import { cameFromIntro, introPages, noteIntroLeft, pageAt, readIntroSeen } from '../src/onboarding/intro';
+import { statusBand, TOUCH } from '../src/theme/tokens';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 
 // The intro (Welcome) a first-time visitor sees before Sign in, and the root route that opens it once.
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 jest.mock('expo-router', () => {
   const { createElement } = jest.requireActual<typeof import('react')>('react');
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return {
-    useRouter: () => ({ replace: mockReplace }),
+    useRouter: () => ({ replace: mockReplace, push: mockPush }),
     Redirect: ({ href }: { href: string }) => createElement(Text, { testID: 'redirect' }, href),
   };
 });
@@ -24,8 +26,12 @@ jest.mock('lucide-react-native', () =>
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 let mockSession: { ready: boolean; user: { id: string; role: string } | null; features: { testCredits: boolean } } = { ready: true, user: null, features: { testCredits: true } };
 jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => mockSession }));
+// The shared demo preview build (EXPO_PUBLIC_PREVIEW=1): a test flips the mocked module's flag.
+jest.mock('../src/preview/demoAccounts', () => ({ ...jest.requireActual('../src/preview/demoAccounts'), PREVIEW_BUILD: false }));
+const demoBuild = jest.requireMock<{ PREVIEW_BUILD: boolean }>('../src/preview/demoAccounts');
 
-const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+const WIDTH = 390;
+const METRICS = { frame: { x: 0, y: 0, width: WIDTH, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 const wrap = (ui: React.ReactElement) => (
   <SafeAreaProvider initialMetrics={METRICS}>
     <ThemeProvider>{ui}</ThemeProvider>
@@ -35,58 +41,151 @@ const wrap = (ui: React.ReactElement) => (
 async function renderWelcome() {
   await render(wrap(<Welcome />));
   // The pager draws once it knows its size.
-  await fireEvent(screen.getByTestId('intro-pager-frame'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 600 } } });
+  await fireEvent(screen.getByTestId('intro-pager-frame'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: WIDTH, height: 600 } } });
 }
+
+/** The pager's scroll reaching `pages` (a fraction is mid-scroll), as the native scroll view reports it. */
+async function scrollTo(pages: number) {
+  await fireEvent.scroll(screen.getByTestId('intro-pager'), {
+    nativeEvent: { contentOffset: { x: pages * WIDTH, y: 0 }, contentSize: { width: WIDTH * 3, height: 600 }, layoutMeasurement: { width: WIDTH, height: 600 } },
+  });
+}
+
+const label = () => screen.getByTestId('intro-label');
+/** A control that took another's place takes touches once it has arrived (SwapIn, 240ms). */
+const arrived = () => act(() => new Promise((r) => setTimeout(r, 300)));
 
 beforeEach(async () => {
   mockReplace.mockClear();
+  mockPush.mockClear();
+  demoBuild.PREVIEW_BUILD = false;
   mockSession = { ready: true, user: null, features: { testCredits: true } };
   await AsyncStorage.clear();
 });
 
 describe('Welcome', () => {
-  it('opens on the first page and moves through the pages with Next', async () => {
+  it('opens on the first page, with its title as one heading', async () => {
     await renderWelcome();
-    expect(screen.getByTestId('intro-label')).toHaveTextContent('POCKET QA');
-    expect(screen.getByText('Usability tests on real phones')).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('intro-next'));
-    expect(screen.getByTestId('intro-label')).toHaveTextContent('FOR TESTERS');
-    await fireEvent.press(screen.getByTestId('intro-next'));
-    expect(screen.getByTestId('intro-label')).toHaveTextContent('FOR BUILDERS');
-    // The last page has no Next and no Skip: its way in is the primary.
-    expect(screen.queryByTestId('intro-next')).toBeNull();
-    expect(screen.queryByTestId('intro-skip')).toBeNull();
+    expect(label()).toHaveTextContent('POCKET QA');
+    expect(screen.getByLabelText('Usability tests on real phones')).toBeTruthy();
+    expect(screen.getByTestId('intro-skip')).toBeTruthy();
+    expect(screen.getByTestId('intro-next')).toHaveTextContent('Next');
   });
 
-  it('Skip goes to Sign in and remembers the intro was seen', async () => {
+  it('Next moves on once the pager settles, and the scroll in between never flips the page back', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    // Mid-scroll: still the page that last settled, never a flip back and forth.
+    await scrollTo(0.3);
+    await scrollTo(0.6);
+    expect(label()).toHaveTextContent('POCKET QA');
+    // A second press mid-scroll goes one further than where the first is heading, not back.
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await scrollTo(1.4);
+    expect(label()).toHaveTextContent('POCKET QA');
+    await scrollTo(2);
+    await waitFor(() => expect(label()).toHaveTextContent('FOR BUILDERS'));
+    // The last page: no Next and no Skip; Create an account, and Sign in in the corner.
+    expect(screen.queryByTestId('intro-next')).toBeNull();
+    expect(screen.queryByTestId('intro-skip')).toBeNull();
+    expect(screen.getByTestId('intro-get-started')).toHaveTextContent('Create an account');
+    expect(screen.getByTestId('intro-sign-in')).toBeTruthy();
+  });
+
+  it('a swipe settles where the scroll rests, either way', async () => {
+    await renderWelcome();
+    await scrollTo(0.45);
+    expect(label()).toHaveTextContent('POCKET QA');
+    await scrollTo(1);
+    await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'));
+    await scrollTo(0.5);
+    await scrollTo(0);
+    await waitFor(() => expect(label()).toHaveTextContent('POCKET QA'));
+  });
+
+  it('settles anyway when a programmatic scroll never reports back', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-next'));
+    await waitFor(() => expect(label()).toHaveTextContent('FOR TESTERS'), { timeout: 2000 });
+  });
+
+  it('Skip goes to Sign in, remembers the intro was seen, and hands over to Sign in', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-skip'));
     expect(mockReplace).toHaveBeenCalledWith('/sign-in');
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(cameFromIntro()).toBe(true);
     await waitFor(async () => expect(await readIntroSeen()).toBe(true));
   });
 
-  it('the last page offers Create an account and Sign in (outside the shared preview)', async () => {
+  it('Create an account opens Sign up over Sign in, so Back returns to Sign in', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-dot-2'));
-    expect(screen.getByTestId('intro-get-started')).toHaveTextContent('Create an account');
+    await scrollTo(2);
+    await waitFor(() => expect(screen.getByTestId('intro-get-started')).toHaveTextContent('Create an account'));
+    await arrived();
     await fireEvent.press(screen.getByTestId('intro-get-started'));
-    expect(mockReplace).toHaveBeenLastCalledWith('/sign-up');
+    expect(mockReplace).toHaveBeenLastCalledWith('/sign-in');
+    expect(mockPush).toHaveBeenLastCalledWith('/sign-up');
     await fireEvent.press(screen.getByTestId('intro-sign-in'));
     expect(mockReplace).toHaveBeenLastCalledWith('/sign-in');
     await waitFor(async () => expect(await readIntroSeen()).toBe(true));
   });
 
-  it('hides the pages out of view from assistive tech, and the dots say where you are', async () => {
+  it('a control that replaced another takes no touches until it has arrived', async () => {
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-dot-2'));
+    await scrollTo(2);
+    await waitFor(() => expect(screen.getByTestId('intro-get-started')).toBeTruthy());
+    // A quick second tap meant for Next lands on nothing.
+    await fireEvent.press(screen.getByTestId('intro-get-started'));
+    expect(mockReplace).not.toHaveBeenCalled();
+    await arrived();
+    await fireEvent.press(screen.getByTestId('intro-get-started'));
+    expect(mockReplace).toHaveBeenCalledWith('/sign-in');
+  });
+
+  it('in the shared demo preview the last page is Explore the demo, with no Sign up and no second way in', async () => {
+    demoBuild.PREVIEW_BUILD = true;
+    await renderWelcome();
+    await fireEvent.press(screen.getByTestId('intro-dot-2'));
+    await scrollTo(2);
+    await waitFor(() => expect(screen.getByTestId('intro-get-started')).toHaveTextContent('Explore the demo'));
+    expect(screen.queryByTestId('intro-sign-in')).toBeNull();
+    expect(screen.queryByTestId('intro-skip')).toBeNull();
+    await arrived();
+    await fireEvent.press(screen.getByTestId('intro-get-started'));
+    expect(mockReplace).toHaveBeenCalledWith('/sign-in');
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('hides the pages out of view from assistive tech, and each dot is a 48dp button to its page', async () => {
     await renderWelcome();
     expect(screen.getByTestId('intro-page-welcome').props['aria-hidden']).toBe(false);
     // Hidden from assistive tech: the default query (which skips hidden elements) cannot see it.
     expect(screen.queryByTestId('intro-page-testers')).toBeNull();
     expect(screen.getByTestId('intro-page-testers', { includeHiddenElements: true }).props['aria-hidden']).toBe(true);
-    expect(screen.getByTestId('intro-dots').props.accessibilityLabel).toBe('Page 1 of 3');
-    expect(screen.getByTestId('intro-dot-0').props.accessibilityState).toMatchObject({ selected: true });
+    const dot = screen.getByTestId('intro-dot-0');
+    expect(dot.props.accessibilityRole).toBe('button');
+    expect(dot.props.accessibilityLabel).toBe('Go to page 1 of 3');
+    expect(dot.props.accessibilityState).toMatchObject({ selected: true });
+    expect(dot).toHaveStyle({ width: TOUCH, height: TOUCH });
     await fireEvent.press(screen.getByTestId('intro-dot-1'));
-    expect(screen.getByTestId('intro-page-testers', { includeHiddenElements: true }).props['aria-hidden']).toBe(false);
-    expect(screen.getByTestId('intro-dots').props.accessibilityLabel).toBe('Page 2 of 3');
+    await scrollTo(1);
+    await waitFor(() => expect(screen.getByTestId('intro-page-testers', { includeHiddenElements: true }).props['aria-hidden']).toBe(false));
+    expect(screen.getByTestId('intro-dot-1').props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('intro-dot-0').props.accessibilityState).toMatchObject({ selected: false });
+  });
+
+  it('announces a page once it settles (not on opening)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
+    await renderWelcome();
+    await arrived();
+    // Only what this intro says counts (an earlier test's last settle can still land here).
+    expect(announce).not.toHaveBeenCalledWith('Page 1 of 3. Usability tests on real phones');
+    await scrollTo(1);
+    await waitFor(() => expect(announce).toHaveBeenCalledWith('Page 2 of 3. Test apps on your own phone'));
+    announce.mockRestore();
   });
 });
 
@@ -99,10 +198,11 @@ describe('the root route', () => {
     await waitFor(() => expect(screen.getByTestId('redirect')).toHaveTextContent('/sign-in'));
   });
 
-  it('never shows the intro to a signed-in user', async () => {
+  it('never shows the intro to someone with a session, now or after they sign out', async () => {
     mockSession = { ready: true, user: { id: 't1', role: 'tester' }, features: { testCredits: true } };
     await render(wrap(<Index />));
     await waitFor(() => expect(screen.getByTestId('redirect')).toHaveTextContent('/discover'));
+    await waitFor(async () => expect(await readIntroSeen()).toBe(true));
   });
 });
 
@@ -121,6 +221,13 @@ describe('intro helpers', () => {
     expect(pageAt(390 * 9, 390, 3)).toBe(2);
     expect(pageAt(-50, 390, 3)).toBe(0);
     expect(pageAt(100, 0, 3)).toBe(0);
+  });
+
+  it('the hand-over to Sign in lasts as long as an arrival stamp', () => {
+    noteIntroLeft(10_000);
+    expect(cameFromIntro(10_500)).toBe(true);
+    expect(cameFromIntro(12_000)).toBe(true);
+    expect(cameFromIntro(12_001)).toBe(false);
   });
 
   it('storage that cannot be read counts as seen, so the intro never blocks Sign in', async () => {

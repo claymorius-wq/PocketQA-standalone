@@ -4,6 +4,16 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Intro and web shell (2026-10-05, `feat/intro-walkthrough` from main `ae0b501`, contributor session)
+- **Why:** Hamza's report that the app opened straight on Sign in with no walkthrough, and the space above the content in Safari on an iPhone.
+- **The intro** (`app/(auth)/welcome.tsx`, `src/onboarding/intro.ts`): three pages (what Pocket QA is, what a tester does, what a builder does) shown once per device or browser on a first visit to `/`. Skip, Sign in, Create an account (opens over Sign in) and, in the shared preview, Explore the demo all lead on and remember it was seen. A signed-in session marks it seen too. Storage that can't be read counts as seen.
+- **Its opening** (the launch, light first): the brand lens fades in and settles with its S1 shimmer, then the label row, the title word by word (a masked rise), the body and the dock, all inside the 700ms entrance window. Swiping carries each page's layers at slightly different depths (the title first, then the card and its steps), the lens refracts as it moves, and the dots' pill follows the finger. Reduced motion: 120ms fades only. Sign in reached from the intro arrives with a push instead of a second launch.
+- **Web shell:** `public/index.html` gives the page and the browser's bars the ground colour; on the web the status band is only the page's own inset (`statusBand`), so content starts near the top in a browser tab.
+- **Kit:** `OwnEntrance` (a Screen child that choreographs its own entrance), `PageDots` (a pattern with tests) and an optional `drift` on `FlutedLens`.
+- **Review r1** (independent read-only subagent, not `pqa-qa`): CHANGES_REQUIRED, 1 P1 + 5 P2 + 10 P3, all addressed. The P1 was a Maestro flow split by the inserted Skip step; a Jest test now parses every flow and checks each cleared-state launch skips the intro.
+- **Not run here:** Maestro on a device (no emulator on this machine); the flows are only parsed.
+- **Needs Hamza:** design sign-off on the page dots and the word rise (neither is on the boards yet).
+
 ## Current work (2026-10-05): desktop web screen recording with microphone narration (`feat/screen-recording`, from main `6028f08`)
 - **Scope:** Hamza authorised the build. It's a local-only recorder in the tester's session on desktop browsers, offering per-session consent, the browser's own share dialog, mic narration, a live status with a timer, Stop, then replay, download or discard.
 - **Not in scope:** no upload, storage, network or AI. AI feedback and console-log collection are future work.

@@ -10,6 +10,9 @@ const dataDir = process.env.POCKETQA_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 
 // Shared with specs (e.g. to create an admin through the real CLI against the same DB).
 process.env.POCKETQA_E2E_DATA_DIR = dataDir;
 
+/** The web preview's origin: the base URL, and where the intro is marked seen. */
+const WEB = 'http://localhost:8090';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 180_000,
@@ -17,7 +20,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   // The intro opens once per browser at "/": specs start past it (e2e/introSeen.ts); intro.spec.ts opts out.
-  use: { baseURL: 'http://localhost:8090', trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'], storageState: introSeen('http://localhost:8090') },
+  use: { baseURL: WEB, trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'], storageState: introSeen(WEB) },
   projects: [
     // Every flow on a mobile-sized web view (the recorder there says it needs a computer).
     { name: 'mobile-web', testIgnore: /web-recorder\.spec\.ts/ },

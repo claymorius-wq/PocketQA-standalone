@@ -114,6 +114,15 @@ export function Enter({ step, delay, children, style, collapse }: {
   );
 }
 
+/**
+ * A direct child of Screen that plays its own entrance: Screen lays it out as a step but never
+ * moves it, so the `Enter`s inside it join the screen's wave with nothing compounding them (the
+ * intro's pager, whose pages stagger their own lens, title and steps). Anywhere else it is a fragment.
+ */
+export function OwnEntrance({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
+
 /** True when this component mounted after its screen's entrance window (a notice after a mutation). */
 export function useMountedLate(): boolean {
   const screen = useContext(ScreenContext);

@@ -16,8 +16,8 @@ import { ArrivalContext, arrivalOf } from './screen';
 // The one Lens stack header (CONSISTENCY C2, spec §8 Stack header): the Back button (44dp glass
 // back tile, radius 14, glyph 20, then the visible label "Back" in primary 600 15/20), a 1×22
 // vertical divider at 0.30, then the title (600 17/22) as the screen's header. The row sits 6 below
-// the 44dp status band (the board's top 50), 16 in from both edges, 44 tall, gap 12, so the title
-// starts at the same x on every stack screen.
+// the 44dp status band (the board's top 50; on the web, below the page's own inset: statusBand),
+// 16 in from both edges, 44 tall, gap 12, so the title starts at the same x on every stack screen.
 //
 // It never enters on its own: it is part of the content root that pushes in (§M3), so it plays the
 // same arrival as its Screen (useArrival with the same navigation and the same ArrivalContext), and

@@ -4,7 +4,6 @@ appId: com.solana.mwallet
 ---
 - launchApp:
     clearState: true
-- runFlow: _skip-intro.yaml
 - tapOn: "AUTHENTICATE"
 - extendedWaitUntil:
     visible: "Log in to mwallet"

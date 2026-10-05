@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import type { GlyphName } from '../icons';
+import { ARRIVAL_STAMP_TTL } from '../motion/entrance';
 
 // The intro (Welcome): three pages a first-time visitor sees before Sign in, once per device or
 // browser. It explains what Pocket QA is, what a tester does and what a builder does. It never
@@ -24,6 +25,21 @@ export async function markIntroSeen(): Promise<void> {
   } catch {
     // Not stored: the intro shows again next time, which is harmless.
   }
+}
+
+// The hand-over to Sign in. The intro is the launch on a first visit (light first), so Sign in,
+// reached from it, arrives with a push like the pages before it instead of replaying the launch.
+// Read by the auth layout when Sign in mounts, a few renders after the replace.
+let leftAt = -Infinity;
+
+/** The intro is leaving for Sign in (or Sign up, which opens over it). */
+export function noteIntroLeft(now = Date.now()): void {
+  leftAt = now;
+}
+
+/** Whether Sign in is mounting because the intro just handed over to it. */
+export function cameFromIntro(now = Date.now()): boolean {
+  return now - leftAt <= ARRIVAL_STAMP_TTL;
 }
 
 /** `null` until storage answers; then whether the intro has been seen. */
@@ -69,8 +85,8 @@ export function introPages({ testCredits }: { testCredits: boolean }): IntroPage
           glyph: testCredits ? 'credits' : 'approve',
           title: 'Reviewed by the builder',
           body: testCredits
-            ? 'Approved work adds test credits to your balance. Rewards always need approval and are never guaranteed.'
-            : 'The builder reviews your session and approves the work. Rewards always need approval and are never guaranteed.',
+            ? 'Approved work adds test credits. Rewards need approval and are never guaranteed.'
+            : 'The builder reviews your work. Rewards need approval and are never guaranteed.',
         },
       ],
     },
@@ -90,6 +106,7 @@ export function introPages({ testCredits }: { testCredits: boolean }): IntroPage
 
 /** The page a horizontal offset rests on, clamped to the pages. */
 export function pageAt(offsetX: number, pageWidth: number, count: number): number {
+  'worklet';
   if (pageWidth <= 0 || count <= 0) return 0;
   return Math.min(count - 1, Math.max(0, Math.round(offsetX / pageWidth)));
 }

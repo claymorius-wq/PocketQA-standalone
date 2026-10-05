@@ -1,7 +1,8 @@
 import { Redirect, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useSession } from '../../src/auth/SessionProvider';
-import { stampArrival } from '../../src/motion/entrance';
+import { stampArrival, type InitialArrival } from '../../src/motion/entrance';
+import { cameFromIntro } from '../../src/onboarding/intro';
 import { disarmU1, u1Armed, u1PassAt } from '../../src/screens/authParts';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { ArrivalContext } from '../../src/ui';
@@ -44,9 +45,22 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{ headerShown: false, ...LENS_STACK_ANIMATION }}
-      // Sign in is the launch, the only screen with the light dip and the staggered steps (§11.3);
-      // Sign up arrives with a push like any stack screen. Returns to either play back.
-      screenLayout={({ route, children }) => <ArrivalContext.Provider value={route.name === 'sign-in' ? 'launch' : null}>{children}</ArrivalContext.Provider>}
+      screenLayout={({ route, children }) => <AuthArrival name={route.name}>{children}</AuthArrival>}
     />
   );
+}
+
+/**
+ * How each auth screen opens, decided once when it mounts. The launch (the light dip and the
+ * staggered steps, §11.3) belongs to the first screen of a visit: the intro on a first visit,
+ * Sign in otherwise. Sign in reached from the intro arrives with a push, like the intro's pages
+ * before it; Sign up always does. Returns to any of them play back.
+ */
+function AuthArrival({ name, children }: { name: string; children: ReactNode }) {
+  const [spec] = useState<InitialArrival | null>(() => {
+    if (name === 'welcome') return 'launch';
+    if (name === 'sign-in') return cameFromIntro() ? 'push' : 'launch';
+    return null;
+  });
+  return <ArrivalContext.Provider value={spec}>{children}</ArrivalContext.Provider>;
 }
