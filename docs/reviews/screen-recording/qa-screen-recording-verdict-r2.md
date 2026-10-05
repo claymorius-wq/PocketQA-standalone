@@ -68,3 +68,17 @@
 - The approval covers a **local-only** desktop web recorder (narration plus a screen the user chooses, with replay, download and discard, never uploaded), with the limitations above.
 
 VERDICT: APPROVE
+
+## Addendum: docs-only follow-up `efbc18ee55abc3355acb7e30ef6fafb65a52f0bc`
+**Scope:**
+- It descends directly from `fd22f01`.
+- `git diff --stat fd22f01 efbc18e` touches 6 files. Under `apps/` and `scripts/` the only change is a **comment** in `scripts/preview/recorder-smoke.mjs`, and `node --check` passes.
+- My threat review r1 and verdicts r1/r2 were copied **byte-identical** (`cmp`).
+
+**My P3s:**
+- P3-1 is resolved: the guide's smoke item 4 and the script header now say the probe is an injected raw-API check of policy and engine, **not** the app's recorder. They also say the in-app card is covered only by local desktop Playwright, and that Stop sharing is simulated.
+- P3-3 is logged in `progress.md` as a separate follow-up.
+
+**Secrets scan:** `check:secrets` at `efbc18e` passes.
+
+**Approval:** the APPROVE extends to `efbc18e`. The parent may merge `fd22f01` or `efbc18e`; the executable code is identical.
