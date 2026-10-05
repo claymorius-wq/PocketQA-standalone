@@ -13,7 +13,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
-import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -32,14 +31,15 @@ import java.io.File
  * A foreground service of types mediaProjection|microphone. It is started right after the in-app
  * consent dialog, while Pocket QA is in the foreground: Android 14+ refuses to create a microphone
  * FGS from the background. It calls startForeground() with BOTH types BEFORE getMediaProjection(),
- * creates one virtual display per consent token, and records MIC (AAC) + SURFACE (H.264) into ONE
- * app-private MP4.
+ * creates one virtual display per consent token, and records the screen and the MICROPHONE into ONE
+ * app-private MP4 through [CapturePipeline] (our own AudioRecord + MediaCodec + MediaMuxer; MediaRecorder
+ * stalled its audio for good on the emulator, docs/plans/native-capture-pipeline.md).
  *
  * Every way a session ends finalises it exactly once, keeps the clip and says why:
  *  - user: in-app Stop or the notification's Stop;
  *  - system: the status-bar chip, screen lock, a revoked projection, or the service being destroyed;
- *  - mic: the microphone was taken away (e.g. a phone call silences us);
- *  - error: a MediaRecorder error;
+ *  - mic: the microphone was taken away (another app or a call silences us, or it stopped delivering);
+ *  - error: an encoder, muxer or capture error;
  *  - limit: the 15-minute or 500 MB cap.
  * Finished clips go to [PendingStore], so the session screen gets them back even if the tester
  * only returns later.
@@ -47,12 +47,12 @@ import java.io.File
 class ScreenCaptureService : Service() {
   private var projection: MediaProjection? = null
   private var display: VirtualDisplay? = null
-  private var recorder: MediaRecorder? = null
+  private var pipeline: CapturePipeline? = null
   private var output: File? = null
   private var tag = ""
   private var startedAt = 0L
   private var stopping = false
-  private var silentTicks = 0
+  private val liveness = Liveness(silencedForMs = 2_000, noAudioForMs = 3_000)
   private val main = Handler(Looper.getMainLooper())
   private val store by lazy { recordingStore(this) }
 
@@ -63,7 +63,7 @@ class ScreenCaptureService : Service() {
       ACTION_START -> start(intent)
       // A Stop with no session (a stale notification action, a late in-app Stop) must not leave the
       // service running (pqa-qa r1 P3-5).
-      ACTION_STOP -> if (recorder == null) stopSelf() else finish("user")
+      ACTION_STOP -> if (pipeline == null) stopSelf() else finish("user")
     }
     return START_NOT_STICKY
   }
@@ -90,7 +90,7 @@ class ScreenCaptureService : Service() {
       projection = mp
       mp.registerCallback(object : MediaProjection.Callback() {
         override fun onStop() {
-          // Status-bar chip, screen lock, another projection, or revoked consent.
+          // Status-bar chip, screen lock (Android 15 QPR1+), another projection, or revoked consent.
           finish("system")
         }
       }, main)
@@ -99,36 +99,24 @@ class ScreenCaptureService : Service() {
       val file = store.newFile(tag)
       output = file
       RecorderBridge.currentFile = file
-      val rec = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(this) else @Suppress("DEPRECATION") MediaRecorder()
-      // Order matters: sources, then format, then encoders.
-      rec.setAudioSource(MediaRecorder.AudioSource.MIC)
-      rec.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-      rec.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-      rec.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-      rec.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-      rec.setAudioSamplingRate(44_100)
-      rec.setAudioChannels(1)
-      rec.setAudioEncodingBitRate(128_000)
-      rec.setVideoSize(w, h)
-      rec.setVideoFrameRate(30)
-      rec.setVideoEncodingBitRate(4_000_000)
-      rec.setMaxDuration(MAX_DURATION_MS)
-      rec.setMaxFileSize(MAX_BYTES)
-      rec.setOnInfoListener { _, what, _ ->
-        if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED || what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) main.post { finish("limit") }
-      }
-      rec.setOnErrorListener { _, _, _ -> main.post { finish("error") } }
-      rec.setOutputFile(file.absolutePath)
-      rec.prepare()
-      recorder = rec
+      val p = CapturePipeline(file, w, h) { reason -> main.post { finish(reason) } }
+      pipeline = p
+      p.prepare()
       // One virtual display per consent token (Android 14+ throws if reused). The display is
-      // mirrored at a fixed size, so a rotated screen is letterboxed and recording continues.
-      display = mp.createVirtualDisplay("PocketQaCapture", w, h, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, rec.surface, null, null)
-      rec.start()
+      // mirrored at a fixed size, so a rotated screen is letterboxed and recording continues; the
+      // microphone path is separate and never sees the rotation.
+      display = mp.createVirtualDisplay("PocketQaCapture", w, h, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, p.inputSurface, null, null)
+      p.start()
       startedAt = SystemClock.elapsedRealtime()
+      liveness.started(startedAt)
       RecorderBridge.recording = true
-      main.postDelayed(micWatch, 1000)
+      main.postDelayed(watch, 1000)
+      main.postDelayed(durationCap, MAX_DURATION_MS.toLong())
     } catch (e: Exception) {
+      try { display?.release() } catch (_: Exception) {}
+      display = null
+      try { pipeline?.stop() } catch (_: Exception) {}
+      pipeline = null
       cleanup()
       output?.let(store::forget)
       notifyStopped("error", null)
@@ -138,23 +126,21 @@ class ScreenCaptureService : Service() {
   }
 
   /**
-   * The microphone can be taken from us while recording, e.g. by a phone call, which silences our
-   * capture. Two silenced seconds in a row end the session (reason "mic"): the clip so far is kept,
-   * and the tester is told, rather than recording on without their voice.
+   * Once a second: a microphone silenced for 2 s (another app took it, a call) or delivering nothing
+   * for 3 s ends the session (reason "mic"); the clip so far is kept and the tester is told, rather
+   * than recording on without their voice. The 500 MB cap is checked here too.
    */
-  private val micWatch: Runnable = object : Runnable {
+  private val watch: Runnable = object : Runnable {
     override fun run() {
-      val rec = recorder ?: return
+      val p = pipeline ?: return
       if (stopping) return
-      val silenced = Build.VERSION.SDK_INT >= 29 && try {
-        rec.activeRecordingConfiguration?.isClientSilenced == true
-      } catch (_: Exception) {
-        false
-      }
-      silentTicks = if (silenced) silentTicks + 1 else 0
-      if (silentTicks >= 2) finish("mic") else main.postDelayed(this, 1000)
+      val now = SystemClock.elapsedRealtime()
+      val reason = liveness.check(now, p.lastAudioMs, p.silenced()) ?: if (p.bytes >= MAX_BYTES) "limit" else null
+      if (reason != null) finish(reason) else main.postDelayed(this, 1000)
     }
   }
+
+  private val durationCap = Runnable { finish("limit") }
 
   /** Even dimensions capped at 1280 on the long edge keep encoders happy and files small. */
   private fun captureSize(): Triple<Int, Int, Int> {
@@ -166,26 +152,25 @@ class ScreenCaptureService : Service() {
   }
 
   private fun finish(reason: String) {
-    if (stopping || recorder == null) return
+    val p = pipeline
+    if (stopping || p == null) return
     stopping = true
-    main.removeCallbacks(micWatch)
+    main.removeCallbacks(watch)
+    main.removeCallbacks(durationCap)
     val file = output
     val durationMs = SystemClock.elapsedRealtime() - startedAt
-    val stopped = try {
-      recorder?.stop()
-      true
-    } catch (e: RuntimeException) {
-      // stop() throws if no frames were captured. After a cap the recorder may already have stopped
-      // itself, and the file it finalised is then still valid.
-      reason == "limit"
-    }
+    // The display stops feeding the encoder first; then both streams end and the file is finalised.
+    try { display?.release() } catch (_: Exception) {}
+    display = null
+    val written = try { p.stop() } catch (_: Exception) { false }
     // The finished file is measured, then recorded as pending, BEFORE cleanup() stops protecting it
     // as the active file: a concurrent sweep can't take it in between (pqa-qa r1 P3-2). A file with
     // no readable index can't be played and is dropped; a clip whose voice doesn't cover the video
-    // is kept for review but marked, and is never offered as narrated evidence.
+    // (including audio lost to overruns) is kept for review but marked, and is never offered as
+    // narrated evidence.
     var clip: Clip? = null
     if (file != null) {
-      val voice = if (stopped) VoiceCheck.inspect(file) else null
+      val voice = if (written) VoiceCheck.inspect(file, lostAudioMs = p.lostAudioMs) else null
       if (voice != null && store.markComplete(file, durationMs, tag, reason, voice)) {
         clip = Clip(file, durationMs, voice.videoMs, voice.voiceMs, voice.complete)
       } else {
@@ -193,8 +178,8 @@ class ScreenCaptureService : Service() {
       }
     }
     cleanup()
-    // A finalised recording that couldn't be kept (unreadable or empty) is an error, whatever stopped it.
-    notifyStopped(if (stopped && clip == null) "error" else reason, clip)
+    // A recording that couldn't be finalised or kept is an error, whatever stopped it.
+    notifyStopped(if (clip == null) "error" else reason, clip)
     stopForeground(STOP_FOREGROUND_REMOVE)
     stopSelf()
   }
@@ -202,9 +187,8 @@ class ScreenCaptureService : Service() {
   private fun cleanup() {
     RecorderBridge.recording = false
     RecorderBridge.currentFile = null
-    try { recorder?.release() } catch (_: Exception) {}
-    recorder = null
-    display?.release()
+    pipeline = null
+    try { display?.release() } catch (_: Exception) {}
     display = null
     try { projection?.stop() } catch (_: Exception) {}
     projection = null
@@ -267,7 +251,8 @@ class ScreenCaptureService : Service() {
 
   override fun onDestroy() {
     if (RecorderBridge.recording) finish("system")
-    main.removeCallbacks(micWatch)
+    main.removeCallbacks(watch)
+    main.removeCallbacks(durationCap)
     super.onDestroy()
   }
 

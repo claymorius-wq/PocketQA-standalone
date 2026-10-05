@@ -68,6 +68,16 @@ class VoiceCheckTest {
     assertEquals(0L, silent.voiceMs)
   }
 
+  @Test fun audioTheCaptureLostToOverrunsCountsAgainstTheVoice() {
+    // The track can span the whole clip while seconds inside it were dropped (an overrun leaves a
+    // timestamp gap the muxer stretches over); the pipeline reports what it lost.
+    val ok = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 500)!!
+    assertTrue(ok.complete)
+    val gappy = VoiceCheck.inspect(fixture("complete.mp4"), lostAudioMs = 3_000)!!
+    assertFalse(gappy.complete)
+    assertTrue("voice ${gappy.voiceMs}", gappy.voiceMs in 2_900..3_100)
+  }
+
   // The real failing clip and the real good clip from the emulator are kept privately (not in Git);
   // when present (-Dpqa.voiceClips=<dir>) they are checked too.
   @Test fun theRealEmulatorClipsWhenAvailable() {

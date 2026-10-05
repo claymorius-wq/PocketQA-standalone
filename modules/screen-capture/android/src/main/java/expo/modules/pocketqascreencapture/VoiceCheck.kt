@@ -22,10 +22,15 @@ object VoiceCheck {
     return videoMs - audioMs <= tolerance
   }
 
-  /** Null when the file isn't a readable MP4 with a video track. */
-  fun inspect(file: File): Verdict? {
+  /**
+   * Null when the file isn't a readable MP4 with a video track. [lostAudioMs] is audio the capture
+   * dropped inside the track (an overrun leaves a timestamp gap the muxer stretches over), so it
+   * counts against the voice even though the track spans the clip.
+   */
+  fun inspect(file: File, lostAudioMs: Long = 0L): Verdict? {
     val t = Mp4Tracks.read(file) ?: return null
-    return Verdict(t.videoMs, t.audioMs ?: 0L, covers(t.videoMs, t.audioMs))
+    val voice = t.audioMs?.let { maxOf(0L, it - lostAudioMs) }
+    return Verdict(t.videoMs, voice ?: 0L, covers(t.videoMs, voice))
   }
 }
 
