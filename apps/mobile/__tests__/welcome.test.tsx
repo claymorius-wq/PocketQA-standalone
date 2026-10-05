@@ -118,15 +118,15 @@ describe('Welcome', () => {
     await waitFor(async () => expect(await readIntroSeen()).toBe(true));
   });
 
-  it('Create an account opens Sign up over Sign in, so Back returns to Sign in', async () => {
+  it('Create an account opens Sign up over the intro (Back returns here); Sign in takes its place', async () => {
     await renderWelcome();
     await fireEvent.press(screen.getByTestId('intro-dot-2'));
     await scrollTo(2);
     await waitFor(() => expect(screen.getByTestId('intro-get-started')).toHaveTextContent('Create an account'));
     await arrived();
     await fireEvent.press(screen.getByTestId('intro-get-started'));
-    expect(mockReplace).toHaveBeenLastCalledWith('/sign-in');
     expect(mockPush).toHaveBeenLastCalledWith('/sign-up');
+    expect(mockReplace).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId('intro-sign-in'));
     expect(mockReplace).toHaveBeenLastCalledWith('/sign-in');
     await waitFor(async () => expect(await readIntroSeen()).toBe(true));
@@ -139,10 +139,10 @@ describe('Welcome', () => {
     await waitFor(() => expect(screen.getByTestId('intro-get-started')).toBeTruthy());
     // A quick second tap meant for Next lands on nothing.
     await fireEvent.press(screen.getByTestId('intro-get-started'));
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
     await arrived();
     await fireEvent.press(screen.getByTestId('intro-get-started'));
-    expect(mockReplace).toHaveBeenCalledWith('/sign-in');
+    expect(mockPush).toHaveBeenCalledWith('/sign-up');
   });
 
   it('in the shared demo preview the last page is Explore the demo, with no Sign up and no second way in', async () => {
@@ -178,11 +178,13 @@ describe('Welcome', () => {
   });
 
   it('announces a page once it settles (not on opening)', async () => {
+    // React Native's Jest setup already mocks it, so spyOn returns that mock with every earlier
+    // test's calls on it: start from none.
     const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => undefined);
+    announce.mockClear();
     await renderWelcome();
     await arrived();
-    // Only what this intro says counts (an earlier test's last settle can still land here).
-    expect(announce).not.toHaveBeenCalledWith('Page 1 of 3. Usability tests on real phones');
+    expect(announce).not.toHaveBeenCalled();
     await scrollTo(1);
     await waitFor(() => expect(announce).toHaveBeenCalledWith('Page 2 of 3. Test apps on your own phone'));
     announce.mockRestore();

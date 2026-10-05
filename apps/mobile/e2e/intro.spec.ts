@@ -41,7 +41,7 @@ test('a first visit walks through the intro to Sign in, and the next visit skips
   await expect(page.getByTestId('welcome-screen')).toHaveCount(0);
 });
 
-test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sign up over Sign in', async ({ browser }) => {
+test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sign up over the intro', async ({ browser }) => {
   const swipe = await fresh(browser);
   await swipe.goto('/');
   const pager = swipe.getByTestId('intro-pager');
@@ -57,9 +57,10 @@ test('a swipe moves the pages; Skip goes to Sign in; Create an account opens Sig
   await join.getByTestId('intro-dot-2').click();
   await join.getByTestId('intro-get-started').click();
   await expect(join.getByTestId('sign-up-screen')).toBeVisible();
-  // Back returns to Sign in (Sign up opened over it), not out of the app.
+  // Back returns to the intro's last page (Sign up opened over it), not out of the app.
   await join.goBack();
-  await expect(join.getByTestId('sign-in-screen')).toBeVisible();
+  await expect(join.getByTestId('welcome-screen')).toBeVisible();
+  await expect(join.getByTestId('intro-label')).toHaveText('FOR BUILDERS');
 });
 
 // Safari on a 390 × 844 iPhone leaves about 664 px with its toolbars; an iPhone SE about 548.

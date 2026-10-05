@@ -140,10 +140,14 @@ export default function Welcome() {
 
   function leave(to: 'sign-in' | 'sign-up') {
     void markIntroSeen();
+    // Sign up opens over the intro, so Back from it returns here (its last page) rather than
+    // leaving the app. Sign in takes the intro's place: the visit starts there from now on.
+    if (to === 'sign-up') {
+      router.push('/sign-up');
+      return;
+    }
     noteIntroLeft();
     router.replace('/sign-in');
-    // Sign up opens over Sign in, so Back from it returns to Sign in rather than leaving the app.
-    if (to === 'sign-up') router.push('/sign-up');
   }
 
   const onLayout = (e: LayoutChangeEvent) => {
