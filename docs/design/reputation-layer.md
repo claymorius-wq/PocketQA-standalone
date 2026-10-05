@@ -1,6 +1,8 @@
 # Reputation layer: design proposal (Lens)
 
-**Status: proposal, not a decision.** Contributor design, 2026-10-05. No code, API, contract or data changes.
+**Status: proposal, not a decision.** Contributor design, 2026-10-05.
+
+**Built on the live rules (2026-10-05, `feat/lens-badges`):** the medallion (§4, Appendix A) and the four badges' glyphs, the badge list and hero on the Reputation screen, and the Leaderboard (§6.2: the top three on the first card, your row pinned below). They use Hamza's rules as they are (points, quality score, the opt-in leaderboard), plus one additive API field, `Reputation.progress`, the count toward each badge. Everything else here is still a proposal waiting for the decisions in §9: point values, tiers, levels, held points, U9, Sharp eye, the You tab and the builder's track-record card. `docs/design/badge-proposals.md` says what was built.
 
 **Where the request came from.** Hamza's message of 2026-10-05, relayed by claymorius-wq, asked for points, badges and a leaderboard. In his words:
 - "Points: earned reputation—not cash or a promised token."

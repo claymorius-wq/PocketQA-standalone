@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export * from './siws';
 
-export const CONTRACT_VERSION = '0.6.0';
+export const CONTRACT_VERSION = '0.6.1';
 export const API_DEFAULT_PORT = 8787;
 export const API_DEFAULT_BASE_URL = `http://127.0.0.1:${API_DEFAULT_PORT}`;
 
@@ -687,12 +687,20 @@ export const TransferBlockhash = z.object({ blockhash: Base58Address, lastValidB
 // ---------- reputation: points, badges, leaderboard (no cash value, not tradeable) ----------
 export const PointsEventView = z.object({ kind: z.enum(['accepted', 'helpful', 'reversal']), points: z.number().int(), createdAt: IsoDate, studyTitle: z.string() });
 export const LEADERBOARD_WINDOW_DAYS = 90;
+/** How far the tester is toward one badge (counts only; domain `badgeProgress`). `current` never exceeds `target`. */
+export const BadgeProgress = z.object({ id: BadgeId, earned: z.boolean(), current: z.number().int().min(0), target: z.number().int().positive() });
+export type BadgeProgress = z.infer<typeof BadgeProgress>;
 export const Reputation = z.object({
   points: z.number().int(),
   /** Points are a reputation signal only: no cash value, not tradeable, not a token. */
   noCashValue: z.literal(true),
   events: z.array(PointsEventView),
   badges: z.array(Badge),
+  /**
+   * Every badge, earned or not, in display order, with the count toward it. Defaults to none, so
+   * an app newer than its API (before 0.6.1) still opens the screen, without the counts.
+   */
+  progress: z.array(BadgeProgress).default([]),
   stats: z.object({ accepted: z.number().int(), rejected: z.number().int(), decided: z.number().int(), qualityScore: z.number().int().min(0).max(100), windowDays: z.number().int() }),
   leaderboard: z.object({ optedIn: z.boolean(), alias: z.string().nullable(), rank: z.number().int().positive().nullable(), minDecided: z.number().int() }),
 });

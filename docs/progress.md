@@ -4,6 +4,17 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Badges and leaderboard in the Lens design (2026-10-05, `feat/lens-badges` from main `ae0b501`, contributor session)
+- **Why:** Hamza asked for "the leaderboard and badges" in the reputation design (`docs/design/reputation-layer.md`); the shipped v1 used stand-in glyph tiles.
+- **Built on the live rules** (points, quality score, the four badges, the opt-in leaderboard): no rule, value or threshold changes.
+  - the badge medallion (`Medallion`, `glass.medal`) and four badge glyphs;
+  - the Reputation screen: a hero with the hardest badge earned, points and the reputation line; a track record; every badge with its rule or what it was earned for, and its count ("Earned · NEW" on the visit a badge first shows); then the leaderboard settings and the history, with points written as points;
+  - the Leaderboard: rank, the lead badge, alias, decided tests, badges and the quality score per row; the top three on the first card; your own row pinned below the board (ranked, hidden, or not ranked yet with the count).
+- **API, additive:** `Reputation.progress`, the count toward every badge (domain `badgeProgress`, the same rules as `badgesFor`), contract 0.6.1 (`docs/decisions/contract-changes.md`).
+- **Evidence:** `docs/reviews/lens-badges/browser/` (local build, synthetic testers, dark and light).
+- **Not built (still proposals, `reputation-layer.md` §9):** tiers, levels, held points, U9, Sharp eye, the You tab and the builder's track-record card.
+- **Needs Hamza:** design sign-off on the medallion and the glyphs; the §9 decisions before any of the rest.
+
 ## Current work (2026-10-05): desktop web screen recording with microphone narration (`feat/screen-recording`, from main `6028f08`)
 - **Scope:** Hamza authorised the build. It's a local-only recorder in the tester's session on desktop browsers, offering per-session consent, the browser's own share dialog, mic narration, a live status with a timer, Stop, then replay, download or discard.
 - **Not in scope:** no upload, storage, network or AI. AI feedback and console-log collection are future work.

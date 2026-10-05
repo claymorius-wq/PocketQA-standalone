@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import type { ReactNode } from 'react';
@@ -19,7 +20,9 @@ jest.mock('lucide-react-native', () =>
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 const mockPush = jest.fn();
-jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
+const mockBack = jest.fn();
+jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a), back: () => mockBack() } }));
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'tester-1', role: 'tester' } }) }));
 const mockApi = jest.fn();
 jest.mock('../src/api/client', () => {
   class ApiError extends Error {
@@ -198,12 +201,20 @@ describe('PaymentStateCard · Squads devnet pilot', () => {
 });
 
 describe('Reputation and leaderboard', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Which badges this device has shown its tester ("New") starts empty for each test.
+    await AsyncStorage.clear();
     mockRep = {
       points: 25,
       noCashValue: true,
       events: [{ kind: 'accepted', points: 10, createdAt: '2026-10-05T00:00:00.000Z', studyTitle: 'Checkout' }],
       badges: [{ id: 'first_accepted', label: 'First accepted test', description: 'A builder accepted your first test.' }],
+      progress: [
+        { id: 'first_accepted', earned: true, current: 1, target: 1 },
+        { id: 'reliable_tester', earned: false, current: 2, target: 5 },
+        { id: 'helpful_feedback', earned: false, current: 1, target: 3 },
+        { id: 'device_specialist', earned: false, current: 2, target: 3 },
+      ],
       stats: { accepted: 2, rejected: 0, decided: 2, qualityScore: 34, windowDays: 90 },
       leaderboard: { optedIn: false, alias: null, rank: null, minDecided: 3 },
     };
@@ -215,7 +226,7 @@ describe('Reputation and leaderboard', () => {
     expect(screen.getByTestId('reputation-screen')).toHaveTextContent(/no cash value and can’t be traded/);
     expect(screen.getByTestId('reputation-points')).toHaveTextContent('25');
     expect(screen.getByTestId('badge-first_accepted')).toBeTruthy();
-    expect(screen.getByText('First accepted test')).toBeTruthy();
+    expect(within(screen.getByTestId('badge-first_accepted')).getByText('First accepted test')).toBeTruthy();
     expect(screen.getByTestId('leaderboard-settings')).toHaveTextContent(/never your name, email, wallet or recordings/);
   });
 
@@ -232,7 +243,74 @@ describe('Reputation and leaderboard', () => {
   it('the leaderboard lists aliases and quality, ranked, with no identifiers', async () => {
     await render(tree(<LeaderboardScreen />));
     expect(screen.getByTestId('leaderboard-screen')).toHaveTextContent(/never by volume or money/);
-    expect(screen.getByTestId('leaderboard-row-1')).toHaveTextContent(/Careful Cat.*Quality 72 \/ 100 · 9 decided · 1 badge/);
+    const row = screen.getByTestId('leaderboard-row-1');
+    expect(row).toHaveTextContent(/Careful Cat.*9 decided · 1 badge.*72.*quality/);
+    // One sentence for assistive tech; an alias, never a name, email or wallet.
+    expect(row.props.accessibilityLabel).toBe('Rank 1: Careful Cat. Quality 72 of 100, 9 decided tests, 1 badge, the top one First accepted test.');
+  });
+
+  it('every badge shows: earned glass with what it was earned for, the rest with the rule and the count toward it', async () => {
+    await render(tree(<ReputationScreen />));
+    expect(screen.getByTestId('badge-first_accepted')).toHaveTextContent(/First accepted test.*A builder accepted your first test\..*Earned/);
+    expect(screen.getByTestId('badge-helpful_feedback')).toHaveTextContent(/Helpful feedback.*Builders mark your feedback helpful 3 times\..*1 of 3 helpful marks/);
+    expect(screen.getByTestId('badge-reliable_tester')).toHaveTextContent(/2 of 5 decided tests/);
+    expect(screen.getByTestId('badge-device_specialist')).toHaveTextContent(/2 of 3 accepted tests on one platform/);
+    // The hero: the hardest badge earned, as one image with one label.
+    expect(screen.getByTestId('reputation-hero')).toHaveTextContent(/TOP BADGE.*First accepted test/);
+    expect(screen.getByLabelText(/^First accepted test, earned/)).toBeTruthy();
+    // Points carry the word, and no currency.
+    expect(screen.getByTestId('reputation-events')).toHaveTextContent(/\+10 points/);
+  });
+
+  it('a badge reads New on the visit it first shows, and not after', async () => {
+    await render(tree(<ReputationScreen />));
+    await settle();
+    expect(screen.getByTestId('badge-first_accepted-new')).toBeTruthy();
+    expect(screen.getByLabelText('First accepted test, earned, new')).toBeTruthy();
+    await screen.unmount();
+    await render(tree(<ReputationScreen />));
+    await settle();
+    expect(screen.queryByTestId('badge-first_accepted-new')).toBeNull();
+  });
+
+  it('Reliable tester with its count full says the quality bar is what is left', async () => {
+    mockRep = { ...mockRep, badges: [], progress: mockRep.progress.map((p) => (p.id === 'reliable_tester' ? { ...p, current: 5 } : { ...p, earned: false, current: 0 })), stats: { ...mockRep.stats, decided: 7, qualityScore: 48 } };
+    await render(tree(<ReputationScreen />));
+    expect(screen.getByTestId('badge-reliable_tester')).toHaveTextContent(/Needs a quality score of 60; yours is 48/);
+    expect(screen.getByTestId('reputation-no-badges')).toHaveTextContent('No badges yet. Your first accepted test earns one.');
+    expect(screen.getByTestId('reputation-hero')).toHaveTextContent(/FIRST BADGE.*First accepted test.*0 of 1 accepted test/);
+  });
+
+  it('an API from before the counts (no progress) still shows every badge, earned or not yet, with no count', async () => {
+    mockRep = { ...mockRep, progress: [] };
+    await render(tree(<ReputationScreen />));
+    expect(screen.getByTestId('badge-first_accepted')).toHaveTextContent(/Earned/);
+    expect(screen.getByTestId('badge-helpful_feedback')).toHaveTextContent(/Builders mark your feedback helpful 3 times..*Not earned yet/);
+    expect(screen.getByTestId('badge-helpful_feedback')).not.toHaveTextContent(/of 1/);
+  });
+
+  it('the top three share the first card; your own place is pinned below the board', async () => {
+    mockBoard = {
+      items: ['Ana', 'Ben', 'Cy', 'Dee'].map((alias, i) => ({ rank: i + 1, alias, qualityScore: 90 - i * 5, decided: 9 - i, badges: i === 0 ? ['reliable_tester', 'first_accepted'] : [] })),
+      windowDays: 90,
+      minDecided: 3,
+    };
+    mockRep = { ...mockRep, leaderboard: { optedIn: true, alias: 'Dee', rank: 4, minDecided: 3 } };
+    await render(tree(<LeaderboardScreen />));
+    expect(screen.getByTestId('leaderboard-row-1').props.accessibilityLabel).toMatch(/the top one Reliable tester/);
+    expect(screen.getByTestId('leaderboard-you')).toHaveTextContent(/You · Dee.*Rank 4 of 4 · Quality 34/);
+  });
+
+  it('hidden or not ranked yet, the pinned row says so, and Show me goes back to the settings', async () => {
+    await render(tree(<LeaderboardScreen />));
+    expect(screen.getByTestId('leaderboard-you')).toHaveTextContent(/You’re hidden\. Your points and badges still count\./);
+    await act(async () => fireEvent.press(screen.getByTestId('leaderboard-show-me')));
+    expect(mockBack).toHaveBeenCalled();
+    await screen.unmount();
+    mockRep = { ...mockRep, leaderboard: { optedIn: true, alias: 'Tara', rank: null, minDecided: 3 } };
+    await render(tree(<LeaderboardScreen />));
+    expect(screen.getByTestId('leaderboard-you')).toHaveTextContent(/Not ranked yet: 2 of 3 decided tests in the last 90 days/);
+    expect(screen.queryByTestId('leaderboard-show-me')).toBeNull();
   });
 });
 

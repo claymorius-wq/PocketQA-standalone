@@ -127,6 +127,9 @@ PR #1 changed the drawing only. PR #3 rebuilds every screen on this kit with the
     - `EmptyState` / `EmptyPanel` `actionStretch`, `BalanceHero` `style`, `RecordControl` `startVariant`, `Card` `accessibilityHint`.
     - Tokens `glass.wellDark`, `glass.uplight.spill`, `glass.uplight.primaryEdge` and the palette's `textDim`.
     - The list tile's glyph is 24 (G4).
+- Reputation kit additions (2026-10-05, `feat/lens-badges`; **awaiting Hamza's design sign-off**):
+  - `Medallion` (pattern): the badge medallion of `docs/design/reputation-layer.md` §4 at 40, 56, 96 and 120. It is a socket well; a progress arc while locked; and a lit violet body (cast with the violet tile's caustic, bezel with the brand lens's rim, domed face, specular, lit glyph) or an unlit body sunk into the socket. Its recipe is `glass.medal` (Appendix A, no new hues). It is static: no Uplight at rest and no animation. Light draws it flat from the palette.
+  - Glyphs `accepted`, `reliable`, `helpful` and `deviceSpec`, from the boards' reputation glyphs (thin tubes split into their own parts). They sit on medallion faces, never in a tile.
 - A-Stuck testIDs: every stuck item keeps main's `stuck-<reason>` node (the focus card, and each "Next in queue" item), and every item carries its own `stuck-review`, `stuck-approve` and `stuck-reject` inside that node, exactly as on main. The oldest item is only visually emphasised; no item needs to be promoted before it can be decided.
 
 ## Light theme

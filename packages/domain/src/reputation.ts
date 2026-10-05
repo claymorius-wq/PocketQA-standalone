@@ -15,8 +15,13 @@ export const HELPFUL_POINTS = 5;
 export const REPUTATION_WINDOW_DAYS = 90;
 export const REPUTATION_WINDOW_MS = REPUTATION_WINDOW_DAYS * 24 * 3600_000;
 export const LEADERBOARD_MIN_DECIDED = 3;
-const RELIABLE_MIN_DECIDED = 5;
-const RELIABLE_MIN_SCORE = 60;
+/** Reliable tester: this many decided tests in the window, and this quality score. */
+export const RELIABLE_MIN_DECIDED = 5;
+export const RELIABLE_MIN_SCORE = 60;
+/** Helpful feedback: this many helpful marks, not reversed. */
+export const HELPFUL_MIN_MARKS = 3;
+/** Device specialist: this many accepted tests on one platform. */
+export const SPECIALIST_MIN_ACCEPTED = 3;
 
 export type PointsKind = 'accepted' | 'helpful' | 'reversal';
 export type PointsEvent = { id: string; participationId: string; kind: PointsKind; points: number; reversesId: string | null; platform: string | null };
@@ -58,28 +63,63 @@ export function reputationStats(work: readonly DecidedWork[], nowMs: number) {
 }
 
 export type Badge = { id: 'first_accepted' | 'reliable_tester' | 'helpful_feedback' | 'device_specialist'; label: string; description: string };
+/** Every badge, in the order the app shows them. */
+export const BADGE_IDS = ['first_accepted', 'reliable_tester', 'helpful_feedback', 'device_specialist'] as const satisfies readonly Badge['id'][];
 const PLATFORM_NAMES: Record<string, string> = { android: 'Android', ios: 'iOS', web: 'Web' };
 
-export function badgesFor(input: { work: readonly DecidedWork[]; events: readonly PointsEvent[]; nowMs: number }): Badge[] {
-  const badges: Badge[] = [];
+type BadgeInput = { work: readonly DecidedWork[]; events: readonly PointsEvent[]; nowMs: number };
+
+/** What every badge rule reads, counted once. */
+function badgeCounts(input: BadgeInput) {
   const everAccepted = input.work.filter((w) => w.outcome === 'accepted' && !w.reversed);
-  if (everAccepted.length >= 1) badges.push({ id: 'first_accepted', label: 'First accepted test', description: 'A builder accepted your first test.' });
   const stats = reputationStats(input.work, input.nowMs);
+  const reversed = new Set(input.events.filter((e) => e.reversesId).map((e) => e.reversesId));
+  const helpful = input.events.filter((e) => e.kind === 'helpful' && !reversed.has(e.id)).length;
+  const byPlatform = new Map<string, number>();
+  for (const w of everAccepted) if (w.platform) byPlatform.set(w.platform, (byPlatform.get(w.platform) ?? 0) + 1);
+  // The platform with the most accepted tests (the first one counted wins a tie).
+  const top = [...byPlatform.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+  return { accepted: everAccepted.length, stats, helpful, top };
+}
+
+export function badgesFor(input: BadgeInput): Badge[] {
+  const badges: Badge[] = [];
+  const { accepted, stats, helpful, top } = badgeCounts(input);
+  if (accepted >= 1) badges.push({ id: 'first_accepted', label: 'First accepted test', description: 'A builder accepted your first test.' });
   if (stats.decided >= RELIABLE_MIN_DECIDED && stats.qualityScore >= RELIABLE_MIN_SCORE) {
     badges.push({ id: 'reliable_tester', label: 'Reliable tester', description: 'Consistently accepted work over the last 90 days.' });
   }
-  const reversed = new Set(input.events.filter((e) => e.reversesId).map((e) => e.reversesId));
-  if (input.events.filter((e) => e.kind === 'helpful' && !reversed.has(e.id)).length >= 3) {
+  if (helpful >= HELPFUL_MIN_MARKS) {
     badges.push({ id: 'helpful_feedback', label: 'Helpful feedback', description: 'Builders marked your feedback helpful three times.' });
   }
-  const byPlatform = new Map<string, number>();
-  for (const w of everAccepted) if (w.platform) byPlatform.set(w.platform, (byPlatform.get(w.platform) ?? 0) + 1);
-  const top = [...byPlatform.entries()].filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1])[0];
-  if (top) {
+  if (top && top[1] >= SPECIALIST_MIN_ACCEPTED) {
     const name = PLATFORM_NAMES[top[0]] ?? top[0];
     badges.push({ id: 'device_specialist', label: `${name} specialist`, description: `Three or more accepted tests on ${name}.` });
   }
   return badges;
+}
+
+/**
+ * How far a tester is toward each badge, counted by the same rules as `badgesFor`: `earned` is
+ * exactly whether `badgesFor` lists it, and `current` (capped at `target`) is the count its rule
+ * needs. Reliable tester also needs the quality score (RELIABLE_MIN_SCORE), so its count can be
+ * full while the badge is still ahead. Counts only: never points, money or a promise.
+ */
+export type BadgeProgress = { id: Badge['id']; earned: boolean; current: number; target: number };
+
+export function badgeProgress(input: BadgeInput): BadgeProgress[] {
+  const earned = new Set(badgesFor(input).map((b) => b.id));
+  const { accepted, stats, helpful, top } = badgeCounts(input);
+  const counts: Record<Badge['id'], [number, number]> = {
+    first_accepted: [accepted, 1],
+    reliable_tester: [stats.decided, RELIABLE_MIN_DECIDED],
+    helpful_feedback: [helpful, HELPFUL_MIN_MARKS],
+    device_specialist: [top?.[1] ?? 0, SPECIALIST_MIN_ACCEPTED],
+  };
+  return BADGE_IDS.map((id) => {
+    const [current, target] = counts[id];
+    return { id, earned: earned.has(id), current: Math.min(current, target), target };
+  });
 }
 
 export type LeaderboardInput = { userId: string; alias: string; optedIn: boolean; work: readonly DecidedWork[]; events: readonly PointsEvent[] };
