@@ -16,7 +16,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { Study } from '@pocket-qa/contracts';
 import { REPO_ROOT } from '../src/config';
 import { studyEscrowBooks } from '../src/escrow';
-import { SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
+import { operationId, SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
 import { DEVNET_GENESIS, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from '../src/settlement/squads/pins';
 import { DEVNET_RPC, loadPilotKeys, RpcSquadsChain, type SentStep } from '../src/settlement/squads/rpcChain';
 import { SettlementFailure } from '../src/settlement/types';
@@ -251,7 +251,7 @@ d('LIVE Squads v4 devnet pilot', () => {
       // R1: the multisig as created.
       const ms = await chain.getMultisig(acc.multisig);
       receipt.multisigOnChain = ms;
-      check('R1', 'autonomous (no config authority), threshold 2, time lock 0, rent collector Pocket QA', ms, !!ms && ms.configAuthority === '11111111111111111111111111111111' && ms.threshold === 2 && ms.timeLock === 0 && ms.rentCollector === receipt.roles.pocketqa);
+      check('R1', 'autonomous (no config authority), threshold 2, time lock 0, no rent collector (finished transactions can’t be closed, so operation ids stay on chain)', ms, !!ms && ms.configAuthority === '11111111111111111111111111111111' && ms.threshold === 2 && ms.timeLock === 0 && ms.rentCollector === null);
       const masks = Object.fromEntries((ms?.members ?? []).map((m) => [m.key, m.mask]));
       check('R1', 'members: builder Vote, Pocket QA Initiate+Vote+Execute, arbiter Vote', masks, ms?.members.length === 3 && masks[receipt.roles.builder!] === 2 && masks[receipt.roles.pocketqa!] === 7 && masks[receipt.roles.arbiter!] === 2);
       try {
@@ -315,6 +315,10 @@ d('LIVE Squads v4 devnet pilot', () => {
       // R3/R4/R6: payouts, with a crash right after the first execute landed, then two more runs.
       chain.crashAfterExecute = true;
       await expect(runSettlement(t.deps)).rejects.toThrow(/simulated crash after execute/);
+      // And the local index mapping is lost, as a restore from an older backup would leave it:
+      // recovery must find the payment on chain by its operation id alone.
+      t.db.prepare('DELETE FROM squads_attempts').run();
+      t.db.prepare(`UPDATE settlements SET status = 'pending', attempt_key = NULL WHERE status = 'submitted' AND signature IS NULL`).run();
       for (let i = 0; i < 2; i++) receipt.alerts.push(...(await runSettlement(t.deps)).alerts);
       for (let i = 0; i < 20 && (t.db.prepare(`SELECT COUNT(*) AS n FROM settlements WHERE status != 'confirmed'`).get() as { n: number }).n > 0; i++) {
         receipt.alerts.push(...(await runSettlement(t.deps)).alerts);
@@ -322,6 +326,9 @@ d('LIVE Squads v4 devnet pilot', () => {
       const payouts = t.db.prepare(`SELECT s.id, s.destination, s.cosigner, s.status, s.signature, a.tx_index FROM settlements s JOIN squads_attempts a ON a.settlement_id = s.id WHERE kind = 'payout' ORDER BY a.tx_index`).all() as { id: string; destination: string; cosigner: string; status: string; signature: string; tx_index: number }[];
       check('R3', 'both payouts confirmed; the overturned dispute co-signed by the arbiter', payouts.map((p) => `${p.tx_index}:${p.cosigner}:${p.status}`), payouts.length === 2 && payouts.every((p) => p.status === 'confirmed') && payouts.some((p) => p.destination === B.wallet && p.cosigner === 'arbiter'));
       for (const p of payouts) {
+        const part = t.db.prepare('SELECT participation_id FROM settlements WHERE id = ?').get(p.id) as { participation_id: string };
+        const vt = await chain.getVaultTransfer(acc.multisig, BigInt(p.tx_index));
+        check('P1-1', `index ${p.tx_index}: the stored vault message is [TransferChecked, Memo(operation id)] created by Pocket QA`, vt, vt?.instructions === 2 && vt.operation === operationId('payout', study.id, part.participation_id) && vt.creator === receipt.roles.pocketqa);
         const prop = await chain.getProposal(acc.multisig, BigInt(p.tx_index));
         const cos = p.cosigner === 'arbiter' ? receipt.roles.arbiter! : receipt.roles.builder!;
         check('R3', `index ${p.tx_index}: executed with two distinct approvals (Pocket QA and the ${p.cosigner})`, prop, prop?.status === 'Executed' && prop.approved.length === 2 && prop.approved.includes(receipt.roles.pocketqa!) && prop.approved.includes(cos));
@@ -367,7 +374,7 @@ d('LIVE Squads v4 devnet pilot', () => {
       // On-chain refusals by the program itself (preflight skipped so the rejection lands as evidence).
       const msNow = (await chain.getMultisig(acc.multisig))!;
       const idx = msNow.transactionIndex + 1n;
-      await chain.createVaultTransfer({ multisig: acc.multisig, index: idx, vaultAuthority: acc.vaultAuthority, source: acc.vaultAta, destination: ata(tester.publicKey), amount: 1n });
+      await chain.createVaultTransfer({ multisig: acc.multisig, index: idx, vaultAuthority: acc.vaultAuthority, source: acc.vaultAta, destination: ata(tester.publicKey), amount: 1n, operation: operationId('payout', study.id, 'pilot-threshold-refusal-check') });
       await chain.createProposal(acc.multisig, idx);
       await chain.approve(acc.multisig, idx, 'pocketqa');
       const { instruction } = await multisig.instructions.vaultTransactionExecute({ connection: conn, multisigPda: new PublicKey(acc.multisig), transactionIndex: idx, member: pocketqa.publicKey });

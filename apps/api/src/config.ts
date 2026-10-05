@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, isPublicHost, type AuthMode, type SettlementMode, type StorageMode } from '@pocket-qa/contracts';
 
@@ -228,7 +228,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (settlement === 'squads_devnet') {
     const dir = env.POCKETQA_SETTLEMENT_PILOT_KEYS_DIR ?? '';
     if (!dir || !isAbsolute(dir) || !existsSync(dir)) throw new ConfigError('The devnet pilot needs POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: an existing absolute directory of test-only keys.');
-    if (!relative(REPO_ROOT, dir).startsWith('..')) throw new ConfigError('The devnet pilot key directory must be outside the repository.');
+    // Symlinks resolved on both sides, so a link from outside into the repo is still refused.
+    const keyRel = relative(realpathSync(REPO_ROOT), realpathSync(dir));
+    if (keyRel === '' || (!keyRel.startsWith('..') && !isAbsolute(keyRel))) throw new ConfigError('The devnet pilot key directory must be outside the repository.');
     if ((statSync(dir).mode & 0o077) !== 0) throw new ConfigError('The devnet pilot key directory must be readable by its owner only (chmod 700).');
     pilotKeysDir = dir;
   }

@@ -151,3 +151,37 @@ it('C10: a builder deleting their account refunds a funded draft’s vault on ch
   expect(tokens(chain.keys.builder)).toBe(50_000_000);
   expect(books(study.id)).toMatchObject({ fundedUnits: 2_200_000, refundedUnits: 2_200_000, ok: true });
 });
+
+it('P1-1: a crash after the execute landed and a lost index mapping (a restore) still pay exactly once', async () => {
+  const { b, study } = await fundedStudy();
+  const one = await submitted(study.id);
+  await t.req('POST', `/participations/${one.pid}/approve`, b.token, { helpful: false });
+  chain.crashAfter = 'execute';
+  await expect(runSettlement(t.deps)).rejects.toThrow(/simulated crash/);
+  chain.crashAfter = null;
+  // As a restore from a backup taken before the claim was recorded would leave it.
+  t.db.prepare('DELETE FROM squads_attempts').run();
+  t.db.prepare(`UPDATE settlements SET status = 'pending', attempt_key = NULL, signature = NULL`).run();
+  await runSettlement(t.deps);
+  await runSettlement(t.deps);
+  expect(tokens(one.wallet)).toBe(USDC);
+  expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(1);
+  expect(chain.sent.filter((s) => s.step === 'createVaultTransfer')).toHaveLength(1);
+  expect(books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
+});
+
+it('P3-4: a stopped payout records the devnet state it read, never an unproven "nothing sent"', async () => {
+  const { b, study, vault } = await fundedStudy();
+  const one = await submitted(study.id);
+  await t.req('POST', `/participations/${one.pid}/approve`, b.token, { helpful: false });
+  chain.balances.set(vault, 10); // drained outside Pocket QA's control
+  const { alerts } = await runSettlement(t.deps);
+  expect(alerts.some((a) => a.includes('vault shortfall'))).toBe(true);
+  const s = t.db.prepare(`SELECT status, failure_reason FROM settlements WHERE kind = 'payout'`).get() as { status: string; failure_reason: string };
+  expect(s.status).toBe('failed');
+  expect(s.failure_reason).toBe('Stopped before creating the transfer: the study vault holds less than it on devnet. On devnet now: not created (no Squads transaction carries this payment’s operation id).');
+  const audits = (t.db.prepare(`SELECT reason FROM audit WHERE action = 'escrow.payout_failed'`).all() as { reason: string }[]).map((r) => r.reason).join('\n');
+  expect(audits).not.toMatch(/nothing was sent|no funds moved/i);
+  const payout = (await t.req('GET', '/me/payouts', one.u.token)).body.items[0];
+  expect(payout).toMatchObject({ status: 'failed', failureReason: s.failure_reason });
+});

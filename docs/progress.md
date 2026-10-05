@@ -5,6 +5,13 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
 ## Current work (2026-10-05): Squads v4 devnet feasibility pilot (ADR 0007 §10, `feat/wallet-rewards`)
+- **pqa-qa pilot OFFLINE r1: CHANGES_REQUIRED** (amended after the parent's ruling). Fixed test-first; **live runs are held** until a revised OFFLINE approval.
+  - **P1-1, double payout after a lost local mapping:** the fix is an on-chain operation id (ADR 0007 §10.1). Each vault message is exactly [TransferChecked, Memo(`pqa-op1:` + sha256 of kind|study|participation)], so identical legitimate transfers stay distinct. Multisigs have no rent collector, so records can't be closed. Recovery adopts only a single exact carrier created by Pocket QA; ambiguous or mismatched carriers are refused.
+  - **P2-1:** the browser test is fixed.
+  - **P3-1:** claims are released on stops before creation.
+  - **P3-2:** off-curve funders get no refundable wallet.
+  - **P3-3:** symlinks in the key-directory path are resolved.
+  - **P3-4:** failure copy states the devnet state actually read.
 - **Scope:** Hamza approved a bounded devnet pilot. It uses devnet test USDC (no value) and faucet devnet SOL only, and test keys simulate every role. It is not independent custody, and no physical wallet is involved. Production refuses it.
 - **Built test-first:**
   - **Settlement mode `squads_devnet`.** Its only setting is the key directory, which must be outside the repo with mode 0700.
@@ -20,7 +27,7 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
   - **App:** every money label names its settlement, and the pilot disclosure is shown. Pilot funding shows the exact amount, vault and reference, and verifies a pasted signature.
 - **Live runner:** `apps/api/test-live/squads-devnet.pilot.live.test.ts` is ready. It writes a public-only receipt.
 - **Blocked on assets:** both faucets need a human. The public RPC airdrop returned 429, and the browser extension wasn't connected. The test keys hold 0 SOL and 0 devnet test USDC. The minimum human action is in `docs/reviews/wallet-rewards/faucet-request.md`. No faucet bypass and no substitute token.
-- **Unresolved by design:** the mainnet audit and deployed-bytecode match; the fee stays in the vault (the pilot has no fee sweep).
+- **Unresolved by design:** the mainnet audit and deployed-bytecode match. The test fee stays in the vault (existing scope).
 
 ## Current work (2026-10-05): wallet-funded escrow and reputation, local SIMULATED slice (`feat/wallet-rewards` from main `87e09d4`)
 - **Approval and scope.** Hamza approved implementation; the parent clarified the scope after pqa-qa's architecture review r1. ADR 0007 records the scope, the trust model and the authorities.

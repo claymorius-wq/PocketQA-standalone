@@ -20,6 +20,7 @@ export class FakeSquadsChain implements SquadsChain {
   genesis = DEVNET_GENESIS;
   mintAccount: { owner: string; decimals: number } | null = { owner: PILOT_TOKEN_PROGRAM, decimals: PILOT_DECIMALS };
   programOk = true;
+  memoOk = true;
   /** Block time of recorded fundings (ms). */
   blockTimeMs = 1_800_000_000_000;
   multisigs = new Map<string, MultisigState>();
@@ -44,7 +45,7 @@ export class FakeSquadsChain implements SquadsChain {
     ];
   }
   goodMultisig(builder: string): MultisigState {
-    return { createKey: '', configAuthority: AUTONOMOUS, threshold: 2, timeLock: 0, transactionIndex: 0n, rentCollector: this.keys.pocketqa, members: this.defaultMembers(builder) };
+    return { createKey: '', configAuthority: AUTONOMOUS, threshold: 2, timeLock: 0, transactionIndex: 0n, rentCollector: null, members: this.defaultMembers(builder) };
   }
   /** Test-only: a role's ed25519 seed, to link that test wallet through the real SIWS flow. */
   seedOf(role: Role) {
@@ -80,10 +81,13 @@ export class FakeSquadsChain implements SquadsChain {
   async programExecutable() {
     return this.programOk;
   }
+  async memoProgramExecutable() {
+    return this.memoOk;
+  }
   async getMultisig(ms: string) {
     return this.multisigs.get(ms) ?? null;
   }
-  async createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string }) {
+  async createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string | null }) {
     if (this.multisigs.has(input.multisig)) throw new Error('account already in use');
     this.created++;
     this.multisigs.set(input.multisig, {
@@ -109,12 +113,15 @@ export class FakeSquadsChain implements SquadsChain {
   async getVaultTransfer(ms: string, index: bigint) {
     return this.vaultTxs.get(this.k(ms, index)) ?? null;
   }
-  async createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint }) {
+  async createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint; operation: string }) {
     const ms = this.multisigs.get(input.multisig);
     if (!ms || input.index !== ms.transactionIndex + 1n) throw new Error('InvalidTransactionIndex');
     ms.transactionIndex = input.index;
+    // Only Pocket QA holds Initiate, so the program records it as the creator.
     this.vaultTxs.set(this.k(input.multisig, input.index), {
-      instructions: 1,
+      creator: this.keys.pocketqa,
+      operation: input.operation,
+      instructions: 2,
       program: PILOT_TOKEN_PROGRAM,
       opcode: TRANSFER_CHECKED,
       source: input.source,

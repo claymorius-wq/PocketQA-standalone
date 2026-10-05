@@ -1,8 +1,9 @@
 import { Keypair, PublicKey, VersionedTransaction, type AccountInfo, type Connection } from '@solana/web3.js';
+import { operationId } from '../src/settlement/squads/adapter';
 import * as multisig from '@sqds/multisig';
 import { describe, expect, it } from 'vitest';
 import { ataOf } from '../src/settlement/squads/adapter';
-import { DEVNET_GENESIS, MAINNET_GENESIS, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from '../src/settlement/squads/pins';
+import { DEVNET_GENESIS, MAINNET_GENESIS, MEMO_PROGRAM, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from '../src/settlement/squads/pins';
 import { RpcSquadsChain } from '../src/settlement/squads/rpcChain';
 import { SettlementFailure } from '../src/settlement/types';
 
@@ -31,11 +32,13 @@ function stub(over: Partial<Record<keyof Connection, unknown>> = {}) {
   return { conn, sent, accounts };
 }
 
-/** The VaultTransaction account the program would store for a captured vault_transaction_create. */
-function storedVaultTransaction(tx: VersionedTransaction, ms: PublicKey, index: bigint): AccountInfo<Buffer> {
+type Msg = { accountKeys: PublicKey[]; instructions: { programIdIndex: number; accountIndexes: number[] | Uint8Array; data: number[] | Uint8Array }[] };
+/** The VaultTransaction account the program would store for a captured vault_transaction_create (`edit` alters the message first). */
+function storedVaultTransaction(tx: VersionedTransaction, ms: PublicKey, index: bigint, edit: (m: Msg) => void = () => {}): AccountInfo<Buffer> {
   const ix = tx.message.compiledInstructions.find((i) => tx.message.staticAccountKeys[i.programIdIndex]!.equals(PROGRAM))!;
   const [args] = multisig.generated.vaultTransactionCreateStruct.deserialize(Buffer.from(ix.data));
   const [message] = multisig.types.transactionMessageBeet.deserialize(Buffer.from(args.args.transactionMessage));
+  edit(message as unknown as Msg);
   const vt = multisig.accounts.VaultTransaction.fromArgs({
     multisig: ms,
     creator: roles.pocketqa.publicKey,
@@ -60,9 +63,11 @@ function storedVaultTransaction(tx: VersionedTransaction, ms: PublicKey, index: 
 describe('RpcSquadsChain', () => {
   const ms = multisig.getMultisigPda({ createKey: Keypair.generate().publicKey })[0];
   const vault = multisig.getVaultPda({ multisigPda: ms, index: 0 })[0];
-  const plan = { multisig: ms.toBase58(), index: 1n, vaultAuthority: vault.toBase58(), source: ataOf(vault.toBase58()), destination: ataOf(roles.builder.publicKey.toBase58()), amount: 1_234_567n };
+  const operation = operationId('payout', 'study-1', 'participation-1');
+  const plan = { multisig: ms.toBase58(), index: 1n, vaultAuthority: vault.toBase58(), source: ataOf(vault.toBase58()), destination: ataOf(roles.builder.publicKey.toBase58()), amount: 1_234_567n, operation };
+  const [txPda] = multisig.getTransactionPda({ multisigPda: ms, index: 1n });
 
-  it('proposes one TransferChecked that decodes back to exactly the plan (C3)', async () => {
+  it('proposes [TransferChecked, Memo(operation id)] that decodes back to exactly the plan (C3, P1-1)', async () => {
     const { conn, sent, accounts } = stub();
     const chain = new RpcSquadsChain(conn, roles);
     await chain.createVaultTransfer(plan);
@@ -70,10 +75,11 @@ describe('RpcSquadsChain', () => {
     // Fee payer Pocket QA; only Pocket QA signs a proposal.
     expect(sent[0]!.message.staticAccountKeys[0]!.equals(roles.pocketqa.publicKey)).toBe(true);
     expect(sent[0]!.message.header.numRequiredSignatures).toBe(1);
-    const [txPda] = multisig.getTransactionPda({ multisigPda: ms, index: 1n });
     accounts.set(txPda.toBase58(), storedVaultTransaction(sent[0]!, ms, 1n));
     expect(await chain.getVaultTransfer(plan.multisig, 1n)).toEqual({
-      instructions: 1,
+      creator: roles.pocketqa.publicKey.toBase58(),
+      operation,
+      instructions: 2,
       program: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
       opcode: 12,
       source: plan.source,
@@ -83,6 +89,48 @@ describe('RpcSquadsChain', () => {
       amount: 1_234_567n,
       decimals: 6,
     });
+  });
+
+  it.each([
+    ['the memo names an account (it would claim a signature)', (m: Msg) => void (m.instructions[1]!.accountIndexes = [0])],
+    ['the memo is not UTF-8', (m: Msg) => void (m.instructions[1]!.data = [0xff, 0xfe])],
+    ['the second instruction is not the pinned Memo program', (m: Msg) => void (m.accountKeys[m.instructions[1]!.programIdIndex] = Keypair.generate().publicKey)],
+    ['there is no second instruction', (m: Msg) => void m.instructions.pop()],
+  ])('decodes no operation id when %s', async (_, edit) => {
+    const { conn, sent, accounts } = stub();
+    const chain = new RpcSquadsChain(conn, roles);
+    await chain.createVaultTransfer(plan);
+    accounts.set(txPda.toBase58(), storedVaultTransaction(sent[0]!, ms, 1n, edit));
+    expect((await chain.getVaultTransfer(plan.multisig, 1n))!.operation).toBeNull();
+  });
+
+  it('an account at the index that is not a Squads vault transaction never matches', async () => {
+    const { conn, accounts } = stub();
+    accounts.set(txPda.toBase58(), { data: Buffer.alloc(200), owner: Keypair.generate().publicKey, executable: false, lamports: 1, rentEpoch: 0 });
+    expect(await new RpcSquadsChain(conn, roles).getVaultTransfer(plan.multisig, 1n)).toMatchObject({ operation: null, instructions: -1 });
+  });
+
+  it('pins the Memo program to the immutable BPF loader 2', async () => {
+    for (const [owner, ok] of [['BPFLoader2111111111111111111111111111111111', true], ['BPFLoaderUpgradeab1e11111111111111111111111', false]] as const) {
+      const { conn, accounts } = stub();
+      accounts.set(MEMO_PROGRAM, { data: Buffer.alloc(0), owner: new PublicKey(owner), executable: true, lamports: 1, rentEpoch: 0 });
+      expect(await new RpcSquadsChain(conn, roles).memoProgramExecutable()).toBe(ok);
+    }
+  });
+
+  it('creates the multisig with no rent collector (finished transactions can’t be closed)', async () => {
+    const { conn, sent } = stub({
+      getAccountInfo: async () => null,
+    });
+    const configPda = multisig.getProgramConfigPda({})[0];
+    const cfg = multisig.accounts.ProgramConfig.fromArgs({ authority: Keypair.generate().publicKey, multisigCreationFee: 0, treasury: Keypair.generate().publicKey, reserved: new Array(64).fill(0) });
+    const withConfig = { ...conn, getAccountInfo: async (k: PublicKey) => (k.equals(configPda) ? { data: cfg.serialize()[0], owner: PROGRAM, executable: false, lamports: 1, rentEpoch: 0 } : null) } as unknown as Connection;
+    Object.assign(conn, withConfig);
+    await new RpcSquadsChain(conn, roles).createMultisig({ createKeySeed: new Uint8Array(32).fill(1), multisig: ms.toBase58(), members: [], threshold: 2, rentCollector: null });
+    const ix = sent[0]!.message.compiledInstructions.find((i) => sent[0]!.message.staticAccountKeys[i.programIdIndex]!.equals(PROGRAM))!;
+    const [args] = multisig.generated.multisigCreateV2Struct.deserialize(Buffer.from(ix.data));
+    expect(args.args.rentCollector).toBeNull();
+    expect(args.args.configAuthority).toBeNull();
   });
 
   it('refuses to sign when the RPC is not devnet: nothing is sent', async () => {

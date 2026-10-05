@@ -1,22 +1,48 @@
-# Squads devnet pilot adapter: TDD evidence (2026-10-05, Node v24.21.0, worktree feat/wallet-rewards)
+# Squads devnet pilot adapter: TDD evidence (refreshed 2026-10-05 for the operation-id fix, pqa-qa offline r1; Node v24.21.0)
 
-## RED: tests written before the adapter existed
+## RED (r1 fix): the new recovery, release and funding-source tests against the pre-fix adapter (3023657)
 $ npx vitest run test/squads-adapter.test.ts
-Error: Cannot find module '../src/settlement/squads/adapter' imported from /Users/hamzadiaz/Projects/pocket-qa/.worktrees/wallet-rewards/apps/api/test/squads-adapter.test.ts
-      Tests  no tests
-## Mutation checks: each guard removed in turn (scratchpad mutate.py, one exact occurrence each); the suites must fail
-mutant 'skip transfer check': Tests  8 failed | 32 passed (40)
-mutant 'forget the claimed index': Tests  6 failed | 34 passed (40)
-mutant 'execute again after executed': Tests  2 failed | 38 passed (40)
-mutant 'skip pins in submit': Tests  3 failed | 37 passed (40)
-mutant 'ignore amount': Tests  1 failed | 39 passed (40)
-mutant 'ignore index gap': Tests  1 failed | 39 passed (40)
-mutant 'skip config check in submit': Tests  1 failed | 39 passed (40)
-mutant 'skip recorded-settlement check': Tests  2 failed | 38 passed (40)
-mutant 'skip balance check': Tests  1 failed | 39 passed (40)
-mutant 'skip builder key check': Tests  2 failed | 38 passed (40)
+     × mapping lost after createVaultTransfer landed: the retry adopts the on-chain transaction, never a second transfer 13ms
+     × mapping lost after approve:pocketqa landed: the retry adopts the on-chain transaction, never a second transfer 10ms
+     × mapping lost after approve:builder landed: the retry adopts the on-chain transaction, never a second transfer 9ms
+     × mapping lost after execute landed: the retry adopts the on-chain transaction, never a second transfer 8ms
+     × mapping lost after a completed payout: the retry returns the same execute signature 9ms
+     × a matching transaction already claimed by another settlement is refused, never adopted twice 9ms
+     × two on-chain transactions matching one plan are refused for an operator 9ms
+     × a payout the vault can’t cover releases its index, so the next settlement isn’t blocked behind it 8ms
+     × a funding from an off-curve owner (a program address) has no refundable wallet (pqa-qa offline r1 P3-2) 8ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  9 failed | 34 passed (43)
+
+## Earlier RED (first adapter): the module did not exist
+Error: Cannot find module '../src/settlement/squads/adapter' ... Tests  no tests
+
+## Mutation checks: each guard removed in turn (one exact source occurrence each); the three Squads suites must fail
+mutant 'skip transfer check at the claimed index': Tests  11 failed | 67 passed (78)
+mutant 'forget the claimed index': Tests  6 failed | 72 passed (78)
+mutant 'execute again after executed': Tests  6 failed | 72 passed (78)
+mutant 'skip pins in submit': Tests  5 failed | 73 passed (78)
+mutant 'ignore amount': Tests  3 failed | 75 passed (78)
+mutant 'ignore operation id in matching': Tests  1 failed | 77 passed (78)
+mutant 'ignore creator in matching': Tests  1 failed | 77 passed (78)
+mutant 'ignore index gap': Tests  1 failed | 77 passed (78)
+mutant 'skip config check in submit': Tests  1 failed | 77 passed (78)
+mutant 'skip recorded-settlement check': Tests  3 failed | 75 passed (78)
+mutant 'skip balance check': Tests  4 failed | 74 passed (78)
+mutant 'skip builder key check': Tests  2 failed | 76 passed (78)
+mutant 'no recovery scan (local mapping only)': Tests  11 failed | 67 passed (78)
+mutant 'adopt despite ambiguity': Tests  1 failed | 77 passed (78)
+mutant 'adopt a carrier with another payload': Tests  1 failed | 77 passed (78)
+mutant 'adopt a carrier owned by another settlement': Tests  1 failed | 77 passed (78)
+mutant 'keep claims on pre-creation stops': Tests  2 failed | 76 passed (78)
+mutant 'skip memo pin': Tests  1 failed | 77 passed (78)
+mutant 'rent collector allowed': Tests  1 failed | 77 passed (78)
+mutant 'operation id without the participation': Tests  4 failed | 74 passed (78)
+mutant 'no chain state in failure copy': Tests  7 failed | 71 passed (78)
+mutant 'report non-devnet state as devnet': Tests  1 failed | 77 passed (78)
+mutant 'off-curve funding source kept': Tests  1 failed | 77 passed (78)
 
 ## GREEN
-$ npx vitest run test/squads-adapter.test.ts test/squads-api.test.ts
-Test Files  2 passed (2)
-Tests  40 passed (40)
+$ npx vitest run test/squads-adapter.test.ts test/squads-api.test.ts test/squads-rpc-chain.test.ts
+Test Files  3 passed (3)
+Tests  78 passed (78)

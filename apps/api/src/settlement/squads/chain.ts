@@ -21,11 +21,15 @@ export type MultisigState = {
   members: MemberState[];
 };
 /**
- * A vault transaction as the program stored it, decoded: the count of instructions, and the first
- * one's program, SPL tag, accounts and arguments. The adapter approves only exactly one
- * TransferChecked of the planned amount between the planned accounts.
+ * A vault transaction as the program stored it (immutable once created), decoded: its creator,
+ * the count of instructions, the first one's program, SPL tag, accounts and arguments, and the
+ * operation id carried by the second one. The adapter approves only exactly
+ * [TransferChecked(plan), Memo(operation id)], created by Pocket QA. `operation` is null unless the
+ * second instruction is a pinned-Memo instruction with no accounts and UTF-8 data.
  */
 export type VaultTransfer = {
+  creator: string;
+  operation: string | null;
   instructions: number;
   program: string;
   opcode: number;
@@ -48,14 +52,16 @@ export interface SquadsChain {
   mintInfo(mint: string): Promise<{ owner: string; decimals: number } | null>;
   /** The Squads program is the executable upgradeable-loader program at the pinned address. */
   programExecutable(): Promise<boolean>;
+  /** The pinned SPL Memo program is executable under the (immutable) BPF loader 2. */
+  memoProgramExecutable(): Promise<boolean>;
   getMultisig(multisig: string): Promise<MultisigState | null>;
-  createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string }): Promise<string>;
+  createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string | null }): Promise<string>;
   /** Creates the owner's associated token account for the pilot mint if missing (Pocket QA pays); returns the signature or null if it existed. */
   ensureAta(owner: string): Promise<string | null>;
   /** A token account's balance in base units, or null if it doesn't exist. */
   tokenBalance(tokenAccount: string): Promise<bigint | null>;
   getVaultTransfer(multisig: string, index: bigint): Promise<VaultTransfer | null>;
-  createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint }): Promise<string>;
+  createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint; operation: string }): Promise<string>;
   getProposal(multisig: string, index: bigint): Promise<ProposalState | null>;
   createProposal(multisig: string, index: bigint): Promise<string>;
   approve(multisig: string, index: bigint, role: Role): Promise<string>;

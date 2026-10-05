@@ -64,8 +64,11 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
       db.prepare('UPDATE settlements SET signature = ? WHERE id = ?').run(signature, s.id);
     } catch (e) {
       if (!(e instanceof SettlementFailure)) throw e;
-      db.prepare(`UPDATE settlements SET status = 'failed', failure_reason = ?, next_attempt_at = ? WHERE id = ?`).run(e.message, now + backoff(s.attempt + (s.status === 'submitted' ? 0 : 1)), s.id);
-      audit(db, 'system', `escrow.${s.kind}_failed`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${e.message} Nothing was sent; it will be retried.`, now);
+      // The simulation can prove nothing was sent; a network provider reports the chain state it read.
+      const reason = e.chainState ? `${e.message} ${e.chainState}` : e.message;
+      const after = provider.mode === 'simulated' ? 'Nothing was sent; it will be retried.' : 'It will be retried.';
+      db.prepare(`UPDATE settlements SET status = 'failed', failure_reason = ?, next_attempt_at = ? WHERE id = ?`).run(reason, now + backoff(s.attempt + (s.status === 'submitted' ? 0 : 1)), s.id);
+      audit(db, 'system', `escrow.${s.kind}_failed`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${reason} ${after}`, now);
     }
   }
 

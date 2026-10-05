@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { Keypair } from '@solana/web3.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDb, type DB } from '../src/db';
-import { SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
+import { operationId, SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
 import { DEVNET_GENESIS, PILOT_MINT } from '../src/settlement/squads/pins';
 import { SettlementFailure } from '../src/settlement/types';
 import { FakeSquadsChain } from './fakeSquadsChain';
@@ -29,6 +29,13 @@ beforeEach(() => {
 });
 afterEach(() => db.close());
 
+const OP = operationId('payout', 's1', null);
+/** The vault transaction the adapter plans for pay1, as the program would store it. */
+const goodTx = (over: Record<string, unknown> = {}) => {
+  const a = squads.accountsFor('s1');
+  return { creator: chain.keys.pocketqa, operation: OP, instructions: 2, program: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', opcode: 12, source: a.vaultAta, mint: PILOT_MINT, destination: chain.ataOf(TESTER), authority: a.vaultAuthority, amount: 1_000_000n, decimals: 6, ...over };
+};
+
 const payout = (over: Partial<Parameters<SquadsDevnetSettlement['submit']>[0]> = {}) => ({
   key: 'pay1:1',
   settlementId: 'pay1',
@@ -47,7 +54,8 @@ describe('vault preparation (R1)', () => {
     await squads.prepareVault({ studyId: 's1', builderWallet: chain.keys.builder });
     expect(chain.created).toBe(1);
     const ms = chain.multisigs.get(squads.accountsFor('s1').multisig)!;
-    expect(ms).toMatchObject({ threshold: 2, configAuthority: '11111111111111111111111111111111', timeLock: 0 });
+    // No rent collector: Squads then refuses to close finished transactions, so operation records stay on chain.
+    expect(ms).toMatchObject({ threshold: 2, configAuthority: '11111111111111111111111111111111', timeLock: 0, rentCollector: null });
     expect(ms.members).toHaveLength(3);
     expect(ms.members).toEqual(expect.arrayContaining([
       { key: chain.keys.builder, mask: 2 },
@@ -69,6 +77,7 @@ describe('vault preparation (R1)', () => {
     for (const bad of [
       { configAuthority: chain.keys.pocketqa },
       { threshold: 1 },
+      { rentCollector: chain.keys.pocketqa },
       { members: [...chain.defaultMembers(chain.keys.builder), { key: chain.keys.outsider, mask: 7 }] },
     ]) {
       chain.multisigs.set(acc.multisig, { ...chain.goodMultisig(chain.keys.builder), ...bad });
@@ -97,9 +106,12 @@ describe('pinning before any signature (C2)', () => {
     await expect(squads.submit(payout())).rejects.toBeInstanceOf(SettlementFailure);
     expect(chain.sent).toEqual([]);
   });
-  it('refuses when the Squads program is not the pinned executable', async () => {
+  it('refuses when the Squads or Memo program is not the pinned executable', async () => {
     chain.programOk = false;
     await expect(squads.submit(payout())).rejects.toBeInstanceOf(SettlementFailure);
+    chain.programOk = true;
+    chain.memoOk = false;
+    await expect(squads.submit(payout())).rejects.toThrow(/Memo program/);
     expect(chain.sent).toEqual([]);
   });
 });
@@ -128,7 +140,7 @@ describe('destination and amount policy', () => {
   });
   it('refuses a payout larger than the vault holds, before creating anything', async () => {
     chain.balances.set(squads.vaultFor('s1'), 999_999);
-    await expect(squads.submit(payout())).rejects.toThrow(/holds less than this transfer/);
+    await expect(squads.submit(payout())).rejects.toThrow(/holds less than it on devnet/);
     expect(chain.sent.map((s) => s.step)).not.toContain('createVaultTransfer');
   });
 });
@@ -144,7 +156,9 @@ describe('payout: one transferChecked, two distinct approvals, executed once (R3
     const { signature } = await squads.submit(payout());
     expect(chain.sent.map((s) => s.step)).toEqual(['ensureAta', 'createVaultTransfer', 'createProposal', 'approve:pocketqa', 'approve:builder', 'execute']);
     const tx = chain.vaultTxs.get(`${squads.accountsFor('s1').multisig}:1`)!;
-    expect(tx).toEqual({ instructions: 1, program: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', opcode: 12, source: squads.vaultFor('s1'), mint: PILOT_MINT, destination: chain.ataOf(TESTER), authority: squads.accountsFor('s1').vaultAuthority, amount: 1_000_000n, decimals: 6 });
+    // Exactly [TransferChecked(plan), Memo(operation id)], created by Pocket QA.
+    expect(tx).toEqual(goodTx());
+    expect(OP).toMatch(/^pqa-op1:[0-9a-f]{64}$/);
     expect(chain.balances.get(squads.vaultFor('s1'))).toBe(1_200_000);
     expect(await squads.status(signature)).toBe('finalized');
     expect(chain.balances.get(chain.ataOf(TESTER))).toBe(1_000_000);
@@ -192,9 +206,10 @@ describe('idempotent recovery (C5, R6)', () => {
     db.exec(`INSERT INTO settlements (id,kind,study_id,destination,amount_units,status,next_attempt_at,created_at) VALUES ('pay0','payout','s1','${TESTER}',1000000,'submitted',0,0);`);
     db.prepare('INSERT INTO squads_attempts (settlement_id, multisig, tx_index, created_at) VALUES (?,?,?,?)').run('pay0', squads.accountsFor('s1').multisig, 1, 0);
     chain.sent.length = 0;
-    await expect(squads.submit(payout())).rejects.toThrow(/Waiting for Squads transaction 1/);
+    await expect(squads.submit(payout())).rejects.toThrow(/Stopped before creating Squads transaction 2: Squads creates only index 1 next/);
     expect(chain.sent.map((s) => s.step)).not.toContain('createVaultTransfer');
-    expect(db.prepare('SELECT tx_index FROM squads_attempts WHERE settlement_id = ?').get('pay1')).toEqual({ tx_index: 2 });
+    // Its own claim is released (nothing exists at index 2), so it never blocks others in turn.
+    expect(db.prepare('SELECT tx_index FROM squads_attempts WHERE settlement_id = ?').get('pay1')).toBeUndefined();
   });
 
   it('a multisig whose config changed after preparation is refused before anything is sent (R1)', async () => {
@@ -206,14 +221,17 @@ describe('idempotent recovery (C5, R6)', () => {
 
   it('an occupied index holding a different transfer is refused, never approved (C3)', async () => {
     const ms = squads.accountsFor('s1').multisig;
-    chain.vaultTxs.set(`${ms}:1`, { amount: 999n, mint: PILOT_MINT, destination: chain.ataOf(chain.keys.outsider), source: squads.accountsFor('s1').vaultAta, authority: squads.accountsFor('s1').vaultAuthority, instructions: 1, program: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', opcode: 12, decimals: 6 });
+    chain.vaultTxs.set(`${ms}:1`, goodTx({ operation: null, amount: 999n, destination: chain.ataOf(chain.keys.outsider) }) as never);
     chain.multisigs.get(ms)!.transactionIndex = 0n; // the next index the adapter will claim is 1
-    await expect(squads.submit(payout())).rejects.toThrow(/does not match the planned transfer/);
+    await expect(squads.submit(payout())).rejects.toThrow(/not exactly this payment|carries this payment’s operation id but not its exact transfer or creator/);
     expect(chain.sent.filter((s) => s.step.startsWith('approve'))).toEqual([]);
   });
 
   it.each([
-    ['two instructions', { instructions: 2 }],
+    ['no operation memo', { instructions: 1, operation: null }],
+    ['another payment’s operation id', { operation: operationId('payout', 's1', 'someone-else') }],
+    ['a creator other than Pocket QA', { creator: Keypair.generate().publicKey.toBase58() }],
+    ['three instructions', { instructions: 3 }],
     ['not the Token program', { program: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PE9n9TZTnQ27fDZ' }],
     ['a plain Transfer (no checked decimals)', { opcode: 3 }],
     ['the wrong amount', { amount: 1_000_001n }],
@@ -222,9 +240,173 @@ describe('idempotent recovery (C5, R6)', () => {
     ['other decimals', { decimals: 9 }],
   ])('refuses %s at an existing index', async (_, patch) => {
     const a = squads.accountsFor('s1');
-    chain.vaultTxs.set(`${a.multisig}:1`, { amount: 1_000_000n, mint: PILOT_MINT, destination: chain.ataOf(TESTER), source: a.vaultAta, authority: a.vaultAuthority, instructions: 1, program: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', opcode: 12, decimals: 6, ...patch });
+    chain.vaultTxs.set(`${a.multisig}:1`, goodTx(patch) as never);
     chain.multisigs.get(a.multisig)!.transactionIndex = 0n;
-    await expect(squads.submit(payout())).rejects.toThrow(/does not match the planned transfer/);
+    await expect(squads.submit(payout())).rejects.toThrow(/not exactly this payment|carries this payment’s operation id but not its exact transfer or creator/);
+  });
+});
+
+describe('recovery when the local index mapping is lost, e.g. a database restore (pqa-qa offline r1 P1-1)', () => {
+  beforeEach(async () => {
+    await squads.prepareVault({ studyId: 's1', builderWallet: chain.keys.builder });
+    chain.fundVault(squads.vaultFor('s1'), 2_200_000);
+  });
+  const forget = () => db.prepare('DELETE FROM squads_attempts').run();
+
+  it.each(['createVaultTransfer', 'approve:pocketqa', 'approve:builder', 'execute'])(
+    'mapping lost after %s landed: the retry adopts the on-chain transaction, never a second transfer',
+    async (step) => {
+      chain.crashAfter = step;
+      await expect(squads.submit(payout())).rejects.toThrow(/simulated crash/);
+      chain.crashAfter = null;
+      forget();
+      const again = await squads.submit(payout({ key: 'pay1:9' }));
+      expect(chain.sent.filter((s) => s.step === 'createVaultTransfer')).toHaveLength(1);
+      expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(1);
+      expect(again.signature).toBe(chain.sent.find((s) => s.step === 'execute')!.signature);
+      expect(chain.balances.get(chain.ataOf(TESTER))).toBe(1_000_000);
+      expect(db.prepare('SELECT tx_index FROM squads_attempts WHERE settlement_id = ?').get('pay1')).toEqual({ tx_index: 1 });
+    },
+  );
+
+  it('mapping lost after a completed payout: the retry returns the same execute signature', async () => {
+    const first = await squads.submit(payout());
+    forget();
+    expect(await squads.submit(payout({ key: 'pay1:2' }))).toEqual(first);
+    expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(1);
+    expect(chain.balances.get(chain.ataOf(TESTER))).toBe(1_000_000);
+  });
+
+  it('a matching transaction already claimed by another settlement is refused, never adopted twice', async () => {
+    await squads.submit(payout());
+    db.exec(`INSERT INTO settlements (id,kind,study_id,destination,amount_units,status,next_attempt_at,created_at) VALUES ('payX','payout','s1','${TESTER}',1000000,'submitted',0,0);`);
+    await expect(squads.submit(payout({ settlementId: 'payX', key: 'payX:1' }))).rejects.toThrow(/already belongs to another settlement/);
+    expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(1);
+  });
+
+  it('a carrier of this operation id with any other payload is refused at recovery, and never mapped', async () => {
+    const a = squads.accountsFor('s1');
+    chain.vaultTxs.set(`${a.multisig}:1`, goodTx({ amount: 999_999n }) as never);
+    chain.multisigs.get(a.multisig)!.transactionIndex = 1n;
+    chain.sent.length = 0;
+    await expect(squads.submit(payout())).rejects.toThrow(/Squads transaction 1 carries this payment’s operation id but not its exact transfer or creator/);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM squads_attempts').get()).toEqual({ n: 0 });
+    expect(chain.sent.filter((s) => s.step !== 'ensureAta')).toEqual([]);
+  });
+
+  it('two on-chain transactions carrying one operation id are refused for an operator', async () => {
+    const a = squads.accountsFor('s1');
+    chain.vaultTxs.set(`${a.multisig}:1`, goodTx() as never);
+    chain.vaultTxs.set(`${a.multisig}:2`, goodTx() as never);
+    chain.multisigs.get(a.multisig)!.transactionIndex = 2n;
+    await expect(squads.submit(payout())).rejects.toThrow(/2 Squads transactions of this study \(indexes 1, 2\) carry this payment’s operation id/);
+    expect(chain.sent.filter((s) => s.step.startsWith('approve'))).toEqual([]);
+  });
+});
+
+describe('operation identity, not transfer equality (parent and pqa-qa amendment)', () => {
+  beforeEach(async () => {
+    await squads.prepareVault({ studyId: 's1', builderWallet: chain.keys.builder });
+    chain.fundVault(squads.vaultFor('s1'), 3_000_000);
+    // Two legitimate payouts with the same vault, wallet and amount, for different participations.
+    db.exec(`UPDATE settlements SET participation_id = 'part-a' WHERE id = 'pay1';
+      INSERT INTO settlements (id,kind,study_id,participation_id,destination,amount_units,status,next_attempt_at,created_at) VALUES ('pay2','payout','s1','part-b','${TESTER}',1000000,'submitted',0,0);`);
+  });
+
+  it('identical transfers with different operation ids each settle once and are never adopted for each other', async () => {
+    const one = await squads.submit(payout());
+    const two = await squads.submit(payout({ settlementId: 'pay2', key: 'pay2:1' }));
+    expect(one.signature).not.toBe(two.signature);
+    expect(chain.balances.get(chain.ataOf(TESTER))).toBe(2_000_000);
+    const ops = [...chain.vaultTxs.values()].map((v) => v.operation);
+    expect(ops).toEqual([operationId('payout', 's1', 'part-a'), operationId('payout', 's1', 'part-b')]);
+    // Both mappings lost: each retry finds its own operation, nothing moves again.
+    db.prepare('DELETE FROM squads_attempts').run();
+    expect(await squads.submit(payout({ settlementId: 'pay2', key: 'pay2:2' }))).toEqual(two);
+    expect(await squads.submit(payout({ key: 'pay1:2' }))).toEqual(one);
+    expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(2);
+    expect(chain.balances.get(chain.ataOf(TESTER))).toBe(2_000_000);
+  });
+
+  it('the second payout is created fresh while the first is mid-flight with its mapping lost', async () => {
+    chain.crashAfter = 'approve:pocketqa';
+    await expect(squads.submit(payout())).rejects.toThrow(/simulated crash/);
+    chain.crashAfter = null;
+    db.prepare('DELETE FROM squads_attempts').run();
+    await squads.submit(payout({ settlementId: 'pay2', key: 'pay2:1' }));
+    await squads.submit(payout({ key: 'pay1:2' }));
+    expect(db.prepare('SELECT settlement_id, tx_index FROM squads_attempts ORDER BY tx_index').all()).toEqual([
+      { settlement_id: 'pay1', tx_index: 1 },
+      { settlement_id: 'pay2', tx_index: 2 },
+    ]);
+    expect(chain.sent.filter((s) => s.step === 'execute')).toHaveLength(2);
+    expect(chain.balances.get(chain.ataOf(TESTER))).toBe(2_000_000);
+  });
+});
+
+describe('failure copy reflects the chain state read for that operation (pqa-qa P3-4, required)', () => {
+  beforeEach(async () => {
+    await squads.prepareVault({ studyId: 's1', builderWallet: chain.keys.builder });
+  });
+  const failure = async (over = {}) => {
+    const e = await squads.submit(payout(over)).then(() => null, (x: unknown) => x);
+    expect(e).toBeInstanceOf(SettlementFailure);
+    return e as SettlementFailure;
+  };
+  it('on a non-devnet RPC the state is not read as devnet’s', async () => {
+    chain.genesis = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
+    const e = await failure();
+    expect(e.chainState).toMatch(/the RPC is not devnet, so the devnet state of this payment was not read/);
+  });
+  it('refused before any chain read: says the state was not read, never "nothing sent"', async () => {
+    const e = await failure({ amountUnits: 7 });
+    expect(e.chainState).toMatch(/stopped before signing; the devnet state of this payment was not read/);
+  });
+  it('not created: proven by a scan of the multisig for the operation id', async () => {
+    chain.fundVault(squads.vaultFor('s1'), 1);
+    const e = await failure();
+    expect(e.chainState).toBe('On devnet now: not created (no Squads transaction carries this payment’s operation id).');
+  });
+  it('awaiting approvals, after an earlier attempt landed its proposal', async () => {
+    chain.fundVault(squads.vaultFor('s1'), 2_000_000);
+    chain.crashAfter = 'approve:pocketqa';
+    await expect(squads.submit(payout())).rejects.toThrow(/simulated crash/);
+    chain.crashAfter = null;
+    chain.mintAccount = { owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', decimals: 9 };
+    const e = await failure({ key: 'pay1:2' });
+    expect(e.message).toMatch(/Refused before signing/);
+    expect(e.chainState).toBe('On devnet now: Squads transaction 1 awaiting approvals (1 of 2).');
+  });
+  it('executed, with the signature, when a pin fails after the payout landed', async () => {
+    chain.fundVault(squads.vaultFor('s1'), 2_000_000);
+    const { signature } = await squads.submit(payout());
+    db.prepare('DELETE FROM squads_attempts').run();
+    chain.programOk = false;
+    const e = await failure({ key: 'pay1:2' });
+    expect(e.chainState).toBe(`On devnet now: Squads transaction 1 executed (signature ${signature}, confirming).`);
+  });
+  it('unknown when the read itself fails', async () => {
+    chain.fundVault(squads.vaultFor('s1'), 1);
+    chain.getProposal = async () => {
+      throw new Error('rpc down');
+    };
+    chain.vaultTxs.set(`${squads.accountsFor('s1').multisig}:1`, goodTx({ amount: 5n }) as never);
+    chain.multisigs.get(squads.accountsFor('s1').multisig)!.transactionIndex = 1n;
+    const e = await failure();
+    expect(e.chainState).toBe('On devnet now: unknown (the read failed); checking again on the next run.');
+  });
+});
+
+describe('claims released on a definitive failure before creation (pqa-qa offline r1 P3-1)', () => {
+  it('a payout the vault can’t cover releases its index, so the next settlement isn’t blocked behind it', async () => {
+    await squads.prepareVault({ studyId: 's1', builderWallet: chain.keys.builder });
+    chain.fundVault(squads.vaultFor('s1'), 500_000);
+    await expect(squads.submit(payout())).rejects.toThrow(/holds less than it on devnet/);
+    expect(db.prepare('SELECT COUNT(*) AS n FROM squads_attempts').get()).toEqual({ n: 0 });
+    const other = Keypair.generate().publicKey.toBase58();
+    db.exec(`INSERT INTO settlements (id,kind,study_id,destination,amount_units,status,next_attempt_at,created_at) VALUES ('ref1','refund','s1','${other}',500000,'submitted',0,0);`);
+    await squads.submit(payout({ settlementId: 'ref1', key: 'ref1:1', kind: 'refund', destination: other, amountUnits: 500_000 }));
+    expect(db.prepare('SELECT tx_index FROM squads_attempts WHERE settlement_id = ?').get('ref1')).toEqual({ tx_index: 1 });
   });
 });
 
@@ -241,6 +423,18 @@ describe('funding readback (R2, R8)', () => {
     expect((await squads.getTransfer(elsewhere, { vault: a.vaultAta, reference: ref }))!.destination).toBe('');
     const otherMint = chain.recordFunding({ from: chain.keys.builder, toAta: a.vaultAta, amount: 2_200_000, reference: ref, mint: 'So11111111111111111111111111111111111111112' });
     expect((await squads.getTransfer(otherMint, { vault: a.vaultAta, reference: ref }))!.amountUnits).toBe(0);
+  });
+  it('a funding from an off-curve owner (a program address) has no refundable wallet (pqa-qa offline r1 P3-2)', async () => {
+    const a = squads.accountsFor('s1');
+    const ref = squads.newReference();
+    const sig = chain.recordFunding({ from: a.multisig, toAta: a.vaultAta, amount: 2_200_000, reference: ref });
+    expect((await squads.getTransfer(sig, { vault: a.vaultAta, reference: ref }))!.source).toBe('');
+  });
+  it('a funding from an on-curve wallet keeps its source', async () => {
+    const a = squads.accountsFor('s1');
+    const ref = squads.newReference();
+    const sig = chain.recordFunding({ from: chain.keys.builder, toAta: a.vaultAta, amount: 2_200_000, reference: ref });
+    expect((await squads.getTransfer(sig, { vault: a.vaultAta, reference: ref }))!.source).toBe(chain.keys.builder);
   });
   it('a transfer seen on a non-devnet cluster is never credited', async () => {
     const a = squads.accountsFor('s1');

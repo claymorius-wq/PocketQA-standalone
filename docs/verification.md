@@ -537,3 +537,17 @@ Full outputs are in `docs/reviews/wallet-rewards/`.
   - Squads program data at that time: last deploy slot 446638068; upgrade authority `HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK`; account sha256 `5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37`.
 - **Not yet evidenced:** every on-chain step (R1 to R8 live). They wait for faucet funding (`faucet-request.md`).
 
+## 2026-10-05: pilot offline r1 fixes (P1-1 operation id, P2-1, P3-1 to P3-4); lead, `feat/wallet-rewards`
+Full outputs are in `docs/reviews/wallet-rewards/`. **No live devnet run** was made (parent hold).
+- **RED, against the pre-fix adapter `3023657`:** 9 failing tests. They cover lost-mapping recovery after create, approve and execute, plus a completed payout; claim ownership; ambiguity; claim release; and an off-curve funding source.
+- **Mutation check:** 23 mutants, each of the 23 guards removed in turn (operation-id matching, creator, recovery scan, ambiguity, ownership, release, memo pin, rent collector, chain-state copy and the earlier guards). **All 23 fail at least one test.**
+- **GREEN:** the three Squads suites pass 78/78 (`pilot-adapter-tdd.txt`).
+- **P3-3, symlinked key directory:** RED on the old `config.ts` ("expected … outside the repository", got the chmod error), then GREEN.
+- **`pnpm verify`:** EXIT=0 (`pilot-verify.txt`).
+  - Secrets: 836 files, no findings.
+  - Tests: scripts 58, contracts 17, domain 216, API 558 plus 2 skipped, mobile 1075.
+- **Playwright** (`playwright.txt`): **15/15 passed (1.9 min), EXIT=0**, including `e2e/wallet-rewards.spec.ts` with the P2-1 fix.
+  - The run regenerated the `browser/` screenshots; they are committed as this candidate's evidence.
+  - The `gate-a` and `remaining-scope` screenshots it touched were restored from Git.
+- **Read-only devnet RPC calls** (for the source check in ADR 0007 §10.1): `getAccountInfo` of `MemoSq4gq…` (executable, BPFLoader2) and of `Memo4c2p…` (executable, upgradeable; not used).
+

@@ -235,7 +235,7 @@ export async function verifyFunding(db: DB, provider: SettlementProvider, f: Fun
       db.prepare(`UPDATE escrow_fundings SET status = 'confirmed', signature = ?, source = ?, confirmed_at = ? WHERE id = ?`).run(signature, seen!.source, nowMs, f.id);
       db.prepare('UPDATE study_escrows SET funding_wallet = ? WHERE study_id = ?').run(seen!.source, f.study_id);
       postEscrow(db, planFunding({ studyId: f.study_id, fundingId: f.id, amountUnits: f.amount_units }), nowMs, f.id);
-      audit(db, actorId, 'escrow.funding_confirmed', 'study', f.study_id, `${f.amount_units} units from ${seen!.source} (simulated settlement)`, nowMs);
+      audit(db, actorId, 'escrow.funding_confirmed', 'study', f.study_id, `${f.amount_units} units from ${seen!.source} (${provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value'})`, nowMs);
       // A funding that lands after its study closed (its builder deleted the account while the
       // transfer was in flight) is refunded at once to the wallet it came from.
       const study = db.prepare('SELECT * FROM studies WHERE id = ?').get(f.study_id) as StudyRow;

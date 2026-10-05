@@ -57,7 +57,10 @@ describe('the Squads devnet pilot (ADR 0007 §10): devnet test USDC, no value, n
 
   it('every payment state says devnet, and the settled one says no value and the pilot disclosure', () => {
     const states = (['pending', 'submitted', 'confirmed', 'failed'] as const).map((status) => paymentState({ status, failureReason: null, settlement: 'squads_devnet' }));
-    expect(states.map((s) => s.label)).toEqual(['Payment pending · devnet pilot', 'Payment submitted · devnet pilot', 'Settled on devnet · test USDC, no value', 'Payment failed · devnet pilot']);
+    expect(states.map((s) => s.label)).toEqual(['Payment pending · devnet pilot', 'Payment submitted · devnet pilot', 'Settled on devnet · test USDC, no value', 'Payment stopped · devnet pilot']);
+    // A stopped devnet payment never claims that nothing was sent: an earlier attempt may have landed steps.
+    expect(states[3]!.detail).not.toMatch(/nothing was sent|no funds moved/i);
+    expect(paymentState({ status: 'failed', failureReason: 'On devnet now: Squads transaction 1 awaiting approvals (1 of 2).', settlement: 'squads_devnet' }).detail).toMatch(/^On devnet now: Squads transaction 1 awaiting approvals/);
     for (const s of states) expect(`${s.label} ${s.detail}`).not.toMatch(/\bpaid\b|trustless|simulation|simulated/i);
     expect(states[2]!.detail).toMatch(/test keys simulate all roles; not independent custody/);
     expect(PILOT_DISCLOSURE).toMatch(/Devnet test USDC, no value\. Pilot: test keys simulate all roles.*not independent custody.*two of three signers/);

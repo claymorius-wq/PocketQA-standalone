@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -92,6 +92,10 @@ describe('A: scope, honesty and fail-closed', () => {
     expect(() => loadConfig({ ...base, POCKETQA_SETTLEMENT: 'squads_devnet' })).toThrow(/PILOT_KEYS_DIR/);
     expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: 'relative/keys' })).toThrow(/absolute/);
     expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: join(REPO_ROOT, 'docs') })).toThrow(/outside the repository/);
+    // A symlink outside the repo that points into it is refused too (pqa-qa P3-3).
+    const link = join(mkdtempSync(join(tmpdir(), 'pqa-pilot-link-')), 'keys');
+    symlinkSync(join(REPO_ROOT, 'docs'), link);
+    expect(() => loadConfig({ ...pilot, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: link })).toThrow(/outside the repository/);
     chmodSync(keys, 0o755);
     expect(() => loadConfig(pilot)).toThrow(/chmod 700/);
     chmodSync(keys, 0o700);

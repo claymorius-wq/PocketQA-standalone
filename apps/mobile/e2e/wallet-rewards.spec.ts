@@ -153,7 +153,7 @@ test('builder funds a wallet escrow study (simulated); tester joins with a froze
     const download = page.waitForEvent('download');
     await page.getByTestId('export-data').click();
     const path = await (await download).path();
-    await expect(page.getByTestId('export-done')).toContainText('wallet escrow records (simulated)');
+    await expect(page.getByTestId('export-done')).toContainText('wallet escrow records (each labelled with its settlement)');
     return { json: JSON.parse(readFileSync(path!, 'utf8')), raw: readFileSync(path!, 'utf8') };
   };
   await tester.goto('/discover');

@@ -178,3 +178,47 @@ A transfer that someone sends to a vault but never submits for verification is n
 - policy: the exact frozen destination and reserved amount only;
 - an autonomous multisig (`config_authority` default), threshold 2 of 3, and **no spending limits**.
 
+
+### 10.1 Operation identity on chain (pqa-qa pilot offline r1 P1-1 and the parent's ruling, 2026-10-05)
+**Problem.** Retries were made safe only by a local row (`squads_attempts`). If that row is lost, for example by a database restore, a retry created a second vault transaction and paid twice. pqa-qa reproduced this.
+
+**Ruled out:** recovering by "a transfer equal to the plan". Two legitimate payments can have the same vault, wallet and amount.
+
+**Decision.** Each payment has a durable operation id:
+- `pqa-op1:` followed by sha256 of `kind|studyId|participationId`, with `-` in place of the participation for the study's single refund;
+- bound to the payment itself, never to a local row id, so a re-created settlement row maps to the same id;
+- carried **inside** the immutable vault message, which is exactly **[TransferChecked(plan), Memo(operation id)]**. The Memo instruction has no accounts, so it claims no signature.
+
+**Sources, verified 2026-10-05:**
+- **Squads `vault_transaction_create.rs`** never assigns `args.memo`, so Squads' own memo argument is not stored. It can't carry the id.
+- **SPL Memo** (`solana-program/memo`, `entrypoint.rs`):
+  - with no accounts it only validates UTF-8 and logs;
+  - `MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr` is executable on devnet under the non-upgradeable BPF loader 2, read through the devnet RPC;
+  - the adapter pins both that id and that loader before signing.
+- **Squads `transaction_accounts_close.rs`:**
+  - anyone may close an executed, rejected or cancelled vault transaction, but only when the multisig has a rent collector (otherwise `RentReclamationDisabled`);
+  - so the pilot creates every multisig with **no rent collector**, and the config check refuses any other value;
+  - operation records therefore stay on chain for good;
+  - the cost is that this rent is never reclaimed (valueless devnet SOL in the pilot).
+- **Squads `vault_transaction_execute.rs`:** execution needs the proposal `Approved` and a member with Execute. The proposal is marked `Executed` after the inner calls, in the same transaction.
+
+**Recovery from chain alone** happens when a settlement has no local claim:
+1. The adapter scans the study multisig's vault transactions, from 1 to the chain's index, for its operation id.
+2. It adopts the index **only** if exactly one carrier exists, that carrier's payload equals the plan (transfer, accounts, amount, decimals), Pocket QA created it, and no other settlement claims the index.
+3. Two carriers, a carrier with any other payload or creator, or a carrier claimed elsewhere are **refused**: never created, approved or executed again, and left for an operator.
+4. An executed carrier returns its execute signature.
+
+**Failure copy states the chain state actually read** for that operation id:
+- not created;
+- created, with no proposal yet;
+- awaiting approvals (n of 2);
+- approved, not executed;
+- executed (signature, confirming);
+- unknown (the read failed).
+
+It never says "nothing sent" or "no funds moved" without a read proving it. When the RPC isn't devnet, it says the devnet state wasn't read.
+
+**Limits** (stated, not hidden):
+- **The scan reads every vault transaction of the study on each fresh claim.** That is fine for pilot volumes, but needs an index or paging at scale.
+- **Finding a lost execute signature uses RPC transaction history.** If that history is missing, the payment stays "executed, confirming" and is retried, but it is never executed again: the proposal status blocks it.
+- **Durability rests on the autonomous config:** no config authority, and Pocket QA, the only Initiate member, never proposes config transactions. A 2-of-3 vote could still add a rent collector. That is an operator-visible config change, and the adapter's config check refuses every later step while it lasts.

@@ -1,5 +1,7 @@
 # Squads devnet pilot: faucet request (public addresses only)
 
+> **HOLD (parent ruling, 2026-10-05):** no live devnet run, even if these addresses get funded, until pqa-qa approves the revised OFFLINE candidate (operation-id fix for pilot offline r1 P1-1). `devnet-pilot-receipt.*` is the BLOCKED dry run at `5d5d431`. It predates the fix and is no pilot evidence.
+
 **Scope:** ADR 0007 §10, Hamza's approval of the bounded devnet pilot.
 
 **These are test-only keys** generated for this pilot on 2026-10-05. The key files sit outside Git in `~/.config/pocketqa-devnet-pilot/` (directory 0700, files 0600). **No key material is in this file or anywhere in the repo.**

@@ -18,6 +18,16 @@ export const SQUADS_PROGRAM_DATA = 'Fy3YMJCvwbAXUgUM5b91ucUVA3jYzwWLHL3MwBqKsh8n
 /** On devnet the program is upgradeable by this key (mainnet is immutable); the runner records it before and after. */
 export const SQUADS_DEVNET_UPGRADE_AUTHORITY = 'HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK';
 export const BPF_UPGRADEABLE_LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
+/**
+ * SPL Memo v2. Verified 2026-10-05: executable on devnet under the non-upgradeable BPF loader 2
+ * (so it can't change); with no accounts it only validates UTF-8 and logs (solana-program/memo
+ * entrypoint.rs). It carries the operation id inside the vault message, because Squads doesn't
+ * store its own `memo` argument (vault_transaction_create.rs never assigns args.memo).
+ */
+export const MEMO_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+export const BPF_LOADER_2 = 'BPFLoader2111111111111111111111111111111111';
+/** Operation id format: `pqa-op1:` + sha256 hex of `kind|studyId|participationId` (`-` for a refund). */
+export const OPERATION_PREFIX = 'pqa-op1:';
 /** SPL Token instruction tag of TransferChecked (Transfer is 3 and is refused: it doesn't check mint or decimals). */
 export const TRANSFER_CHECKED = 12;
 /** The Squads "no config authority" value: an autonomous multisig changes only by its own vote. */

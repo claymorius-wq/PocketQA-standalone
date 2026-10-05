@@ -51,7 +51,8 @@ export function paymentState(p: { status: PaymentStatus; failureReason: string |
       case 'confirmed':
         return { label: 'Settled on devnet · test USDC, no value', detail: 'Finalized on Solana devnet. Pilot: test keys simulate all roles; not independent custody.', tone: 'success' };
       case 'failed':
-        return { label: 'Payment failed · devnet pilot', detail: `${p.failureReason ?? 'The devnet transfer failed.'} No funds moved; it is retried automatically.`, tone: 'danger' };
+        // The reason carries the devnet state Pocket QA read when it stopped; nothing more is claimed.
+        return { label: 'Payment stopped · devnet pilot', detail: `${p.failureReason ?? 'The devnet payment stopped.'} Pocket QA re-reads its devnet state and retries automatically.`, tone: 'danger' };
     }
   }
   switch (p.status) {

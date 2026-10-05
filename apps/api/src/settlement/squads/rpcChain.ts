@@ -7,12 +7,12 @@ import {
   TOKEN_PROGRAM_ID,
   unpackAccount,
 } from '@solana/spl-token';
-import { Connection, Keypair, PublicKey, TransactionMessage, VersionedTransaction, type AddressLookupTableAccount, type TokenBalance, type TransactionInstruction } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey, TransactionInstruction, TransactionMessage, VersionedTransaction, type AddressLookupTableAccount, type TokenBalance } from '@solana/web3.js';
 import * as multisig from '@sqds/multisig';
 import type { ParsedTokenTx } from '@pocket-qa/domain';
 import { SettlementFailure } from '../types';
 import type { ChainStatus, MemberState, MultisigState, ProposalStatus, Role, SquadsChain, VaultTransfer } from './chain';
-import { BPF_UPGRADEABLE_LOADER, DEVNET_GENESIS, PILOT_DECIMALS, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from './pins';
+import { BPF_LOADER_2, BPF_UPGRADEABLE_LOADER, DEVNET_GENESIS, MEMO_PROGRAM, PILOT_DECIMALS, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from './pins';
 
 /** The public devnet RPC (authorized for this pilot only); there is no override. */
 export const DEVNET_RPC = 'https://api.devnet.solana.com';
@@ -83,6 +83,11 @@ export class RpcSquadsChain implements SquadsChain {
     return info.data.readUInt32LE(0) === 2 && new PublicKey(info.data.subarray(4, 36)).toBase58() === SQUADS_PROGRAM_DATA;
   }
 
+  async memoProgramExecutable() {
+    const info = await this.conn.getAccountInfo(new PublicKey(MEMO_PROGRAM), 'finalized');
+    return !!info && info.executable && info.owner.toBase58() === BPF_LOADER_2;
+  }
+
   async getMultisig(ms: string): Promise<MultisigState | null> {
     const info = await this.conn.getAccountInfo(new PublicKey(ms), 'finalized');
     if (!info) return null;
@@ -99,11 +104,11 @@ export class RpcSquadsChain implements SquadsChain {
     };
   }
 
-  async createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string }) {
+  async createMultisig(input: { createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number; rentCollector: string | null }) {
     const createKey = Keypair.fromSeed(input.createKeySeed);
     const [configPda] = multisig.getProgramConfigPda({});
     const config = await multisig.accounts.ProgramConfig.fromAccountAddress(this.conn, configPda, 'finalized');
-    if (BigInt(config.multisigCreationFee.toString()) !== 0n) throw new SettlementFailure('Refused: the devnet Squads creation fee is not zero. Nothing was signed.');
+    if (BigInt(config.multisigCreationFee.toString()) !== 0n) throw new SettlementFailure('Refused before signing: the devnet Squads creation fee is not zero.');
     const ix = multisig.instructions.multisigCreateV2({
       treasury: config.treasury,
       creator: this.payer.publicKey,
@@ -113,7 +118,7 @@ export class RpcSquadsChain implements SquadsChain {
       members: input.members.map((m) => ({ key: new PublicKey(m.key), permissions: { mask: m.mask } as never })),
       timeLock: 0,
       createKey: createKey.publicKey,
-      rentCollector: new PublicKey(input.rentCollector),
+      rentCollector: input.rentCollector === null ? null : new PublicKey(input.rentCollector),
     });
     return this.send('multisig_create', [ix], [createKey]);
   }
@@ -138,15 +143,34 @@ export class RpcSquadsChain implements SquadsChain {
     const [pda] = multisig.getTransactionPda({ multisigPda: new PublicKey(ms), index });
     const info = await this.conn.getAccountInfo(pda, 'finalized');
     if (!info) return null;
-    const [vt] = multisig.accounts.VaultTransaction.fromAccountInfo(info);
+    let vt: multisig.accounts.VaultTransaction;
+    try {
+      if (!info.owner.equals(PROGRAM)) throw new Error('not a Squads account');
+      [vt] = multisig.accounts.VaultTransaction.fromAccountInfo(info);
+    } catch {
+      // Something other than a vault transaction at this index (e.g. a config transaction): it can
+      // never match a plan, and nothing is created over it.
+      return { creator: '', operation: null, instructions: -1, program: '', opcode: -1, source: '', mint: '', destination: '', authority: '', amount: -1n, decimals: -1 };
+    }
     const msg = vt.message;
-    const first = msg.instructions[0];
+    const [first, second] = msg.instructions;
     const key = (i: number) => msg.accountKeys[i]?.toBase58() ?? '';
     const data = Buffer.from(first?.data ?? []);
     const accounts = Array.from(first?.accountIndexes ?? []).map(key);
     // Lookup tables, or anything but 4 accounts and 10 data bytes, can't be the planned TransferChecked.
     const shapeOk = msg.addressTableLookups.length === 0 && accounts.length === 4 && data.length === 10;
+    // The operation id: the second instruction must be the pinned Memo with no accounts and UTF-8 data.
+    let operation: string | null = null;
+    if (second && key(second.programIdIndex) === MEMO_PROGRAM && second.accountIndexes.length === 0) {
+      try {
+        operation = new TextDecoder('utf-8', { fatal: true }).decode(second.data);
+      } catch {
+        operation = null;
+      }
+    }
     return {
+      creator: vt.creator.toBase58(),
+      operation,
       instructions: shapeOk ? msg.instructions.length : -1,
       program: first ? key(first.programIdIndex) : '',
       opcode: shapeOk ? data[0]! : -1,
@@ -159,13 +183,17 @@ export class RpcSquadsChain implements SquadsChain {
     };
   }
 
-  async createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint }) {
+  async createVaultTransfer(input: { multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint; operation: string }) {
     const vault = new PublicKey(input.vaultAuthority);
     const { blockhash } = await this.conn.getLatestBlockhash('finalized');
     const transactionMessage = new TransactionMessage({
       payerKey: vault,
       recentBlockhash: blockhash, // not used by Squads; the vault signs by CPI at execution
-      instructions: [createTransferCheckedInstruction(new PublicKey(input.source), MINT, new PublicKey(input.destination), vault, input.amount, PILOT_DECIMALS, [], TOKEN_PROGRAM_ID)],
+      instructions: [
+        createTransferCheckedInstruction(new PublicKey(input.source), MINT, new PublicKey(input.destination), vault, input.amount, PILOT_DECIMALS, [], TOKEN_PROGRAM_ID),
+        // The operation id, stored immutably in the vault transaction (no accounts: nobody's signature is claimed).
+        new TransactionInstruction({ programId: new PublicKey(MEMO_PROGRAM), keys: [], data: Buffer.from(input.operation, 'utf8') }),
+      ],
     });
     const ix = multisig.instructions.vaultTransactionCreate({
       multisigPda: new PublicKey(input.multisig),
@@ -248,7 +276,7 @@ export class RpcSquadsChain implements SquadsChain {
    * waits for `finalized`. A thrown error before `sendTransaction` means nothing was sent.
    */
   private async send(step: string, ixs: TransactionInstruction[], extraSigners: Keypair[], luts: AddressLookupTableAccount[] = []) {
-    if ((await this.conn.getGenesisHash()) !== DEVNET_GENESIS) throw new SettlementFailure('Refused: the RPC is not Solana devnet (genesis hash mismatch). Nothing was signed.');
+    if ((await this.conn.getGenesisHash()) !== DEVNET_GENESIS) throw new SettlementFailure('Refused before signing this step: the RPC is not Solana devnet (genesis hash mismatch).');
     const { blockhash, lastValidBlockHeight } = await this.conn.getLatestBlockhash('finalized');
     const message = new TransactionMessage({ payerKey: this.payer.publicKey, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message(luts);
     const tx = new VersionedTransaction(message);

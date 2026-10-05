@@ -41,5 +41,16 @@ export interface SettlementProvider {
   vaultBalance?(studyId: string): Promise<number | null>;
 }
 
-/** Nothing was sent; safe to retry later. */
-export class SettlementFailure extends Error {}
+/**
+ * A definitive refusal or stop: this attempt moves no funds and is retried later. `chainState`,
+ * when the provider has a network, says what the network showed for the payment when it stopped
+ * (an earlier attempt may have sent transactions); without one, nothing was sent at all.
+ */
+export class SettlementFailure extends Error {
+  constructor(
+    message: string,
+    public chainState: string | null = null,
+  ) {
+    super(message);
+  }
+}
