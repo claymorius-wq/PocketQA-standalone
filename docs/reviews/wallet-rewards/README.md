@@ -48,3 +48,24 @@
   - the builder test includes a builder finding and states what may appear: the builder's own findings keep their participation id, and money rows carry none.
 
 - **Export review r4:** `qa-wallet-rewards-export-verdict-r4.md`, **APPROVE** of exactly `2b069b0` (the r3 P3s, both fixed).
+
+## Squads v4 devnet feasibility pilot (ADR 0007 §10 and §10.1)
+**Status:**
+- **OFFLINE: APPROVED** for exactly `dc76870`. Code stays frozen there until funding arrives.
+- **LIVE receipt gate: NOT PASSED.** No live run has happened. The test keys are unfunded: 0 SOL and no official devnet test-USDC token account, confirmed by the lead and independently by the parent.
+- **The pilot is not approved without live receipts.**
+
+**pqa-qa reviews** (exact copies of the reviewer's files):
+- `qa-devnet-pilot-test-matrix-r1.md`: the R0–R8 and C1–C10 checks.
+- `qa-devnet-pilot-offline-verdict-r1.md`: CHANGES_REQUIRED on `3023657`, with the amendment that the P1-1 fix needs an on-chain operation id.
+- `qa-devnet-pilot-offline-verdict-r2.md`: **APPROVE (offline only)** on `dc76870`.
+
+**Lead evidence:**
+- `pilot-adapter-tdd.txt`: RED against `3023657`; 23/23 mutants killed; GREEN 78/78.
+- `pilot-verify.txt`: `pnpm verify` EXIT=0.
+- `playwright.txt` and `browser/`: Playwright 15/15.
+- `faucet-request.md`: public addresses, the faucet attempts, and the minimum human action.
+
+**`devnet-pilot-receipt.{md,json}`:** the superseded BLOCKED dry run at `5d5d431`, from before the fix. Nothing was sent, and it is **not pilot evidence**. The funded live run overwrites it.
+
+**The fee:** the test platform fee stays in the study vault and is accounted for in the books and in reconciliation. No fee transfer was added (existing scope).
