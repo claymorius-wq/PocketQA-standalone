@@ -23,7 +23,7 @@ jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { i
 let mockCapability: { available: true; mode?: 'projection' | 'broadcast' } | { available: false; reason: string } = { available: true };
 jest.mock('../src/lib/capability', () => ({ recordingCapability: () => mockCapability }));
 
-type Recorder = { live: boolean; startAsync: jest.Mock; stopAsync: jest.Mock; isRecording: () => boolean; discardAsync: jest.Mock; purgeAsync: jest.Mock; addListener: jest.Mock; takePendingAsync: jest.Mock; showBroadcastPicker: jest.Mock };
+type Recorder = { live: boolean; startAsync: jest.Mock; stopAsync: jest.Mock; isRecording: () => boolean; discardAsync: jest.Mock; purgeAsync: jest.Mock; addListener: jest.Mock; takePendingAsync: jest.Mock; takeInterruptedAsync: jest.Mock; showBroadcastPicker: jest.Mock };
 const mockRecorder: Recorder = {
   live: false,
   startAsync: jest.fn(),
@@ -33,6 +33,7 @@ const mockRecorder: Recorder = {
   purgeAsync: jest.fn(() => Promise.resolve()),
   addListener: jest.fn(() => ({ remove: jest.fn() })),
   takePendingAsync: jest.fn(() => Promise.resolve([])),
+  takeInterruptedAsync: jest.fn(() => Promise.resolve(0)),
   showBroadcastPicker: jest.fn(),
 };
 jest.mock('../src/evidence/recorder', () => ({ nativeRecorder: () => mockRecorder }));
@@ -41,7 +42,18 @@ jest.mock('../src/wallet/TransferCard', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { TransferCard: () => <View testID="transfer-card" /> };
 });
-jest.mock('expo-file-system', () => ({ File: class { delete() {} } }));
+const mockDeleted: string[] = [];
+jest.mock('expo-file-system', () => ({
+  File: class {
+    uri: string;
+    constructor(uri: string) {
+      this.uri = uri;
+    }
+    delete() {
+      mockDeleted.push(this.uri);
+    }
+  },
+}));
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn() }));
 
 const mockApi = jest.fn();
@@ -123,9 +135,12 @@ beforeEach(() => {
   });
   mockRecorder.stopAsync.mockReset().mockImplementation(() => {
     mockRecorder.live = false;
-    return Promise.resolve({ uri: 'file:///clip.mp4', durationMs: 5000, sizeBytes: 2 * 1024 * 1024, mimeType: 'video/mp4' });
+    return Promise.resolve({ uri: 'file:///clip.mp4', durationMs: 5000, sizeBytes: 2 * 1024 * 1024, mimeType: 'video/mp4', videoMs: 5000, voiceMs: 4900, voiceComplete: true });
   });
   mockRecorder.takePendingAsync.mockReset().mockImplementation(() => Promise.resolve([]));
+  mockRecorder.takeInterruptedAsync.mockReset().mockImplementation(() => Promise.resolve(0));
+  mockRecorder.discardAsync.mockClear();
+  mockDeleted.length = 0;
   mockRecorder.showBroadcastPicker.mockReset();
   mockRecorder.addListener.mockReset().mockImplementation(() => ({ remove: jest.fn() }));
   mockApi.mockReset();
@@ -306,10 +321,16 @@ describe('Your session', () => {
   });
 
   describe('native screen + voice (docs/plans/native-screen-voice-recording.md)', () => {
-    const CLIP = { uri: 'file:///cache/recordings/a.mp4', durationMs: 7000, sizeBytes: 3 * 1024 * 1024, mimeType: 'video/mp4' as const };
+    const CLIP = { uri: 'file:///files/recordings/a.mp4', durationMs: 7000, sizeBytes: 3 * 1024 * 1024, mimeType: 'video/mp4' as const, videoMs: 7000, voiceMs: 6900, voiceComplete: true };
     const onAndroid = () => {
       jest.replaceProperty(Platform, 'OS', 'android');
       jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    };
+    // RN's jest preset mocks AppState.currentState as a function; the app reads the real string.
+    const appStateIs = (st: 'active' | 'background') => {
+      const original = Object.getOwnPropertyDescriptor(AppState, 'currentState')!;
+      Object.defineProperty(AppState, 'currentState', { configurable: true, get: () => st });
+      return () => Object.defineProperty(AppState, 'currentState', original);
     };
     const stopListener = () => mockRecorder.addListener.mock.calls.find((c) => c[0] === 'onStopped')![1] as (e: { reason: string; clip: typeof CLIP | null }) => void;
 
@@ -362,6 +383,63 @@ describe('Your session', () => {
       await act(async () => stopListener()({ reason, clip: CLIP }));
       expect(screen.getByTestId('recording-stopped')).toHaveTextContent(copy);
       expect(screen.getByTestId('segment-recorded')).toBeTruthy();
+    });
+
+    it('a clip whose voice stops early is shown marked, can be removed, and can never be kept or uploaded', async () => {
+      // Emulator rotation run 2026-10-05: video 391.7 s, voice only 202.7 s.
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([{ ...CLIP, uri: 'file:///files/recordings/cut.mp4', videoMs: 391_720, voiceMs: 202_687, voiceComplete: false }]));
+      await renderScreen(base('in_progress'));
+      const row = screen.getByTestId('segment-recorded');
+      expect(row).toHaveTextContent(/Voice stops at 3:22 of 6:31/);
+      expect(row).toHaveTextContent(/can.t be uploaded/);
+      expect(screen.queryByTestId('segment-keep')).toBeNull();
+      expect(screen.queryByTestId('upload-kept')).toBeNull();
+      await press('segment-remove');
+      expect(mockDeleted).toContain('file:///files/recordings/cut.mp4');
+    });
+
+    it('a recorded clip without a voice verdict is treated as unverified, never as narrated', async () => {
+      const { videoMs: _v, voiceMs: _m, voiceComplete: _c, ...unmeasured } = CLIP;
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([unmeasured]));
+      await renderScreen(base('in_progress'));
+      expect(screen.getByTestId('segment-recorded')).toHaveTextContent(/voice in this clip couldn.t be checked/i);
+      expect(screen.queryByTestId('segment-keep')).toBeNull();
+    });
+
+    it('a narrated clip can be kept as before', async () => {
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([CLIP]));
+      await renderScreen(base('in_progress'));
+      expect(screen.getByTestId('segment-keep')).toBeTruthy();
+      expect(screen.getByTestId('segment-recorded')).not.toHaveTextContent(/Voice stops|couldn.t be checked/);
+    });
+
+    it('a recording the system cut off (Pocket QA was closed mid-recording) is reported', async () => {
+      mockRecorder.takeInterruptedAsync.mockImplementation(() => Promise.resolve(1));
+      await renderScreen(base('in_progress'));
+      expect(mockRecorder.takeInterruptedAsync).toHaveBeenCalledWith('p1');
+      expect(screen.getByTestId('evidence-error')).toHaveTextContent(/interrupted.*couldn.t be saved.*Nothing from it was uploaded/);
+    });
+
+    it('the screen torn down while the tester is in ANOTHER app keeps the recording and its clips (pqa-qa r1 P2-A)', async () => {
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([CLIP]));
+      const { unmount } = await renderScreen(base('in_progress'));
+      mockRecorder.live = true;
+      const restore = appStateIs('background');
+      await act(async () => unmount());
+      restore();
+      expect(mockRecorder.discardAsync).not.toHaveBeenCalled();
+      expect(mockDeleted).toEqual([]);
+    });
+
+    it('leaving the session in the foreground still discards the live recording and deletes unsent clips', async () => {
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([CLIP]));
+      const { unmount } = await renderScreen(base('in_progress'));
+      mockRecorder.live = true;
+      const restore = appStateIs('active');
+      await act(async () => unmount());
+      restore();
+      expect(mockRecorder.discardAsync).toHaveBeenCalledTimes(1);
+      expect(mockDeleted).toContain(CLIP.uri);
     });
 
     it('iPhone: Start opens the system broadcast picker (other apps, microphone toggle) instead of an in-app recorder', async () => {

@@ -13,6 +13,7 @@ import { PRODUCTION_BUILD } from '../lib/deployment';
 import { endsRestoredSession, resolveManagedSession } from './managedSession';
 import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
+import { nativeRecorder } from '../evidence/recorder';
 import { disposeAllWebRecorders } from '../evidence/webScreenRecorder';
 
 type NewAccount = { role: 'tester' | 'builder'; displayName: string };
@@ -78,6 +79,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(async () => {
     // A web screen recording never outlives the session: stop its devices and drop its bytes.
     disposeAllWebRecorders();
+    // Native recordings neither: stop any session and delete every clip and notice on the device,
+    // so the next account on this phone never sees them (pqa-qa r1 guardrail 1).
+    await nativeRecorder()?.clearAllAsync?.().catch(() => {});
     token.current = null;
     setUser(null);
     setNeedsAccount(false);

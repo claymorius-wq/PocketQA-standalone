@@ -99,6 +99,28 @@ function newId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+const INTERRUPTED = 'A recording was interrupted (Android closed Pocket QA while it was recording) and couldn’t be saved. Nothing from it was uploaded. Record again.';
+
+function clock(ms: number) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Why a recorded clip can't be used as narrated evidence, from the native voice verdict (measured on
+ * the finished file); undefined when the voice covers the video.
+ */
+function voiceProblem(c: RecordedClip): string | undefined {
+  if (c.voiceComplete === true) return undefined;
+  if (c.voiceComplete === false && c.videoMs && c.voiceMs) {
+    return `Voice stops at ${clock(c.voiceMs)} of ${clock(c.videoMs)}: the microphone recording was cut short, so this clip can’t be uploaded as narrated evidence. Remove it and record again.`;
+  }
+  if (c.voiceComplete === false && c.videoMs) {
+    return 'This clip has no voice: the microphone wasn’t recorded, so it can’t be uploaded as narrated evidence. Remove it and record again.';
+  }
+  return 'The voice in this clip couldn’t be checked, so it can’t be uploaded as narrated evidence. Remove it and record again.';
+}
+
 function deleteLocal(seg: LocalSegment) {
   if (Platform.OS === 'web') {
     if (seg.uri.startsWith('blob:')) URL.revokeObjectURL(seg.uri);
@@ -285,7 +307,12 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   useEffect(
     () => () => {
       cancelled.current = true;
-      // Capture never outlives the session screen: stop and delete an in-progress recording.
+      // Torn down while the tester is in another app (Android destroyed the screen: low memory,
+      // "Don't keep activities"): that is not the tester leaving. The recording carries on and its
+      // clips stay listed natively until the session screen comes back (pqa-qa r1 P2-A).
+      if (AppState.currentState !== 'active') return;
+      // The tester left the session: capture never outlives it; stop and delete an in-progress
+      // recording, and delete everything not uploaded.
       if (recorder) {
         const discard = recorder.isRecording() ? recorder.discardAsync() : Promise.resolve();
         void discard.then(() => recorder.purgeAsync()).catch(() => {});
@@ -323,13 +350,19 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   }, [recorder]);
 
   async function claimPending() {
-    const clips = (await recorder?.takePendingAsync?.(p.id).catch(() => [])) ?? [];
-    if (!cancelled.current) clips.forEach(addClip);
+    const [clips, lost] = await Promise.all([
+      recorder?.takePendingAsync?.(p.id).catch(() => []) ?? [],
+      recorder?.takeInterruptedAsync?.(p.id).catch(() => 0) ?? 0,
+    ]);
+    if (cancelled.current) return;
+    clips.forEach(addClip);
+    if (lost > 0) setError(INTERRUPTED);
   }
   /** One row per file, whichever path delivered it first (stop result, stop event or pending store). */
   function addClip(c: RecordedClip) {
     if (live.current.some((s) => s.uri === c.uri)) return;
-    addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: c.mimeType, size: c.sizeBytes, uri: c.uri, durationMs: c.durationMs });
+    const problem = voiceProblem(c);
+    addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: c.mimeType, size: c.sizeBytes, uri: c.uri, durationMs: c.durationMs, ...(problem ? { voiceProblem: problem } : {}) });
   }
 
   function addSegment(s: Omit<LocalSegment, 'id' | 'state' | 'capturedOn'>) {
@@ -401,6 +434,8 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   }
 
   function keep(id: string) {
+    // A clip without full narration is never kept, so never uploaded (uploadQueue takes kept items only).
+    if (live.current.find((s) => s.id === id)?.voiceProblem) return;
     update((l) => applySegment(l, id, 'keep'));
   }
   function remove(id: string) {
@@ -475,9 +510,9 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
               mimeType={s.mimeType}
               size={s.size}
               state={s.state}
-              error={s.error ?? undefined}
+              error={s.error ?? s.voiceProblem}
               preview={s.uri ? <MediaPreview uri={s.uri} mimeType={s.mimeType} testID="segment-preview" /> : null}
-              onKeep={locked ? undefined : () => keep(s.id)}
+              onKeep={locked || s.voiceProblem ? undefined : () => keep(s.id)}
               onRemove={locked ? undefined : () => remove(s.id)}
             />
           </View>

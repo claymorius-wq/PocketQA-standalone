@@ -18,6 +18,8 @@ export type LocalSegment = {
   durationMs?: number;
   capturedOn: 'android' | 'ios' | 'web';
   error?: string;
+  /** A recording whose narration doesn't cover the video (or couldn't be checked): reviewable, never kept or uploaded. */
+  voiceProblem?: string;
 };
 
 export function applySegment(list: LocalSegment[], id: string, action: SegmentAction, patch: Partial<LocalSegment> = {}): LocalSegment[] {

@@ -27,13 +27,16 @@ class MicDeniedException : CodedException("ERR_MIC_DENIED", "Microphone permissi
  *  - stopAsync() finalises and returns the local clip;
  *  - "onStopped" fires when a session ends any other way (notification Stop, system chip, lock,
  *    microphone loss, error, cap);
- *  - takePendingAsync(tag) hands over finished clips of that session that JS hasn't received yet
- *    (the tester was in another app, or JS reloaded).
+ *  - takePendingAsync(tag) lists that session's finished clips whose files still exist (the tester
+ *    was in another app, JS reloaded, or the screen was destroyed in the background); each clip
+ *    carries its voice verdict (voiceComplete, voiceMs, videoMs);
+ *  - takeInterruptedAsync(tag) counts that session's recordings lost to process death, once;
+ *  - clearAllAsync() stops and deletes everything (sign-out, account deletion).
  */
 class ScreenCaptureModule : Module() {
   private var pendingStart: Promise? = null
   private var pendingTag = ""
-  private val store: PendingStore get() = PendingStore(java.io.File(context.cacheDir, "recordings"))
+  private val store: PendingStore get() = recordingStore(context)
   private val context: Context get() = appContext.reactContext ?: throw IllegalStateException("React context lost")
 
   override fun definition() = ModuleDefinition {
@@ -44,6 +47,8 @@ class ScreenCaptureModule : Module() {
       // Truncated files (the process died mid-recording) and files JS lost track of are deleted;
       // finished, unclaimed clips stay for their session to claim (expiring after a day).
       store.sweep(active = RecorderBridge.currentFile)
+      // Builds before 2026-10-05 kept recordings in the evictable cache; nothing there is offered any more.
+      java.io.File(context.cacheDir, "recordings").deleteRecursively()
       RecorderBridge.onStopped = { reason, clip ->
         sendEvent("onStopped", mapOf("reason" to reason, "clip" to clip?.toMap()))
       }
@@ -52,19 +57,14 @@ class ScreenCaptureModule : Module() {
     Function("isRecording") { RecorderBridge.recording }
 
     /** Stops an active session (if any) and deletes its file: used when the session screen goes away. */
-    AsyncFunction("discardAsync") { promise: Promise ->
-      if (!RecorderBridge.recording) {
-        promise.resolve(null)
-        return@AsyncFunction
-      }
-      // If stopAsync() is already waiting, settle it too (its clip is being discarded).
-      val previous = RecorderBridge.pendingStop
-      RecorderBridge.pendingStop = { clip ->
-        clip?.let { forget(it.file) }
-        previous?.invoke(null)
+    AsyncFunction("discardAsync") { promise: Promise -> discard { promise.resolve(null) } }
+
+    /** Sign-out and account deletion: stop any session and delete every clip and notice. */
+    AsyncFunction("clearAllAsync") { promise: Promise ->
+      discard {
+        store.clearAll(active = RecorderBridge.currentFile)
         promise.resolve(null)
       }
-      context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
     }
 
     AsyncFunction("startAsync") { tag: String, promise: Promise ->
@@ -105,20 +105,32 @@ class ScreenCaptureModule : Module() {
       context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
     }
 
-    /** Finished clips of this session not yet handed to JS; each is handed over once. */
+    /** Finished clips of this session that JS hasn't deleted yet (uploaded or discarded). */
     AsyncFunction("takePendingAsync") { tag: String ->
-      store.take(tag).map { Clip(it.file, it.durationMs).toMap() }
+      store.pending(tag).map { Clip.of(it).toMap() }
     }
 
-    /** The session screen is gone: delete orphaned and truncated files (finished, unclaimed clips expire on their own). */
+    AsyncFunction("takeInterruptedAsync") { tag: String -> store.takeInterrupted(tag) }
+
+    /** The session screen is gone: delete truncated files and expired clips (finished clips stay for their session). */
     AsyncFunction("purgeAsync") { store.sweep(active = RecorderBridge.currentFile) }
 
     OnDestroy { RecorderBridge.onStopped = null }
   }
 
-  /** Deletes a discarded clip and its pending entry. */
-  private fun forget(file: java.io.File) {
-    file.delete()
-    java.io.File(file.parentFile, file.nameWithoutExtension + ".meta").delete()
+  /** Stops an active session (if any) and deletes its file, then calls [done]. */
+  private fun discard(done: () -> Unit) {
+    if (!RecorderBridge.recording) {
+      done()
+      return
+    }
+    // If stopAsync() is already waiting, settle it too (its clip is being discarded).
+    val previous = RecorderBridge.pendingStop
+    RecorderBridge.pendingStop = { clip ->
+      clip?.let { store.forget(it.file) }
+      previous?.invoke(null)
+      done()
+    }
+    context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
   }
 }

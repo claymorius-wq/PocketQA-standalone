@@ -12,9 +12,16 @@ android {
     versionCode 1
     versionName "0.1.0"
   }
+  testOptions {
+    unitTests.all {
+      // Optional: the real emulator clips (kept privately, not in Git) for VoiceCheckTest.
+      def clips = System.getProperty('pqa.voiceClips')
+      if (clips) systemProperty 'pqa.voiceClips', clips
+    }
+  }
 }
 
 dependencies {
-  // JVM unit tests for the pure parts (PendingStore, CaptureMath): ./gradlew :<module>:testDebugUnitTest
+  // JVM unit tests for the pure parts (PendingStore, CaptureMath, VoiceCheck): ./gradlew :<module>:testDebugUnitTest
   testImplementation 'junit:junit:4.13.2'
 }

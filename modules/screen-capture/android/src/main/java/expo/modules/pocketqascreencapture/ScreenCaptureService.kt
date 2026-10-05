@@ -54,14 +54,16 @@ class ScreenCaptureService : Service() {
   private var stopping = false
   private var silentTicks = 0
   private val main = Handler(Looper.getMainLooper())
-  private val store by lazy { PendingStore(File(cacheDir, "recordings")) }
+  private val store by lazy { recordingStore(this) }
 
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action) {
       ACTION_START -> start(intent)
-      ACTION_STOP -> finish("user")
+      // A Stop with no session (a stale notification action, a late in-app Stop) must not leave the
+      // service running (pqa-qa r1 P3-5).
+      ACTION_STOP -> if (recorder == null) stopSelf() else finish("user")
     }
     return START_NOT_STICKY
   }
@@ -72,7 +74,12 @@ class ScreenCaptureService : Service() {
     tag = intent.getStringExtra(EXTRA_TAG) ?: ""
     // Narration is required: without the microphone permission nothing is recorded (no video-only clip).
     if (resultCode != Activity.RESULT_OK || data == null || checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+      // The module checks both before starting us, so this is only a race (consent or the
+      // microphone revoked in between). A service started with startForegroundService must still
+      // call startForeground before it stops, or Android kills the app (pqa-qa r1 P3-1).
+      startForegroundForFailure(projection = resultCode == Activity.RESULT_OK && data != null)
       notifyStopped("error", null)
+      stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
       return
     }
@@ -89,7 +96,7 @@ class ScreenCaptureService : Service() {
       }, main)
 
       val (w, h, dpi) = captureSize()
-      val file = store.newFile()
+      val file = store.newFile(tag)
       output = file
       RecorderBridge.currentFile = file
       val rec = if (Build.VERSION.SDK_INT >= 31) MediaRecorder(this) else @Suppress("DEPRECATION") MediaRecorder()
@@ -123,7 +130,7 @@ class ScreenCaptureService : Service() {
       main.postDelayed(micWatch, 1000)
     } catch (e: Exception) {
       cleanup()
-      output?.delete()
+      output?.let(store::forget)
       notifyStopped("error", null)
       stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
@@ -172,13 +179,22 @@ class ScreenCaptureService : Service() {
       // itself, and the file it finalised is then still valid.
       reason == "limit"
     }
-    cleanup()
+    // The finished file is measured, then recorded as pending, BEFORE cleanup() stops protecting it
+    // as the active file: a concurrent sweep can't take it in between (pqa-qa r1 P3-2). A file with
+    // no readable index can't be played and is dropped; a clip whose voice doesn't cover the video
+    // is kept for review but marked, and is never offered as narrated evidence.
     var clip: Clip? = null
     if (file != null) {
-      if (stopped && store.markComplete(file, durationMs, tag, reason)) clip = Clip(file, durationMs)
-      else file.delete()
+      val voice = if (stopped) VoiceCheck.inspect(file) else null
+      if (voice != null && store.markComplete(file, durationMs, tag, reason, voice)) {
+        clip = Clip(file, durationMs, voice.videoMs, voice.voiceMs, voice.complete)
+      } else {
+        store.forget(file)
+      }
     }
-    notifyStopped(reason, clip)
+    cleanup()
+    // A finalised recording that couldn't be kept (unreadable or empty) is an error, whatever stopped it.
+    notifyStopped(if (stopped && clip == null) "error" else reason, clip)
     stopForeground(STOP_FOREGROUND_REMOVE)
     stopSelf()
   }
@@ -200,7 +216,34 @@ class ScreenCaptureService : Service() {
     if (pending != null) pending(clip) else RecorderBridge.onStopped?.invoke(reason, clip)
   }
 
+  /** Satisfies startForegroundService's contract on a failed start with whatever type is still allowed. */
+  private fun startForegroundForFailure(projection: Boolean) {
+    val types = buildList {
+      if (Build.VERSION.SDK_INT >= 30 && projection) add(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+      if (Build.VERSION.SDK_INT >= 29 && projection) add(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+      if (Build.VERSION.SDK_INT >= 30) add(ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+    }
+    val n = notification()
+    for (t in types) {
+      try {
+        startForeground(NOTIFICATION_ID, n, t)
+        return
+      } catch (_: Exception) {
+        // Not allowed with this type; try the next.
+      }
+    }
+  }
+
   private fun startForegroundCompat() {
+    val n = notification()
+    when {
+      Build.VERSION.SDK_INT >= 30 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+      Build.VERSION.SDK_INT >= 29 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+      else -> startForeground(NOTIFICATION_ID, n)
+    }
+  }
+
+  private fun notification(): Notification {
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     nm.createNotificationChannel(NotificationChannel(CHANNEL, "Screen recording", NotificationManager.IMPORTANCE_LOW))
     // A Stop action gives every Android version (including 10–14, which have no status-bar chip) a
@@ -212,7 +255,7 @@ class ScreenCaptureService : Service() {
     val open = packageManager.getLaunchIntentForPackage(packageName)?.let {
       PendingIntent.getActivity(this, 2, it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
-    val n: Notification = Notification.Builder(this, CHANNEL)
+    return Notification.Builder(this, CHANNEL)
       .setContentTitle("Pocket QA is recording your screen and microphone")
       .setContentText("Stop when you're done. You'll review the clip before anything is uploaded.")
       .setSmallIcon(android.R.drawable.presence_video_online)
@@ -220,11 +263,6 @@ class ScreenCaptureService : Service() {
       .apply { if (open != null) setContentIntent(open) }
       .addAction(Notification.Action.Builder(null, "Stop recording", stop).build())
       .build()
-    when {
-      Build.VERSION.SDK_INT >= 30 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-      Build.VERSION.SDK_INT >= 29 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-      else -> startForeground(NOTIFICATION_ID, n)
-    }
   }
 
   override fun onDestroy() {

@@ -1,9 +1,7 @@
 # Shared: come back to Pocket QA (no state cleared) and show the clip waiting for review.
 appId: com.reshareai.pocketqa
 ---
-- launchApp:
-    appId: com.reshareai.pocketqa
-    stopApp: false
+- runFlow: _voice-reopen.yaml
 - scrollUntilVisible:
     element:
       id: segment-recorded

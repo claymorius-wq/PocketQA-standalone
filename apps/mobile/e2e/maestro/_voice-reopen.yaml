@@ -1,0 +1,23 @@
+# Shared: bring Pocket QA back WITHOUT clearing state. If Android recreated the app (process death,
+# "Don't keep activities"), it opens on the home screen: go back into this study's session.
+appId: com.reshareai.pocketqa
+---
+- launchApp:
+    appId: com.reshareai.pocketqa
+    stopApp: false
+- extendedWaitUntil:
+    visible: ".*(Your session|${STUDY}).*"
+    timeout: 60000
+- runFlow:
+    when:
+      notVisible: "Your session"
+    commands:
+      - tapOn: ${STUDY}
+      - scrollUntilVisible:
+          element:
+            id: open-session
+      - tapOn:
+          id: open-session
+      - extendedWaitUntil:
+          visible: "Your session"
+          timeout: 30000
