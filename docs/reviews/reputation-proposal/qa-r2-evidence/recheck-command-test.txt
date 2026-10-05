@@ -1,0 +1,11 @@
+# research-recheck.txt line 5, run exactly as written (2026-10-05T08:10Z):
+$ curl https://api.mainnet-beta.solana.com -d '{"method":"getMinimumBalanceForRentExemption","params":[0]}'
+ {"jsonrpc":"2.0","error":{"code":415,"message":"Invalid content-type, this application only supports application/json"}, "id": null } 
+
+[HTTP 415]
+
+# the same with -H 'content-type: application/json' and a full JSON-RPC body:
+$ curl https://api.mainnet-beta.solana.com -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getMinimumBalanceForRentExemption","params":[0]}'
+{"jsonrpc":"2.0","result":650240,"id":1}
+
+[HTTP 200]

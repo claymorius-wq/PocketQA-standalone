@@ -10,7 +10,7 @@
 
 His plan (`docs/plans/wallet-escrow-rewards-leaderboard.md`) isn't in the repo yet, so this proposal waits for it. Every point value, threshold and level name below is **a proposal, not decided**. The product questions are in §9.
 
-**What this document carries.** The rules, values, timings, copy, behaviour and visual recipes (Appendix A) an engineer needs to build the layer. The boards themselves are on the design canvas "Pocket QA Glass" (private; claymorius-wq shares access), on the page **"Next · reputation (proposal)"**:
+**What this document carries.** The rules, values, timings, copy, behaviour and visual recipes (Appendix A) an engineer needs to build the layer. The boards themselves were made for the design canvas "Pocket QA Glass", as a new page **"Next · reputation (proposal)"**. A static preview page of every board also exists. Both are private, and claymorius-wq can share them. The boards:
 - `A-Badges`: the system board;
 - `A-BadgeEarned`: the badge moment in context;
 - `A-Profile`: the tester's "You" tab;
@@ -28,7 +28,7 @@ The canvas spec is the Lens reputation addendum (`REPUTATION.md` v3, beside the 
 | Term | Meaning |
 |---|---|
 | Key light | Lens's one fixed light, from the top-left of the screen (ADR 0006). The **key pool** is its glow on the ground. |
-| Uplight, U1–U8 | A second light, from below, at eight earned moments of the Lens spec. Here: **U5** lights the Approved notice and the credits balance; **U6** lights a dispute overturned in the tester's favour; **U7** lights a builder's Approve or Publish sheet; **U8** lights a devnet transfer confirmed. **U9** is the moment this document proposes. |
+| Uplight, U1–U8 | A second light, from below, at eight moments that earn light in the Lens spec. Here: **U5** lights the Approved notice and the credits balance; **U6** lights a dispute overturned in the tester's favour; **U7** lights a builder's Approve or Publish sheet; **U8** lights a devnet transfer confirmed. **U9** is the moment this document proposes. |
 | Mode A | The Uplight is carried by its subject (a card, notice or medallion) and glows from under it. |
 | L-1, L1, L2 | Lens glass levels: a recessed well; a card; raised glass. |
 | Lit glass, unlit glass | Glass drawn with or without the key light's rim and caustic, as earned vs locked badges are. This is not the Uplight. |
@@ -140,12 +140,15 @@ One geometry at four sizes, where S is the socket's outer diameter:
 - `you`, for the proposed You tab: a tester seen through the lens ring.
 
 **Shared pieces** (the boards' names):
-- `pointsChip`: raised for posted points ("1,910 points"), or recessed with an unlit bead when held ("+150 held");
-- `levelMeter`: a recessed groove whose fill starts at 0 at the level's floor; held points are hatched after the fill and never move the level;
-- `trackRecord`: accepted out of decided, on time out of accepted, lost disputes;
-- `shelfItem`: a 56 medallion, a two-line name block and one readout ("Tier I · 9/10", "Tier II · New", "Earned"), as one button;
-- `badgeRow`: a 64-tall list row with a 40 medallion;
+- `pointsChip`: 28 tall, fully rounded. It is raised glass for posted points ("1,910 points"), or the recessed well with a 9px unlit bead when held ("+150 held"). It never animates while held.
+- `levelMeter`: a recessed groove whose fill starts at 0 at the level's floor. Held points are hatched after the fill and never move the level. The profile hero drops the held clause from its caption (`heldCaption: false`), because the held chip beside it already says it.
+- `trackRecord`: accepted out of decided, on time out of accepted, lost disputes.
+- `shelfItem`: a 56 medallion, a two-line name block and one readout ("Tier I · 9/10", "Tier II · New", "Earned"), as one button. Three per row, in a 358-wide card with 16px sides.
+- `badgeRow`: a 64-tall list row with a 40 medallion.
 - `badgeSheet`: the U9 sheet.
+- **The switch** ("Show me on the leaderboard"): the whole row is `role="switch"`. A glass thumb slides 20px over 240 ms ease-lens along a recessed track, and the groove fills with the level fill when on. Never a glow.
+- **The helpful mark:** a secondary key that latches pressed, shown as selected glass. Never light.
+- **A reversal entry** (an admin void): its own unlit row reading "−130 points" in text. Never red, never lit.
 
 ## 5. U9 · Badge earned (proposed)
 **A proposed ninth Uplight moment.** If accepted, U9 amends `DIRECTION-A.md` (the Lens spec):
@@ -168,7 +171,7 @@ Because the Lens spec isn't in the repo, accepting U9 also means an ADR: an adde
 | 2400 | **The sheet rises.** Backdrop 0 → 1; key pool → 0.4. The held chip ("+150 held") is part of the sheet: it arrives with it and never animates | `SPRING.sheet` (web 420 ease-lens); 320 ease-lens |
 | 2400 → 2580 | **U5 hands over:** the notice's light goes to 0 | 180 ease-exit |
 | 2940 | **First badge: the medallion lifts** from the socket. The lit layer translates (1, 2) → 0 and crossfades in over the unlit layer | 560 ease-lens; 320 crossfade |
-| 2940 | **Tier-up: no sink, no lift.** The lit glass of the tier already held stays; the new tier's glass (one more bead, the stacked ring) fades in over it. Only the start layer casts a shadow | 320 ease-lens |
+| 2940 | **Tier-up: no sink, no lift.** The lit glass of the tier already held stays, and the new tier's glass fades in over it: one more bead, plus the stacked ring when reaching tier II. Only the start layer casts a shadow | 320 ease-lens |
 | 2940 → 4200 | **The U9 Earned grade** on the medallion: uplit layers and under-glow | 560 ease-uplight to 1, 700 ease-lens to 0.45 |
 | 3360 | **One glint crosses the rim** (a 105° band clipped to the bezel). On a tier-up, the new bead seats in its slot | 560 ease-refract; seat 320 ease-lens |
 | 4200 → | **At rest:** U9 at 0.45 while the sheet is open | static |
@@ -183,11 +186,21 @@ Because the Lens spec isn't in the repo, accepting U9 also means an ADR: an adde
 - **Once per badge.** If the tester leaves before the sheet appears, the badge stays "New" and plays U9 when they open it from the shelf.
 - **A revisit opens the sheet at rest:** U9 at 0.45, the same held chip, or the posted chip once the hold has ended.
 - **Earned glass at rest carries no Uplight:** not on the shelf, the hero or in a row.
-- **Never lit:** held points, a lost dispute, a voided session, an admin removing a badge or points (a plain notice), the leaderboard, a level change. A level reached is shown at rest, never celebrated.
+- **Never lit:** held points, a lost dispute, a voided session, an admin removing a badge or points (a plain notice), the leaderboard, a level change, the helpful mark and the builder's track record card. A level reached is shown at rest, never celebrated.
 
 **Reduced motion.** The sheet waits 1,200 ms, then fades in over 120 ms. The medallion appears raised and lit, at its new tier, with U9 at 0.45: no lift, glint or seat.
 
-**Light theme.** ADR 0006 turns the glass recipes off in the light theme (`glass.enabled === false`), and components skip the Uplight there. So U9 doesn't light in the light theme. The medallion needs a flat light recipe, which waits for the light Lens theme (`TODO(light-lens)`).
+**Light theme.** ADR 0006 turns the glass recipes off in the light theme (`glass.enabled === false`), and components skip the Uplight there. So U9 doesn't light in the light theme: the sheet simply opens.
+
+Until the light Lens theme exists (`TODO(light-lens)`), the medallion follows ADR 0006's flat light recipes:
+- **socket:** the `surfaceAlt` fill with a solid hairline rim in `border`;
+- **body:** the `surface` fill with a 1px `borderStrong` rim, and no cast, caustic or specular;
+- **glyph:** `primary`, or `textMuted` when locked;
+- **beads:** flat `primary` dots, or `borderStrong` when unlit;
+- **arc:** a solid `primary` stroke on a hairline `border` track;
+- **locked:** the same flat body, unsunk, with the muted glyph.
+
+These pairs join the contrast test.
 
 **React Native mapping** (UI thread only, matching ADR 0006):
 
@@ -199,7 +212,7 @@ Because the Lens spec isn't in the repo, accepting U9 also means an ADR: an adde
 | Tier-up | the start layer is the pre-rendered medallion at the tier already held (static); the new tier's layer `withTiming(1, 320)`; the new bead `withDelay(420, …)` from (−1, −1.5) |
 | U9 light | `u = withSequence(withTiming(1, 560, ease-uplight), withTiming(0.45, 700, ease-lens))`, starting 540 ms after the sheet; drives the uplit layer and the under-glow (scaleY 0.3 → 1) |
 | Glint | a 105° band clipped to the ring with react-native-svg `ClipPath`, as the fluted lens does, with `withDelay(420, withTiming(…, 560, ease-refract))`. No Skia (ADR 0006) |
-| Budget | at most two animating SVG layers (ADR 0006); no animated blur or shadow radius |
+| Budget | **Known excess, to measure.** ADR 0006 budgets two animating SVG layers, but U9 animates at least three together: the medallion's uplit layer, its under-glow and the glint (3360–3920 ms), and at 2400–2580 ms the ground pool dims while U5's uplit layer and under-glow fade. Measure on the Seeker. If it janks, merge the uplit layer and the under-glow into one SVG first, then drop the glint. No animated blur or shadow radius |
 
 ## 6. Screens
 
@@ -303,7 +316,7 @@ Reputation loads separately, so Settings and Sign out keep working if it fails.
 - **Never:** "Congratulations!", "Level up!", "Unlocked", XP, score, coins, tokens, gems, "rewards" for points, "Rank #1", exclamation marks, emoji.
 
 **Accessibility**
-- **Medallions.** A medallion on its own is an image with one label, e.g. "Reliable tester, tier II, earned October 3" or "Sharp eye, locked. 1 of 3 accepted findings toward tier I". Its layers are hidden from assistive tech. In a shelf item the button carries the label; in a row or the sheet, the text does. One announcement, never two.
+- **Medallions.** A medallion on its own is an image with one label. Elif K.'s new badge reads "Reliable tester, tier II, earned October 3, new", and once its sheet has been seen, "Reliable tester, tier II, earned October 3. 10 of 25 toward tier III". Demo Tester's reads "Sharp eye, locked. 1 of 3 accepted findings toward tier I". Its layers are hidden from assistive tech. In a shelf item the button carries the label; in a row or the sheet, the text does. One announcement, never two.
 - **Never by light alone.** Tier and progress are always written; nothing depends on light, colour or beads.
 - **Separators.** Every "·" is hidden from screen readers and followed by a hidden pause, so "Tier II · New" reads "Tier II, New".
 - **The sheet** is a dialog, labelled by its kicker and title and described by its meaning, the points and the held line.
@@ -332,9 +345,9 @@ Reputation loads separately, so Settings and Sign out keep working if it fails.
 | Item | Research (§6) | This proposal | Why |
 |---|---|---|---|
 | Reliable tester | at least 10 settled, 3 builders, Wilson reliability R ≥ 0.8 | an on-time run, tiers 3 · 10 · 25 | A run is easy to read on a badge. R suits ranking and builder views, not a tier name. Q15 |
-| Device specialist | 8 acceptances on one device class, 3 builders, consistent device signals | 5 accepted tests on one device, 3 builders, single level | The device is self-declared today (Q6); a lower bar until it is verified. Q15 |
+| Device specialist | 8 acceptances on one device class, 3 builders, consistent device signals | 5 accepted tests on one device, 3 builders, single level | The device-signal check needs device verification (Q6), so it is left out until devices can be verified. The badge stays single-level so a count can't be farmed. Q15 |
 | Ranking | 90-day score R × Σ(1, or 1.5 if helpful) ÷ k | the plain total of points posted in 90 days | Points already weight helpfulness. R and 1/k are open (Q10, Q15) |
-| Identity | a Tier 1 signal for the leaderboard and for every badge beyond the first | posted sessions and builders only | Identity tooling isn't approved; Q9 asks |
+| Identity | a Tier 1 signal for the leaderboard and for every badge beyond the first | posted sessions and builders only | Identity tooling isn't approved. Q9 asks for the leaderboard, Q15 for badges |
 | Hold | payout finalized + dispute windows closed + a 7-day fraud hold | a 7-day hold after approval | No payouts exist yet; Q2 |
 
 Both documents use the repo's dispute window: 7 days after a rejection (`DISPUTE_WINDOW_MS`).
@@ -368,16 +381,18 @@ These are suggestions to check against Hamza's plan. None of this exists yet.
   - Badge awards with their tier and `earnedAt`, plus the tester's `lastSeenBadgeAt`.
   - A 90-day leaderboard view that leaves out hidden testers.
 - **Contracts.**
-  - Today a tester's own data comes from `GET /me` (`User`). Add the reputation fields there or in a new route, log the change in `docs/decisions/contract-changes.md`, and consider a `ClientConfig.features` flag so the layer can ship dark.
+  - Today a tester's own data comes from `GET /me` (`User`). Add the reputation fields there or in a new route, log the change in `docs/decisions/contract-changes.md`, and consider a `ClientConfig.features` flag so the layer can ship switched off.
   - The builder's review response carries only the track record counts and up to two badges (§6.3), never points, rank or level.
 - **Export and deletion.** `POST /me/export` and `DELETE /me` must cover points, badges and leaderboard rows.
 - **Mobile.**
   - A `reputation` kit beside `src/ui`: medallion, points chip, level meter, track record, shelf item, badge row and badge sheet.
   - A `UPLIGHT`-style entry for U9's timings in `src/theme/motion.ts`.
   - The six new glyphs in the Lens glyph set.
-- **The tab rename.** Keep the route and the `tab-settings` testID, or plan the updates. These flows open Settings through it:
-  - Playwright: `account-delete.spec.ts`, `wallet-login.spec.ts`, `review-loop.spec.ts`, `e2e-live/web-launch.spec.ts`, `e2e/preview/browser-smoke.mjs`;
-  - Maestro: `_open-wallet.yaml`, `ios-settings.yaml`, `ios-smoke.yaml`, `sheet-keyboard.yaml`, `sign-out.yaml`.
+- **The tab rename.** Keep the route and the `tab-settings` and `settings-screen` testIDs, or plan the updates.
+  - These flows open Settings through `tab-settings`:
+    - Playwright: `account-delete.spec.ts`, `wallet-login.spec.ts`, `review-loop.spec.ts`, `e2e-live/web-launch.spec.ts`, `e2e/preview/browser-smoke.mjs`;
+    - Maestro: `_open-wallet.yaml`, `ios-settings.yaml`, `ios-smoke.yaml`, `sheet-keyboard.yaml`, `sign-out.yaml`.
+  - `settings-screen` is asserted in `review-loop.spec.ts` and in `src/screens/__tests__/settings.test.tsx`.
 - **Tests:**
   - points never reach a credit account;
   - held → posted when the hold ends;

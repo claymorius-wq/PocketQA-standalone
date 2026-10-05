@@ -1,0 +1,2 @@
+reputation-layer.md: 10 tables, rows per table [8, 6, 6, 6, 8, 5, 11, 8, 6, 12]; pipe text outside tables: 0; orphan table lines: []
+usdc-escrow-and-anti-gaming.md: 5 tables, rows per table [9, 8, 5, 7, 5]; pipe text outside tables: 0; orphan table lines: []
