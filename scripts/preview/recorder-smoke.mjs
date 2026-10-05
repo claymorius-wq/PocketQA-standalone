@@ -19,7 +19,9 @@
 //  2. Gate, then sign in as the demo tester.
 //  3. A published demo study's page reports browser recording as available on this origin.
 //  4. A synthetic capture probe in that page (screen, microphone, MediaRecorder for 1.5 s) runs on
-//     the real origin. It touches no app data, and its tracks are stopped.
+//     the real origin. It touches no app data, and its tracks are stopped. It is NOT the app's
+//     recorder: an injected script calls the browser APIs directly (policy and engine on this
+//     origin). The in-app recorder card is covered by the local desktop Playwright project.
 /* global window, document, navigator, MediaStream, MediaRecorder -- used only inside page.evaluate (the browser) */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

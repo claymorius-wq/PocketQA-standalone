@@ -8,6 +8,8 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 - **Scope:** Hamza authorised the build. It's a local-only recorder in the tester's session on desktop browsers, offering per-session consent, the browser's own share dialog, mic narration, a live status with a timer, Stop, then replay, download or discard.
 - **Not in scope:** no upload, storage, network or AI. AI feedback and console-log collection are future work.
 - **Mobile and unsupported browsers:** an honest "not available" message. Native Android is unchanged.
+- **pqa-qa verdict r2: APPROVE** of `fd22f01` (`docs/reviews/screen-recording/qa-screen-recording-verdict-r2.md`), after r1 CHANGES_REQUIRED. Its docs P3 is in the following docs-only commit.
+- **Follow-up (pqa-qa P3-3):** three mobile Jest suites outside this change (patterns ListCard, review-screen U7, admin Disputes) time out at 5 s under heavy machine load; they pass alone and in uncontended runs. To be fixed separately, without weakening assertions.
 - **Plan:** `docs/plans/web-screen-audio-recording.md`, citing MDN and W3C. pqa-qa's threat review r1 set the acceptance bar T1–T15.
 - **Headers:** `microphone=(self)` and `display-capture=(self)` in both web servers (pqa-qa F1); the camera stays off.
 - **Evidence** (`docs/reviews/screen-recording/`):

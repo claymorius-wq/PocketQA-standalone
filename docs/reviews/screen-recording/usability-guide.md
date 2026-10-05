@@ -73,6 +73,9 @@ Chrome's `MediaRecorder` writes WebM without a duration in the header, so ffprob
 2. Gate login, and sign-in as the demo tester.
 3. That a demo study page says "Browser recording available". If the tester has no open study, this is reported as INFO and skipped.
 4. A 1.5 s synthetic capture-and-record probe on the real origin, through a real click.
+   - **This is not the app's recorder.** It's a script injected into the page that calls the browser APIs directly, to prove the deployed origin's policy and the browser engine.
+   - The in-app recorder card (consent, Cancel, Stop, replay, download, discard) is covered only by the local desktop Playwright project (`apps/mobile/e2e/web-recorder.spec.ts`).
+   - Stop sharing is simulated there.
 
 It creates or joins nothing and changes no data:
 - **Join mode rejected:** an earlier join-and-withdraw mode was tried in rehearsal and dropped, because a withdrawn participation can't be re-joined. It would leave the shared demo tester with no studies.
