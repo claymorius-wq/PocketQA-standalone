@@ -451,6 +451,23 @@ describe('Your session', () => {
       expect(mockRecorder.startAsync).not.toHaveBeenCalled();
     });
 
+    it('Android: returning from the consent dialog before the service is up keeps the card recording (emulator run r2, 2026-10-05)', async () => {
+      onAndroid();
+      jest.spyOn(PermissionsAndroid, 'request').mockImplementation(async () => 'granted');
+      const handlers: ((s: string) => void)[] = [];
+      jest.spyOn(AppState, 'addEventListener').mockImplementation(((_: string, h: (s: string) => void) => {
+        handlers.push(h);
+        return { remove: jest.fn() };
+      }) as unknown as typeof AppState.addEventListener);
+      // startAsync resolves once the service is asked to start; it flags itself a moment later.
+      mockRecorder.startAsync.mockImplementation(() => Promise.resolve());
+      await renderScreen(base('in_progress'));
+      await press('record-start');
+      expect(screen.getByTestId('record-stop')).toBeTruthy();
+      await act(async () => handlers.forEach((h) => h('active')));
+      expect(screen.getByTestId('record-stop')).toBeTruthy();
+    });
+
     it('iPhone: coming back to Pocket QA re-reads whether a broadcast is live (Stop shown while it runs, Start once it ended)', async () => {
       mockCapability = { available: true, mode: 'broadcast' };
       const handlers: ((s: string) => void)[] = [];

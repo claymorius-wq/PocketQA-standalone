@@ -42,7 +42,11 @@ The password-gated preview at `pocketqa.optijara.ai` is **not** usable for this:
    Refusing the microphone shows "…needs the microphone… Nothing was recorded." and no screen dialog appears (no video-only clip).
 3. Switch to the app under test and narrate. The notification "Pocket QA is recording your screen and microphone" (and, on Android 15+, the red status-bar chip) stays visible; **Stop recording** in the notification ends it from any app.
 4. Return to Pocket QA: the clip is listed for review. **Keep** or **Discard**; nothing uploads until **Upload kept items**.
+5. If the microphone was cut off during the recording (a call, the system taking it), the clip is listed with "Voice stops at m:ss of m:ss…" and can only be removed: it is never uploaded as narrated evidence.
+
 Protected (`FLAG_SECURE`) and DRM windows record black; that's the OS, by design. Don't record wallet or password screens.
+
+Indicators: on Android 14 and later the user can swipe the recording notification away (Android made all foreground-service notifications dismissible). Recording continues and stays visible through the green microphone/privacy indicator, and on Android 15 QPR1+ the red status-bar chip, which also stops it. Stop is always available in Pocket QA's session screen. Signing out stops any recording and deletes every clip on the phone.
 
 ## iPhone gate (stated plainly)
 - The system broadcast that records other apps **does not run in the iOS Simulator**. The simulator build proves the app and extension compile, embed and are configured; it cannot record.

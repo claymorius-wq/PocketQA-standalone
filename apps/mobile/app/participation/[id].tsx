@@ -337,17 +337,19 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
 
   // Finished clips the native side kept for this session (it ended while the tester was in another
   // app, or before a reload) are claimed on arrival and whenever Pocket QA comes back to the front.
-  // The live state is re-read then too: on iPhone a broadcast starts and ends in the system picker
-  // or status indicator, never in this screen (isRecording is the extension's heartbeat there).
+  // iPhone only: the live state is re-read then too, because a broadcast starts and ends in the system
+  // picker or status indicator, never in this screen (isRecording is the extension's heartbeat). Not on
+  // Android: its consent dialog returns here before the service has flagged itself, and re-reading
+  // then would show Start while recording (emulator run r2); its state comes from start and onStopped.
   useEffect(() => {
     void claimPending();
     const sub = AppState.addEventListener('change', (st) => {
       if (st !== 'active') return;
-      if (recorder) setRecording(recorder.isRecording());
+      if (broadcast && recorder) setRecording(recorder.isRecording());
       void claimPending();
     });
     return () => sub.remove();
-  }, [recorder]);
+  }, [recorder, broadcast]);
 
   async function claimPending() {
     const [clips, lost] = await Promise.all([

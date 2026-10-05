@@ -61,11 +61,12 @@ A tester starts recording **in Pocket QA**, switches to the app under test, and 
    - a `MediaRecorder` error (`error`);
    - a cap (`limit`);
    - the service being destroyed.
-5. **Persistence.** On finalisation the service writes `<id>.json` next to the MP4: `{complete, durationMs, reason, tag, createdAt}`, where the tag is the participation id.
-   - JS claims clips with `takePendingAsync(tag)` when the session screen mounts and after any stop event. Claiming removes the JSON, so JS owns the file.
-   - A reload or return to the app therefore never loses a finished clip.
-   - An MP4 **without** its JSON is either truncated by process death or orphaned by JS: it's deleted on the next module create and never offered or uploaded.
-   - Finished clips nobody claims expire after 24 h.
+5. **Persistence** (revised 2026-10-05 after pqa-qa r1). Recordings live in app-private `noBackupFilesDir/recordings` (not the evictable cache; excluded from backups).
+   - At start the service writes `<id>.rec` (the session tag = participation id). On finalisation it writes `<id>.meta` (java.util.Properties, write-then-rename): `durationMs, tag, reason, createdAt, videoMs, voiceMs, voiceComplete`.
+   - JS lists a session's clips with `takePendingAsync(tag)` on mount, on return to the foreground and after stop events. A clip **stays listed until JS deletes its file** (after upload, Remove, or leaving the session in the foreground), so a screen destroyed while the tester is in another app loses nothing. Only the matching tag lists a clip; an empty tag lists nothing.
+   - An MP4 **without** a meta was cut off by process death: it is deleted on the next module start and never offered; its `.rec` becomes a `<id>.lost` notice, and `takeInterruptedAsync(tag)` tells that session once ("A recording was interrupted…").
+   - Everything expires after 24 h; `clearAllAsync()` stops any session and deletes every clip and notice on **sign-out and account deletion**.
+5a. **Voice check (release blocker found 2026-10-05).** An emulator rotation run produced video 391.7 s with AAC only 202.7 s; MediaRecorder reports nothing. Every finalised file is now measured from its own MP4 index (`VoiceCheck`/`Mp4Tracks`, `mdhd` per track; matches ffprobe on MediaRecorder files, which carry no edit lists): `voiceComplete` = audio track present and `video − audio ≤ max(1 s, 2 %)`. A failing clip is still shown for review, with "Voice stops at m:ss of m:ss…" (or "couldn't be checked" when unmeasured), and offers Remove only: it can't be kept, so it is never uploaded. iOS applies the same rule in the extension (tkhd presented duration, since AVAssetWriter files use edit lists).
 6. **Rotation:** the virtual display is fixed-size and mirrored, so a rotated screen is letterboxed and recording continues.
 7. **Protected content:** `FLAG_SECURE` windows and DRM content stay black, as the OS renders them; nothing works around that. Wallet screens: the copy asks testers not to record wallet or secret screens.
 
@@ -76,10 +77,11 @@ A tester starts recording **in Pocket QA**, switches to the app under test, and 
    - Darwin notifications from the extension to signal started and finished.
 2. **Extension** `PocketQaBroadcast`: a Broadcast Upload Extension with an `RPBroadcastSampleHandler` subclass.
    - `AVAssetWriter` writes H.264 video plus AAC from **`.audioMic` only** into the App Group container's `recordings/<id>.mp4`. App audio is ignored.
-   - It writes the same `<id>.json` on finish.
+   - It writes the same `<id>.meta` on finish (`.rec`/`.lost` as on Android).
+   - The same voice check as Android 5a runs on the finished file; the verdict travels in `.meta`.
    - **If no mic buffer arrives within the first seconds**, the tester left the picker's Microphone off. The extension then calls `finishBroadcastWithError` with "Turn on Microphone in the picker and start again", and deletes the partial file. There is no silent video-only clip.
    - No network code in the extension.
-3. **Handoff.** On return, the app lists finished drafts in the App Group container, moves them into its own cache for review, then keep, discard and explicit upload work as on Android.
+3. **Handoff.** On return, the app lists finished clips in place in the App Group container (listed until JS deletes the file, as on Android), then keep, discard and explicit upload work as on Android.
 4. **Reproducible project:** a config plugin, `apps/mobile/plugins/withBroadcastExtension.js`, adds:
    - the extension target, Info.plist (`NSExtensionPointIdentifier com.apple.broadcast-services-upload`, `RPBroadcastProcessMode`) and sources;
    - the App Group entitlement on both targets.
