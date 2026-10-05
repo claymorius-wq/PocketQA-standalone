@@ -1,6 +1,6 @@
 # Native screen + voice recording: what is proven, what is blocked (updated 2026-10-06)
 
-- **Candidate:** `feat/native-voice-recording` @ `fe89787`. That is the native branch with the AudioRecord + MediaCodec + MediaMuxer pipeline (`fdc8e95`, `30a98d9`), the off-screen entrance fix (`44fea59`) and pqa-ios's iOS parity (`267fca4`), merged with `origin/main` `daf0c85` (#10 intro, #11 badges and leaderboard).
+- **Candidate:** `feat/native-voice-recording` code @ `0aaa89b` (= `fe89787` + pqa-qa's P3: the intro's entrances render still off screen); APK sha256 `6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9`. `fe89787` is the native branch with the AudioRecord + MediaCodec + MediaMuxer pipeline (`fdc8e95`, `30a98d9`), the off-screen entrance fix (`44fea59`) and pqa-ios's iOS parity (`267fca4`), merged with `origin/main` `daf0c85` (#10 intro, #11 badges and leaderboard).
 - **Evidence:** emulator and compile only. **This is not "mobile ready".** Real-phone recording, real speech, the iPhone broadcast and the Seeker are unproven.
 - History: the earlier MediaRecorder candidate (`c5e629d`) is superseded. Its voice stall is analysed in `docs/plans/native-capture-pipeline.md`.
 
@@ -43,4 +43,9 @@
 
 ## iOS compile
 - At `c5e629d`: BUILD SUCCEEDED, 0 warnings in our sources (`ios-build.txt` §12).
-- At `fe89787`: pending (pqa-ios, §14).
+- At `fe89787` (the combined code; native sources identical at `0aaa89b`): `expo prebuild --platform ios --clean`, `pod install`, `xcodebuild … -sdk iphonesimulator -configuration Debug -jobs 4 CODE_SIGNING_ALLOWED=NO build`.
+  - **BUILD SUCCEEDED**, 0 errors. 0 warnings in our sources; 543 + 2 third-party.
+  - It compiled the module's `voiceLostMs` change that §13 couldn't typecheck.
+  - The appex is embedded (`com.reshareai.pocketqa.Broadcast`, broadcast-services-upload, SampleBuffer, x86_64 and arm64), with the App Group in both generated entitlements. The build is unsigned.
+  - 32 swiftc tests, 0 failures. No simulator was booted (§14, evidence `cf7073a`).
+- **Not proven:** any broadcast. The Simulator can't run one; that needs a physical iPhone and a team with App Group profiles for both bundle ids.
