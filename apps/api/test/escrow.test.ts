@@ -107,6 +107,16 @@ describe('A: scope, honesty and fail-closed', () => {
     expect(() => loadConfig({ ...prod, POCKETQA_SETTLEMENT: 'squads_devnet', POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: keys })).toThrow(/never run in production/);
   });
 
+  it('A1c: the shared public demo never runs the devnet pilot (its server-held test keys would sign for any visitor)', () => {
+    const keys = mkdtempSync(join(tmpdir(), 'pqa-pilot-keys-'));
+    chmodSync(keys, 0o700);
+    const demo = { ...base, POCKETQA_SHARED_DEMO: '1', POCKETQA_AUTH_MODE: 'local', POCKETQA_STORAGE: 'local' };
+    expect(() => loadConfig({ ...demo, POCKETQA_SETTLEMENT: 'squads_devnet', POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: keys })).toThrow(/shared demo never runs the devnet pilot/);
+    // The labelled simulation and off stay available for user testing on the shared demo.
+    expect(loadConfig({ ...demo, POCKETQA_SETTLEMENT: 'simulated' }).features.settlement).toBe('simulated');
+    expect(loadConfig(demo).features.settlement).toBe('off');
+  });
+
   it('A2: no provider, mint, RPC or network can be configured in this phase (mainnet included)', () => {
     for (const [k, v] of <[string, string][]>[
       ['POCKETQA_SETTLEMENT', 'devnet'],

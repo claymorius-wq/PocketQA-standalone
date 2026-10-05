@@ -220,6 +220,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     throw new ConfigError('POCKETQA_SETTLEMENT must be off, simulated or squads_devnet (the devnet pilot): no real settlement provider exists (ADR 0007).');
   }
   if (production && settlement !== 'off') throw new ConfigError('Simulated settlement and the devnet pilot never run in production (ADR 0007): set POCKETQA_SETTLEMENT=off.');
+  // The shared public demo lets any visitor act as the synthetic builder or admin, and the pilot's
+  // test keys sign on the server for every role: never combine them (pilot assets stay private).
+  if (sharedDemo && settlement === 'squads_devnet') throw new ConfigError('The shared demo never runs the devnet pilot: its server-held test keys would sign for any visitor. Use POCKETQA_SETTLEMENT=simulated (labelled) or off.');
   // The only provider setting that exists is the pilot's key directory; the network, RPC, program,
   // mint and keys are pinned in code (devnet only). Everything else is refused.
   const providerKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_SETTLEMENT_') && !(settlement === 'squads_devnet' && k === 'POCKETQA_SETTLEMENT_PILOT_KEYS_DIR'));
