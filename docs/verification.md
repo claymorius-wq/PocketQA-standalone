@@ -588,3 +588,21 @@ Full outputs are in `docs/reviews/wallet-rewards/`. **No live devnet run** was m
 - **pqa-qa reviews** (exact copies): `qa-devnet-pilot-live-verdict-r1.md` and `qa-devnet-pilot-harness-delta-verdict-r1.md`.
 - **No send has been made.**
 
+## 2026-10-05: run 1 completion send (pqa-qa harness-delta r2 APPROVE of `0b66267`; lead)
+**Command** (one send, no retry), from a clean tree at `0b66267`:
+```
+$ cd apps/api && POCKETQA_LIVE_SQUADS_RUN1_COMPLETE=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot-run1-complete.live.test.ts
+Test Files  1 passed (1)   Tests  1 passed (1)   EXIT=0
+```
+
+**Result:** outcome `refused-as-expected` (`devnet-pilot-run1-completion.{md,json}`).
+- Signature `3zNWsdDxaSwMxx9Y…` at slot 507709054: finalized, err `{"InstructionError":[0,{"Custom":6008}]}`, fee 5,000 lamports.
+- Pre-checks equal post-checks: tester A 1,000,000 and vault 210,000; program data at slot 446638068 with sha256 `5c866bde…0d37`.
+- The multisig is still autonomous: threshold 2, time lock 0, rent collector null.
+
+**Scanner:** the completion receipt's hashes are pinned (`PINNED_EVIDENCE`), since it lists a public signature.
+
+**Pilot cost to date:** 39,999,760 + 5,000 = **40,004,760 lamports** of devnet SOL. Test USDC used: 3.31, of which 2.00 went to testers, 1.10 was refunded, and 0.21 stays in the vault (fee plus the unmatched deposit).
+
+**pqa-qa verdict copied exactly:** `qa-devnet-pilot-harness-delta-verdict-r2.md`.
+
