@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { AccessibilityInfo, PermissionsAndroid, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { Participation } from '@pocket-qa/contracts';
 import { ThemeProvider, useTheme, type ThemePreference } from '../src/theme/ThemeProvider';
@@ -20,10 +20,10 @@ jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual(
 jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() }, useLocalSearchParams: () => ({ id: 'p1' }), Redirect: () => null }));
 jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'u1', role: 'tester' }, features: { testCredits: true, devnetTransfers: true } }) }));
 
-let mockCapability: { available: true } | { available: false; reason: string } = { available: true };
+let mockCapability: { available: true; mode?: 'projection' | 'broadcast' } | { available: false; reason: string } = { available: true };
 jest.mock('../src/lib/capability', () => ({ recordingCapability: () => mockCapability }));
 
-type Recorder = { live: boolean; startAsync: jest.Mock; stopAsync: jest.Mock; isRecording: () => boolean; discardAsync: jest.Mock; purgeAsync: jest.Mock; addListener: jest.Mock };
+type Recorder = { live: boolean; startAsync: jest.Mock; stopAsync: jest.Mock; isRecording: () => boolean; discardAsync: jest.Mock; purgeAsync: jest.Mock; addListener: jest.Mock; takePendingAsync: jest.Mock; showBroadcastPicker: jest.Mock };
 const mockRecorder: Recorder = {
   live: false,
   startAsync: jest.fn(),
@@ -32,6 +32,8 @@ const mockRecorder: Recorder = {
   discardAsync: jest.fn(() => Promise.resolve()),
   purgeAsync: jest.fn(() => Promise.resolve()),
   addListener: jest.fn(() => ({ remove: jest.fn() })),
+  takePendingAsync: jest.fn(() => Promise.resolve([])),
+  showBroadcastPicker: jest.fn(),
 };
 jest.mock('../src/evidence/recorder', () => ({ nativeRecorder: () => mockRecorder }));
 jest.mock('../src/evidence/MediaPreview', () => ({ MediaPreview: () => null }));
@@ -123,6 +125,9 @@ beforeEach(() => {
     mockRecorder.live = false;
     return Promise.resolve({ uri: 'file:///clip.mp4', durationMs: 5000, sizeBytes: 2 * 1024 * 1024, mimeType: 'video/mp4' });
   });
+  mockRecorder.takePendingAsync.mockReset().mockImplementation(() => Promise.resolve([]));
+  mockRecorder.showBroadcastPicker.mockReset();
+  mockRecorder.addListener.mockReset().mockImplementation(() => ({ remove: jest.fn() }));
   mockApi.mockReset();
   mockUpload.mockReset();
   mockEvidence = [];
@@ -298,6 +303,75 @@ describe('Your session', () => {
     expect(screen.queryByTestId('pending-evidence')).toBeNull();
     expect(mockUpload).not.toHaveBeenCalled();
     expect(screen.getByTestId('session-submit')).not.toBeDisabled();
+  });
+
+  describe('native screen + voice (docs/plans/native-screen-voice-recording.md)', () => {
+    const CLIP = { uri: 'file:///cache/recordings/a.mp4', durationMs: 7000, sizeBytes: 3 * 1024 * 1024, mimeType: 'video/mp4' as const };
+    const onAndroid = () => {
+      jest.replaceProperty(Platform, 'OS', 'android');
+      jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34);
+    };
+    const stopListener = () => mockRecorder.addListener.mock.calls.find((c) => c[0] === 'onStopped')![1] as (e: { reason: string; clip: typeof CLIP | null }) => void;
+
+    it('Android: the microphone is asked for first; refused → a visible error and no capture at all (no video-only fallback)', async () => {
+      onAndroid();
+      const req = jest.spyOn(PermissionsAndroid, 'request').mockImplementation(async (perm) => (perm === PermissionsAndroid.PERMISSIONS.RECORD_AUDIO ? 'denied' : 'granted'));
+      await renderScreen(base('in_progress'));
+      await press('record-start');
+      expect(req).toHaveBeenCalledWith(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      expect(mockRecorder.startAsync).not.toHaveBeenCalled();
+      expect(screen.getByTestId('evidence-error')).toHaveTextContent(/microphone/i);
+      expect(screen.getByTestId('evidence-error')).toHaveTextContent(/Nothing was recorded/);
+    });
+
+    it('Android: with the microphone allowed, capture starts tagged with this session', async () => {
+      onAndroid();
+      jest.spyOn(PermissionsAndroid, 'request').mockImplementation(async () => 'granted');
+      await renderScreen(base('in_progress'));
+      await press('record-start');
+      expect(mockRecorder.startAsync).toHaveBeenCalledWith('p1');
+    });
+
+    it('the help says it records other apps with your voice, and suggests sharing one app', async () => {
+      await renderScreen(base('in_progress'));
+      expect(screen.getByTestId('recorder-card')).toHaveTextContent(/other apps/);
+      expect(screen.getByTestId('recorder-card')).toHaveTextContent(/microphone/);
+      expect(screen.getByTestId('recorder-card')).toHaveTextContent(/Share one app/);
+    });
+
+    it('a clip finished while away (or before a reload) is claimed on return and shown for review', async () => {
+      mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([CLIP]));
+      await renderScreen(base('in_progress'));
+      expect(mockRecorder.takePendingAsync).toHaveBeenCalledWith('p1');
+      expect(screen.getByTestId('segment-recorded')).toHaveTextContent(/video\/mp4/);
+    });
+
+    it('the same clip from the stop event and the pending store appears once', async () => {
+      mockRecorder.takePendingAsync.mockImplementationOnce(() => Promise.resolve([])).mockImplementation(() => Promise.resolve([CLIP]));
+      await renderScreen(base('in_progress'));
+      await act(async () => stopListener()({ reason: 'system', clip: CLIP }));
+      await advance(50);
+      expect(screen.getAllByTestId('segment-recorded')).toHaveLength(1);
+    });
+
+    it.each([
+      ['mic', /microphone stopped/i],
+      ['limit', /15-minute or size limit/],
+    ])('a %s stop explains itself and keeps the clip', async (reason, copy) => {
+      await renderScreen(base('in_progress'));
+      await act(async () => stopListener()({ reason, clip: CLIP }));
+      expect(screen.getByTestId('recording-stopped')).toHaveTextContent(copy);
+      expect(screen.getByTestId('segment-recorded')).toBeTruthy();
+    });
+
+    it('iPhone: Start opens the system broadcast picker (other apps, microphone toggle) instead of an in-app recorder', async () => {
+      mockCapability = { available: true, mode: 'broadcast' };
+      await renderScreen(base('in_progress'));
+      expect(screen.getByTestId('recorder-card')).toHaveTextContent(/Microphone/);
+      await press('record-start');
+      expect(mockRecorder.showBroadcastPicker).toHaveBeenCalledTimes(1);
+      expect(mockRecorder.startAsync).not.toHaveBeenCalled();
+    });
   });
 
   it('uploaded evidence is one line per item, kind first', async () => {

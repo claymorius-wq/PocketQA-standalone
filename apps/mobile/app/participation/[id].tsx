@@ -5,13 +5,13 @@ import { File } from 'expo-file-system';
 import { useLocalSearchParams } from 'expo-router';
 import { Circle, Flag, Paperclip, Play, Send, Upload, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { PermissionsAndroid, Platform, StyleSheet, Text as RNText, View } from 'react-native';
+import { AppState, PermissionsAndroid, Platform, StyleSheet, Text as RNText, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { REWARD_DISCLAIMER, type Participation, type TesterStudyView } from '@pocket-qa/contracts';
 import { DISPUTE_WINDOW_MS, uploadQueue } from '@pocket-qa/domain';
 import { api, ApiError, uploadEvidence } from '../../src/api/client';
 import { MediaPreview } from '../../src/evidence/MediaPreview';
-import { nativeRecorder } from '../../src/evidence/recorder';
+import { nativeRecorder, type RecordedClip, type StopReason } from '../../src/evidence/recorder';
 import { WebRecorderCard } from '../../src/evidence/WebRecorderCard';
 import { applySegment, removeSegment, uploadKept, type LocalSegment } from '../../src/evidence/segments';
 import { GlassBlur, GlassSurface, useUplight } from '../../src/glass';
@@ -52,7 +52,16 @@ import { Enter, useMountedLate } from '../../src/ui/screen';
 
 const PICK_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'video/mp4', 'video/webm'];
 const platform = (Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'web') as LocalSegment['capturedOn'];
-const RECORDER_HELP = 'Android asks for screen-capture permission each time. A notification shows while recording, and you can stop from the status bar.';
+// Native recording captures OTHER apps with microphone narration (docs/plans/native-screen-voice-recording.md).
+const RECORDER_HELP =
+  'Records your screen and your microphone while you use other apps. Android asks every time: choose “Share one app” and pick the app you’re testing (or the entire screen). Narrate as you go; stop from the notification or here. Don’t record wallet or password screens.';
+const BROADCAST_HELP =
+  'Opens the iPhone screen broadcast: turn Microphone on, choose Pocket QA and tap Start Broadcast, then switch to the app you’re testing and narrate. Stop from the red status indicator or Control Centre, then come back here to review. Don’t record wallet or password screens.';
+const STOP_NOTICE: Partial<Record<StopReason, string>> = {
+  system: 'The system stopped the recording (status-bar control, screen lock or revoked permission). Your clip so far is below for review.',
+  mic: 'Your microphone stopped (for example a phone call took it). The clip up to that point is below for review.',
+  limit: 'The recording reached the 15-minute or size limit and stopped. It is below for review.',
+};
 
 /** The board's section gap (main `gap: 24`). */
 const SECTION_GAP = space.xl;
@@ -257,7 +266,8 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   // Read the real state: a session may still be running from before a remount.
   const [recording, setRecording] = useState(() => recorder?.isRecording() ?? false);
   const [error, setError] = useState<string | null>(null);
-  const [stopped, setStopped] = useState(false);
+  const [stopped, setStopped] = useState<StopReason | null>(null);
+  const broadcast = cap.available && 'mode' in cap && cap.mode === 'broadcast';
   const [busy, setBusy] = useState(false);
   // The ref is the source of truth so the uploader always sees the latest list (a removal
   // during an upload must win); React state mirrors it for rendering.
@@ -285,16 +295,38 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
     [],
   );
 
-  // The OS can stop a projection (status-bar chip, screen lock); keep whatever was captured.
+  // A session can end while the tester is in another app (notification Stop, system chip, lock,
+  // microphone loss, a cap); keep whatever was captured, and say why.
   useEffect(() => {
     const sub = recorder?.addListener?.('onStopped', (e) => {
       setRecording(false);
-      if (e.clip) addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: e.clip.mimeType, size: e.clip.sizeBytes, uri: e.clip.uri, durationMs: e.clip.durationMs });
-      if (e.reason === 'system') setStopped(true);
-      if (e.reason === 'error') setError('Recording failed. Nothing was recorded.');
+      if (e.clip) addClip(e.clip);
+      if (STOP_NOTICE[e.reason]) setStopped(e.reason);
+      if (e.reason === 'error' && !e.clip) setError('Recording failed. Nothing was recorded.');
+      void claimPending();
     });
     return () => sub?.remove();
   }, [recorder]);
+
+  // Finished clips the native side kept for this session (it ended while the tester was in another
+  // app, or before a reload) are claimed on arrival and whenever Pocket QA comes back to the front.
+  useEffect(() => {
+    void claimPending();
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') void claimPending();
+    });
+    return () => sub.remove();
+  }, [recorder]);
+
+  async function claimPending() {
+    const clips = (await recorder?.takePendingAsync?.(p.id).catch(() => [])) ?? [];
+    if (!cancelled.current) clips.forEach(addClip);
+  }
+  /** One row per file, whichever path delivered it first (stop result, stop event or pending store). */
+  function addClip(c: RecordedClip) {
+    if (live.current.some((s) => s.uri === c.uri)) return;
+    addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: c.mimeType, size: c.sizeBytes, uri: c.uri, durationMs: c.durationMs });
+  }
 
   function addSegment(s: Omit<LocalSegment, 'id' | 'state' | 'capturedOn'>) {
     update((list) => [...list, { ...s, id: newId(), state: 'recorded', capturedOn: platform }]);
@@ -302,7 +334,13 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
 
   async function startRecording() {
     setError(null);
-    setStopped(false);
+    setStopped(null);
+    // iPhone: the system broadcast picker records other apps (its Microphone toggle must be on; the
+    // extension refuses a broadcast without it). Started only by this tap.
+    if (broadcast) {
+      recorder!.showBroadcastPicker?.(p.id);
+      return;
+    }
     // Android 13+: the recording notification (with its Stop action) is the visible
     // indicator on versions without a status-bar chip, so it must be allowed first.
     if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
@@ -312,8 +350,16 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
         return;
       }
     }
+    // Narration is part of the evidence: without the microphone nothing is recorded (no silent video).
+    if (Platform.OS === 'android') {
+      const mic = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+      if (mic !== PermissionsAndroid.RESULTS.GRANTED) {
+        setError('Pocket QA records your voice with the screen, so it needs the microphone. Allow Microphone for Pocket QA and try again. Nothing was recorded.');
+        return;
+      }
+    }
     try {
-      await recorder!.startAsync();
+      await recorder!.startAsync(p.id);
       setRecording(true);
     } catch (e) {
       setError(e instanceof Error && /denied|cancel/i.test(e.message) ? 'Recording permission was declined. Nothing was recorded.' : 'Couldn’t start recording.');
@@ -321,8 +367,8 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   }
   async function stopRecording() {
     try {
-      const clip = await recorder!.stopAsync();
-      addSegment({ kind: 'screen_recording', name: `recording-${new Date().toISOString()}.mp4`, mimeType: clip.mimeType, size: clip.sizeBytes, uri: clip.uri, durationMs: clip.durationMs });
+      addClip(await recorder!.stopAsync());
+      void claimPending();
     } catch {
       setError('Couldn’t finish the recording.');
     } finally {
@@ -380,7 +426,14 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
       {error ? <Notice tone="danger" title="Evidence" testID="evidence-error">{error}</Notice> : null}
       {cap.available ? (
         // U3 Live and S2: the card is lit from below and the core breathes while recording.
-        <RecordControl live={recording} onStart={startRecording} onStop={stopRecording} help={RECORDER_HELP} startDisabled={locked}>
+        <RecordControl
+          live={recording}
+          onStart={startRecording}
+          onStop={stopRecording}
+          help={broadcast ? BROADCAST_HELP : RECORDER_HELP}
+          startLabel={broadcast ? 'Start screen broadcast' : 'Record screen and voice'}
+          startDisabled={locked}
+        >
           {attachButton}
         </RecordControl>
       ) : Platform.OS === 'web' ? (
@@ -398,7 +451,7 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
       )}
       {stopped ? (
         <Notice tone="warning" title="Recording stopped" testID="recording-stopped">
-          Android stopped the recording (status-bar control or screen lock). Your clip so far is below for review.
+          {STOP_NOTICE[stopped]}
         </Notice>
       ) : null}
       {visible.length > 0 ? <ReviewNotice /> : null}
