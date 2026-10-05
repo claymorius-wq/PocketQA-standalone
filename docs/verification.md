@@ -670,3 +670,30 @@ Full outputs are in `docs/reviews/screen-recording/`.
 - **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
   - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
 
+## 2026-10-05: badge medallions and the leaderboard in the Lens design (contributor session, claymorius-wq; Windows 11, Node v24.21.0, pnpm 10.32.1)
+Branch `feat/lens-badges` at `3ba55de`, from main `ae0b501`. Playwright ran through a git-ignored mirror of `playwright.config.ts` on private ports (API 8789, web 8094, fake RPC 8901), against a fresh `expo export` of the tree.
+- **Checks:**
+  ```
+  $ pnpm check:secrets
+  check:secrets FAILED (89 finding(s) in 909 files):
+  ```
+  All 89 are the devnet pilot receipts already on main (`docs/reviews/wallet-rewards/`), none in this change.
+  ```
+  $ node scripts/preview/assert-no-secrets.mjs --repo
+  secret check: 0 values, 909 files, 0 occurrences
+  $ pnpm typecheck        exit=0
+  $ pnpm lint             exit=0
+  ```
+- **Unit tests:**
+  ```
+  $ pnpm --filter @pocket-qa/mobile test
+  Test Suites: 55 passed, 55 total
+  Tests:       1164 passed, 1164 total
+  $ pnpm -r --if-present test
+  packages/contracts: Tests 17 passed (17)
+  packages/domain:    Tests 221 passed (221)
+  apps/api:           Tests 7 failed | 566 passed | 2 skipped (575)
+  ```
+  The 7 API failures are the Windows baseline that main `ae0b501` also shows on this machine (admin-scripts, db-scripts, backup, config.bind, admin-grant, escrow A1b, operations SIGTERM). `test/reputation.test.ts`, with the new `progress` assertions, passes. `domain/src/reputation.ts` coverage: 100% statements.
+- **Playwright:** 21 passed (3.7m), EXIT=0. That is 15 mobile-web specs, including `wallet-rewards.spec.ts`, which drives the new Reputation and Leaderboard screens end to end against the real local API (points, a badge, the opt-in, "Not ranked yet", the leaderboard), plus 6 desktop-recorder specs.
+- **Screenshots:** `docs/reviews/lens-badges/browser/`. They come from a throwaway local API seeded with synthetic testers (aliases only), signed in as one of them.
