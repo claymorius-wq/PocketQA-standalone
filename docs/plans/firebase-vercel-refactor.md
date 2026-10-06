@@ -410,3 +410,8 @@ large to store (an export can exceed Firestore's 1 MiB doc limit). Every one is 
 Gate: each **D** route gets a crash-after-commit test with the same shape as `test/idempotency-retry.test.ts`
 (`completeIdempotency` fails once, the retry succeeds, exactly one effect). Each repo that turns
 "exists" into "return existing" also gets a direct emulator test on Firestore.
+
+### R13: known limitations of the Firestore backend (2026-10-06)
+- **Wallet-first sign-in** (`POCKETQA_WALLET_LOGIN=1`) stays SQLite-only. On Firestore, creating a wallet-only account needs core's in-transaction user + identity writes, which don't exist yet. Config refuses the combination at startup (`test/staging-config.test.ts`), so no deployment shows a sign-in that can't work. Wallet LINKING (connect, sign, link) works on both backends. Off by default; enabling it hosted would also need ADR 0005's risk acceptance.
+- The Squads devnet pilot stays SQLite-only (hosted refuses it: R11).
+

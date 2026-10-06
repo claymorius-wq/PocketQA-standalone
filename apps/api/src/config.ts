@@ -164,6 +164,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   }
   // Wallet login can create accounts; the shared demo has no self-registration.
   if (sharedDemo && walletLogin) throw new ConfigError('The shared demo cannot enable wallet login (it creates accounts).');
+  // Wallet-first account creation is SQLite-only for now: on Firestore it needs core's in-transaction
+  // user + identity writes (the escrow repo refuses it). Refuse at startup, not as a dead button.
+  if (walletLogin && dataBackend === 'firestore') throw new ConfigError('Wallet login is not available with POCKETQA_DATA_BACKEND=firestore yet; leave POCKETQA_WALLET_LOGIN unset.');
   let publicOrigin: string | null = null;
   // Required for wallet login; optional otherwise (web wallet linking uses it when set).
   if (secured && !env.POCKETQA_PUBLIC_ORIGIN) throw new ConfigError(`${label} needs POCKETQA_PUBLIC_ORIGIN (the exact https origin of the app).`);

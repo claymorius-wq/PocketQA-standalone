@@ -49,6 +49,7 @@ describe('staging (hosted test deployment)', () => {
     ['no public origin', { POCKETQA_PUBLIC_ORIGIN: undefined }, /PUBLIC_ORIGIN/],
     ['a localhost origin', { POCKETQA_PUBLIC_ORIGIN: 'http://localhost:8081' }, /https on a public host/],
     ['the devnet pilot (server-held keys)', { POCKETQA_SETTLEMENT: 'squads_devnet' }, /devnet pilot/],
+    ['wallet login on Firestore (not implemented there yet)', { POCKETQA_WALLET_LOGIN: '1', POCKETQA_WALLET_LOGIN_RISK_ACCEPTED: '1' }, /not available with POCKETQA_DATA_BACKEND=firestore/],
   ])('refuses %s', (_label, change, msg) => {
     expect(() => loadConfig({ ...staging, ...change })).toThrow(msg);
   });
