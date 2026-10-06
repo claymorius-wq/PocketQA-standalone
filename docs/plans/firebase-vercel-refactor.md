@@ -342,3 +342,18 @@ A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this
 - **Job leases with fencing:** `jobLeases/{job}`. Tests: a 20-way acquire → one fence; a stale holder is fenced out after takeover.
 
 **Local SQLite** (one process) keeps these in memory.
+
+### R11: the hosted deployment runs as `POCKETQA_ENV=staging` (decision for Hamza, 2026-10-06)
+**The problem:** today's `production` profile disables test credits and all settlement (ADR 0007; acceptance ledger: no fake funding in production). So a hosted `production` Pocket QA could not fund, decide or reward a single study, yet the authorisation says to preserve **simulated funds**.
+
+**`staging` = production's security plus labelled test money:**
+- Firebase sign-in only; no demo project; no shared demo; wallet login only with the recorded risk acceptance;
+- private R2 only, with no test endpoint and no retention-only mode;
+- an exact https public origin;
+- **test credits on** (labelled, never money), **simulated settlement** allowed, the **devnet pilot refused** (server-held keys), demo devnet transfers off.
+
+**Data backend:** `POCKETQA_DATA_BACKEND=firestore` needs no data directory and never asks git.
+
+**Tests:** `test/staging-config.test.ts` (12, RED → GREEN). The production rules are unchanged (production-config tests pass).
+
+**Real production** (no test credits) stays a separate later step, gated on a real payment decision.

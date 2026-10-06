@@ -2,6 +2,7 @@ import type { AuditEntry, DeviceProfile, User } from '@pocket-qa/contracts';
 import type { z } from 'zod';
 
 import type { DB } from '../db';
+import type { Repos } from '../repo';
 
 
 export type UserRow = {
@@ -27,6 +28,21 @@ export function userView(db: DB, row: UserRow): User {
     status: row.status === 'suspended' ? 'suspended' : 'active',
     device: row.device_json ? (JSON.parse(row.device_json) as DeviceProfile) : null,
     wallet: link ? { address: link.address, cluster: 'devnet', linkedAt: link.linked_at } : null,
+    createdAt: row.created_at,
+  };
+}
+
+/** The user view through the repositories (async; replaces `userView(db, row)` once every caller moved). */
+export async function userViewOf(repo: Repos, row: UserRow): Promise<User> {
+  const link = await repo.escrow.walletLinkOf(row.id);
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    status: row.status === 'suspended' ? 'suspended' : 'active',
+    device: row.device_json ? (JSON.parse(row.device_json) as DeviceProfile) : null,
+    wallet: link ? { address: link.address, cluster: 'devnet', linkedAt: link.linkedAt } : null,
     createdAt: row.created_at,
   };
 }

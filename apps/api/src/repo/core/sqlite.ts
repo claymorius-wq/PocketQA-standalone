@@ -2,7 +2,11 @@ import type { DB } from '../../db';
 import type { UserRow } from '../../views/core';
 import type { AuditRow, CoreRepo } from './types';
 
-/** Core repository on SQLite: today's SQL, moved out of app.ts and the handlers unchanged. */
+/**
+ * Core repository on SQLite: today's SQL, moved out of app.ts and the handlers unchanged.
+ * appendAudit, redactAudit and purgeUserCore run INSIDE callers' db.transaction (account deletion),
+ * so they execute and throw synchronously (not `async`): a throw must roll the transaction back.
+ */
 export function sqliteCoreRepo(db: DB): CoreRepo {
   const mem = {
     idem: new Map<string, { fingerprint: string; state: 'pending' | 'done'; expiresAt: number; status?: number; body?: unknown }>(),
@@ -114,7 +118,7 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
     async deleteSession(tokenHash) {
       db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
     },
-    async appendAudit(row) {
+    appendAudit(row) {
       db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
         row.id,
         row.actor_id,
@@ -124,20 +128,23 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
         row.reason,
         row.created_at,
       );
+      return Promise.resolve();
     },
     async listAudit() {
       return db.prepare('SELECT * FROM audit ORDER BY created_at DESC, rowid DESC').all() as AuditRow[];
     },
-    async redactAudit(targets) {
+    redactAudit(targets) {
       const stmt = db.prepare(`UPDATE audit SET reason = '[redacted on account deletion]' WHERE target_type = ? AND target_id = ?`);
       for (const t of targets) stmt.run(t.type, t.id);
+      return Promise.resolve();
     },
-    async purgeUserCore(userId) {
+    purgeUserCore(userId) {
       db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
       db.prepare('DELETE FROM identities WHERE user_id = ?').run(userId);
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${userId}@deleted.invalid`, userId);
+      return Promise.resolve();
     },
     // The local server is one process: idempotency records, rate-limit windows and job leases live
     // in memory there (hosted Pocket QA keeps them in Firestore, shared by every instance).

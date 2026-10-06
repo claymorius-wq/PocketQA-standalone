@@ -27,13 +27,13 @@ import type { StudiesRepo } from './studies/types';
  */
 export type Backend = { kind: 'sqlite'; db: DB } | { kind: 'firestore'; fs: Firestore };
 
-export type Repos = { core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
+export type Repos = { kind: Backend['kind']; core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
 
 export function makeRepos(backend: Backend): Repos {
   if (backend.kind === 'sqlite') {
     const { db } = backend;
-    return { core: sqliteCoreRepo(db), studies: sqliteStudiesRepo(db), evidence: sqliteEvidenceRepo(db), escrow: sqliteEscrowRepo(db) };
+    return { kind: 'sqlite', core: sqliteCoreRepo(db), studies: sqliteStudiesRepo(db), evidence: sqliteEvidenceRepo(db), escrow: sqliteEscrowRepo(db) };
   }
   const { fs } = backend;
-  return { core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
+  return { kind: 'firestore', core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
 }

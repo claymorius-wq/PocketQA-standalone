@@ -68,6 +68,8 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
       repo: makeRepos({ kind: 'sqlite', db }),
       config: {
         production: opts.production ?? false,
+        staging: false,
+        dataBackend: 'sqlite',
         trustProxy: opts.trustProxy ? ['127.0.0.1', '::1'] : false,
         features: { testCredits: !opts.production, devnetTransfers: !opts.production, settlement: opts.settlement ?? 'off' },
         escrowFeeBps: 1000,
