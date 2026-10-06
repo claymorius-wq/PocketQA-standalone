@@ -73,43 +73,98 @@ export async function deleteOrQueue(deps: StorageDeps, key: string, purpose: Del
 }
 
 /**
- * Durable storage housekeeping (run at startup and periodically):
+ * A bounded slice (plan §5, R5; the same shape as runSettlement's): at most `maxItems` items, none
+ * started at or after `deadlineMs`, and with a `lease` the job's fence is checked
+ * (`repo.core.leaseValid`) before every item, so a holder whose lease was taken over stops. Every
+ * item is idempotent and marks itself done (intent closed, quarantine marked swept, outbox entry
+ * removed or rescheduled), so a slice cut short is resumed by the next run without repeating work.
+ */
+export type SweepSlice = { maxItems?: number; deadlineMs?: number; lease?: { job: string; fence: number } };
+
+/** Rows fetched per query; a full batch means more may remain. */
+const BATCH = 500;
+
+/**
+ * Durable storage housekeeping (startup and periodic locally; cron and inline slices hosted):
  * 1. pending intents past expiry become `expired`;
  * 2. closed intents past expiry get their quarantine object removed once (a re-PUT with a
  *    still-valid URL could have recreated it), and a `completing` intent abandoned by a
  *    crash has its half-promoted final object removed if no evidence row exists;
  * 3. the deletion outbox is retried with exponential backoff.
+ * `complete` is false when the slice stopped early or a batch was full (more may remain).
  */
-export async function sweepStorage(deps: StorageDeps) {
+export async function sweepStorage(deps: StorageDeps, slice: SweepSlice = {}): Promise<{ complete: boolean }> {
   const repo = evidenceRepo(deps);
   const now = deps.now();
-  await repo.expireDuePending(now);
+  // Out of time before starting: not even a read.
+  if (slice.deadlineMs !== undefined && now >= slice.deadlineMs) return { complete: false };
+  let items = 0;
+  let stopped = false;
+  let more = false;
+  /** May the next item start? */
+  const next = async () => {
+    if (stopped) return false;
+    if ((slice.maxItems !== undefined && items >= slice.maxItems) || (slice.deadlineMs !== undefined && deps.now() >= slice.deadlineMs)) stopped = true;
+    else if (slice.lease && !(await deps.repo.core.leaseValid(slice.lease.job, slice.lease.fence, deps.now()))) stopped = true;
+    if (!stopped) items += 1;
+    return !stopped;
+  };
+  /** Rows to fetch: never more than the slice could still process. */
+  const limit = () => Math.max(1, Math.min(BATCH, slice.maxItems === undefined ? BATCH : slice.maxItems - items));
+  const batch = <T>(rows: T[], asked: number) => {
+    if (rows.length >= asked) more = true;
+    return rows;
+  };
+
+  // Without a slice this expires every due intent, as before; with one, the budget bounds it.
+  for (;;) {
+    const asked = limit();
+    const due = await repo.duePending(now, asked);
+    for (const id of due) {
+      if (!(await next())) break;
+      await repo.expireIntent(id);
+    }
+    if (stopped || due.length < asked) break;
+  }
   // A completion normally takes seconds; one still 'completing' an hour past expiry crashed.
-  for (const s of await repo.stuckCompleting(now - 3600_000)) {
-    if (s.evidence_id && !(await repo.evidenceExists(s.evidence_id))) await deleteOrQueue(deps, `evidence/${s.evidence_id}`, 'failed_upload');
-    await repo.expireIntentNow(s.id);
-  }
-  for (const c of await repo.closedUnswept(now, 500)) {
-    if (c.status !== 'completed') await deleteOrQueue(deps, c.object_key, 'failed_upload');
-    // A successful upload's quarantine copy is kept, unless its evidence is already gone: only
-    // account deletion removes evidence, and a re-PUT with the then still-valid URL could have
-    // recreated the copy after that deletion ran.
-    else if (!(await repo.intentEvidenceExists(c.id))) await deleteOrQueue(deps, c.object_key, 'account_deletion');
-    // Marked either way (`quarantine_swept` = handled), so kept copies don't fill every pass.
-    await repo.markQuarantineSwept(c.id);
-  }
-  for (const d of await repo.dueDeletions(now, 500)) {
-    // Defence in depth: the outbox only ever holds registered app keys, but never act on one that isn't.
-    if (!(await mayDelete(deps, d.object_key, d.purpose, SYSTEM_ACTOR))) {
-      await repo.deletionDone(d.object_key);
-      continue;
-    }
-    try {
-      await deps.store.delete(d.object_key);
-      await repo.deletionDone(d.object_key);
-    } catch {
-      const wait = Math.min(MAX_BACKOFF_MS, 60_000 * 2 ** d.attempts);
-      await repo.deletionRetry(d.object_key, now + wait);
+  if (!stopped) {
+    const asked = limit();
+    for (const s of batch(await repo.stuckCompleting(now - 3600_000, asked), asked)) {
+      if (!(await next())) break;
+      if (s.evidence_id && !(await repo.evidenceExists(s.evidence_id))) await deleteOrQueue(deps, `evidence/${s.evidence_id}`, 'failed_upload');
+      await repo.expireIntentNow(s.id);
     }
   }
+  if (!stopped) {
+    const asked = limit();
+    for (const c of batch(await repo.closedUnswept(now, asked), asked)) {
+      if (!(await next())) break;
+      if (c.status !== 'completed') await deleteOrQueue(deps, c.object_key, 'failed_upload');
+      // A successful upload's quarantine copy is kept, unless its evidence is already gone: only
+      // account deletion removes evidence, and a re-PUT with the then still-valid URL could have
+      // recreated the copy after that deletion ran.
+      else if (!(await repo.intentEvidenceExists(c.id))) await deleteOrQueue(deps, c.object_key, 'account_deletion');
+      // Marked either way (`quarantine_swept` = handled), so kept copies don't fill every pass.
+      await repo.markQuarantineSwept(c.id);
+    }
+  }
+  if (!stopped) {
+    const asked = limit();
+    for (const d of batch(await repo.dueDeletions(now, asked), asked)) {
+      if (!(await next())) break;
+      // Defence in depth: the outbox only ever holds registered app keys, but never act on one that isn't.
+      if (!(await mayDelete(deps, d.object_key, d.purpose, SYSTEM_ACTOR))) {
+        await repo.deletionDone(d.object_key);
+        continue;
+      }
+      try {
+        await deps.store.delete(d.object_key);
+        await repo.deletionDone(d.object_key);
+      } catch {
+        const wait = Math.min(MAX_BACKOFF_MS, 60_000 * 2 ** d.attempts);
+        await repo.deletionRetry(d.object_key, now + wait);
+      }
+    }
+  }
+  return { complete: !stopped && !more };
 }

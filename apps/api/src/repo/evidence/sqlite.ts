@@ -189,12 +189,10 @@ export function sqliteEvidenceRepo(db: DB): EvidenceRepo {
       return done(undefined);
     },
 
-    expireDuePending(now) {
-      db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE status = 'pending' AND expires_at <= ?`).run(now);
-      return done(undefined);
-    },
-    stuckCompleting: (cutoff) =>
-      done(db.prepare(`SELECT id, evidence_id FROM upload_intents WHERE status = 'completing' AND expires_at <= ?`).all(cutoff) as { id: string; evidence_id: string | null }[]),
+    duePending: (now, limit) =>
+      done((db.prepare(`SELECT id FROM upload_intents WHERE status = 'pending' AND expires_at <= ? LIMIT ?`).all(now, limit) as { id: string }[]).map((r) => r.id)),
+    stuckCompleting: (cutoff, limit) =>
+      done(db.prepare(`SELECT id, evidence_id FROM upload_intents WHERE status = 'completing' AND expires_at <= ? LIMIT ?`).all(cutoff, limit) as { id: string; evidence_id: string | null }[]),
     evidenceExists: (id) => done(db.prepare('SELECT 1 FROM evidence WHERE id = ?').get(id) !== undefined),
     expireIntentNow(id) {
       db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE id = ?`).run(id);

@@ -82,8 +82,9 @@ export interface EvidenceRepo {
   deletionRetry(key: string, nextAttemptAt: number): Promise<void>;
 
   // Sweep.
-  expireDuePending(now: number): Promise<void>;
-  stuckCompleting(cutoff: number): Promise<{ id: string; evidence_id: string | null }[]>;
+  /** Pending intents past expiry (each is then closed with `expireIntent`, one item at a time). */
+  duePending(now: number, limit: number): Promise<string[]>;
+  stuckCompleting(cutoff: number, limit: number): Promise<{ id: string; evidence_id: string | null }[]>;
   evidenceExists(id: string): Promise<boolean>;
   /** Unconditional close of a crashed completion. */
   expireIntentNow(id: string): Promise<void>;

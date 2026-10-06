@@ -410,3 +410,69 @@ describe('deterministic (Idempotency-Key) evidence ids', () => {
     expect(await repo.evidenceUsage('p1')).toEqual({ n: 1, bytes: 1000 });
   });
 });
+
+describe('sweep slices (R5) on Firestore', () => {
+  const core = firestoreCoreRepo(fs);
+  function countingStore() {
+    const calls = new Map<string, number>();
+    const store: EvidenceStore = {
+      kind: 'r2',
+      canDelete: true,
+      head: async () => null,
+      readRange: async () => {
+        throw new Error('unused');
+      },
+      copy: async () => {},
+      delete: async (k) => void calls.set(k, (calls.get(k) ?? 0) + 1),
+      presignPut: async () => ({ url: '', headers: {} }),
+      presignGet: async () => ({ url: '' }),
+    };
+    return { store, calls };
+  }
+  async function seedSweep() {
+    await participation('p1');
+    // 2 abandoned uploads (expire, then their quarantine objects go) + 3 outbox entries.
+    for (const seg of ['a', 'b']) await repo.openUploadIntent(intent(seg, seg), NOW);
+    for (let i = 0; i < 3; i += 1) {
+      const k = `evidence/outbox-000${i}`;
+      await repo.registerObject(k, NOW);
+      await repo.enqueueDeletion(k, 'account_deletion', NOW - 60_000);
+    }
+  }
+  const later = NOW + TTL + 1;
+
+  it('maxItems slices resume to completion; every object deleted exactly once', async () => {
+    await seedSweep();
+    const { store, calls } = countingStore();
+    const d = { repo: { evidence: repo, core }, store, now: () => later };
+    const runs: boolean[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const { complete } = await sweepStorage(d, { maxItems: 2 });
+      runs.push(complete);
+      if (complete) break;
+    }
+    expect(runs).toEqual([false, false, false, true]); // 7 items at 2 per slice
+    expect([...calls.keys()].sort()).toEqual(['evidence/outbox-0000', 'evidence/outbox-0001', 'evidence/outbox-0002', 'quarantine/intent-a', 'quarantine/intent-b']);
+    expect([...calls.values()].every((n) => n === 1)).toBe(true);
+    expect(await count('storageDeletions')).toBe(0);
+    expect(await count('openSegments')).toBe(0);
+    expect(await sweepStorage(d, { maxItems: 2 })).toEqual({ complete: true });
+    expect([...calls.values()].every((n) => n === 1)).toBe(true);
+  });
+
+  it('a passed deadline does nothing; a stale fence stops; the current holder completes', async () => {
+    await seedSweep();
+    const { store, calls } = countingStore();
+    const d = { repo: { evidence: repo, core }, store, now: () => later };
+    expect(await sweepStorage(d, { deadlineMs: later })).toEqual({ complete: false });
+    // h1's lease lapses; h2 takes over and is still live at the sweep's clock.
+    const stale = (await core.acquireLease('sweep', 'h1', 60_000, later - 120_000))!;
+    const current = (await core.acquireLease('sweep', 'h2', 60_000, later - 30_000))!;
+    expect(current).toBeGreaterThan(stale);
+    expect(await sweepStorage(d, { lease: { job: 'sweep', fence: stale } })).toEqual({ complete: false });
+    expect(calls.size).toBe(0);
+    expect((await repo.getIntent('intent-a'))?.status).toBe('pending');
+    expect(await sweepStorage(d, { lease: { job: 'sweep', fence: current } })).toEqual({ complete: true });
+    expect(calls.size).toBe(5);
+  });
+});

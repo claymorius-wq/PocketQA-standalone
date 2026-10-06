@@ -53,7 +53,6 @@ const IN_LIMIT = 30; // Firestore `in` filter maximum
 /** Writes per purge transaction stay far below Firestore's per-commit limits (lead: ≤ 450). */
 const PURGE_EVIDENCE_PER_TX = 60; // ≤ 7 writes each
 const PURGE_INTENTS_PER_TX = 100; // ≤ 3 writes each, plus one usage doc per participation
-const SWEEP_BATCH = 100;
 
 const segmentId = (pid: string, seg: string) => `${pid}:${sha256(seg)}`;
 const keyId = (key: string) => sha256(key);
@@ -359,17 +358,12 @@ export function firestoreEvidenceRepo(fs: Firestore, hooks: TxHooks = {}): Evide
       });
     },
 
-    async expireDuePending(now) {
-      // Each intent closes in its own transaction (guard and reservation with it), in bounded batches.
-      for (;;) {
-        const q = await fs.collection('uploadIntents').where('status', '==', 'pending').where('expires_at', '<=', now).limit(SWEEP_BATCH).get();
-        let changed = 0;
-        for (const d of q.docs) if (await transition((d.data() as IntentDoc).id, ['pending'], 'expired')) changed += 1;
-        if (q.size < SWEEP_BATCH || changed === 0) return;
-      }
+    async duePending(now, limit) {
+      const q = await fs.collection('uploadIntents').where('status', '==', 'pending').where('expires_at', '<=', now).limit(limit).get();
+      return q.docs.map((d) => (d.data() as IntentDoc).id);
     },
-    async stuckCompleting(cutoff) {
-      const q = await fs.collection('uploadIntents').where('status', '==', 'completing').where('expires_at', '<=', cutoff).get();
+    async stuckCompleting(cutoff, limit) {
+      const q = await fs.collection('uploadIntents').where('status', '==', 'completing').where('expires_at', '<=', cutoff).limit(limit).get();
       return q.docs.map((d) => {
         const x = d.data() as IntentDoc;
         return { id: x.id, evidence_id: x.evidence_id };
