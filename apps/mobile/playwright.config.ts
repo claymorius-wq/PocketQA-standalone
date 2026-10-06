@@ -1,10 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { API, API_PORT } from './e2e/api';
 import { introSeen } from './e2e/introSeen';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Local-only: the API on 127.0.0.1:8787 with a throwaway data dir, and the Expo web
+// Local-only: the API on 127.0.0.1:8787 (PQA_E2E_API_PORT overrides it) with a throwaway data dir, and the Expo web
 // preview on :8090. Existing servers are reused when already running.
 const dataDir = process.env.POCKETQA_E2E_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'pqa-e2e-'));
 // Shared with specs (e.g. to create an admin through the real CLI against the same DB).
@@ -46,14 +47,14 @@ export default defineConfig({
     },
     {
       // Wallet login on, bound to this test origin (ADR 0005 §2).
-      command: `POCKETQA_DATA_DIR=${dataDir} POCKETQA_SOLANA_RPC_URL=http://127.0.0.1:8899 POCKETQA_WALLET_LOGIN=1 POCKETQA_SETTLEMENT=simulated POCKETQA_PUBLIC_ORIGIN=http://localhost:8090 pnpm --filter @pocket-qa/api start`,
-      url: 'http://127.0.0.1:8787/health',
+      command: `POCKETQA_API_PORT=${API_PORT} POCKETQA_DATA_DIR=${dataDir} POCKETQA_SOLANA_RPC_URL=http://127.0.0.1:8899 POCKETQA_WALLET_LOGIN=1 POCKETQA_SETTLEMENT=simulated POCKETQA_PUBLIC_ORIGIN=http://localhost:8090 pnpm --filter @pocket-qa/api start`,
+      url: `${API}/health`,
       reuseExistingServer: false,
       timeout: 60_000,
     },
     {
       // A fresh static export each run, so tests never see a stale dev bundle.
-      command: 'npx expo export --platform web --output-dir dist-web --clear && node e2e/serve-web.mjs',
+      command: `EXPO_PUBLIC_API_URL=${API} npx expo export --platform web --output-dir dist-web --clear && node e2e/serve-web.mjs`,
       url: 'http://localhost:8090',
       reuseExistingServer: false,
       timeout: 300_000,
