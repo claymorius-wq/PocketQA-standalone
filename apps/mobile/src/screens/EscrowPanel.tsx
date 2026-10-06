@@ -148,6 +148,7 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
               <KeyValue label="Approved, payment pending" value={amount(b.payableUnits)} valueTestID="escrow-payable" />
               <KeyValue label={`Settled to testers (${tag})`} value={amount(b.settledUnits)} valueTestID="escrow-settled" />
               <KeyValue label="Platform fees" value={amount(b.feesUnits)} />
+              {b.sweptFeesUnits !== undefined ? <KeyValue label={`Fees sent to the platform (${tag})`} value={amount(b.sweptFeesUnits)} valueTestID="escrow-swept-fees" /> : null}
               <KeyValue label="Refund pending" value={amount(b.pendingRefundUnits)} />
               <KeyValue label={`Refunded (${tag})`} value={amount(b.refundedUnits)} valueTestID="escrow-refunded" />
             </KeyValueList>
@@ -168,6 +169,28 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
               reviewLabel="Review the refund vote to sign in your wallet"
               signLabel="Approve in your wallet"
               load={() => api('settlementApproval', { params: { id: p.refund!.settlementId } })}
+              submit={(signature, plan) => api('submitSettlementApproval', { params: { id: plan.settlementId }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+              onDone={() => void refresh()}
+            />
+          ) : null}
+          {p.feeSweep ? (
+            <Text variant="small" tone="muted" testID="escrow-fee-sweep">
+              {p.feeSweep.status === 'confirmed'
+                ? `Platform fees of ${amount(p.feeSweep.amountUnits)} sent to the platform fee wallet · ${pilot ? 'finalized on devnet, no value' : 'simulation, no funds moved'}.`
+                : `Platform fees of ${amount(p.feeSweep.amountUnits)} to the platform fee wallet: ${p.feeSweep.status.replace('_', ' ')} · ${tag}.`}
+            </Text>
+          ) : null}
+          {pilot && p.feeSweep?.status === 'awaiting_approval' ? (
+            // Devnet pilot: at close the earned fees leave the vault to the platform fee wallet, also
+            // co-signed by the builder (be3 E-24). The app doesn't know the fee wallet: the recipient
+            // is the plan's, checked against the vault transaction on devnet when it can be read.
+            <ServerTxSign
+              testID="escrow-fee-approval"
+              settlement={p.settlement}
+              expectedApproval={{ settlementId: p.feeSweep.settlementId, kind: 'fee', amountUnits: p.feeSweep.amountUnits, destination: null }}
+              reviewLabel="Review the platform fee vote to sign in your wallet"
+              signLabel="Approve in your wallet"
+              load={() => api('settlementApproval', { params: { id: p.feeSweep!.settlementId } })}
               submit={(signature, plan) => api('submitSettlementApproval', { params: { id: plan.settlementId }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
               onDone={() => void refresh()}
             />

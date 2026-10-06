@@ -271,6 +271,39 @@ describe('EscrowPanel · devnet funding with the wallet', () => {
     expect(screen.queryByTestId('escrow-refund-approval-sign')).toBeNull();
   });
 
+  it('devnet fee sweep awaiting the builder’s vote (be3 E-24): review the vote (platform fee) → sign → submitted', async () => {
+    const study = escrowStudy();
+    study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: null, feeSweep: { settlementId: 'set-f', status: 'awaiting_approval', amountUnits: 100_000 } } as typeof study.payment;
+    const plan = approvalPlan({ settlementId: 'set-f', kind: 'fee', amountUnits: 100_000, destination: MULTISIG });
+    mockApi.mockImplementation(async (name: string) => (name === 'settlementApproval' ? plan : { settlementId: 'set-f', kind: 'fee', status: 'submitted', signature: '5igFee', network: 'devnet' }));
+    mockSign.mockImplementation(async (_p: unknown, _c: unknown, send: (s: string) => Promise<unknown>) => {
+      await send('5igFee');
+      return { signature: '5igFee' };
+    });
+    await render(tree(<EscrowPanel study={study} />));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-fee-approval-review')));
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-f' } });
+    expect(screen.getByText(/Platform fee · checked in this transaction/)).toBeTruthy();
+    expect(screen.getByTestId('escrow-fee-sweep')).toHaveTextContent(/Platform fees of 0\.10 devnet test USDC to the platform fee wallet: awaiting approval/);
+    // The client doesn't know the fee wallet; the recipient is the plan's (checked on devnet when readable).
+    expect(mockSign.mock.calls.length).toBe(0);
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-fee-approval-sign')));
+    await settle();
+    expect(mockSign.mock.calls[0]![1]).toMatchObject({ expectedApproval: { settlementId: 'set-f', kind: 'fee', amountUnits: 100_000, destination: null } });
+    expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-f' }, body: { signature: '5igFee', txIndex: 4, opId: OP } });
+  });
+
+  it('a fee vote for another amount than the study’s fee sweep is refused', async () => {
+    const study = escrowStudy();
+    study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: null, feeSweep: { settlementId: 'set-f', status: 'awaiting_approval', amountUnits: 100_000 } } as typeof study.payment;
+    mockApi.mockImplementation(async () => approvalPlan({ settlementId: 'set-f', kind: 'fee', amountUnits: 999_999 }));
+    await render(tree(<EscrowPanel study={study} />));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-fee-approval-review')));
+    await settle();
+    expect(screen.getByTestId('escrow-fee-approval-error')).toHaveTextContent(/amount differs.*Nothing was signed/);
+  });
+
   it.each(['pending', 'submitted', 'confirmed', 'failed'])('no refund vote is offered when the refund is %s', async (status) => {
     const study = escrowStudy();
     study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: { settlementId: 'set-r', status, amountUnits: 1_500_000 } } as typeof study.payment;
