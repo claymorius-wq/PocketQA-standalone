@@ -947,3 +947,28 @@ $ curl -I /  → content-security-policy (app CSP + bucket path), coop same-orig
 $ curl -I /api/config → cache-control no-store; content-security-policy default-src 'none'; sandbox; nosniff
 $ (r2:cors dry run, read-only) bucket pocketqa-evidence: current CORS PUT for https://pocketqa.optijara.ai only → plan: conflict → "Refusing: the bucket has other CORS rules. Nothing was changed."
 ```
+
+### 2026-10-06: hosted gate r1 P1-H1 (stale Metro cache shipped http://127.0.0.1:18887): fix d58d918, redeploy
+```
+$ node scripts/vercel/bundle-check.mjs --expect /api .vercel/output/static/_expo     # the bundle deployed at f66469f
+bundle check failed (1 files): private/loopback API base http://127.0.0.1:18887
+$ (apps/mobile) EXPO_PUBLIC_API_URL=http://127.0.0.1:18887 npx expo export --platform web --output-dir dist-web   # prime a stale cache on purpose
+primed stale export files containing 18887: 1
+$ node scripts/vercel/build.mjs --env staging --deploy     # export --clear + bundle gate
+built .vercel/output (staging, deploy): api.func maxDuration 60s in fra1; 32 files; secret scan clean (4/4 server-only variables, 7 values checked)
+bundle check ok: 1 files call /api and no private API base
+$ vercel deploy --prebuilt --prod --yes --scope hamzadiaz-4939s-projects
+Production: https://pocketqa-mq91j756y-hamzadiaz-4939s-projects.vercel.app   Aliased: https://pocketqa.vercel.app   (dpl_DF68zX8zboPNNpfRYjVkDMFLPwSP, ● Ready)
+$ curl https://pocketqa.vercel.app/<served entry-12b859d1…js> | bundle-check --expect /api   → ok ; /api/health 200
+```
+
+### 2026-10-06: Android APK for the hosted API (built from feat/firebase-vercel at f4b887d; EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api, EXPO_PUBLIC_POCKETQA_ENV=staging)
+```
+$ (apps/mobile) npx expo prebuild --platform android --no-install && (android) ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4
+BUILD SUCCESSFUL in 2m 1s
+dist-native/pocketqa-hosted-f4b887d.apk  52497845 bytes  sha256 0098101f96df70f08b15e2dd01a4ec0f8b64e6df4c95f10b800aa0e4cfafc2be
+apksigner: Signer #1 certificate DN: CN=Android Debug (USB test build, like the earlier test APK)
+$ bundle-check --expect https://pocketqa.vercel.app/api assets/index.android.bundle   → ok (Hermes; no private API base)
+APK secret scan (5 server-only values incl. SA private key id and key line): 1455 files, 0 hits
+$ adb -s emulator-5556 install -r … && pm clear && launch   → Success; the intro screen renders (our own emulator; the connected Seeker was NOT touched)
+```
