@@ -55,7 +55,8 @@ if (!r2AccountId || !bucket) throw new Error('POCKETQA_R2_ACCOUNT_ID and POCKETQ
 const google = process.env.POCKETQA_FIREBASE_GOOGLE === '1';
 const googleAuthDomain = google ? process.env.POCKETQA_FIREBASE_AUTH_DOMAIN : undefined;
 if (google && !googleAuthDomain) throw new Error('POCKETQA_FIREBASE_GOOGLE=1 needs POCKETQA_FIREBASE_AUTH_DOMAIN for the CSP.');
-const config = vercelConfig({ r2AccountId, bucket, googleAuthDomain });
+// The devnet build alone lets the web client read the pinned devnet RPC (connect-src).
+const config = vercelConfig({ r2AccountId, bucket, googleAuthDomain, devnet: envName === 'devnet' });
 
 rmSync(OUT, { recursive: true, force: true });
 const fn = join(OUT, 'functions/api.func');
