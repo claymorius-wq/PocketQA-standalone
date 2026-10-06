@@ -11,6 +11,8 @@ import { decodeServerTx } from '@pocket-qa/domain';
 // - signAndSendTransaction signs a v0/legacy message's fee-payer slot here, then hands the signed
 //   bytes to `send` (local: the fake devnet behind the connectors seam; hosted: a devnet RPC).
 export const DEVNET = 'solana:devnet';
+/** The honest label: this is a test wallet Playwright injects, never a real browser extension. */
+export const TEST_WALLET_NAME = 'Pocket QA Test Wallet (devnet) — injected by Playwright, not an extension';
 
 export type WalletLogEntry = { kind: string; chain?: string; bytes?: number; programs?: string[]; approved: boolean; refused?: string; signature?: string };
 export type DevnetWalletOptions = {
@@ -19,6 +21,8 @@ export type DevnetWalletOptions = {
   /** The page's host, as a real wallet checks a sign-in request's domain against it. */
   originHost: string;
   send: (signed: Uint8Array) => Promise<string>;
+  /** The chains the wallet announces (default devnet only); ['solana:mainnet'] makes a wrong-network wallet. */
+  chains?: string[];
   /** Refuse a request (reported to the app as a user rejection). */
   approve?: (req: { kind: string; bytes?: number; programs?: string[] }) => boolean;
 };
@@ -90,11 +94,12 @@ export async function installDevnetWallet(page: Page, opts: DevnetWalletOptions)
     throw new Error(`unsupported wallet request ${kind}`);
   });
 
-  await page.addInitScript((walletName: string) => {
+  await page.addInitScript((cfg: { walletName: string; chains: string[] }) => {
+    const walletName = cfg.walletName;
     type Bridge = (kind: string, payload: unknown) => Promise<Record<string, number[] | string> | null>;
     const call = (kind: string, payload: unknown) => (window as unknown as { __pqaDevnetWallet: Bridge }).__pqaDevnetWallet(kind, payload);
     const u8 = (a: unknown) => Uint8Array.from(a as number[]);
-    const CHAINS = ['solana:devnet'];
+    const CHAINS = cfg.chains;
     const FEATURES = ['solana:signIn', 'solana:signMessage', 'solana:signAndSendTransaction'];
     let accounts: unknown[] = [];
     const listeners = new Set<(e: unknown) => void>();
@@ -167,7 +172,7 @@ export async function installDevnetWallet(page: Page, opts: DevnetWalletOptions)
       /* the app registers later */
     }
     window.addEventListener('wallet-standard:app-ready', (e) => register((e as CustomEvent).detail));
-  }, opts.name ?? 'Pocket QA Test Wallet (devnet)');
+  }, { walletName: opts.name ?? TEST_WALLET_NAME, chains: opts.chains ?? [DEVNET] });
 
   return { address, log };
 }

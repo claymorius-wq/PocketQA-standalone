@@ -6,6 +6,7 @@ import { encodeV0, MULTISIG, OP, ATTACKER, transferCheckedIx, approveIx, VAULT }
 import { associatedTokenAddress, PILOT_MINT } from '@pocket-qa/domain';
 import { installDevnetWallet } from './devnetWallet';
 import { routeDevnetRpc, vaultTransactionAccount, type FakeDevnet } from './fakeDevnetRpc';
+import { recordEvidence } from './hostedDevnet';
 
 // Self-test of the devnet journey harness with a THROWAWAY key on a route-only page: the test
 // wallet signs exactly the fee-payer slot of real v0 bytes and hands them to `send`; it refuses
@@ -76,6 +77,7 @@ test('test wallet + fake devnet RPC', async ({ page }) => {
   );
 
   expect(out.address).toBe(address);
+  expect(out.name).toBe('Pocket QA Test Wallet (devnet) — injected by Playwright, not an extension');
   // Funding and vote: signed exactly in the fee-payer slot, sent, and the signature verifies over the message.
   expect(sent).toHaveLength(2);
   for (const [i, s] of sent.entries()) {
@@ -94,4 +96,20 @@ test('test wallet + fake devnet RPC', async ({ page }) => {
   expect(out.secretInPage).toBe(false);
   expect(wallet.log.filter((l) => !l.approved).map((l) => l.refused)).toEqual(['chain solana:mainnet is not solana:devnet', 'not this wallet’s account', 'policy']);
   expect(devnet.requests!.map((r) => r.method)).toEqual(['getGenesisHash', 'getAccountInfo', 'getAccountInfo']);
+});
+
+test('a wrong-network wallet announces only mainnet (the app must not offer it); evidence drops query strings', async ({ page }) => {
+  const ev = recordEvidence(page);
+  await installDevnetWallet(page, { secretKey: ed25519.utils.randomSecretKey(), originHost: HOST, chains: ['solana:mainnet'], send: async () => 'never' });
+  await page.route(`https://${HOST}/**`, (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><title>harness</title>' }));
+  await page.goto(`https://${HOST}/?X-Amz-Signature=secret-looking`);
+  const chains = await page.evaluate(() => {
+    const ws: { chains: string[] }[] = [];
+    const reg = { register: (...w: never[]) => ws.push(...w) };
+    window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: reg }));
+    return ws.map((w) => w.chains);
+  });
+  expect(chains).toEqual([['solana:mainnet']]);
+  expect(ev.network.map((n) => n.url)).toContain(`https://${HOST}/`);
+  expect(JSON.stringify(ev)).not.toContain('X-Amz');
 });
