@@ -1,0 +1,20 @@
+# P-05 physical readiness (pqa-ios), read-only
+2026-10-06T19:38:16Z
+$ adb version
+Android Debug Bridge version 1.0.41 (Version 36.0.2-14143358)
+$ adb devices -l
+SM02E4072811963        unauthorized usb:3-1 transport_id:1
+
+Host adb PUBLIC key fingerprint (MD5 of ~/.android/adbkey.pub, the format Android shows; the private key was not read):
+64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF
+
+What Hamza must do at the device (nothing else is needed from this side):
+1. Unlock the phone with the USB cable to this Mac mini plugged in.
+2. On the "Allow USB debugging?" dialog, check that the "computer's RSA key fingerprint" reads
+   64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF, tick "Always allow from this computer", tap Allow.
+3. If no dialog appears: Settings > System > Developer options > confirm "USB debugging" is on, tap
+   "Revoke USB debugging authorizations" only if he is fine re-approving every computer, then unplug
+   and replug the cable (choose "File transfer"/"No data transfer" as he prefers; debugging works with either).
+Afterwards `adb devices -l` should show the serial as "device" with model; only then the
+non-destructive reads (installed build via dumpsys package, launch) can run. Recording consent,
+deny, stop, interruption, review and retain/discard still need him at the device.
