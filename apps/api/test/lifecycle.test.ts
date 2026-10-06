@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreditsView, Participation, Study } from '@pocket-qa/contracts';
-import { DEVICE, makeApp, PNG, seeded, STUDY, type TestApp } from './helpers';
+import { DEVICE, makeApp, onFirestore, PNG, seeded, STUDY, type TestApp } from './helpers';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -110,13 +110,15 @@ describe('review and ledger', () => {
     const a2 = await t.req('POST', `/participations/${participationId}/approve`, builder.token, {});
     expect(a2.status).toBe(409);
     expect(await balance(tester.token)).toBe(50);
-    const rows = t.db.prepare(`SELECT COUNT(*) AS n FROM ledger WHERE participation_id = ? AND kind = 'reward_credit' AND amount > 0`).get(participationId) as { n: number };
-    expect(rows.n).toBe(1);
+    const credits = (await t.deps.repo.studies.ledgerEntries(`user:${tester.id}`)).filter((e) => e.participation_id === participationId && e.kind === 'reward_credit' && e.amount > 0);
+    expect(credits).toHaveLength(1);
     const s = Study.parse((await t.req('GET', `/studies/${study.id}`, builder.token)).body);
     expect(s.budget).toEqual({ reserved: 100, awarded: 50, committed: 0, available: 50 });
   });
 
-  it('the database itself refuses a second reward posting and any ledger edit', async () => {
+  // SQLite's own triggers and UNIQUE index; on Firestore the ledgerRewards guard and the
+  // append-only repository are covered by test/emulator/studies.guards.test.ts.
+  it.skipIf(onFirestore())('the database itself refuses a second reward posting and any ledger edit', async () => {
     const { builder, tester, participationId } = await seeded(t);
     await t.req('POST', `/participations/${participationId}/submit`, tester.token);
     await t.req('POST', `/participations/${participationId}/approve`, builder.token, {});
@@ -162,7 +164,8 @@ describe('review and ledger', () => {
 });
 
 describe('error mapping', () => {
-  it('a ledger invariant breach surfaces as 500, not as a routine 409', async () => {
+  // Fault injection through a SQLite trigger.
+  it.skipIf(onFirestore())('a ledger invariant breach surfaces as 500, not as a routine 409', async () => {
     const { builder, tester, participationId } = await seeded(t);
     await t.req('POST', `/participations/${participationId}/submit`, tester.token);
     // Simulate a buggy code path: a trigger-protected ledger row mutation inside a request.
