@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
 import * as multisig from '@sqds/multisig';
-import { DEVNET_COPY, type DevnetFundingTransaction, type SettlementApproval, type SettlementApprovalResult } from '@pocket-qa/contracts';
+import { DEVNET_COPY, type DevnetFundingTransaction, type DevnetSettlementPlan, type SettlementApproval, type SettlementApprovalResult } from '@pocket-qa/contracts';
 import { MAX_ESCROW_UNITS, observeTokenTransfer } from '@pocket-qa/domain';
 import type { Repos } from '../../repo';
 import type { FundingRow, SettlementRow } from '../../repo/escrow/types';
@@ -493,6 +493,13 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     const p = await this.d.chain.getProposal(r.multisig, BigInt(r.tx_index));
     if (!p?.approved.includes(builderWallet)) throw fail('COSIGNER_NOT_SEEN', 'Your approval is not on devnet yet. Try again once your wallet shows it confirmed.');
     return { settlementId: s.id, kind: r.kind, status: 'submitted', signature: null, network: 'devnet' };
+  }
+
+  /** The arbiter CLI's inputs, from the receipt (admin read-only; builds and signs nothing). */
+  async operatorPlan(s: SettlementRow): Promise<DevnetSettlementPlan> {
+    const r = await this.store.receipt(s.id);
+    if (!r || r.tx_index === 0) throw fail('CONFLICT_STATE', 'This payment has no devnet receipt yet; the next settle run creates it.');
+    return { settlementId: s.id, kind: r.kind, cosigner: r.cosigner, state: r.state, multisig: r.multisig, txIndex: r.tx_index, opId: r.op_id, recipient: r.destination, amountUnits: r.amount_units, mint: PILOT_MINT, network: 'devnet' };
   }
 
   /** CH-D1: test USDC entering the system, reserved once per study's funding (before the request exists). */

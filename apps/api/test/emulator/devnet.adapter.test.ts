@@ -514,3 +514,21 @@ describe('a proposal already approved by its cosigner and another member (disput
     expect(chain.landed.filter((l) => l.step === 'execute')).toHaveLength(1);
   });
 });
+
+describe('the operator plan of a payment (the arbiter CLI inputs, admin read-only)', () => {
+  it('an arbiter-cosigned payout: the plan names the multisig, index, op id, recipient and amount; it builds nothing', async () => {
+    await readyVault();
+    const p = part('p-arb');
+    await fs.collection('participations').doc(p.id).set(p);
+    await runTxCtx(raw, (t) => authorizePayoutInTx(t, fs, study(), p, 0, now, 'admin', 'dispute overturned', 'arbiter'));
+    const s = (await repos.escrow.payoutSettlementOf(p.id))!;
+    await expect(adapter.operatorPlan(s)).rejects.toMatchObject({ code: 'CONFLICT_STATE' }); // not claimed yet
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p.id)).toBe('awaiting_approval');
+    const built = chain.built.length;
+    const plan = await adapter.operatorPlan(s);
+    const r = (await repos.escrow.devnet!.receipt(s.id))!;
+    expect(plan).toEqual({ settlementId: s.id, kind: 'payout', cosigner: 'arbiter', state: 'awaiting_cosigner', multisig: r.multisig, txIndex: r.tx_index, opId: r.op_id, recipient: p.payout_address, amountUnits: 1_000, mint: PILOT_MINT, network: 'devnet' });
+    expect(chain.built.length).toBe(built);
+  });
+});

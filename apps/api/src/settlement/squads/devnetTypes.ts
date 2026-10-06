@@ -1,5 +1,5 @@
 import type { VersionedTransaction } from '@solana/web3.js';
-import type { DevnetFundingTransaction, SettlementApproval, SettlementApprovalResult } from '@pocket-qa/contracts';
+import type { DevnetFundingTransaction, DevnetSettlementPlan, SettlementApproval, SettlementApprovalResult } from '@pocket-qa/contracts';
 import type { FundingRow, SettlementRow } from '../../repo/escrow/types';
 import type { SettlementProvider } from '../types';
 import type { ParsedTokenTx } from '@pocket-qa/domain';
@@ -81,6 +81,8 @@ export interface DevnetSettlementOps {
   fundingTransaction(f: FundingRow, builderWallet: string): Promise<DevnetFundingTransaction>;
   approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval>;
   submitApproval(s: SettlementRow, body: { signature: string; txIndex: number; opId: string }, builderWallet: string): Promise<SettlementApprovalResult>;
+  /** The operator's read-only plan of a payment (the arbiter CLI's inputs); 409 until it has a receipt. */
+  operatorPlan(s: SettlementRow): Promise<DevnetSettlementPlan>;
   /** CH-D1: reserves the test USDC a funding request brings in, before the request exists (409 DEVNET_SPEND_CAP). */
   reserveFunding(input: { studyId: string; userId: string; amountUnits: number }): Promise<void>;
 }

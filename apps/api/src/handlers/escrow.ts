@@ -155,6 +155,14 @@ export const escrowHandlers = {
     return devnet(ctx).submitApproval(s, ctx.body, await builderWallet(ctx));
   },
 
+  /** Admin, read-only: the devnet payment's plan, i.e. the arbiter CLI's inputs (dispute overturn). */
+  adminDevnetSettlement: async (ctx) => {
+    const p = devnet(ctx);
+    const s = await ctx.deps.repo.escrow.settlementById(ctx.params.id!);
+    if (!s) throw notFound('Settlement');
+    return p.operatorPlan(s);
+  },
+
   myPayouts: async (ctx) => {
     const rows = await ctx.deps.repo.escrow.payoutsOfTester(me(ctx).id);
     return { items: await Promise.all(rows.map((r) => payoutViewOf(ctx.deps.repo, r))) };
