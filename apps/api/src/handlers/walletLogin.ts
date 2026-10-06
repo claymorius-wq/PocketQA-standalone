@@ -73,7 +73,7 @@ export const walletLoginHandlers = {
     const signedIn = result.user;
     const session =
       ctx.deps.config.authMode === 'local'
-        ? { kind: 'local' as const, token: issueSession(ctx, signedIn).token }
+        ? { kind: 'local' as const, token: (await issueSession(ctx, signedIn)).token }
         : { kind: 'firebase_custom_token' as const, customToken: await ctx.deps.identity!.createCustomToken(result.subject!) };
     return { user: userView(ctx.deps.db, signedIn), session };
   },

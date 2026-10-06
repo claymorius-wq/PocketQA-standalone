@@ -401,8 +401,9 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       return { payments: paymentsExport(db, userId), reputation: reputationExport(db, userId, nowMs) };
     },
 
-    async purgeUser(userId, nowMs) {
-      // No transaction here: this runs inside the caller's account-deletion transaction.
+    // NOT async: this runs inside the caller's account-deletion db.transaction, so it must do its
+    // work and throw synchronously (a rejected promise would not roll that transaction back).
+    purgeUser(userId, nowMs) {
       // Demo transfers carry wallet addresses (on-chain pseudonyms) and no ledger value.
       db.prepare('DELETE FROM devnet_transfers WHERE builder_id = ? OR tester_id = ?').run(userId, userId);
       db.prepare('DELETE FROM wallet_links WHERE user_id = ?').run(userId);
@@ -418,7 +419,7 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       // The leaderboard pseudonym goes with the account; points stay append-only under the
       // now-anonymous id (like ledger postings, ADR 0002).
       db.prepare('DELETE FROM leaderboard_profiles WHERE user_id = ?').run(userId);
-      return { mediaKeys: [] };
+      return Promise.resolve({ mediaKeys: [] });
     },
   };
 }
