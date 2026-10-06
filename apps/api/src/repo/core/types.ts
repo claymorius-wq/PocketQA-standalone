@@ -5,7 +5,7 @@ export type AuditRow = {
   id: string;
   actor_id: string;
   action: string;
-  target_type: 'study' | 'user' | 'dispute';
+  target_type: 'study' | 'user' | 'dispute' | 'participation' | 'storage_object';
   target_id: string;
   reason: string;
   created_at: string;

@@ -31,7 +31,7 @@ export function userView(db: DB, row: UserRow): User {
   };
 }
 
-type AuditRow = { id: string; actor_id: string; action: string; target_type: 'study' | 'user' | 'dispute'; target_id: string; reason: string; created_at: string };
+type AuditRow = { id: string; actor_id: string; action: string; target_type: 'study' | 'user' | 'dispute' | 'participation' | 'storage_object'; target_id: string; reason: string; created_at: string };
 
 export function auditView(row: AuditRow): z.infer<typeof AuditEntry> {
   return { id: row.id, actorId: row.actor_id, action: row.action, targetType: row.target_type, targetId: row.target_id, reason: row.reason, createdAt: row.created_at };

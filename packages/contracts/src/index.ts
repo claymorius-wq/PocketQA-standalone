@@ -508,7 +508,8 @@ export const AuditEntry = z.object({
   id: Id,
   actorId: Id,
   action: z.string(),
-  targetType: z.enum(['study', 'user', 'dispute', 'participation']),
+  // storage_object: a refused deletion outside the app's own keys (targetId = sha256 of the key, never the key).
+  targetType: z.enum(['study', 'user', 'dispute', 'participation', 'storage_object']),
   targetId: Id,
   reason: z.string(),
   createdAt: IsoDate,
