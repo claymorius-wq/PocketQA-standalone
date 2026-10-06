@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { KeyRound, LogIn, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
+import { KeyRound, LogIn, LogOut, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
@@ -37,6 +37,9 @@ export default function SignIn() {
     walletLogin,
     features,
     needsAccount,
+    signedInEmail,
+    googleSignIn,
+    signOut,
     pendingProfile,
     signInWithGoogle,
     signInWithWallet,
@@ -60,7 +63,8 @@ export default function SignIn() {
   const canReset = authMode === 'firebase';
   const [resetOpen, setResetOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const canGoogle = authMode === 'firebase' && web;
+  // Google only where the deployment has the provider enabled (/config firebase.googleSignIn).
+  const canGoogle = authMode === 'firebase' && web && googleSignIn;
   const [role, setRole] = useState<'tester' | 'builder'>('tester');
   const [displayName, setDisplayName] = useState('');
   // Wallet sign-in found no account for this wallet: offer to create one (a second signature).
@@ -167,6 +171,24 @@ export default function SignIn() {
     else setSignedIn(true);
     // Each response once; needsAccount is read as that response left it.
   }, [answered]);
+
+  /**
+   * "Use another account" on Finish your account (QA P2): a managed sign-in that no Pocket QA
+   * account uses may simply be the wrong identity, so leaving must be as easy as creating a new
+   * account. Signs out of the app only (API logout, Firebase sign-out here, local session cleared;
+   * never the Google account itself) and returns to an empty sign-in form. A wallet with no account
+   * has no session yet: leaving just closes the card.
+   */
+  function useAnotherAccount() {
+    void run(async () => {
+      if (walletNew) setWalletNew(false);
+      else await signOut();
+      setDisplayName('');
+      setRole('tester');
+      setEmail('');
+      setPassword('');
+    });
+  }
 
   /** Google, the wallet and "Create account": the plain `replace` once signed in, never U1. */
   function runPlain(action: () => Promise<void>) {
@@ -293,11 +315,20 @@ export default function SignIn() {
             <Card testID="finish-account" style={styles.finish}>
               <View style={styles.finishHead}>
                 <Text variant="heading">{walletNew ? 'Create an account with this wallet' : 'Finish your account'}</Text>
-                <Text variant="small" tone="muted">
-                  {walletNew
-                    ? 'No Pocket QA account uses this wallet yet. Choose how you’ll use Pocket QA; your wallet will ask you to sign in once more.'
-                    : 'You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.'}
-                </Text>
+                {walletNew ? (
+                  <Text variant="small" tone="muted">
+                    No Pocket QA account uses this wallet yet. Choose how you’ll use Pocket QA; your wallet will ask you to sign in once more.
+                  </Text>
+                ) : (
+                  <>
+                    <Text variant="small" tone="muted" testID="finish-identity">
+                      {`No Pocket QA account uses ${signedInEmail ?? 'this sign-in'} yet. If you already have an account, sign in with the email it uses.`}
+                    </Text>
+                    <Text variant="small" tone="muted">
+                      To create a new account, choose how you’ll use Pocket QA.
+                    </Text>
+                  </>
+                )}
               </View>
               <Segmented
                 testID="finish-role"
@@ -317,6 +348,7 @@ export default function SignIn() {
                 disabled={!displayName.trim()}
                 testID="finish-submit"
               />
+              <Button label="Use another account" icon={LogOut} variant="secondary" onPress={useAnotherAccount} disabled={busy} testID="finish-sign-out" />
             </Card>
           </Enter>
         ) : null}

@@ -484,7 +484,9 @@ describe('Sign in with managed identity (cloud auth)', () => {
     await renderIn('dark', <SignIn />);
     await advance(1000);
     expect(screen.getByText('Finish your account')).toBeTruthy();
-    expect(screen.getByText('You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.')).toBeTruthy();
+    // QA P2: the card names the identity (here none is known) and points a returning user to their account's email.
+    expect(screen.getByText('No Pocket QA account uses this sign-in yet. If you already have an account, sign in with the email it uses.')).toBeTruthy();
+    expect(screen.getByText('To create a new account, choose how you’ll use Pocket QA.')).toBeTruthy();
     expect(screen.getByTestId('finish-name').props.value).toBe('Fiona Firebase');
     expect(screen.getByTestId('finish-role-builder').props.accessibilityState).toMatchObject({ selected: true });
     // It rises into the room above the sign-in card (the same bottom-anchored wrapper), so that card never moves.
