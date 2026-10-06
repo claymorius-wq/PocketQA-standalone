@@ -1,6 +1,6 @@
 import { Keypair } from '@solana/web3.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
+import { decodeServerTx, MAINNET_USDC_MINT, verifyFundingTx } from '@pocket-qa/domain';
 import { devnetFirestore } from '../../src/firestore/namespace';
 import { runTxCtx } from '../../src/firestore/tx';
 import { makeRepos } from '../../src/repo';
@@ -13,7 +13,7 @@ import { SettlementFailure, SettlementPending } from '../../src/settlement/types
 import { runSettlement } from '../../src/settlement/worker';
 import type { ParticipationRow, StudyRow } from '../../src/views/studies';
 import { paymentViewOf } from '../../src/views/escrow';
-import { FakeDevnetChain } from '../fakeDevnetChain';
+import { FakeDevnetChain, walletSign } from '../fakeDevnetChain';
 import { clearEmulator, emulatorFirestore } from './fs';
 
 // The devnet adapter on Firestore (devnet namespace) over the fake chain: pqa-qa P2-DA1/DA2,
@@ -91,7 +91,7 @@ const statusOf = async (pid: string) => (await repos.escrow.payoutSettlementOf(p
 const approveAsBuilder = async (pid: string) => {
   const s = (await repos.escrow.payoutSettlementOf(pid))!;
   const a = await adapter.approval(s, builder.publicKey.toBase58());
-  return { s, a, signature: chain.walletSend(a.transactionB64, builder.publicKey.toBase58()) };
+  return { s, a, signature: chain.walletSend(walletSign(a.transactionB64, builder)) };
 };
 
 describe('custody order: the cosigner votes first, the platform only completes the 2-of-3', () => {
@@ -285,7 +285,8 @@ describe('the builder’s approval routes (CH-D3, pqa-be2 flag 5)', () => {
     const f = { id: 'f1', study_id: 's1', amount_units: 3_000, reference: adapter.newReference(), status: 'awaiting_payment' as const, signature: null, source: null, failure_reason: null, created_at: now, expires_at: now + 60_000, confirmed_at: null };
     const tx = await adapter.fundingTransaction(f, builder.publicKey.toBase58());
     expect(tx).toMatchObject({ fundingId: 'f1', studyId: 's1', amountUnits: 3_000, destination: adapter.vaultFor('s1'), mint: PILOT_MINT, network: 'devnet' });
-    expect(JSON.parse(Buffer.from(tx.transactionB64, 'base64').toString('utf8'))).toMatchObject({ from: builder.publicKey.toBase58(), vaultAta: adapter.vaultFor('s1'), amount: '3000', reference: f.reference });
+    // Real v0 bytes that pass the client's exact template (the builder's ATA → this vault, the amount, the reference).
+    expect(verifyFundingTx(decodeServerTx(tx.transactionB64), { owner: builder.publicKey.toBase58(), amountUnits: 3_000, destination: adapter.vaultFor('s1'), reference: f.reference, mint: PILOT_MINT })).toMatchObject({ amountUnits: 3_000, reference: f.reference });
     await expect(adapter.fundingTransaction({ ...f, expires_at: now }, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CONFLICT_STATE' });
   });
 });
@@ -414,7 +415,7 @@ describe('the fee sweep on close (decision (a), pqa-be2 E-24): vault 0, the fee 
       for (const r of (await rows()).filter((x) => x.status === 'awaiting_approval')) {
         const s = (await repos.escrow.settlementById(r.id))!;
         const a = await adapter.approval(s, builder.publicKey.toBase58());
-        chain.walletSend(a.transactionB64, builder.publicKey.toBase58());
+        chain.walletSend(walletSign(a.transactionB64, builder));
       }
     }
     expect((await rows()).map((r) => [r.kind, r.status]).sort()).toEqual([['fee', 'confirmed'], ['payout', 'confirmed'], ['refund', 'confirmed']]);

@@ -7,6 +7,7 @@ import type { ParsedTokenTx } from '@pocket-qa/domain';
 import { SettlementFailure, SettlementPending } from '../types';
 import type { ChainStatus, MultisigState, ProposalStatus, VaultTransfer } from './chain';
 import { STEP_LAMPORTS, type DevnetChain, type DevnetStepInput, type PreparedTx, type UnsignedTx } from './devnetTypes';
+import { buildApproveTx, buildFundingTx } from './walletTx';
 import { BPF_LOADER_2, BPF_UPGRADEABLE_LOADER, DEVNET_GENESIS, MEMO_PROGRAM, PILOT_DECIMALS, PILOT_MINT, SQUADS_PROGRAM, SQUADS_PROGRAM_DATA } from './pins';
 
 /**
@@ -275,22 +276,17 @@ export class RpcDevnetChain implements DevnetChain {
 
   // ── wallet-signed transactions, built unsigned ───────────────────────────────────────────────
 
-  private async unsigned(payer: PublicKey, ixs: TransactionInstruction[]): Promise<UnsignedTx> {
+  private async blockhash() {
     const { blockhash, lastValidBlockHeight } = await this.conn.getLatestBlockhash('finalized');
-    const tx = new VersionedTransaction(new TransactionMessage({ payerKey: payer, recentBlockhash: blockhash, instructions: ixs }).compileToV0Message());
-    return { messageB64: Buffer.from(tx.message.serialize()).toString('base64'), wireB64: Buffer.from(tx.serialize()).toString('base64'), lastValidBlockHeight };
+    return { recentBlockhash: blockhash, lastValidBlockHeight };
   }
 
+  // The wallet's transactions: the pure builders (walletTx.ts), shared with the test fake, over this RPC's blockhash.
   async buildCosignerApprove(ms: string, index: bigint, member: string): Promise<UnsignedTx> {
-    const m = new PublicKey(member);
-    return this.unsigned(m, [multisig.instructions.proposalApprove({ multisigPda: new PublicKey(ms), transactionIndex: index, member: m })]);
+    return buildApproveTx({ multisig: ms, index, member, ...(await this.blockhash()) });
   }
 
   async buildFundingTransfer(input: { from: string; vaultAta: string; amount: bigint; reference: string }): Promise<UnsignedTx> {
-    const from = new PublicKey(input.from);
-    const ix = createTransferCheckedInstruction(getAssociatedTokenAddressSync(MINT, from, true), MINT, new PublicKey(input.vaultAta), from, input.amount, PILOT_DECIMALS, [], TOKEN_PROGRAM_ID);
-    // Solana Pay: the reference is the 5th account of the TransferChecked, read-only, not a signer.
-    ix.keys.push({ pubkey: new PublicKey(input.reference), isSigner: false, isWritable: false });
-    return this.unsigned(from, [ix]);
+    return buildFundingTx({ ...input, ...(await this.blockhash()) });
   }
 }
