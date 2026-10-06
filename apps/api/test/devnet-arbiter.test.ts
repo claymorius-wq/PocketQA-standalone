@@ -22,8 +22,8 @@ const asArbiterChain = (c: FakeDevnetChain): ArbiterChain => ({
   blockhash: async () => ({ recentBlockhash: new PublicKey(new Uint8Array(32).fill(3)).toBase58(), lastValidBlockHeight: 1_150 }),
   send: async (wire) => c.walletSend(wire),
 });
-const run = (over: Partial<ArbiterPlan> = {}, send = false, arbiter = chain.arbiterKp, platform = chain.roles.platform) =>
-  arbiterApprove({ chain: asArbiterChain(chain), arbiter, platform, plan: { ...plan, ...over }, send });
+const run = (over: Partial<ArbiterPlan> = {}, send = false, arbiter = chain.arbiterKp, platform = chain.roles.platform, arbiterPubkey = arbiter.publicKey.toBase58()) =>
+  arbiterApprove({ chain: asArbiterChain(chain), arbiter, arbiterPubkey, platform, plan: { ...plan, ...over }, send });
 
 beforeEach(async () => {
   chain = new FakeDevnetChain();
@@ -72,6 +72,17 @@ describe('arbiterApprove (operator CLI, dispute overturn)', () => {
     await expect(run({}, true, Keypair.generate())).rejects.toThrow(/not a voting member/);
     chain.genesis = MAINNET_GENESIS;
     await expect(run({}, true)).rejects.toBeInstanceOf(ArbiterRefusal);
+    expect(chain.landed.filter((l) => l.step === 'cosigner_approve')).toHaveLength(0);
+  });
+});
+
+describe('the arbiter key itself (pqa-qa P3-A1)', () => {
+  it('refuses the PLATFORM key as --key-file: the server key never casts the arbiter vote', async () => {
+    await expect(run({}, true, chain.platformKp, chain.roles.platform, chain.roles.platform)).rejects.toThrow(/platform key/);
+    expect(chain.landed.filter((l) => l.step === 'cosigner_approve')).toHaveLength(0);
+  });
+  it('refuses a key file that is not the pinned --arbiter public key', async () => {
+    await expect(run({}, true, Keypair.generate(), chain.roles.platform, chain.roles.arbiter)).rejects.toThrow(/--arbiter/);
     expect(chain.landed.filter((l) => l.step === 'cosigner_approve')).toHaveLength(0);
   });
 });

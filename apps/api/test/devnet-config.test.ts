@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { hostedConfig } from '../src/hosted/app';
 import { assertPlatformSigner, loadPlatformSigner } from '../src/settlement/squads/devnetSigner';
 import { DEVNET_GENESIS, MAINNET_GENESIS, PILOT_MINT } from '../src/settlement/squads/pins';
+import { DEFAULT_DEVNET_LIMITS } from '../src/settlement/squads/devnetTypes';
 
 // POCKETQA_ENV=devnet (docs/plans/devnet-phase-contract.md, amendments r1): a NEW mode with its own
 // guards. Every existing refusal keeps its exact message and behaviour (CH: wrapped, not removed).
@@ -55,7 +56,7 @@ describe('POCKETQA_ENV=devnet', () => {
   it('loads: hosted security, Firestore, the Squads devnet settlement, the devnet settings (no key in config)', () => {
     const c = loadConfig(devnet);
     expect(c).toMatchObject({ production: false, staging: false, dataBackend: 'firestore', authMode: 'firebase', storage: 'r2', features: { devnetTransfers: false, settlement: 'squads_devnet' }, pilotKeysDir: null });
-    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' } });
+    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS });
     expect(JSON.stringify(c)).not.toContain(canaryJson);
     expect(c.rpcUrl).toBe('https://api.devnet.solana.com');
   });
@@ -187,5 +188,37 @@ describe('the local server refuses POCKETQA_ENV=devnet (pqa-qa P3-F3)', () => {
     expect(at('assertLocalServer(config);')).toBeGreaterThan(at('const config = loadConfig('));
     expect(at('assertLocalServer(config);')).toBeLessThan(at('openDb('));
     expect(at('assertLocalServer(config);')).toBeLessThan(at('unfinishedRestore('));
+  });
+});
+
+describe('devnet spend caps from env (lead decision on E-28 #4): configurable, cumulative, hard-capped', () => {
+  const caps = {
+    POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS: '200000000',
+    POCKETQA_DEVNET_CAP_USER_LAMPORTS: '100000000',
+    POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS: '6000000',
+    POCKETQA_DEVNET_CAP_USER_USDC_UNITS: '3000000',
+  };
+  it('defaults to DEFAULT_DEVNET_LIMITS when unset', () => {
+    expect(loadConfig(devnet).devnet!.limits).toEqual(DEFAULT_DEVNET_LIMITS);
+  });
+  it('takes each cap from its variable', () => {
+    expect(loadConfig({ ...devnet, ...caps }).devnet!.limits).toEqual({ global: { lamports: 200_000_000, usdcUnits: 6_000_000 }, perUser: { lamports: 100_000_000, usdcUnits: 3_000_000 } });
+    expect(loadConfig({ ...devnet, POCKETQA_DEVNET_CAP_USER_LAMPORTS: '30000000' }).devnet!.limits).toEqual({ ...DEFAULT_DEVNET_LIMITS, perUser: { ...DEFAULT_DEVNET_LIMITS.perUser, lamports: 30_000_000 } });
+  });
+  it.each([
+    ['global lamports above 1 SOL', { POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS: '1000000001' }, /POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS.*1000000000/],
+    ['per-user lamports above 0.5 SOL', { POCKETQA_DEVNET_CAP_USER_LAMPORTS: '500000001' }, /POCKETQA_DEVNET_CAP_USER_LAMPORTS.*500000000/],
+    ['global test USDC above 10', { POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS: '10000001' }, /POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS.*10000000/],
+    ['per-user test USDC above 10', { POCKETQA_DEVNET_CAP_USER_USDC_UNITS: '10000001' }, /POCKETQA_DEVNET_CAP_USER_USDC_UNITS.*10000000/],
+    ['zero', { POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS: '0' }, /POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS/],
+    ['a negative number', { POCKETQA_DEVNET_CAP_USER_LAMPORTS: '-5' }, /POCKETQA_DEVNET_CAP_USER_LAMPORTS/],
+    ['a fraction', { POCKETQA_DEVNET_CAP_USER_USDC_UNITS: '1.5' }, /POCKETQA_DEVNET_CAP_USER_USDC_UNITS/],
+    ['not a number', { POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS: '3e6' }, /POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS/],
+    ['a per-user cap above the global one', { POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS: '40000000', POCKETQA_DEVNET_CAP_USER_LAMPORTS: '45000000' }, /per-user/],
+  ])('refuses %s at startup', (_, over, msg) => {
+    expect(() => loadConfig({ ...devnet, ...over })).toThrow(msg);
+  });
+  it.each([['production', production], ['staging', staging]])('%s refuses every cap variable (devnet only)', (_, env) => {
+    for (const [k, v] of Object.entries(caps)) expect(() => loadConfig({ ...env, [k]: v })).toThrow(new RegExp(`${k}.*only for POCKETQA_ENV=devnet`));
   });
 });

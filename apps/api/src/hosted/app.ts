@@ -15,7 +15,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import type { IdentityProvider } from '../identity/types';
 import { devnetSettlement, DevnetSquadsSettlement } from '../settlement/squads/devnet';
 import { assertPlatformSigner, loadPlatformSigner } from '../settlement/squads/devnetSigner';
-import { DEFAULT_DEVNET_LIMITS, type DevnetChain } from '../settlement/squads/devnetTypes';
+import type { DevnetChain } from '../settlement/squads/devnetTypes';
 import { RpcDevnetChain } from '../settlement/squads/rpcDevnetChain';
 import { sweepStorage } from '../storage/sweep';
 
@@ -114,7 +114,7 @@ export function hostedDeps(env: NodeJS.ProcessEnv, connect: HostedConnectors = p
   const { config, cronSecret } = hostedConfig(env);
   const { repo, store } = hostedBackends(config, env, connect);
   const settlement = config.devnet
-    ? devnetSettlement({ repo, chain: connect.devnetChain(config, env), now: connect.now, limits: DEFAULT_DEVNET_LIMITS, roles: config.devnet, allowedEmails: config.devnet.allowedEmails })
+    ? devnetSettlement({ repo, chain: connect.devnetChain(config, env), now: connect.now, limits: config.devnet.limits, roles: config.devnet, allowedEmails: config.devnet.allowedEmails })
     : config.features.settlement === 'simulated'
       ? new SimulatedSettlement(repo, connect.now)
       : null;
@@ -165,12 +165,15 @@ export async function runJob(deps: HostedDeps, job: 'settle' | 'sweep', budget: 
   }
 }
 
-export type HostedOptions = { cronLeaseWaitMs?: number };
+/** `logStream`: where the app logs (tests capture the startup lines); default stdout. */
+export type HostedOptions = { cronLeaseWaitMs?: number; logStream?: NodeJS.WritableStream };
 
 export async function buildHostedApp(deps: HostedDeps, opts: HostedOptions = {}): Promise<FastifyInstance> {
   // Devnet: the pins (genesis, mint, programs) and the platform key are proven on chain before serving.
   if (deps.settlement instanceof DevnetSquadsSettlement) await deps.settlement.startupCheck();
-  const app = await buildApp(deps, { logger: { level: 'info' }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
+  const app = await buildApp(deps, { logger: { level: 'info', ...(opts.logStream ? { stream: opts.logStream } : {}) }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
+  // The effective devnet spend caps, as numbers (not secrets): cumulative over the namespace's lifetime.
+  if (deps.config.devnet) app.log.info({ devnetSpendCaps: deps.config.devnet.limits }, 'devnet spend caps (cumulative; lamports = fees + rent, test-USDC base units)');
   return app;
 }
 

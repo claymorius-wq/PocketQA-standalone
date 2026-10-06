@@ -211,3 +211,20 @@ describe('CH-D1: the shared rate limiter on every devnet send route (pqa-be2 E-2
     expect(chain.prepared.length).toBe(signed);
   });
 });
+
+describe('the devnet spend caps come from env and are logged at startup (E-28 #4)', () => {
+  it('the adapter uses POCKETQA_DEVNET_CAP_* and the startup log states them as numbers', async () => {
+    const { Writable } = await import('node:stream');
+    const lines: string[] = [];
+    const stream = new Writable({ write(chunk, _e, cb) { lines.push(String(chunk)); cb(); } });
+    const e = { ...env, POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS: '200000000', POCKETQA_DEVNET_CAP_USER_LAMPORTS: '120000000' };
+    const d = hostedDeps(e, connectors());
+    expect((d.settlement as unknown as { limits: unknown }).limits).toEqual(d.config.devnet!.limits);
+    expect(d.config.devnet!.limits.global.lamports).toBe(200_000_000);
+    const a = await buildHostedApp(d, { logStream: stream });
+    await a.close();
+    const line = lines.map((l) => JSON.parse(l) as { msg: string; devnetSpendCaps?: unknown }).find((l) => l.devnetSpendCaps);
+    expect(line?.devnetSpendCaps).toEqual({ global: { lamports: 200_000_000, usdcUnits: 3_000_000 }, perUser: { lamports: 120_000_000, usdcUnits: 3_000_000 } });
+    expect(lines.join('')).not.toContain(env.POCKETQA_DEVNET_PLATFORM_SIGNER);
+  });
+});

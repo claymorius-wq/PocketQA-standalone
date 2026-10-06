@@ -1,5 +1,5 @@
 // The arbiter's vote on one devnet payment (operator only; docs/reviews/devnet/devnet-live-run.md §6).
-//   npx tsx scripts/devnet-arbiter.ts --key-file <abs path to arbiter.json> --platform <platform pubkey> \
+//   npx tsx scripts/devnet-arbiter.ts --key-file <abs path to arbiter.json> --arbiter <arbiter pubkey> --platform <platform pubkey> \
 //     --multisig <ms> --index <n> --op <pqa-op1:…> --recipient <wallet> --amount <units> [--rpc <url>] [--send]
 // Without --send it only reads devnet and prints what it checked. It prints public data only (never
 // the key). Devnet test USDC, no value · test keys · not independent custody.
@@ -24,6 +24,7 @@ try {
   const result = await arbiterApprove({
     chain: rpcArbiterChain(opt('rpc') ?? 'https://api.devnet.solana.com'),
     arbiter: loadKeyFile(need('key-file'), '--key-file'),
+    arbiterPubkey: need('arbiter'),
     platform: need('platform'),
     plan: { multisig: need('multisig'), txIndex: Number(need('index')), opId: need('op'), recipient: need('recipient'), amountUnits: Number(need('amount')) },
     send: args.includes('--send'),
