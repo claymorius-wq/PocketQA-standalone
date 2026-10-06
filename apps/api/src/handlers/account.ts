@@ -262,7 +262,7 @@ export const accountHandlers = {
       await repo.core.appendAudit(deletedAudit);
     }
     // Stored objects: deleted now, or retried through the outbox if the provider fails.
-    for (const key of mediaKeys) await deleteOrQueue(ctx.deps, key, 'account_deletion');
+    for (const key of mediaKeys) await deleteOrQueue(ctx.deps, key, 'account_deletion', user.id);
     // After commit: the local account is gone either way. A provider failure leaves an
     // orphan provider user with no mapping (it can't reach this account); it is logged.
     if (ctx.deps.identity) {
