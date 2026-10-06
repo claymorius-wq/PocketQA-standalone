@@ -1225,6 +1225,52 @@
    "owner": "pqa-be1"
   },
   {
+   "id": "H-34",
+   "area": "review",
+   "title": "H-33 fix re-run on hosted: stale review tab, same-outcome and different-outcome cases",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Verified synthetic builder signed in separately in two tabs (web sessions are tab-scoped). New synthetic studies J1 and J2 (10×1 each; API create/publish, tester join/submit via API, as UI-proven in H-12..H-17). For each: tab 2 opens its decision sheet first (J1: Approve; J2: Reject with a ≥10-char reason) and leaves it open; tab 1 approves through the UI; tab 2 confirms. Readbacks of both balances after each step.",
+   "fixtures": {
+    "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+    "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+    "studies": {
+     "A": "i91e7158f895626c7d28e9cb62e72846",
+     "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+     "C": "if8979a6f75321ddf9e296310ed3f104",
+     "D": "iea4563e5011440024de18ba05a4b4a0",
+     "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+     "W": "i7bb1cc08b5bfaaa19f33f541e7487d4",
+     "G": "i173c4532ea07153679185a4358711ff",
+     "H": "i16338b9686082d6e75f7f6cad89e9fc",
+     "H2": "if2b79146b2c024056c63629d2b30f96",
+     "J1": "i3453b1df91de91d862a9465a710325e",
+     "J2": "ie0676e33702f66c2817629238b1d7d8"
+    },
+    "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+    "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90",
+    "participations_e08": {
+     "G": "193cd7d9-801b-49e4-aaa1-dacf160734ee",
+     "H": "67b339dd-8caf-405a-bd16-2906c5958f53",
+     "H2": "a1f82747-d0ce-4d8c-bf90-25f5faca63f4"
+    },
+    "participations_h34": {
+     "J1": "e977b0a9-2683-41d9-a87e-3e258060c766",
+     "J2": "f31b1f3d-f4d4-44f7-8626-93d3141538d5"
+    }
+   },
+   "observed": "Bundle entry-03fa1a9897a6fa8d485ac9bb9a680e2e.js at 2026-10-06T19:44:17.964Z. SAME OUTCOME (J1): tab 1 approve 200; tab 2 approve 409; tab 2 sheet closed=True, error banner None, notice 'Already approved This submission is already approved. Nothing more to do.', 'Decision: Approved Decided Oct 6, 9:44 PM', Approve buttons 0, 'Status: APPROVED'. DIFFERENT OUTCOME (J2): tab 1 approve 200; tab 2 reject 409; sheet closed=True, error banner None, notice 'Already decided This submission was decided elsewhere (another tab or device) before your decision arrived, so yours wasn’t applied. Its decision is shown below.', 'Decision: Approved Decided Oct 6, 9:45 PM', Approve buttons 0. Money: builder 800 → 780 (reserve 10 + 10); tester 130 → 140 (J1, one credit) → 150 (J2, one credit); the stale confirmations moved nothing (140 → 140, 150 → 150).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/60-h34-same-outcome.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/60-h34-different-outcome.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/hosted-run-results.json"
+   ],
+   "notes": "Supersedes the H-33 FAIL (kept as the historical observation); fix 354ba12 + a3582c2 merged as 7bda3ce, pqa-qa r2 APPROVE. All amounts are simulated bookkeeping (test credits 'no cash value'), never money.",
+   "owner": "pqa-be1"
+  },
+  {
    "id": "E-01",
    "area": "capacity",
    "title": "Capacity race: N testers join the LAST slot concurrently",
