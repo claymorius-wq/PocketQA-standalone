@@ -698,7 +698,7 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
 
     async refundOf(studyId) {
       const x = await viaGuard('settlementGuards', `refund:${studyId}`);
-      return x ? { status: x.status, amount_units: x.amount_units } : null;
+      return x ? { id: x.id, status: x.status, amount_units: x.amount_units } : null;
     },
 
     async payoutsOfTester(testerId) {

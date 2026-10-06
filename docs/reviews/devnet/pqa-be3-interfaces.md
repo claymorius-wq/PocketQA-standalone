@@ -220,3 +220,17 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
   - the amount equals `amountUnits`;
   - the fifth account equals `reference`;
   - `network` is `devnet`.
+
+## 11. Journey blockers A–C
+- **(A) Escrow studies in devnet:** the gate was the hosted wiring. `hostedDeps` gave devnet no settlement provider, and `createStudy` refuses escrow when `deps.settlement` is null. Fixed in `6bbc258`: devnet wires `DevnetSquadsSettlement`. Tests:
+  - devnet: the allow-listed builder creates an escrow study and funds it through the routes (`devnet.hosted-app.test.ts`);
+  - production (settlement `off`): escrow `createStudy` is still `403 FEATURE_UNAVAILABLE`;
+  - staging is unchanged: it keeps its labelled **simulated** escrow (R11), which existed before this phase.
+- **(B1)** Confirmed: the funding reference is the **fifth read-only account of `TransferChecked`**, the Solana Pay convention (see §10).
+- **(B2)** `StudyPayment.refund` now carries `settlementId`, so the client can call `GET /settlements/:id/approval` for the refund. The fee sweep's settlement id will appear the same way when the fee sweep lands.
+- **(B3) The server checks the on-chain vault transaction against the receipt** on every run, **before** creating the proposal and **before** its own vote and execute:
+  - it re-reads the immutable vault transaction;
+  - `sameTransfer` compares the creator, the op id, the program, `TransferChecked`, the source vault, the **mint**, the **destination token account**, the authority, the **amount** and the decimals.
+
+  A vote's bytes prove nothing about the amount or recipient, so the server never relies on them. Tests in `devnet.adapter.test.ts` tamper the amount, the recipient or the mint, both before the proposal and after the builder's vote. Each time the payment is refused and the platform signs nothing more: no proposal, no vote, no execute.
+- **(C) A non-devnet cluster fails closed at startup:** `buildHostedApp` runs `startupCheck()`. A mainnet genesis (for example from a mainnet RPC URL, which config accepts) or a wrong mint account means the app is never built and nothing is signed. Tested.

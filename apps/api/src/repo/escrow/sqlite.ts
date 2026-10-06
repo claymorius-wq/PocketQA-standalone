@@ -288,7 +288,7 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
     },
 
     async refundOf(studyId) {
-      return (db.prepare(`SELECT status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(studyId) as Pick<SettlementRow, 'status' | 'amount_units'> | undefined) ?? null;
+      return (db.prepare(`SELECT id, status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(studyId) as Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | undefined) ?? null;
     },
 
     async payoutsOfTester(testerId) {

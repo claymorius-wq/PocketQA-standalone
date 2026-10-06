@@ -122,7 +122,7 @@ describe('EscrowPanel', () => {
 
   it('funded: the books, every line simulated, and the refund state', async () => {
     const balances = { fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 0, settledUnits: 1_000_000, feesUnits: 100_000, pendingRefundUnits: 0, refundedUnits: 2_200_000 };
-    await render(tree(<EscrowPanel study={escrowStudy({ funded: true, balances, fundingWallet: 'Wa11etAddress1234567890', refund: { status: 'confirmed', amountUnits: 2_200_000 } })} />));
+    await render(tree(<EscrowPanel study={escrowStudy({ funded: true, balances, fundingWallet: 'Wa11etAddress1234567890', refund: { settlementId: 'refund-1', status: 'confirmed', amountUnits: 2_200_000 } })} />));
     expect(screen.getByTestId('escrow-funded')).toHaveTextContent('Funded (simulated) from Wa11…7890.');
     expect(screen.getByTestId('escrow-settled')).toHaveTextContent('1.00 simulated USDC');
     expect(screen.getByTestId('escrow-refunded')).toHaveTextContent('2.20 simulated USDC');
@@ -163,7 +163,7 @@ describe('EscrowPanel · Squads devnet pilot', () => {
 
   it('funded: the books and refund say devnet', async () => {
     const balances = { fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 0, settledUnits: 2_000_000, feesUnits: 200_000, pendingRefundUnits: 0, refundedUnits: 1_100_000 };
-    await render(tree(<EscrowPanel study={pilot({ funded: true, balances, fundingWallet: 'Wa11etAddress1234567890', refund: { status: 'confirmed', amountUnits: 1_100_000 } })} />));
+    await render(tree(<EscrowPanel study={pilot({ funded: true, balances, fundingWallet: 'Wa11etAddress1234567890', refund: { settlementId: 'refund-1', status: 'confirmed', amountUnits: 1_100_000 } })} />));
     expect(screen.getByTestId('escrow-funded')).toHaveTextContent('Funded on devnet from Wa11…7890.');
     expect(screen.getByTestId('escrow-settled')).toHaveTextContent('2.00 devnet test USDC');
     expect(screen.getByTestId('escrow-refund')).toHaveTextContent('Refunded 1.10 devnet test USDC to the funding wallet · finalized on devnet, no value.');

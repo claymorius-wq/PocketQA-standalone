@@ -172,7 +172,7 @@ export interface EscrowRepo {
   isFunded(studyId: string): Promise<boolean>;
   /** The study's escrow books and invariant. */
   studyBooks(studyId: string, nowMs: number): Promise<EscrowBooks>;
-  refundOf(studyId: string): Promise<Pick<SettlementRow, 'status' | 'amount_units'> | null>;
+  refundOf(studyId: string): Promise<Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | null>;
   payoutsOfTester(testerId: string): Promise<SettlementRow[]>;
   /** Every payout, failed first (operations view). */
   allPayouts(): Promise<SettlementRow[]>;

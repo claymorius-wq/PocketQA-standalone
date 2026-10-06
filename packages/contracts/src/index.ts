@@ -250,7 +250,8 @@ export const StudyPayment = z.discriminatedUnion('mode', [
     /** Builder-only books; null in tester views. */
     balances: EscrowBalances.nullable(),
     fundingWallet: z.string().nullable(),
-    refund: z.object({ status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+    /** `settlementId`: the refund's settlement (devnet: GET /settlements/:id/approval for the builder's vote). */
+    refund: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
   }),
 ]);
 export type StudyPayment = z.infer<typeof StudyPayment>;

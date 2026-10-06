@@ -33,7 +33,7 @@ export function paymentView(db: DB, row: StudyRow, nowMs: number): StudyPayment 
   const esc = escrowOf(db, row.id)!;
   const funded = db.prepare(`SELECT 1 FROM escrow_fundings WHERE study_id = ? AND status = 'confirmed'`).get(row.id) !== undefined;
   const { ok: _ok, ...balances } = studyEscrowBooks(db, row.id, nowMs);
-  const refund = db.prepare(`SELECT status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(row.id) as { status: SettlementRow['status']; amount_units: number } | undefined;
+  const refund = db.prepare(`SELECT id, status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(row.id) as { id: string; status: SettlementRow['status']; amount_units: number } | undefined;
   return {
     mode: 'escrow',
     settlement: esc.settlement,
@@ -45,7 +45,7 @@ export function paymentView(db: DB, row: StudyRow, nowMs: number): StudyPayment 
     funded,
     balances,
     fundingWallet: esc.funding_wallet,
-    refund: refund ? { status: refund.status, amountUnits: refund.amount_units } : null,
+    refund: refund ? { settlementId: refund.id, status: refund.status, amountUnits: refund.amount_units } : null,
   };
 }
 
@@ -114,7 +114,7 @@ export async function paymentViewOf(repo: Repos, row: StudyRow, nowMs: number): 
     funded,
     balances,
     fundingWallet: esc.funding_wallet,
-    refund: refund ? { status: refund.status, amountUnits: refund.amount_units } : null,
+    refund: refund ? { settlementId: refund.id, status: refund.status, amountUnits: refund.amount_units } : null,
   };
 }
 

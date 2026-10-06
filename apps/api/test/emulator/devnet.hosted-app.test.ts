@@ -8,6 +8,7 @@ import { buildSiwsMessage, type SiwsInput } from '@pocket-qa/contracts';
 import { buildHostedApp, hostedDeps, type HostedConnectors, type HostedDeps } from '../../src/hosted/app';
 import { firebaseIdentity } from '../../src/identity/firebase';
 import { DEVNET_ROOT } from '../../src/firestore/namespace';
+import { MAINNET_GENESIS, PILOT_MINT } from '../../src/settlement/squads/pins';
 import { FakeDevnetChain } from '../fakeDevnetChain';
 import { FakeS3 } from '../fakeS3';
 import { clearEmulator, emulatorFirestore, PROJECT } from './fs';
@@ -152,5 +153,43 @@ describe('the connectors are a test-only seam', () => {
     const { loadConfig } = await import('../../src/config');
     expect(() => loadConfig({ ...env, POCKETQA_FIREBASE_PROJECT_ID: PROJECT })).toThrow(/demo-/);
     expect(() => loadConfig({ ...env, FIREBASE_AUTH_EMULATOR_HOST: AUTH })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST/);
+  });
+});
+
+describe('startup fails closed on a non-devnet cluster (C)', () => {
+  for (const [name, breakIt] of [
+    ['a mainnet genesis (e.g. a mainnet RPC URL in the env)', (c: FakeDevnetChain) => (c.genesis = MAINNET_GENESIS)],
+    ['a mint account that is not the pinned test USDC', (c: FakeDevnetChain) => (c.mintAccount = { address: PILOT_MINT, owner: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb', decimals: 6 })],
+  ] as const) {
+    it(`${name}: the app is never built, nothing is signed`, async () => {
+      const bad = new FakeDevnetChain();
+      breakIt(bad);
+      const e = { ...env, POCKETQA_DEVNET_PLATFORM_SIGNER: JSON.stringify(Array.from(bad.platformKp.secretKey)), POCKETQA_DEVNET_PLATFORM_PUBKEY: bad.roles.platform, POCKETQA_DEVNET_ARBITER_PUBKEY: bad.roles.arbiter, POCKETQA_SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com' };
+      const d = hostedDeps(e, { ...connectors(), devnetChain: () => bad });
+      await expect(buildHostedApp(d)).rejects.toThrow(/Refused before signing/);
+      expect(bad.prepared).toEqual([]);
+    });
+  }
+});
+
+describe('escrow studies: devnet yes, production still no (A)', () => {
+  it('production hosted (settlement off): createStudy with payment escrow is 403 FEATURE_UNAVAILABLE, as before', async () => {
+    const prodEnv: Record<string, string> = { ...env, POCKETQA_ENV: 'production', POCKETQA_SETTLEMENT: 'off' };
+    for (const k of Object.keys(prodEnv)) if (k.startsWith('POCKETQA_DEVNET_')) delete prodEnv[k];
+    const prodDeps = hostedDeps(prodEnv, connectors());
+    expect(prodDeps.settlement).toBeNull();
+    const devApp = app;
+    app = await buildHostedApp(prodDeps, { cronLeaseWaitMs: 1_000 });
+    await app.ready();
+    try {
+      const builder = await signUp(`prod-builder-${Date.now()}@example.test`, 'builder');
+      const { STUDY } = await import('../helpers');
+      const { rewardCredits: _, ...rest } = STUDY;
+      const r = await call('POST', '/studies', builder, { ...rest, slots: 2, payment: { mode: 'escrow', rewardUnits: 1_000_000 } });
+      expect(r).toMatchObject({ status: 403, body: { code: 'FEATURE_UNAVAILABLE' } });
+    } finally {
+      await app.close();
+      app = devApp;
+    }
   });
 });

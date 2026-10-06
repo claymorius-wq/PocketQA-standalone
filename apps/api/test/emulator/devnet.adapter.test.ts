@@ -288,3 +288,34 @@ describe('the builder’s approval routes (CH-D3, pqa-be2 flag 5)', () => {
     await expect(adapter.fundingTransaction({ ...f, expires_at: now }, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CONFLICT_STATE' });
   });
 });
+
+describe('the server verifies the on-chain vault transaction before every further signature (pqa-be1 B3)', () => {
+  const tampers: [string, (vt: { amount: bigint; destination: string; mint: string }) => void][] = [
+    ['a different amount', (vt) => (vt.amount += 1n)],
+    ['a different recipient', (vt) => (vt.destination = ataOf(Keypair.generate().publicKey.toBase58()))],
+    ['a different mint', (vt) => (vt.mint = MAINNET_USDC_MINT)],
+  ];
+  for (const [name, tamper] of tampers) {
+    it(`${name} on chain before the proposal: refused, no proposal, no vote, no execute`, async () => {
+      await readyVault();
+      const [p] = await payouts(1);
+      for (let i = 0; i < 3 && !chain.landed.some((l) => l.step === 'vault_tx_create'); i++) await settle();
+      tamper([...chain.vaultTxs.values()][0]!);
+      const signed = chain.prepared.length;
+      for (let i = 0; i < 4; i++) await settle();
+      expect(chain.prepared.length).toBe(signed);
+      expect((await repos.escrow.payoutSettlementOf(p!.id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/not exactly this payment/) });
+    });
+    it(`${name} on chain after the builder voted: the platform never votes or executes`, async () => {
+      await readyVault();
+      const [p] = await payouts(1);
+      for (let i = 0; i < 6; i++) await settle();
+      await approveAsBuilder(p!.id);
+      tamper([...chain.vaultTxs.values()][0]!);
+      for (let i = 0; i < 4; i++) await settle();
+      expect(chain.prepared.map((x) => x.step)).not.toContain('approve_platform');
+      expect(chain.prepared.map((x) => x.step)).not.toContain('execute');
+      expect(await statusOf(p!.id)).toBe('failed');
+    });
+  }
+});
