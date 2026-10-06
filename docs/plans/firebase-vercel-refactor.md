@@ -309,3 +309,12 @@ A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this
 - **Backup/PITR:** hosted Firestore has no backup configured (PITR or scheduled backups may need billing): an accepted risk until Hamza decides. The migration manifest plus the local snapshot are the recovery basis.
 - **CRON_SECRET:** compared in constant time (`timingSafeEqual`). The manual job route is admin-only and is in the authorisation matrix.
 - **Hobby:** non-commercial use; this is Hamza's decision (§12.3).
+
+### R9: cross-domain transactions and participation/dispute ids (decided during P0, 2026-10-06)
+- **Composition:** `runTxCtx` / `TxCtx` (src/firestore/tx.ts).
+  - Reads pass through; writes are buffered and flushed in order when the callback ends.
+  - A read of a document already written in the same transaction throws.
+  - Each domain's `firestore.ts` exports `…InTx(t: TxCtx, …)` helpers that other domains compose. Example: decide = the study budget, the ledger, escrow authorisation, a points award and audit, in one transaction.
+  - Emulator tests: composition, read-after-write refusal, a 20-way composite race.
+- **SQLite:** composite operations stay ONE `db.transaction`, calling the existing synchronous domain functions inside it.
+- **Ids:** participations and disputes keep their **legacy id as the document id** (most routes address them by id). Uniqueness comes from guard documents: `participationPairs/{studyId}_{testerId}` (UNIQUE(study, tester)) and `disputeByParticipation/{participationId}` (disputes.participation_id UNIQUE). These replace the "deterministic doc id" in rows 2 and 7 of the r2 table, with the same race tests.
