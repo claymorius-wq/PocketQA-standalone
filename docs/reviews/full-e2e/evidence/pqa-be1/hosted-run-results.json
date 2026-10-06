@@ -1032,5 +1032,324 @@
    "findings": 1,
    "ledger": 7
   }
+ },
+ "p10": {
+  "at": "2026-10-06T19:22:14.800Z",
+  "bundle": "entry-d9b5472d9fac233b3df280ddb47bf7fa.js",
+  "ledger": [
+   {
+    "label": "resume: after H approved in run 1",
+    "builder": 800,
+    "tester": 90,
+    "studies": {
+     "D": {
+      "status": "published",
+      "budget": {
+       "reserved": 20,
+       "awarded": 0,
+       "committed": 20,
+       "available": 0
+      }
+     },
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     },
+     "H": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after publishing H2(40x1) and the tester submitting",
+    "builder": 800,
+    "tester": 90,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after tab 1 approved H2",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after the stale-tab retry on H2",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after reject G",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after close attempts (G, D refused; H closed)",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "D": {
+      "status": "published",
+      "budget": {
+       "reserved": 20,
+       "awarded": 0,
+       "committed": 20,
+       "available": 0
+      }
+     },
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     },
+     "H": {
+      "status": "closed",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     },
+     "H2": {
+      "status": "closed",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   }
+  ],
+  "studies": {
+   "G": "i173c4532ea07153679185a4358711ff",
+   "H": "i16338b9686082d6e75f7f6cad89e9fc",
+   "H2": "if2b79146b2c024056c63629d2b30f96"
+  },
+  "participations": {
+   "G": "193cd7d9-801b-49e4-aaa1-dacf160734ee",
+   "H": "67b339dd-8caf-405a-bd16-2906c5958f53",
+   "H2": "a1f82747-d0ce-4d8c-bf90-25f5faca63f4"
+  },
+  "firstAttemptH": {
+   "note": "Run 1 (19:18Z): tab 1 approved H (POST 200); tab 2 was a new tab in the same browser and was on /sign-in (web sessions are tab-scoped by design, firebaseClient.ts:31), so it never showed the review; the retry was redone on H2 with each tab signed in.",
+   "hStatus": "approved"
+  },
+  "tab2SheetOpen": 2,
+  "tab1Approve": {
+   "method": "POST",
+   "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/approve",
+   "status": 200
+  },
+  "tab2": {
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/approve",
+     "status": 409
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/evidence",
+     "status": 200
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/findings",
+     "status": 200
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4",
+     "status": 200
+    }
+   ],
+   "decisionError": "Decision not saved Cannot approve a participation that is approved.",
+   "decidedNotice": null,
+   "approveButtonStill": 1,
+   "statusLine": "Status: AWAITING REVIEW QA ",
+   "errorish": "eedback helpful (adds reputation points) Decision not saved Cannot approve a participation that is approved"
+  },
+  "tab2Later": {
+   "statusLine": "Status: AWAITING REVIEW QA ",
+   "decisionError": "Decision not saved Cannot approve a participation that is approved."
+  },
+  "tab2AfterReload": {
+   "statusLine": "Status: APPROVED QA ",
+   "decidedNotice": "Decision: Approved Decided Oct 6, 9:22 PM",
+   "approveButton": 0
+  },
+  "rejectG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/193cd7d9-801b-49e4-aaa1-dacf160734ee/reject",
+    "status": 200
+   },
+   "status": "rejected"
+  },
+  "disputeG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/disputes",
+    "status": 200
+   },
+   "status": "disputed"
+  },
+  "closeG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i173c4532ea07153679185a4358711ff/close",
+    "status": 409
+   },
+   "error": "Action failed Resolve open disputes before closing the study.",
+   "status": "published"
+  },
+  "closeD": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/iea4563e5011440024de18ba05a4b4a0/close",
+    "status": 409
+   },
+   "error": "Action failed Resolve open disputes before closing the study.",
+   "status": "published"
+  },
+  "closeH": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i16338b9686082d6e75f7f6cad89e9fc/close",
+    "status": 200
+   },
+   "error": null,
+   "status": "closed"
+  },
+  "closeH2": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/if2b79146b2c024056c63629d2b30f96/close",
+    "status": 200
+   },
+   "error": null,
+   "status": "closed"
+  },
+  "builderResolve": {
+   "status": 403,
+   "code": "FORBIDDEN_ROLE"
+  },
+  "entries": {
+   "builder": [
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_release",
+     50
+    ],
+    [
+     "study_release",
+     30
+    ],
+    [
+     "study_reserve",
+     -30
+    ],
+    [
+     "study_reserve",
+     -20
+    ],
+    [
+     "study_reserve",
+     -10
+    ],
+    [
+     "study_reserve",
+     -100
+    ],
+    [
+     "test_topup",
+     1000
+    ]
+   ],
+   "tester": [
+    [
+     "reward_credit",
+     40
+    ],
+    [
+     "reward_credit",
+     40
+    ],
+    [
+     "reward_credit",
+     50
+    ]
+   ]
+  }
  }
 }

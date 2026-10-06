@@ -1,0 +1,65 @@
+{
+ "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+ "local": {
+  "bytes": 31457280,
+  "sha256": "da1278640092f9c849f1a6dac04a918cff6b32b388cd150bb0f607adc8b2a108"
+ },
+ "uploadCalls": [
+  {
+   "method": "POST",
+   "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/evidence/upload-intents",
+   "status": 200
+  },
+  {
+   "method": "POST",
+   "path": "/api/evidence/upload-intents/958ad16f-8547-4c24-bc49-7eb80cbb3d7d/complete",
+   "status": 200
+  },
+  {
+   "method": "GET",
+   "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/evidence",
+   "status": 200
+  }
+ ],
+ "r2Requests": [
+  {
+   "method": "PUT",
+   "host": "r2 S3 endpoint",
+   "pathPrefix": "/pocketqa-evidence/quarantine",
+   "signed": true
+  },
+  {
+   "status": 200
+  }
+ ],
+ "evidence": [
+  {
+   "id": "7a034806-8e22-4700-8018-69dd8ba23271",
+   "kind": "screen_recording",
+   "mimeType": "video/mp4",
+   "sizeBytes": 31457280
+  }
+ ],
+ "playback": {
+  "status": 200,
+  "hasUrl": true,
+  "host": "<account>.r2.cloudflarestorage.com",
+  "keyPrefix": "/pocketqa-evidence/evidence",
+  "expiresSeconds": 300,
+  "responseType": "video/mp4",
+  "disposition": "inline",
+  "cache": "no-store"
+ },
+ "download": {
+  "status": 200,
+  "bytes": 31457280,
+  "sha256": "da1278640092f9c849f1a6dac04a918cff6b32b388cd150bb0f607adc8b2a108",
+  "contentType": "video/mp4",
+  "equalsLocal": true
+ },
+ "afterExpiry": {
+  "status": 403,
+  "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Error><Code>ExpiredRequest</Code><Message>Request has expired</Message></Error>"
+ },
+ "redaction": "The presigned URL (a bearer token) was never written; host account id replaced by <account>."
+}

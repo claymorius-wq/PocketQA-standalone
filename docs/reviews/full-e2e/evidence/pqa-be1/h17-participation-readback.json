@@ -1,0 +1,75 @@
+{
+ "readAt": "2026-10-06T19:26:52.748Z",
+ "source": "GET /api/participations/:id as the synthetic tester (token not recorded)",
+ "participationA": {
+  "id": "44d0e05e-7787-43b0-b440-883b961d4c89",
+  "studyId": "i91e7158f895626c7d28e9cb62e72846",
+  "status": "approved",
+  "consentVersion": 1,
+  "consentedAt": "2026-10-06T18:52:39.025Z",
+  "startedAt": "2026-10-06T18:52:46.049Z",
+  "submittedAt": "2026-10-06T19:04:59.155Z",
+  "decidedAt": "2026-10-06T19:05:25.023Z",
+  "decisionReason": null,
+  "taskNotes": [
+   {
+    "taskId": "i586e0e0eceb5129c54efe2695230948",
+    "note": "QA synthetic note be1: the cart icon is below the fold on a 1280x900 screen."
+   }
+  ]
+ },
+ "participationW": {
+  "id": "12698da1-978d-4379-b4ed-e24ba9f2e3a4",
+  "studyId": "i7bb1cc08b5bfaaa19f33f541e7487d4",
+  "status": "withdrawn",
+  "consentVersion": 1,
+  "consentedAt": "2026-10-06T19:08:38.959Z",
+  "startedAt": null,
+  "submittedAt": null,
+  "decidedAt": null,
+  "decisionReason": null,
+  "taskNotes": []
+ },
+ "rejoinW": {
+  "status": 404,
+  "code": "NOT_FOUND",
+  "message": "Study not found."
+ },
+ "recordedAtRun": {
+  "consentA": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i91e7158f895626c7d28e9cb62e72846/consent",
+    "status": 200
+   },
+   "url": "/participation/44d0e05e-7787-43b0-b440-883b961d4c89"
+  },
+  "start": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/start",
+    "status": 200
+   },
+   "status": "in_progress"
+  },
+  "noteSave": {
+   "method": "PUT",
+   "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/tasks/i586e0e0eceb5129c54efe2695230948/note",
+   "status": 200
+  },
+  "noteAfterReload": "QA synthetic note be1: the cart icon is below the fold on a 1280x900 screen.",
+  "withdraw": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/12698da1-978d-4379-b4ed-e24ba9f2e3a4/withdraw",
+    "status": 200
+   },
+   "status": "withdrawn",
+   "slotsFilledAfter": 0,
+   "rejoin": {
+    "status": 409,
+    "message": "You already joined this study."
+   }
+  }
+ }
+}
