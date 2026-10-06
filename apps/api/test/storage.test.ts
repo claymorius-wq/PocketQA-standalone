@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { MAX_EVIDENCE_BYTES, UPLOAD_INTENT_TTL_SECONDS, UploadIntent } from '@pocket-qa/contracts';
 import { MIGRATION_COUNT, openDb } from '../src/db';
 import { deleteOrQueue, sweepStorage } from '../src/storage/sweep';
-import { makeApp, MP4, PNG, seeded, type TestApp } from './helpers';
+import { makeApp, MP4, onFirestore, PNG, seeded, type TestApp } from './helpers';
+import { count, outboxRows } from './storage-kit';
 
 // ADR 0005 §3: private evidence storage with direct uploads. Uses the real R2 (S3) adapter
 // against a local fake S3 server; real R2 remains a named provider gate.
@@ -195,7 +196,7 @@ describe('direct uploads to private storage (r2 mode)', () => {
     const results = await Promise.all([1, 2, 3].map(() => t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token)));
     expect(results.filter((r) => r.status === 200)).toHaveLength(1);
     expect(results.filter((r) => r.status === 409)).toHaveLength(2);
-    expect(t.db.prepare('SELECT status FROM upload_intents WHERE id = ?').get(i.id)).toEqual({ status: 'completed' });
+    expect((await t.deps.repo.evidence.getIntent(i.id))?.status).toBe('completed');
     expect((await t.req('GET', `/participations/${s.participationId}/evidence`, s.tester.token)).body.items).toHaveLength(1);
     expect(t.s3.keys().filter((k) => k.startsWith('pqa-test/evidence/'))).toHaveLength(1);
   });
@@ -211,12 +212,12 @@ describe('direct uploads to private storage (r2 mode)', () => {
     expect((await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
     // The recording and its kept quarantine copy both wait in the outbox.
     expect(t.s3.keys()).toHaveLength(2);
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 2 });
+    expect(await count(t, 'storage_deletions')).toBe(2);
     t.s3.failDeletes = false;
     t.clock.now += 120_000;
     await sweepStorage(t.deps);
     expect(t.s3.keys()).toEqual([]);
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+    expect(await count(t, 'storage_deletions')).toBe(0);
   });
 });
 
@@ -239,7 +240,7 @@ describe('R2 deletion guard (default off)', () => {
     t.clock.now += UPLOAD_INTENT_TTL_SECONDS * 1000 + 120_000;
     await sweepStorage(t.deps);
     expect(t.s3.keys()).toEqual([`pqa-test/quarantine/${i.id}`]);
-    expect(t.db.prepare('SELECT object_key, purpose FROM storage_deletions').all()).toEqual([{ object_key: `quarantine/${i.id}`, purpose: 'failed_upload' }]);
+    expect(await outboxRows(t)).toEqual([{ object_key: `quarantine/${i.id}`, purpose: 'failed_upload' }]);
   });
 
   it('with deletion not allowed, account deletion fails closed: refused, nothing changed, objects kept', async () => {
@@ -293,12 +294,12 @@ describe('scoped deletion: only objects the app created', () => {
       expect(await deleteOrQueue(t.deps, k, 'account_deletion')).toBe(false);
     }
     expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+    expect(await count(t, 'storage_deletions')).toBe(0);
     // A foreign key slipped into the outbox is dropped, not deleted.
-    t.db.prepare(`INSERT INTO storage_deletions (object_key, attempts, next_attempt_at, created_at, purpose) VALUES ('evidence/foreign-fixture-0001', 1, 0, 0, 'failed_upload')`).run();
+    await t.deps.repo.evidence.enqueueDeletion('evidence/foreign-fixture-0001', 'failed_upload', t.clock.now - 60_000);
     await sweepStorage(t.deps);
     expect(t.s3.keys().sort()).toEqual([...FOREIGN].sort());
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+    expect(await count(t, 'storage_deletions')).toBe(0);
   });
 
   it('records why each retried deletion happens', async () => {
@@ -314,7 +315,7 @@ describe('scoped deletion: only objects the app created', () => {
     await t.req('POST', `/participations/${s.participationId}/withdraw`, s.tester.token, {});
     await t.req('DELETE', '/me', s.tester.token, { confirm: 'DELETE MY ACCOUNT' });
     // Sorted here: the keys hold random ids, so the database order varies between runs.
-    const rows = t.db.prepare('SELECT object_key, purpose FROM storage_deletions').all() as { object_key: string; purpose: string }[];
+    const rows = await outboxRows(t);
     expect(rows.sort((a, b) => a.object_key.localeCompare(b.object_key))).toEqual(
       [
         { object_key: `evidence/${ev.id}`, purpose: 'account_deletion' },
@@ -342,7 +343,7 @@ describe('scoped deletion: only objects the app created', () => {
       await sweepStorage(t.deps);
     }
     expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${ev.id}`, `pqa-test/quarantine/${ok.id}`].sort());
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get()).toEqual({ n: 0 });
+    expect(await count(t, 'storage_deletions')).toBe(0);
   });
 
   it('account deletion removes the recording, its kept quarantine copy and open uploads; a late re-PUT is swept', async () => {
@@ -390,7 +391,8 @@ describe('scoped deletion: only objects the app created', () => {
     for (const f of walk(join(import.meta.dirname, '../src'))) expect(readFileSync(f, 'utf8'), f).not.toMatch(/Lifecycle|ListObjects|DeleteObjects|DeleteBucket/);
   });
 
-  it('migration 4 registers the objects an existing database already created', async () => {
+  // SQLite's own schema migration: nothing to migrate on Firestore.
+  it.skipIf(onFirestore())('migration 4 registers the objects an existing database already created', async () => {
     t = await makeApp({ storage: 'r2' });
     const s = await seeded(t);
     const ok = UploadIntent.parse((await intentFor(s.tester.token, s.participationId)).body);

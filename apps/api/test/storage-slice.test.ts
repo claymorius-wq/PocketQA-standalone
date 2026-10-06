@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { UPLOAD_INTENT_TTL_SECONDS, UploadIntent } from '@pocket-qa/contracts';
 import { sweepStorage } from '../src/storage/sweep';
 import { makeApp, MP4, seeded, type TestApp } from './helpers';
+import { count, intentsIn, queueDue } from './storage-kit';
 
 // Plan R5: sweepStorage in bounded, fenced slices (maxItems, deadlineMs, lease), resumable with no
-// work done twice. The Firestore path is covered in test/emulator/evidence.repo.test.ts.
+// work done twice. Either backend (regression.storage-slice runs it on Firestore).
 let t: TestApp;
 afterEach(async () => t.close());
 
@@ -20,16 +21,15 @@ function countDeletes(app: TestApp) {
 }
 
 /** `n` registered objects waiting in the outbox, due now. */
-function outbox(n: number) {
+async function outbox(n: number) {
   const keys = Array.from({ length: n }, (_, i) => `evidence/outbox-${String(i).padStart(4, '0')}`);
   for (const k of keys) {
     t.s3.objects.set(`pqa-test/${k}`, { body: Buffer.from(k), contentType: 'video/mp4' });
-    t.db.prepare('INSERT INTO storage_objects (object_key, created_at) VALUES (?, 0)').run(k);
-    t.db.prepare(`INSERT INTO storage_deletions (object_key, attempts, next_attempt_at, created_at, purpose) VALUES (?, 1, 0, 0, 'account_deletion')`).run(k);
+    await queueDue(t, k);
   }
   return keys;
 }
-const pendingOutbox = () => (t.db.prepare('SELECT COUNT(*) AS n FROM storage_deletions').get() as { n: number }).n;
+const pendingOutbox = () => count(t, 'storage_deletions');
 
 /** Two direct uploads opened and left to expire (their quarantine objects did arrive). */
 async function abandonedUploads() {
@@ -52,7 +52,7 @@ describe('sweepStorage slices (SQLite)', () => {
   it('maxItems slices resume to completion; every object is deleted exactly once', async () => {
     t = await makeApp({ storage: 'r2' });
     await abandonedUploads(); // 2 expiries + 2 quarantine deletions
-    const keys = outbox(5); // + 5 outbox deletions
+    const keys = await outbox(5); // + 5 outbox deletions
     const calls = countDeletes(t);
     const runs: boolean[] = [];
     for (let i = 0; i < 10; i += 1) {
@@ -62,8 +62,8 @@ describe('sweepStorage slices (SQLite)', () => {
     }
     // 9 items at 2 per slice: 5 slices, the last one complete.
     expect(runs).toEqual([false, false, false, false, true]);
-    expect(pendingOutbox()).toBe(0);
-    expect((t.db.prepare(`SELECT COUNT(*) AS n FROM upload_intents WHERE status = 'pending'`).get() as { n: number }).n).toBe(0);
+    expect(await pendingOutbox()).toBe(0);
+    expect(await intentsIn(t, 'pending')).toBe(0);
     for (const k of keys) expect(calls.get(k)).toBe(1);
     const quarantine = [...calls.keys()].filter((k) => k.startsWith('quarantine/'));
     expect(quarantine).toHaveLength(2);
@@ -76,16 +76,16 @@ describe('sweepStorage slices (SQLite)', () => {
 
   it('a deadline already passed does nothing', async () => {
     t = await makeApp({ storage: 'r2' });
-    outbox(3);
+    await outbox(3);
     const calls = countDeletes(t);
     expect(await sweepStorage(t.deps, { deadlineMs: t.clock.now })).toEqual({ complete: false });
     expect(calls.size).toBe(0);
-    expect(pendingOutbox()).toBe(3);
+    expect(await pendingOutbox()).toBe(3);
   });
 
   it('a stale fence stops before any item; the current holder completes', async () => {
     t = await makeApp({ storage: 'r2' });
-    outbox(3);
+    await outbox(3);
     const calls = countDeletes(t);
     const core = t.deps.repo.core;
     const stale = (await core.acquireLease('sweep', 'holder-1', 60_000, t.clock.now))!;
@@ -100,7 +100,7 @@ describe('sweepStorage slices (SQLite)', () => {
 
   it('a lease that lapses mid-slice stops at the next item', async () => {
     t = await makeApp({ storage: 'r2' });
-    outbox(4);
+    await outbox(4);
     const core = t.deps.repo.core;
     const fence = (await core.acquireLease('sweep', 'holder-1', 60_000, t.clock.now))!;
     const calls = countDeletes(t);
@@ -111,14 +111,14 @@ describe('sweepStorage slices (SQLite)', () => {
     };
     expect(await sweepStorage(t.deps, { lease: { job: 'sweep', fence } })).toEqual({ complete: false });
     expect(calls.size).toBe(1);
-    expect(pendingOutbox()).toBe(3);
+    expect(await pendingOutbox()).toBe(3);
   });
 
   it('no slice: everything in one run, complete', async () => {
     t = await makeApp({ storage: 'r2' });
     await abandonedUploads();
-    outbox(3);
+    await outbox(3);
     expect(await sweepStorage(t.deps)).toEqual({ complete: true });
-    expect(pendingOutbox()).toBe(0);
+    expect(await pendingOutbox()).toBe(0);
   });
 });

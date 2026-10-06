@@ -5,6 +5,7 @@ import { localStore } from '../src/storage/local';
 import { r2Store } from '../src/storage/r2';
 import { PRESIGN_GET_MAX_SECONDS } from '../src/storage/types';
 import { makeApp, MP4, PNG, seeded, START, type TestApp } from './helpers';
+import { count } from './storage-kit';
 
 // Plan §6 playback on private R2: after the playback authorisation (owning tester, the study's
 // builder, admin), the API returns a presigned GET on the bucket's S3 endpoint (≤ 5 min) instead
@@ -93,7 +94,7 @@ describe('presigned playback (r2)', () => {
     expect(sigV4Valid(other.toString(), CREDS.secretAccessKey)).toBe(false);
     // The bytes come from storage, not from the API.
     expect(Buffer.compare(Buffer.from(await (await fetch(grant.url!)).arrayBuffer()), MP4)).toBe(0);
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM playback_tokens').get()).toEqual({ n: 0 });
+    expect(await count(t, 'playback_tokens')).toBe(0);
   });
 
   it('the study’s builder and an admin are allowed; another tester and another builder get 404', async () => {

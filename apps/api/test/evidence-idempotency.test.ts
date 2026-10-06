@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { UploadIntent } from '@pocket-qa/contracts';
 import { makeApp, MP4, PNG, seeded, type TestApp } from './helpers';
+import { count } from './storage-kit';
 
 // Plan R12 rows for evidence (pqa-qa early r1 P2-F): a mutation whose effect committed but whose
 // response was lost (crash, timeout, failed idempotency completion) is retried. It must return the
@@ -22,7 +23,7 @@ function failNextCompletion(app: TestApp) {
   };
 }
 
-const evidenceRows = () => (t.db.prepare('SELECT COUNT(*) AS n FROM evidence').get() as { n: number }).n;
+const evidenceRows = () => count(t, 'evidence');
 const key = (k: string) => ({ 'idempotency-key': k });
 
 /** The multipart upload (as helpers.ts builds it), with extra headers. */
@@ -43,16 +44,16 @@ describe('uploadEvidence (local storage): evidence id from the Idempotency-Key',
     const meta = { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'shot-1' };
     const first = await upload(s.tester.token, s.participationId, PNG, meta, key('upload-key-0001'));
     expect(first.status).toBe(500);
-    expect(evidenceRows()).toBe(1); // the effect committed
+    expect(await evidenceRows()).toBe(1); // the effect committed
     const retry = await upload(s.tester.token, s.participationId, PNG, meta, key('upload-key-0001'));
     expect(retry.status).toBe(200);
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
     const list = await t.req('GET', `/participations/${s.participationId}/evidence`, s.tester.token);
     expect(list.body.items.map((e: { id: string }) => e.id)).toEqual([retry.body.id]);
     // Completed now: a further retry replays the stored response.
     const replay = await upload(s.tester.token, s.participationId, PNG, meta, key('upload-key-0001'));
     expect(replay.body.id).toBe(retry.body.id);
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
   });
 
   it('the same key reused for a different segment after a crash is a clean 409', async () => {
@@ -62,7 +63,7 @@ describe('uploadEvidence (local storage): evidence id from the Idempotency-Key',
     expect((await upload(s.tester.token, s.participationId, PNG, { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'a' }, key('upload-key-0002'))).status).toBe(500);
     const other = await upload(s.tester.token, s.participationId, PNG, { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'b' }, key('upload-key-0002'));
     expect(other.status).toBe(409);
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
   });
 
   it('without a key every upload gets a fresh id', async () => {
@@ -71,7 +72,7 @@ describe('uploadEvidence (local storage): evidence id from the Idempotency-Key',
     const a = await upload(s.tester.token, s.participationId, PNG, { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'a' });
     const b = await upload(s.tester.token, s.participationId, PNG, { kind: 'screenshot', capturedOn: 'web', clientSegmentId: 'b' });
     expect(a.body.id).not.toBe(b.body.id);
-    expect(evidenceRows()).toBe(2);
+    expect(await evidenceRows()).toBe(2);
   });
 });
 
@@ -96,11 +97,11 @@ describe('completeUploadIntent (r2): a retry after a committed completion', () =
     failNextCompletion(t);
     const first = await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token, undefined, key('complete-key-01'));
     expect(first.status).toBe(500);
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
     const retry = await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token, undefined, key('complete-key-01'));
     expect(retry.status).toBe(200);
     expect(retry.body).toMatchObject({ mimeType: 'video/mp4', sizeBytes: MP4.length });
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
     expect(t.s3.keys().filter((k) => k.startsWith('pqa-test/evidence/'))).toEqual([`pqa-test/evidence/${retry.body.id}`]);
   });
 
@@ -115,7 +116,7 @@ describe('completeUploadIntent (r2): a retry after a committed completion', () =
       expect(again.status).toBe(200);
       expect(again.body.id).toBe(first.body.id);
     }
-    expect(evidenceRows()).toBe(1);
+    expect(await evidenceRows()).toBe(1);
   });
 
   it('another tester still gets 404', async () => {
