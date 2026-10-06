@@ -864,3 +864,21 @@ Gate ledger: `docs/reviews/native-recording/gates.md`. Research and design: `doc
   - **Playwright 28/28** (`playwright.txt`); the rewritten gate-a, remaining-scope, screen-recording and wallet-rewards/browser screenshots were restored from Git.
 - **APK** at fe89787: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, sha256 `277e8744837819958af2e57acd37685bdc712e46c50755bc3224274e4b8b91a9`, 52483457 bytes, Android Debug cert.
 - **Not proven:** a non-silent signal through the new pipeline (BLOCKED (infra) on the emulator), speech, any real phone, the Seeker, or an iPhone broadcast.
+
+## 2026-10-06: Firebase/Firestore/R2/Vercel refactor, hosted entry (lead, `feat/firebase-vercel` @ 5c9d29d). EMULATOR ONLY
+```
+$ node scripts/vercel/build.mjs --skip-web
+secret check: 0 values, 3 files, 0 occurrences
+built .vercel/output (staging): api.func maxDuration 60s in fra1; 3 files; secret scan clean (0 server-only values checked)
+$ EMU_CONFIG=../../firebase.emu-lead.json EMU_FILES="test/emulator/hosted.test.ts test/emulator/bundle.test.ts test/emulator/core.test.ts test/emulator/tx-foundation.test.ts" pnpm test:emulator
+      Tests  32 passed (32)
+$ (apps/api) npx vitest run
+      Tests  637 passed | 2 skipped (639)
+$ (apps/mobile) npx jest --ci            # at e53f978
+Test Suites: 65 passed, 65 total
+Tests:       1361 passed, 1361 total
+$ firebase firestore:databases:list --project pocketqa-optijara --json
+  "error": "... HTTP Error: 403, Cloud Firestore API has not been used in project pocketqa-optijara before or it is disabled. ..."
+$ gcloud billing projects describe pocketqa-optijara --account=admin@optijara.ai
+ERROR: (gcloud.billing.projects.describe) There was a problem refreshing your current auth tokens: Reauthentication failed. cannot prompt during non-interactive execution.
+```

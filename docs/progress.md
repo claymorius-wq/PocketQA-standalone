@@ -4,6 +4,30 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-06): Firebase Auth + Firestore + private R2 + Vercel refactor (`feat/firebase-vercel`, EMULATOR ONLY, nothing deployed)
+- **Team:** lead `wX:p1`; pqa-be1/be2/be3 (`wX:p4`–`p6`, proof in `docs/reviews/team-launch.md`); pqa-qa `wX:p2`. This supersedes the solo-lead note below for this refactor. Plan: `docs/plans/firebase-vercel-refactor.md` (QA approved through r2, plus R9–R12).
+- **Done (emulator-verified):**
+  - repositories per domain (core, studies, evidence, escrow) on SQLite and Firestore;
+  - idempotency reservations (R10); R12 retry table, with deterministic ids on every D route;
+  - the client sends a key per user intent (P2-H, `e53f978`); credential and export routes are exempt (`fe91b8a`);
+  - contention past 10 attempts becomes a retryable 409 (`36d0804`);
+  - indexes and TTL policies declared, with a static coverage test (`5e16e25`);
+  - presigned R2 playback (`07ec4b9`); bounded, fenced sweep and settlement slices (`d605eed`, `d5c8427`).
+- **Hosted (`5c9d29d`):**
+  - `src/hosted/` plus `scripts/vercel/build.mjs` give a Build Output API v3 artifact for `vercel deploy --prebuilt`: nodejs24.x, maxDuration 60 s, fra1, cron jobs, and an output secret scan;
+  - the BUILT function runs on the emulators (`test/emulator/bundle.test.ts`).
+- **Blocked (cloud):**
+  - billing for `pocketqa-optijara` can't be read: gcloud `admin@optijara.ai` needs `gcloud auth login`, or Hamza checks the console;
+  - the Firestore API is still disabled (403, re-checked 2026-10-06);
+  - no provisioning, deploy or Vercel project until then.
+- **Remaining:**
+  - be3 escrow Firestore races and P2-F rows;
+  - be1 migration dry run (emulator, snapshot copy only);
+  - a lazy-slice test once the escrow repo is complete;
+  - the full dual-backend regression and the pqa-qa freeze review;
+  - after the gates: provisioning, deploy, hosted tests, and the APK rebuilt against the https API.
+- **Incident (2026-10-06, about 2 min):** a lead `pkill -f` stopped the USB-testing local API on 8787. It was restarted from the native-voice worktree with the same data dir, health ok. The memory rule now forbids pattern kills.
+
 ## Current work (2026-10-06): native recording, new capture pipeline, merged with main (`feat/native-voice-recording` @ fe89787)
 - **Why:** MediaRecorder's audio stopped for good mid-recording on the emulator, three times, and reported nothing.
 - **Fix:** our own AudioRecord + MediaCodec + MediaMuxer pipeline. The design follows WebRTC's reference mic capture, Zoom's documented MediaProjection + microphone FGS route, and Android's input-sharing rules, all cited in `docs/plans/native-capture-pipeline.md`. Meet's internals are not claimed.
