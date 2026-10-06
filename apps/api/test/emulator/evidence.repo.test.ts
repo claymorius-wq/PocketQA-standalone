@@ -259,6 +259,7 @@ describe('R4: the deletion gate', () => {
         deleted.push(k);
       },
       presignPut: async () => ({ url: '', headers: {} }),
+      presignGet: async () => ({ url: '' }),
     };
   }
   const deps = (store: EvidenceStore) => ({ repo: { evidence: repo, core: firestoreCoreRepo(fs) }, store, now: () => NOW });
@@ -323,6 +324,7 @@ describe('sweep', () => {
       copy: async () => {},
       delete: async (k) => void store.deleted.push(k),
       presignPut: async () => ({ url: '', headers: {} }),
+      presignGet: async () => ({ url: '' }),
     };
     const d = { repo: { evidence: repo, core: firestoreCoreRepo(fs) }, store: s, now: () => NOW + TTL + 1 };
     await sweepStorage(d);

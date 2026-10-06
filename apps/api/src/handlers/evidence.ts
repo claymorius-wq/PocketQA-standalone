@@ -142,8 +142,16 @@ export const evidenceHandlers = {
     } catch {
       throw notFound('Evidence');
     }
+    const now = ctx.deps.now();
+    const expires = now + PLAYBACK_TOKEN_TTL_SECONDS * 1000;
+    // Private R2 (plan §6): a presigned GET on the S3 endpoint, issued only after the check above,
+    // so video never streams through the API (Vercel body limit). Nothing is stored; the URL's
+    // TTL bounds it, and the signature is dated `now`, so `expiresAt` is exactly when it dies.
+    if (ctx.deps.store.kind === 'r2') {
+      const { url } = await ctx.deps.store.presignGet(ev.storage_key, { contentType: ev.mime_type, expiresInSeconds: PLAYBACK_TOKEN_TTL_SECONDS, signingDate: new Date(now) });
+      return { url, expiresAt: iso(expires) };
+    }
     const token = newToken();
-    const expires = ctx.deps.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000;
     await repo.issuePlaybackToken(sha256(token), ev.id, user.id, expires);
     return { token, expiresAt: iso(expires) };
   },

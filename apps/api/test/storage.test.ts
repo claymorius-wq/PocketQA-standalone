@@ -46,14 +46,15 @@ describe('direct uploads to private storage (r2 mode)', () => {
 
     const list = await t.req('GET', `/participations/${s.participationId}/evidence`, s.builder.token);
     expect(list.body.items.map((e: { id: string }) => e.id)).toEqual([done.body.id]);
+    // Playback is a presigned GET straight from storage (plan §6), not a stream through the API.
     const pt = await t.req('POST', `/evidence/${done.body.id}/playback-token`, s.builder.token);
-    const full = await t.req('GET', `/media/${pt.body.token}`);
+    expect(pt.body.token).toBeUndefined();
+    const full = await fetch(pt.body.url);
     expect(full.status).toBe(200);
-    expect(Buffer.compare(full.raw, MP4)).toBe(0);
-    const part = await t.req('GET', `/media/${pt.body.token}`, undefined, undefined, { range: 'bytes=4-11' });
+    expect(Buffer.compare(Buffer.from(await full.arrayBuffer()), MP4)).toBe(0);
+    const part = await fetch(pt.body.url, { headers: { range: 'bytes=4-11' } });
     expect(part.status).toBe(206);
-    expect(part.headers['content-range']).toBe(`bytes 4-11/${MP4.length}`);
-    expect(part.raw.toString('latin1')).toBe('ftypmp42');
+    expect(Buffer.from(await part.arrayBuffer()).toString('latin1')).toBe('ftypmp42');
   });
 
   it('the multipart route is off in r2 mode, and intents are off in local mode', async () => {
@@ -139,7 +140,7 @@ describe('direct uploads to private storage (r2 mode)', () => {
     // copy is kept, and the evidence object is untouched by the re-PUT.
     expect(t.s3.keys().sort()).toEqual([`pqa-test/evidence/${ev.id}`, `pqa-test/quarantine/${done.id}`].sort());
     const pt = await t.req('POST', `/evidence/${ev.id}/playback-token`, s.tester.token);
-    expect(Buffer.compare((await t.req('GET', `/media/${pt.body.token}`)).raw, MP4)).toBe(0);
+    expect(Buffer.compare(Buffer.from(await (await fetch(pt.body.url)).arrayBuffer()), MP4)).toBe(0);
   });
 
   it('bytes swapped after validation never become evidence (ETag pinning, review r1 P3)', async () => {
@@ -168,7 +169,7 @@ describe('direct uploads to private storage (r2 mode)', () => {
     const second = await t.req('POST', `/evidence/upload-intents/${i.id}/complete`, s.tester.token);
     expect(second.status).toBe(200);
     const pt = await t.req('POST', `/evidence/${second.body.id}/playback-token`, s.tester.token);
-    expect(Buffer.compare((await t.req('GET', `/media/${pt.body.token}`)).raw, swapped)).toBe(0);
+    expect(Buffer.compare(Buffer.from(await (await fetch(pt.body.url)).arrayBuffer()), swapped)).toBe(0);
   });
 
   it('a missing version tag is a retryable conflict, never an unpinned completion (review r2 P3)', async () => {
