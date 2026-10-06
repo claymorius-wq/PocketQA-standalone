@@ -72,6 +72,11 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     this.store = d.repo.escrow.devnet;
   }
 
+  /** The spend caps this adapter enforces (read-only; config POCKETQA_DEVNET_CAP_* or the defaults). */
+  get limits(): DevnetLimits {
+    return this.d.limits;
+  }
+
   // ── Accounts (derived, so known before they exist and after a restart) ────────────────────
 
   accountsFor(studyId: string) {

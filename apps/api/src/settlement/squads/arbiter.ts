@@ -32,10 +32,14 @@ export interface ArbiterChain {
 
 export class ArbiterRefusal extends Error {}
 
-export async function arbiterApprove(o: { chain: ArbiterChain; arbiter: Keypair; platform: string; plan: ArbiterPlan; send: boolean }) {
+export async function arbiterApprove(o: { chain: ArbiterChain; arbiter: Keypair; arbiterPubkey: string; platform: string; plan: ArbiterPlan; send: boolean }) {
   const { chain, plan } = o;
   const me = o.arbiter.publicKey.toBase58();
   const refuse = (why: string) => new ArbiterRefusal(`Refused, nothing signed: ${why}`);
+  // pqa-qa P3-A1: the loaded key must be the pinned arbiter (POCKETQA_DEVNET_ARBITER_PUBKEY), and never
+  // the platform key: otherwise the server's key could cast the second vote a 2-of-3 needs.
+  if (me === o.platform) throw refuse('the key file is the platform key; the arbiter vote is never cast with the server key.');
+  if (me !== o.arbiterPubkey) throw refuse('the key file is not the pinned --arbiter public key.');
   if ((await chain.genesisHash()) !== DEVNET_GENESIS) throw refuse('the RPC is not Solana devnet (genesis hash mismatch).');
   const acc = await chain.account(squadsTransactionPda(plan.multisig, BigInt(plan.txIndex)));
   if (!acc) throw refuse(`no Squads vault transaction at index ${plan.txIndex} of this multisig.`);

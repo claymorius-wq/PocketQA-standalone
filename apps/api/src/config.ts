@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { PublicKey } from '@solana/web3.js';
+import { DEFAULT_DEVNET_LIMITS, type DevnetLimits } from './settlement/squads/devnetTypes';
 import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, isPublicHost, type AuthMode, type SettlementMode, type StorageMode } from '@pocket-qa/contracts';
 
 /** Pocket QA's dedicated R2 bucket(s); add a staging bucket here only by decision (ADR 0005). */
@@ -40,7 +41,7 @@ export type Config = {
    * and never enters the config. `allowedEmails`: the labelled synthetic accounts that may start a
    * server-signed operation (CH-D1). Null in every other env.
    */
-  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string } } | null;
+  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits } | null;
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -354,7 +355,40 @@ function devnetSettings(env: Record<string, string | undefined>, dataBackend: Co
   if (allowedEmails.length === 0) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS must list the synthetic accounts that may start devnet operations.');
   // CH-D1: labelled synthetic accounts only, never a real person's address.
   if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
-  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! } };
+  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env) };
+}
+
+/**
+ * Hard ceilings for the devnet spend caps (lead decision on E-28 #4): an env value above them refuses
+ * startup. 1 SOL global and 0.5 SOL per user (fees + rent), 10 test USDC.
+ */
+export const DEVNET_CAP_CEILINGS = { globalLamports: 1_000_000_000, userLamports: 500_000_000, globalUsdcUnits: 10_000_000, userUsdcUnits: 10_000_000 } as const;
+
+/**
+ * The devnet spend caps (CH-D1): POCKETQA_DEVNET_CAP_* or the defaults (DEFAULT_DEVNET_LIMITS). The caps
+ * stay cumulative over the devnet namespace's lifetime: raising one gives headroom, nothing is reset.
+ */
+function devnetLimits(env: Record<string, string | undefined>): DevnetLimits {
+  const cap = (name: string, fallback: number, ceiling: number) => {
+    const raw = env[name];
+    if (raw === undefined || raw === '') return fallback;
+    if (!/^[1-9]\d*$/.test(raw) || Number(raw) > ceiling) throw new ConfigError(`${name} must be a whole number from 1 to ${ceiling} (a hard ceiling).`);
+    return Number(raw);
+  };
+  const limits: DevnetLimits = {
+    global: {
+      lamports: cap('POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS', DEFAULT_DEVNET_LIMITS.global.lamports, DEVNET_CAP_CEILINGS.globalLamports),
+      usdcUnits: cap('POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS', DEFAULT_DEVNET_LIMITS.global.usdcUnits, DEVNET_CAP_CEILINGS.globalUsdcUnits),
+    },
+    perUser: {
+      lamports: cap('POCKETQA_DEVNET_CAP_USER_LAMPORTS', DEFAULT_DEVNET_LIMITS.perUser.lamports, DEVNET_CAP_CEILINGS.userLamports),
+      usdcUnits: cap('POCKETQA_DEVNET_CAP_USER_USDC_UNITS', DEFAULT_DEVNET_LIMITS.perUser.usdcUnits, DEVNET_CAP_CEILINGS.userUsdcUnits),
+    },
+  };
+  if (limits.perUser.lamports > limits.global.lamports || limits.perUser.usdcUnits > limits.global.usdcUnits) {
+    throw new ConfigError('A per-user devnet cap above its global cap means nothing: lower POCKETQA_DEVNET_CAP_USER_* or raise POCKETQA_DEVNET_CAP_GLOBAL_*.');
+  }
+  return limits;
 }
 
 /**

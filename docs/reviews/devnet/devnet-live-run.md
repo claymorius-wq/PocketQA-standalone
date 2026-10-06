@@ -9,6 +9,11 @@ Scope: `POCKETQA_ENV=devnet` only. Solana **devnet**, devnet test USDC (`4zMMC9�
 ## 1. Bounds, stated in the run's row before anything is sent
 - **Per run:** at most **3 test USDC** funded, and at most **0.05 SOL** in fees plus rent. That's 2 to 3 payments: a vault costs about 3.9M lamports, a payment about 5.2M plus 2.04M if the recipient has no token account.
 - **The server enforces these cumulatively** (CH-D1). The defaults (`DEFAULT_DEVNET_LIMITS`) are 50,000,000 lamports and 3,000,000 test-USDC units, **per user and globally**.
+- **The caps are configurable** (lead decision on E-28 #4) with `POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS`, `POCKETQA_DEVNET_CAP_USER_LAMPORTS`, `POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS` and `POCKETQA_DEVNET_CAP_USER_USDC_UNITS`.
+  - **Allowed values:** whole numbers, under a hard ceiling in code: **1 SOL** global, **0.5 SOL** per user, **10 test USDC** each. A per-user cap may not exceed its global cap.
+  - **Refusals:** an out-of-range value refuses startup, and every one of these variables is refused outside devnet.
+  - **Visibility:** the effective caps are logged at startup as numbers.
+  - **Still cumulative:** raising a cap adds headroom, and nothing is reset.
   - Totals live in the devnet namespace at `devnetSpend/{global | user:<uid>}` and accumulate across runs.
   - Over a cap: `409 DEVNET_SPEND_CAP`, before anything is signed.
   - A new budget means resetting those documents. That's a reviewed operator action approved by the lead, never automatic.
@@ -55,6 +60,7 @@ The function reads these from the environment at runtime:
 | `POCKETQA_DEVNET_PLATFORM_SIGNER_FILE` (local) or `POCKETQA_DEVNET_PLATFORM_SIGNER` (Preview) | Exactly one |
 | `POCKETQA_DEVNET_PLATFORM_PUBKEY`, `POCKETQA_DEVNET_ARBITER_PUBKEY`, `POCKETQA_DEVNET_FEE_WALLET` | Public keys, three different ones |
 | `POCKETQA_DEVNET_ALLOWED_EMAILS` | The synthetic `@example.test` accounts allowed to start server-signed operations (§4) |
+| `POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS`, `POCKETQA_DEVNET_CAP_USER_LAMPORTS`, `POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS`, `POCKETQA_DEVNET_CAP_USER_USDC_UNITS` | Optional cumulative caps (§1), under hard ceilings |
 | `CRON_SECRET` | Server-only. Previews get **no Vercel Cron**, so settlement runs as bounded request slices, or the operator calls `/api/jobs/settle` with the secret |
 
 **Leave unset:**
@@ -103,7 +109,7 @@ A devnet deployment signs in against the **same Firebase Auth user pool** as pro
   1. **Read the payment:** as the devnet admin, call `GET /api/admin/settlements/<settlementId>/devnet` (read-only). Check `cosigner: 'arbiter'` and `state: 'awaiting_cosigner'`, then take the multisig, txIndex, opId, recipient and amountUnits.
   2. **Dry run (no `--send`):** it reads devnet itself and checks that this is exactly that payment, created by the pinned platform key, with an Active proposal and the arbiter a voting member:
      ```
-     npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path to the arbiter key file> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
+     npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path to the arbiter key file> --arbiter <POCKETQA_DEVNET_ARBITER_PUBKEY> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
        --multisig <multisig> --index <n> --op <pqa-op1:…> --recipient <tester wallet> --amount <units>
      ```
   3. **Vote:** the same command with `--send` votes once with the arbiter key. It prints the public vote signature only, never the key. A second run reports `alreadyApproved`.

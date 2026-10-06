@@ -277,7 +277,7 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
 
 **The CLI:**
 ```
-npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 0700 dir> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
+npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 0700 dir> --arbiter <POCKETQA_DEVNET_ARBITER_PUBKEY> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
   --multisig <multisig> --index <txIndex> --op <opId> --recipient <recipient> --amount <amountUnits> [--rpc <devnet url>] [--send]
 ```
 
