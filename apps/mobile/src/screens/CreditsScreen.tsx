@@ -23,7 +23,7 @@ import { Amount, BalanceHero, DateText, EmptyPanel, GlideList, ListRow, SectionH
 //   new ledger row arrives 600ms after the roll starts; the rows below glide down one slot.
 // - U5 (tester only): approved credits landing in view light the balance (Earned, Mode A). A
 //   balance that already holds approved credits this app session has not shown opens at rest
-//   (0.45, no rise). A builder's top-up is local test credit and is never lit (§13).
+//   (0.45, no rise). A builder's top-up is test credit (no cash value) and is never lit (§13).
 
 const KIND_LABEL: Record<string, string> = {
   test_topup: 'Local test top-up',
@@ -159,8 +159,8 @@ export function CreditsScreen({ title }: { title: string }) {
                 </View>
               ) : builder ? (
                 <Card k={1} style={styles.topUp}>
-                  <Text variant="title">Add local test credits</Text>
-                  <Text variant="bodySm" tone="muted" style={styles.topUpBody}>Fund studies in this local build. No money changes hands.</Text>
+                  <Text variant="title">Add test credits (no cash value)</Text>
+                  <Text variant="bodySm" tone="muted" style={styles.topUpBody}>Test credits fund studies so you can try Pocket QA. They can’t be bought, sold or withdrawn, and no money changes hands.</Text>
                   <View style={styles.amounts}>
                     <Segmented
                       testID="topup-amount"

@@ -521,7 +521,7 @@ function noteOf(text: string) {
   return node!;
 }
 const TESTER_NOTE = 'Find studies that match your device, record consented sessions, and earn test credits when your work is approved.';
-const BUILDER_NOTE = 'Create studies, fund them with local test credits, and review testers’ evidence.';
+const BUILDER_NOTE = 'Create studies, fund them with test credits (no cash value), and review testers’ evidence.';
 
 describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   it('keeps the title, the role switch, the fields and the way back to Sign in', async () => {

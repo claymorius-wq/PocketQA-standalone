@@ -9,7 +9,7 @@ import { GoogleButton } from '../../src/ui/patterns';
 
 const ROLE_NOTES = [
   { value: 'tester', text: 'Find studies that match your device, record consented sessions, and earn test credits when your work is approved.' },
-  { value: 'builder', text: 'Create studies, fund them with local test credits, and review testers’ evidence.' },
+  { value: 'builder', text: 'Create studies, fund them with test credits (no cash value), and review testers’ evidence.' },
 ] as const;
 
 // A-SignUp (Direction A v2 §13): a stack screen (Sign in pushes it), so it arrives with the push and
