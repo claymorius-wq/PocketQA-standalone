@@ -39,6 +39,8 @@ export class FakeDevnetChain implements DevnetChain {
   prepared: { step: DevnetStep; signature: string }[] = [];
   broadcasts: { step: DevnetStep; signature: string }[] = [];
   landed: { step: DevnetStep | 'cosigner_approve' | 'funding'; signature: string }[] = [];
+  /** Unsigned transactions built for a wallet (the builder's or the arbiter CLI's). */
+  built: ('approve' | 'funding')[] = [];
   dropNext = 0;
   lag = false;
   crashAfter: DevnetStep | null = null;
@@ -208,10 +210,12 @@ export class FakeDevnetChain implements DevnetChain {
 
   // ── wallet-signed transactions (the builder's wallet, the arbiter CLI) ──
   async buildCosignerApprove(multisig: string, index: bigint, member: string): Promise<UnsignedTx> {
+    this.built.push('approve');
     const wire = Buffer.from(JSON.stringify({ kind: 'approve', multisig, index: String(index), member })).toString('base64');
     return { messageB64: wire, wireB64: wire, lastValidBlockHeight: this.height + 150 };
   }
   async buildFundingTransfer(input: { from: string; vaultAta: string; amount: bigint; reference: string }): Promise<UnsignedTx> {
+    this.built.push('funding');
     const wire = Buffer.from(JSON.stringify({ kind: 'funding', ...input, amount: String(input.amount) })).toString('base64');
     return { messageB64: wire, wireB64: wire, lastValidBlockHeight: this.height + 150 };
   }

@@ -358,3 +358,25 @@ describe('cumulative spend (pqa-be2 E-25): the caps bound TOTAL spend, not just 
     expect(chain.prepared.length).toBe(signed);
   });
 });
+
+describe('wallet-signed transactions are built only on a proven devnet (pqa-qa P2-F1)', () => {
+  const bad: [string, (c: FakeDevnetChain) => void][] = [
+    ['the mainnet genesis', (c) => (c.genesis = MAINNET_GENESIS)],
+    ['the mainnet USDC mint account', (c) => (c.mintAccount = { address: MAINNET_USDC_MINT, owner: PILOT_TOKEN_PROGRAM, decimals: PILOT_DECIMALS })],
+    ['wrong decimals', (c) => (c.mintAccount = { address: PILOT_MINT, owner: PILOT_TOKEN_PROGRAM, decimals: 9 })],
+    ['the Squads program not as pinned', (c) => (c.programOk = false)],
+  ];
+  for (const [name, breakIt] of bad) {
+    it(`${name}: no funding transaction and no approval transaction is built for the builder's wallet`, async () => {
+      await readyVault();
+      const [p] = await payouts(1);
+      for (let i = 0; i < 6; i++) await settle();
+      const s = (await repos.escrow.payoutSettlementOf(p!.id))!;
+      const f = { id: 'f1', study_id: 's1', amount_units: 3_000, reference: adapter.newReference(), status: 'awaiting_payment' as const, signature: null, source: null, failure_reason: null, created_at: now, expires_at: now + 60_000, confirmed_at: null };
+      breakIt(chain);
+      await expect(adapter.fundingTransaction(f, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CHAIN_UNAVAILABLE' });
+      await expect(adapter.approval(s, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CHAIN_UNAVAILABLE' });
+      expect(chain.built).toEqual([]);
+    });
+  }
+});

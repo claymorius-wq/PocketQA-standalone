@@ -117,6 +117,19 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (!(await chain.memoProgramExecutable())) throw new SettlementFailure('Refused before signing: the pinned SPL Memo program is not deployed as pinned on this cluster.');
   }
 
+  /**
+   * pqa-qa P2-F1: a transaction built for the builder's own wallet is a signature too (theirs), so
+   * the same pins hold before one is built. On a route, a refusal is 503 CHAIN_UNAVAILABLE.
+   */
+  private async guardForWallet(builderWallet: string) {
+    try {
+      await this.guard(builderWallet);
+    } catch (e) {
+      if (e instanceof SettlementFailure) throw fail('CHAIN_UNAVAILABLE', e.message);
+      throw e;
+    }
+  }
+
   /** At startup: the same checks, so a misconfigured deployment refuses before serving. */
   async startupCheck() {
     await this.guard();
@@ -418,6 +431,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       if ((await this.store.vault(f.study_id))?.state !== 'ready') throw fail('VAULT_NOT_READY', 'The study’s devnet vault is still being created. Try again in a few seconds.');
     }
     const vaultAta = this.vaultFor(f.study_id);
+    await this.guardForWallet(builderWallet);
     // CH-D3: from the server's own state only: this study's vault, the quoted amount, the request's reference.
     const tx = await this.d.chain.buildFundingTransfer({ from: builderWallet, vaultAta, amount: BigInt(f.amount_units), reference: f.reference });
     return { transactionB64: tx.wireB64, fundingId: f.id, studyId: f.study_id, reference: f.reference, amountUnits: f.amount_units, destination: vaultAta, mint: PILOT_MINT, network: 'devnet', copy: DEVNET_COPY };
@@ -433,6 +447,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   async approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval> {
     const r = await this.waitingFor(s, builderWallet);
+    await this.guardForWallet(builderWallet);
     const tx = await this.d.chain.buildCosignerApprove(r.multisig, BigInt(r.tx_index), builderWallet);
     return {
       settlementId: s.id,
