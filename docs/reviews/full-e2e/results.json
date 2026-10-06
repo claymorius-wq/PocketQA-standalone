@@ -50,7 +50,7 @@
    "evidence": [
     "docs/verification.md",
     "docs/reviews/firebase-vercel/google-button/live-dpl_TRefQGTd/",
-    "docs/reviews/firebase-vercel/qa-google-button-r1.md (pqa-qa worktree)"
+    "docs/reviews/firebase-vercel/qa-google-button-r1.md"
    ],
    "notes": "P3: ~9 s busy after closing the popup; shared busy spins Sign in too (QA P3).",
    "owner": "pocketqa-lead"
@@ -240,7 +240,8 @@
     "docs/reviews/full-e2e/economics.md",
     "docs/reviews/full-e2e/parts/pqa-be1.json",
     "docs/reviews/full-e2e/parts/pqa-be2.json",
-    "docs/reviews/full-e2e/parts/pqa-ios.json"
+    "docs/reviews/full-e2e/parts/pqa-ios.json",
+    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
    ],
    "notes": "",
    "owner": "pocketqa-lead"
@@ -1284,16 +1285,16 @@
   {
    "id": "E-08",
    "area": "disputes",
-   "title": "Close vs dispute at the 7-day window boundary: a dispute opens on a closed study; its overturn pays from the released budget",
-   "status": "FAIL",
+   "title": "Close vs dispute at the 7-day window boundary: no dispute on a closed study, no overturn paid from a released budget (FAIL on frozen 7beaad5, fixed in 31c2141)",
+   "status": "PASS",
    "environment": "emulator",
-   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
-   "sha": "7beaad5",
+   "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+   "sha": "31c2141",
    "steps": "Harness 'close at the dispute-window boundary races a dispute' (5 trials, 10 disputes at T0+W−1 vs 10 closes at T0+W+1 concurrently) and the deterministic 'BUG repro': reject at T0 → close at T0+W+1 → openDispute(now=T0+W−1) → admin overturn. Plus the same sequence on the SQLite repository (local-api backend).",
    "fixtures": {
     "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
    },
-   "observed": "BEFORE FIX (frozen code). Emulator deterministic: after close study 'closed', study acct 0, builder 40; openDispute(now=T0+W−1) → 'opened' on the closed study; overturn → ok; after: study acct −20, builder 40, tester 20 (dispute_credit 20, builder release 40) → 20 credits minted; studyBudget throws 'INTERNAL: Ledger invariant violated: study budget over-committed.'. Emulator race (10 disputes at T0+W−1 vs 10 closes at T0+W+1, 5 trials): 5/5 'close+dispute' (ok=2, disputes=1, study=closed). SQLite: identical (study −20, builder 40, tester 20, minted 20; no DB trigger refuses). Upheld disputes post nothing. FIX: fixed in 31c2141 on feat/firebase-vercel (not yet deployed; frozen dpl_GAmo… still has the bug). Tests written first in apps/api/test/lifecycle.test.ts, RED before / GREEN after on SQLite and on Firestore (regression.lifecycle): 'a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice' and 'an overturn never pays from a closed study (a dispute left open on one is refused, not credited)'. With the fix: boundary race 5 trials → exactly one winner each (1× dispute only, study published, acct 40; 4× close only, 0 disputes, builder 40); deterministic repro → dispute CONFLICT_STATE, study acct 0, tester 0, minted 0, studyBudget {reserved 40, awarded 0, committed 0, available 0}; SQLite repro → CONFLICT_STATE, minted 0. Full emulator suite with the fix 29 files / 565 passed / 3 skipped (exit 0); full API unit suite (SQLite) 682 passed / 2 skipped; typecheck 0; eslint 0.",
+   "observed": "ORIGINAL FAILURE on frozen 7beaad5 (dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz), kept verbatim: BEFORE FIX (frozen code). Emulator deterministic: after close study 'closed', study acct 0, builder 40; openDispute(now=T0+W−1) → 'opened' on the closed study; overturn → ok; after: study acct −20, builder 40, tester 20 (dispute_credit 20, builder release 40) → 20 credits minted; studyBudget throws 'INTERNAL: Ledger invariant violated: study budget over-committed.'. Emulator race (10 disputes at T0+W−1 vs 10 closes at T0+W+1, 5 trials): 5/5 'close+dispute' (ok=2, disputes=1, study=closed). SQLite: identical (study −20, builder 40, tester 20, minted 20; no DB trigger refuses). Upheld disputes post nothing. || FIX fixed in 31c2141 on feat/firebase-vercel (not yet deployed; frozen dpl_GAmo… still has the bug). Tests written first in apps/api/test/lifecycle.test.ts, RED before / GREEN after on SQLite and on Firestore (regression.lifecycle): 'a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice' and 'an overturn never pays from a closed study (a dispute left open on one is refused, not credited)'. With the fix: boundary race 5 trials → exactly one winner each (1× dispute only, study published, acct 40; 4× close only, 0 disputes, builder 40); deterministic repro → dispute CONFLICT_STATE, study acct 0, tester 0, minted 0, studyBudget {reserved 40, awarded 0, committed 0, available 0}; SQLite repro → CONFLICT_STATE, minted 0. Full emulator suite with the fix 29 files / 565 passed / 3 skipped (exit 0); full API unit suite (SQLite) 682 passed / 2 skipped; typecheck 0; eslint 0. || INDEPENDENT REVIEW: pqa-qa APPROVED 31c2141 with its own independent runs ('26/16' as reported by the lead), recorded in qa-e08-fix-review-r1.md (pqa-qa worktree, docs/reviews/firebase-vercel/); pqa-be2 did not read that file (outside its working directory) and cites it as reported. || LIVE: deployed API-only as dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX (client bundle unchanged), per pocketqa-lead.",
    "evidence": [
     "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
     "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
@@ -1303,9 +1304,10 @@
     "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run3-fixed.txt",
     "docs/reviews/full-e2e/bugs/E-dispute-close-race.md",
     "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts",
-    "docs/reviews/full-e2e/evidence/pqa-be2/harness/e08.sqlite.test.ts"
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/e08.sqlite.test.ts",
+    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md (pqa-qa worktree)"
    ],
-   "notes": "See bugs/E-08.md. Test credits only on the frozen deployment (no value moves); the window is ms-wide around the 7-day boundary or clock skew between instances. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "notes": "Was FAIL on the frozen candidate 7beaad5 (bugs/E-dispute-close-race.md); PASS on 31c2141 / dpl_GPVCsNcf. Test credits only, no value moved. Suggested follow-up: read-only check of live data for disputes created after their study's closed_at.",
    "owner": "pqa-be2"
   },
   {

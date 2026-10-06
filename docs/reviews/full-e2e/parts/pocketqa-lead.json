@@ -46,7 +46,7 @@
   "evidence": [
    "docs/verification.md",
    "docs/reviews/firebase-vercel/google-button/live-dpl_TRefQGTd/",
-   "docs/reviews/firebase-vercel/qa-google-button-r1.md (pqa-qa worktree)"
+   "docs/reviews/firebase-vercel/qa-google-button-r1.md"
   ],
   "notes": "P3: ~9 s busy after closing the popup; shared busy spins Sign in too (QA P3)."
  },
@@ -226,7 +226,8 @@
    "docs/reviews/full-e2e/economics.md",
    "docs/reviews/full-e2e/parts/pqa-be1.json",
    "docs/reviews/full-e2e/parts/pqa-be2.json",
-   "docs/reviews/full-e2e/parts/pqa-ios.json"
+   "docs/reviews/full-e2e/parts/pqa-ios.json",
+   "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
   ],
   "notes": ""
  },
