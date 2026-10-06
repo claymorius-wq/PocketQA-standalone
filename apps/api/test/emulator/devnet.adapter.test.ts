@@ -496,3 +496,21 @@ describe('the approval route after the vote is on chain (E-28 #3)', () => {
     expect(chain.built.length).toBe(built);
   });
 });
+
+describe('a proposal already approved by its cosigner and another member (dispute path edge)', () => {
+  it('the platform does not vote on an Approved proposal; it executes once', async () => {
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    const { s } = await approveAsBuilder(p!.id);
+    // The arbiter also votes (e.g. an operator mistake): 2 of 3 without the platform.
+    const r = (await repos.escrow.devnet!.receipt(s.id))!;
+    const vote = await chain.buildCosignerApprove(r.multisig, BigInt(r.tx_index), chain.roles.arbiter);
+    chain.walletSend(walletSign(vote.wireB64, chain.arbiterKp));
+    expect((await chain.getProposal(r.multisig, BigInt(r.tx_index)))!.status).toBe('Approved');
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p!.id)).toBe('confirmed');
+    expect(chain.prepared.map((x) => x.step)).not.toContain('approve_platform');
+    expect(chain.landed.filter((l) => l.step === 'execute')).toHaveLength(1);
+  });
+});

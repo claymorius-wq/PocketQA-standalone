@@ -385,7 +385,9 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       throw new AwaitingCosigner(`waiting for the ${r.cosigner}'s approval`);
     }
     // 5. The platform completes the 2-of-3, then executes.
-    if (!p.approved.includes(this.d.roles.platform)) {
+    // The platform votes only on an Active proposal. If the cosigner's vote and another member's
+    // already made it Approved, a platform vote would fail on chain forever: execute instead.
+    if (!p.approved.includes(this.d.roles.platform) && p.status === 'Active') {
       await this.step('payment', id, fence, r.steps.approve_platform, { step: 'approve_platform', multisig: r.multisig, index }, builderWallet);
       p = await chain.getProposal(r.multisig, index);
     } else await this.observed('payment', id, fence, 'approve_platform', r.steps.approve_platform);
