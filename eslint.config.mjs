@@ -28,6 +28,8 @@ export default tseslint.config(
       'modules/*/android/build/**',
       'modules/*/ios/build/**',
       '**/.data/**',
+      // Vercel Build Output (scripts/vercel/build.mjs): generated bundles, gitignored.
+      '.vercel/**',
     ],
   },
   js.configs.recommended,
