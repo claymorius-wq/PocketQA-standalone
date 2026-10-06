@@ -7,7 +7,9 @@
 //   - config.json (scripts/vercel/config.mjs): /api/* goes to the function, other paths to static files
 //     then the SPA, the shared security headers, and two daily crons.
 // Then it scans the output for server-only secret values (counts only, never a value).
-//   node scripts/vercel/build.mjs [--env staging|production] [--skip-web]
+//   node scripts/vercel/build.mjs [--env staging|production] [--skip-web] [--deploy]
+// --deploy (the build that will be uploaded): every server-only variable must be present in this
+// environment, so the value scan really checks all of them (pqa-qa r7 P3). Otherwise it refuses.
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,6 +20,14 @@ const REPO = join(import.meta.dirname, '../..');
 const OUT = join(REPO, '.vercel/output');
 const args = process.argv.slice(2);
 const envName = args.includes('--env') ? args[args.indexOf('--env') + 1] : 'staging';
+const deploy = args.includes('--deploy');
+if (deploy && args.includes('--skip-web')) throw new Error('--deploy builds the web app too: drop --skip-web.');
+// Server-only: these live in the Vercel project's server env and must never reach the output.
+const SERVER_ONLY = ['FIREBASE_SERVICE_ACCOUNT_JSON', 'POCKETQA_R2_ACCESS_KEY_ID', 'POCKETQA_R2_SECRET_ACCESS_KEY', 'CRON_SECRET'];
+if (deploy) {
+  const missing = SERVER_ONLY.filter((n) => !process.env[n]);
+  if (missing.length) throw new Error(`--deploy needs every server-only variable in the scanning environment (missing: ${missing.join(', ')}).`);
+}
 if (envName !== 'staging' && envName !== 'production') throw new Error('--env must be staging or production');
 
 // One source of truth for the function's time limit: the idempotency lease is tested against it.
@@ -70,6 +80,8 @@ if (!args.includes('--skip-web')) {
   // Only the public build-time variables the web app reads; never EXPO_PUBLIC_PREVIEW.
   const env = { ...process.env, EXPO_PUBLIC_API_URL: '/api', EXPO_PUBLIC_POCKETQA_ENV: envName };
   delete env.EXPO_PUBLIC_PREVIEW;
+  // The web export never needs a server secret, so it never gets one.
+  for (const n of SERVER_ONLY) delete env[n];
   execFileSync('pnpm', ['--filter', '@pocket-qa/mobile', 'build:web'], { cwd: REPO, env, stdio: 'inherit' });
   cpSync(join(REPO, 'apps/mobile/dist-web'), staticDir, { recursive: true });
 } else {
@@ -79,7 +91,6 @@ if (!args.includes('--skip-web')) {
 writeFileSync(join(OUT, 'config.json'), `${JSON.stringify(config, null, 2)}\n`);
 
 // Secret scan: the values of every server-only variable present in this environment, plus key markers.
-const SERVER_ONLY = ['FIREBASE_SERVICE_ACCOUNT_JSON', 'POCKETQA_R2_ACCESS_KEY_ID', 'POCKETQA_R2_SECRET_ACCESS_KEY', 'CRON_SECRET'];
 const needles = [];
 for (const name of SERVER_ONLY) {
   const v = process.env[name];
@@ -116,4 +127,4 @@ if (hits) {
   rmSync(OUT, { recursive: true, force: true });
   process.exit(1);
 }
-console.log(`built .vercel/output (${envName}): api.func maxDuration ${maxDuration}s in ${REGION}; ${files} files; secret scan clean (${needles.length} server-only values checked)`);
+console.log(`built .vercel/output (${envName}${deploy ? ', deploy' : ''}): api.func maxDuration ${maxDuration}s in ${REGION}; ${files} files; secret scan clean (${SERVER_ONLY.filter((n) => process.env[n]).length}/${SERVER_ONLY.length} server-only variables, ${needles.length} values checked)`);
