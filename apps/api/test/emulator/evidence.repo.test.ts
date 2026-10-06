@@ -217,8 +217,10 @@ describe('submission vs completion (openIntentCountInTx composed into the studie
 describe('transaction reruns', () => {
   it('reruns under contention leave counters exactly equal to the documents (no duplicated effect)', async () => {
     await participation('p1');
-    await Promise.allSettled(Array.from({ length: N }, (_, i) => repo.addUploadedEvidence(evidence(`e${i}`, `seg-${i % 5}`, { size_bytes: 10 }), NOW)));
+    const rs = await settle(Array.from({ length: N }, (_, i) => repo.addUploadedEvidence(evidence(`e${i}`, `seg-${i % 5}`, { size_bytes: 10 }), NOW)));
     expect(Math.max(...attempts)).toBeGreaterThan(1);
+    // Losers fail only on the guard, never with a contention abort.
+    expect(new Set(errors(rs))).toEqual(new Set(['This segment was already uploaded.']));
     expect(await count('evidence')).toBe(5);
     expect(await count('evidenceSegments')).toBe(5);
     expect(await repo.evidenceUsage('p1')).toEqual({ n: 5, bytes: 50 });
@@ -340,7 +342,8 @@ describe('account export and purge', () => {
     await fs.collection('studies').doc('s9').set({ id: 's9', builder_id: 'b9' });
     await fs.collection('studies').doc('s1').set({ id: 's1', builder_id: 'b1' });
     for (const pid of ['p1', 'p2', 'p3', 'p4']) {
-      await Promise.all(Array.from({ length: 18 }, (_, k) => repo.addUploadedEvidence(evidence(`${pid}-e${k}`, `seg-${k}`, { participation_id: pid, size_bytes: 1 }), NOW)));
+      // Sequential: the seed isn't a race test, and contention on one usage doc is slow on the emulator.
+      for (let k = 0; k < 18; k += 1) await repo.addUploadedEvidence(evidence(`${pid}-e${k}`, `seg-${k}`, { participation_id: pid, size_bytes: 1 }), NOW);
     }
     await repo.addUploadedEvidence(evidence('p9-e', 'seg', { participation_id: 'p9' }), NOW);
     // A direct upload (retained quarantine copy) and an open intent for t1 on p1.
