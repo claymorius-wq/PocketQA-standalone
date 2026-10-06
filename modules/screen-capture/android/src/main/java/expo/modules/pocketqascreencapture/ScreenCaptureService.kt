@@ -28,9 +28,12 @@ import java.io.File
  * Screen + microphone capture that continues while the tester uses OTHER apps
  * (docs/plans/native-screen-voice-recording.md).
  *
- * A foreground service of types mediaProjection|microphone. It is started right after the in-app
- * consent dialog, while Pocket QA is in the foreground: Android 14+ refuses to create a microphone
- * FGS from the background. It calls startForeground() with BOTH types BEFORE getMediaProjection(),
+ * A foreground service of types mediaProjection|microphone, started in two steps ([CaptureStart],
+ * full E2E P-13): PREPARE, on the tester's tap while Pocket QA is in front, puts it in the foreground
+ * with the microphone type only (Android decides at service start whether a microphone FGS may run;
+ * with "A single app" the shared app is already in front when the consent result arrives); START,
+ * with the consent, adds the mediaProjection type. Every startForeground() is guarded: a refusal ends
+ * the attempt cleanly ("error"), never crashes. It calls startForeground() with BOTH types BEFORE getMediaProjection(),
  * creates one virtual display per consent token, and records the screen and the MICROPHONE into ONE
  * app-private MP4 through [CapturePipeline] (our own AudioRecord + MediaCodec + MediaMuxer; MediaRecorder
  * stalled its audio for good on the emulator, docs/plans/native-capture-pipeline.md).
@@ -60,7 +63,10 @@ class ScreenCaptureService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action) {
+      ACTION_PREPARE -> prepare(intent)
       ACTION_START -> start(intent)
+      // Consent declined or abandoned before any capture: leave the foreground and stop.
+      ACTION_CANCEL -> if (pipeline == null) endPrepared()
       // A Stop with no session (a stale notification action, a late in-app Stop) must not leave the
       // service running (pqa-qa r1 P3-5).
       ACTION_STOP -> if (pipeline == null) stopSelf() else finish("user")
@@ -68,7 +74,41 @@ class ScreenCaptureService : Service() {
     return START_NOT_STICKY
   }
 
+  /** Step 1: in the foreground with the microphone type, while Pocket QA is still in front. */
+  private fun prepare(intent: Intent) {
+    tag = intent.getStringExtra(EXTRA_TAG) ?: ""
+    val ok = startForegroundFor(CaptureStart.Phase.PREPARE, notification(preparing = true))
+    if (!ok) {
+      // startForegroundService's contract still needs a startForeground before stopping.
+      startForegroundForFailure(projection = false)
+      stopForeground(STOP_FOREGROUND_REMOVE)
+      stopSelf()
+    } else {
+      // Consent never arrives (the app was killed, the dialog abandoned): don't hold the foreground.
+      main.postDelayed(prepareExpiry, PREPARE_EXPIRY_MS)
+    }
+    RecorderBridge.onPrepared?.invoke(ok)
+  }
+
+  private val prepareExpiry = Runnable { if (pipeline == null) endPrepared() }
+
+  private fun endPrepared() {
+    main.removeCallbacks(prepareExpiry)
+    stopForeground(STOP_FOREGROUND_REMOVE)
+    stopSelf()
+  }
+
+  /** startForeground with this phase's types; false (never a crash) if Android refuses. */
+  private fun startForegroundFor(phase: CaptureStart.Phase, n: Notification): Boolean {
+    val types = CaptureStart.typesFor(phase, Build.VERSION.SDK_INT)
+    return CaptureStart.guarded {
+      if (types == null) startForeground(NOTIFICATION_ID, n) else startForeground(NOTIFICATION_ID, n, types)
+    }
+  }
+
+  /** Step 2: the consent arrived; add the mediaProjection type and capture. */
   private fun start(intent: Intent) {
+    main.removeCallbacks(prepareExpiry)
     val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
     val data: Intent? = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(EXTRA_DATA, Intent::class.java) else @Suppress("DEPRECATION") intent.getParcelableExtra(EXTRA_DATA)
     tag = intent.getStringExtra(EXTRA_TAG) ?: ""
@@ -83,7 +123,13 @@ class ScreenCaptureService : Service() {
       stopSelf()
       return
     }
-    startForegroundCompat()
+    if (!startForegroundFor(CaptureStart.Phase.CAPTURE, notification())) {
+      // Refused (the platform didn't allow the types now): end cleanly, nothing was captured.
+      notifyStopped("error", null)
+      stopForeground(STOP_FOREGROUND_REMOVE)
+      stopSelf()
+      return
+    }
     try {
       val mpm = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
       val mp = mpm.getMediaProjection(resultCode, data) ?: throw IllegalStateException("no projection")
@@ -224,16 +270,7 @@ class ScreenCaptureService : Service() {
     }
   }
 
-  private fun startForegroundCompat() {
-    val n = notification()
-    when {
-      Build.VERSION.SDK_INT >= 30 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-      Build.VERSION.SDK_INT >= 29 -> startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-      else -> startForeground(NOTIFICATION_ID, n)
-    }
-  }
-
-  private fun notification(): Notification {
+  private fun notification(preparing: Boolean = false): Notification {
     val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     nm.createNotificationChannel(NotificationChannel(CHANNEL, "Screen recording", NotificationManager.IMPORTANCE_LOW))
     // A Stop action gives every Android version (including 10–14, which have no status-bar chip) a
@@ -246,8 +283,8 @@ class ScreenCaptureService : Service() {
       PendingIntent.getActivity(this, 2, it.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
     return Notification.Builder(this, CHANNEL)
-      .setContentTitle("Pocket QA is recording your screen and microphone")
-      .setContentText("Stop when you're done. You'll review the clip before anything is uploaded.")
+      .setContentTitle(if (preparing) "Pocket QA is waiting for screen-share permission" else "Pocket QA is recording your screen and microphone")
+      .setContentText(if (preparing) "Nothing is recorded until you allow screen sharing." else "Stop when you're done. You'll review the clip before anything is uploaded.")
       .setSmallIcon(android.R.drawable.presence_video_online)
       .setOngoing(true)
       .apply { if (open != null) setContentIntent(open) }
@@ -259,11 +296,14 @@ class ScreenCaptureService : Service() {
     if (RecorderBridge.recording) finish("system")
     main.removeCallbacks(watch)
     main.removeCallbacks(durationCap)
+    main.removeCallbacks(prepareExpiry)
     super.onDestroy()
   }
 
   companion object {
+    const val ACTION_PREPARE = "expo.modules.pocketqascreencapture.PREPARE"
     const val ACTION_START = "expo.modules.pocketqascreencapture.START"
+    const val ACTION_CANCEL = "expo.modules.pocketqascreencapture.CANCEL"
     const val ACTION_STOP = "expo.modules.pocketqascreencapture.STOP"
     const val EXTRA_RESULT_CODE = "resultCode"
     const val EXTRA_DATA = "data"
@@ -272,5 +312,7 @@ class ScreenCaptureService : Service() {
     const val MAX_BYTES = 500L * 1024 * 1024
     private const val CHANNEL = "pocketqa-recording"
     private const val NOTIFICATION_ID = 4711
+    /** A prepared service with no consent after this long stops itself (the dialog was abandoned). */
+    private const val PREPARE_EXPIRY_MS = 120_000L
   }
 }

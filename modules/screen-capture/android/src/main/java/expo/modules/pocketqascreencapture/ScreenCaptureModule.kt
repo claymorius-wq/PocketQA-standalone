@@ -7,6 +7,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
@@ -19,11 +21,19 @@ class AlreadyRecordingException : CodedException("ERR_ALREADY_RECORDING", "A rec
 class NotRecordingException : CodedException("ERR_NOT_RECORDING", "No recording is in progress", null)
 class UnsupportedException : CodedException("ERR_UNSUPPORTED", "Screen recording needs Android 10 or newer", null)
 class MicDeniedException : CodedException("ERR_MIC_DENIED", "Microphone permission is required: the recording includes your narration", null)
+class ForegroundRefusedException : CodedException(CaptureStart.FOREGROUND_REFUSED, "Android didn't let Pocket QA start recording. Keep Pocket QA open and try again.", null)
+class StartFailedException : CodedException(CaptureStart.START_FAILED, "The recording couldn't start. Nothing was recorded.", null)
+
+/** How long the module waits for the service to confirm it is in the foreground before giving up. */
+private const val PREPARE_TIMEOUT_MS = 5_000L
 
 /**
  * JS surface (docs/plans/native-screen-voice-recording.md):
  *  - startAsync(tag) needs RECORD_AUDIO already granted (narration is part of every recording) and
- *    shows the system consent dialog EVERY time (no cached token, no silent start);
+ *    shows the system consent dialog EVERY time (no cached token, no silent start). The recording
+ *    service is put in the foreground with the microphone type BEFORE that dialog, while Pocket QA
+ *    is in front ([CaptureStart], full E2E P-13): with "A single app" Android brings the chosen app
+ *    forward before the result arrives, and a microphone service can't start from the background;
  *  - stopAsync() finalises and returns the local clip;
  *  - "onStopped" fires when a session ends any other way (notification Stop, system chip, lock,
  *    microphone loss, error, cap);
@@ -36,6 +46,79 @@ class MicDeniedException : CodedException("ERR_MIC_DENIED", "Microphone permissi
 class ScreenCaptureModule : Module() {
   private var pendingStart: Promise? = null
   private var pendingTag = ""
+  private var consent: Pair<Int, Intent>? = null
+  private val main = Handler(Looper.getMainLooper())
+  private val timeout = Runnable { starter.timedOut() }
+  private val starter: CaptureStart = CaptureStart(object : CaptureStart.Ops {
+    override fun prepareService() {
+      main.postDelayed(timeout, PREPARE_TIMEOUT_MS)
+      RecorderBridge.onPrepared = { ok ->
+        main.post {
+          main.removeCallbacks(timeout)
+          starter.prepared(ok)
+        }
+      }
+      val svc = Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_PREPARE).putExtra(ScreenCaptureService.EXTRA_TAG, pendingTag)
+      // Pocket QA is in front (the tester just tapped Record), so a microphone FGS may start now.
+      try {
+        context.startForegroundService(svc)
+      } catch (_: Exception) {
+        main.removeCallbacks(timeout)
+        starter.prepared(false)
+      }
+    }
+
+    override fun launchConsent() {
+      try {
+        val mpm = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        // Default intent: on Android 14+ the user chooses a single app or the entire screen.
+        appContext.throwingActivity.startActivityForResult(mpm.createScreenCaptureIntent(), CAPTURE_REQUEST)
+      } catch (_: Exception) {
+        starter.consentResult(granted = false)
+      }
+    }
+
+    override fun startCapture(): Boolean {
+      val (resultCode, data) = consent ?: return false
+      consent = null
+      // The service is already in the foreground, so this is allowed even if the shared app is now in front.
+      val svc = Intent(context, ScreenCaptureService::class.java)
+        .setAction(ScreenCaptureService.ACTION_START)
+        .putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
+        .putExtra(ScreenCaptureService.EXTRA_DATA, data)
+        .putExtra(ScreenCaptureService.EXTRA_TAG, pendingTag)
+      return try {
+        context.startService(svc)
+        true
+      } catch (_: Exception) {
+        false
+      }
+    }
+
+    override fun cancelService() {
+      try {
+        context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_CANCEL))
+      } catch (_: Exception) {
+        // Not running (or not startable from here): nothing to cancel.
+      }
+    }
+
+    override fun resolve() {
+      pendingStart?.resolve(null)
+      pendingStart = null
+    }
+
+    override fun reject(code: String) {
+      pendingStart?.reject(
+        when (code) {
+          CaptureStart.CONSENT_DENIED -> ConsentDeniedException()
+          CaptureStart.FOREGROUND_REFUSED -> ForegroundRefusedException()
+          else -> StartFailedException()
+        },
+      )
+      pendingStart = null
+    }
+  })
   private val store: PendingStore get() = recordingStore(context)
   private val context: Context get() = appContext.reactContext ?: throw IllegalStateException("React context lost")
 
@@ -74,27 +157,14 @@ class ScreenCaptureModule : Module() {
       if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) throw MicDeniedException()
       pendingStart = promise
       pendingTag = tag
-      val mpm = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-      // Default intent: on Android 14+ the user chooses a single app or the entire screen.
-      appContext.throwingActivity.startActivityForResult(mpm.createScreenCaptureIntent(), CAPTURE_REQUEST)
+      main.post { starter.begin() }
     }
 
     OnActivityResult { _, (requestCode, resultCode, data) ->
       if (requestCode != CAPTURE_REQUEST) return@OnActivityResult
-      val promise = pendingStart ?: return@OnActivityResult
-      pendingStart = null
-      if (resultCode != Activity.RESULT_OK || data == null) {
-        promise.reject(ConsentDeniedException())
-        return@OnActivityResult
-      }
-      val svc = Intent(context, ScreenCaptureService::class.java)
-        .setAction(ScreenCaptureService.ACTION_START)
-        .putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
-        .putExtra(ScreenCaptureService.EXTRA_DATA, data)
-        .putExtra(ScreenCaptureService.EXTRA_TAG, pendingTag)
-      // Started now, while Pocket QA is in the foreground: a microphone FGS can't start from the background.
-      context.startForegroundService(svc)
-      promise.resolve(null)
+      val granted = resultCode == Activity.RESULT_OK && data != null
+      if (granted) consent = resultCode to data!!
+      main.post { starter.consentResult(granted) }
     }
 
     AsyncFunction("stopAsync") { promise: Promise ->
@@ -115,7 +185,11 @@ class ScreenCaptureModule : Module() {
     /** The session screen is gone: delete truncated files and expired clips (finished clips stay for their session). */
     AsyncFunction("purgeAsync") { store.sweep(active = RecorderBridge.currentFile) }
 
-    OnDestroy { RecorderBridge.onStopped = null }
+    OnDestroy {
+      RecorderBridge.onStopped = null
+      RecorderBridge.onPrepared = null
+      main.removeCallbacks(timeout)
+    }
   }
 
   /** Stops an active session (if any) and deletes its file, then calls [done]. */
