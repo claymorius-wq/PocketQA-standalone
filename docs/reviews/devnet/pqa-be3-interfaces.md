@@ -2,6 +2,8 @@
 
 Model claude-opus-5-5. Branch `feat/devnet-adapter` (base `dc5da90` plus the contract amendments r1 at `81e4dc7`). This answers the five questions in `devnet-races/docs/reviews/devnet/pqa-be2-races-harness-design.md`. The shapes below are binding. If one changes, this file changes in the same commit and the lead is told.
 
+**Exported types (flag 4):** `DevnetChain`, `DevnetStep`, `DevnetStepInput`, `PreparedTx`, `UnsignedTx`, `BuilderWallet`, `DevnetLimits` and `DEFAULT_DEVNET_LIMITS` are in `apps/api/src/settlement/squads/devnetTypes.ts`, so an independent fake implements the real interface.
+
 ## 1. Adapter factory and dependencies
 ```ts
 // apps/api/src/settlement/squads/devnet.ts
@@ -12,11 +14,12 @@ export function devnetSettlement(deps: {
   limits: DevnetLimits;      // CH-D1 spend caps
 }): DevnetSquadsSettlement;  // implements SettlementProvider, plus the builder-approval methods (§2)
 ```
-- **`DevnetChain` = the read half of today's `SquadsChain`** (`genesisHash`, `mintInfo`, `programExecutable`, `programDataHash`, `getMultisig`, `getVaultTransfer`, `getProposal`, `tokenBalance`, `findExecuteSignature`, `getParsedTransaction`, `signatureStatus`), **plus a split send:**
-  - `prepare(step: DevnetStep): Promise<PreparedTx>`: builds and signs with the **platform signer only**, without broadcasting. `PreparedTx = { step, messageB64, signature, wireB64, lastValidBlockHeight }`.
+- **`DevnetChain` = the read half of today's `SquadsChain`** (`genesisHash`, `mintInfo`, `programExecutable`, `memoProgramExecutable`, `programDataHash`, `getMultisig`, `getVaultTransfer`, `getProposal`, `tokenBalance`, `findExecuteSignature`, `getParsedTransaction`, `signatureStatus`), **plus a split send:**
+  - `prepare(input: DevnetStepInput): Promise<PreparedTx>`: builds and signs with the **platform signer only**, without broadcasting. `PreparedTx = { step, messageB64, signature, wireB64, lastValidBlockHeight, estLamports }`.
   - `broadcast(p: PreparedTx): Promise<void>`: sends the exact bytes. Resending the same bytes is idempotent: same signature.
-  - `blockHeight(): Promise<number>`: tells whether a prepared transaction can still land.
-  - `buildCosignerApprove(multisig, index, member): Promise<{ messageB64; wireB64 }>`: unsigned, with the member as fee payer, for a wallet to sign.
+  - `blockHeight(): Promise<number>`: the finalized block height.
+  - `buildCosignerApprove(multisig, index, member): Promise<UnsignedTx>`: unsigned, with the member as fee payer, for a wallet or the arbiter CLI to sign.
+  - `buildFundingTransfer({ from, vaultAta, amount, reference }): Promise<UnsignedTx>`: the builder-signed funding transfer (CH-D3).
   - `roles: { platform: string; arbiter: string }`: public keys only. **There is no builder key on the server;** the builder member is the study's linked wallet.
 - **`DevnetStep`:** `multisig_create`, `vault_ata_create`, `dest_ata_create`, `vault_tx_create`, `proposal_create`, `approve_platform`, `execute`. Only the platform signs these. There is **no** server-side builder or arbiter approve.
 - **No timers:** nothing awaits finality in-process. Each run does at most one send per operation, and the next run reads the status.
@@ -61,7 +64,8 @@ export function devnetSettlement(deps: {
   3. **Adopt** whatever is found.
 - **Resend rules:**
   - A step that is `prepared` or `sent`, not found, with its blockhash still valid, is rebroadcast with **the same bytes**.
-  - Once the blockhash has expired with nothing landed, it's rebuilt only after the chain read shows that step absent.
+  - **Rebuild on expiry, strictly (flag 3):** a step is rebuilt only when `lastValidBlockHeight < blockHeight()`, a strict `<`; at equality it can still land, so it isn't rebuilt. Even then it's rebuilt only after the chain read shows that step absent.
+- **Fence before every broadcast (flag 1):** immediately before **every** `broadcast`, a Firestore transaction re-reads the receipt and refuses unless `lease.fence === myFence && lease.until > now()`. A holder whose lease was taken over therefore makes **zero** broadcasts, not just zero writes. The same transaction marks the step `sent` and reserves its spend, so a broadcast never happens without its receipt, fence and reservation in place.
 
 ### 3.1 Op id
 Unchanged: `pqa-op1:` + `sha256(kind|studyId|participationId or '-')`, where `kind` is `payout`, `refund` or (new) `fee`. The memo in the vault transaction carries it.
@@ -82,7 +86,7 @@ Unchanged: `pqa-op1:` + `sha256(kind|studyId|participationId or '-')`, where `ki
 - **R2:**
   - In devnet mode, object keys are prefixed `devnet/` (`devnet/evidence/…`, `devnet/quarantine/…`).
   - The deletion worker's allow-list in devnet mode is `devnet/` only, so it can't touch `evidence/` or `retained-local-submissions/` (tested).
-- **New contract routes** (for the E-25 coverage test):
+- **New contract routes** (for the E-25 coverage test). **Flag 5:** every one is a 404 for anyone but the study's builder, including another builder. `POST /settlements/:id/approval` is bound to the receipt's `(multisig, tx_index, op_id)`: the server reads only that proposal, so an approval on another index proves nothing and gets `409 COSIGNER_NOT_SEEN`. A request naming a different `txIndex` or `opId` is a `409 APPROVAL_MISMATCH`.
 
   | Name | Method and path | Auth / scope |
   |---|---|---|
@@ -95,7 +99,13 @@ Unchanged: `pqa-op1:` + `sha256(kind|studyId|participationId or '-')`, where `ki
 - **Settlement status gains `awaiting_approval`:** "Waiting for your approval in your wallet · devnet test USDC, no value · test keys · not independent custody".
 - **Spend control (CH-D1):**
   - **Allow-list:** only accounts on `POCKETQA_DEVNET_ALLOWED_EMAILS` may start a server-signed operation. The list holds labelled synthetic `@example.test` addresses only; config refuses any other domain.
-  - **Caps:** spend docs `devnetSpend/global` and `devnetSpend/user:{uid}` are reserved in a transaction **before** every platform-signed broadcast, counting lamports (fee plus rent) and test-USDC units. Over a cap is a `409 DEVNET_SPEND_CAP` before signing.
+  - **Caps (flag 2):**
+  - **Shape:** `DevnetLimits = { global: { lamports, usdcUnits }, perUser: { lamports, usdcUnits } }`. The default is `DEFAULT_DEVNET_LIMITS`, 0.05 SOL and 3 test USDC each.
+  - **Reserved per transaction, idempotently:** the reservation is the guard doc `devnetSpendReservations/{signature}` → `{ uid, lamports, released }`, created in the same Firestore transaction that increments `devnetSpend/global` and `devnetSpend/user:{uid}` and runs the fence check before the broadcast.
+    - Re-broadcasting the same bytes has the same signature, so the guard exists and nothing is reserved again.
+  - **Rebuild:** a rebuilt transaction, whose predecessor expired unlanded (by the strict rule above), marks the old reservation `released`. The same transaction decrements the totals and reserves the new one, so there's no leak and no under-count.
+  - **No overshoot:** both totals are read and written in that transaction, so N concurrent reservations serialise on `devnetSpend/global`. At the last unit of headroom exactly one succeeds; the rest get `409 DEVNET_SPEND_CAP` before signing.
+  - **Lamports** are the step's `estLamports` (fee plus any rent it pays). **usdcUnits** are reserved when a funding request is opened, the only way funds enter.
   - **Rate limiting:** the shared rate limiter covers the three routes above and `createEscrowFunding`.
 
 ## 5. Live runs: getting the platform signer without printing it

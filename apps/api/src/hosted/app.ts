@@ -48,7 +48,9 @@ export function hostedConfig(env: NodeJS.ProcessEnv): { config: Config; cronSecr
   if (config.dataBackend !== 'firestore' || !config.firebase || !config.r2) {
     throw new ConfigError('The hosted API runs only on Firestore, Firebase sign-in and private R2 (POCKETQA_DATA_BACKEND=firestore, POCKETQA_AUTH_MODE=firebase, POCKETQA_STORAGE=r2).');
   }
-  if (config.features.settlement === 'squads_devnet') throw new ConfigError('The hosted API never runs the devnet pilot.');
+  // The pilot (server-held keys for every role) never runs hosted; POCKETQA_ENV=devnet is a different
+  // provider (platform signer only, cosigned by the builder's own wallet) with its own guards.
+  if (config.features.settlement === 'squads_devnet' && !config.devnet) throw new ConfigError('The hosted API never runs the devnet pilot.');
   const cronSecret = env.CRON_SECRET ?? '';
   if (cronSecret.length < 32) throw new ConfigError('CRON_SECRET (server-only, at least 32 characters) is required for the hosted jobs.');
   return { config, cronSecret };
