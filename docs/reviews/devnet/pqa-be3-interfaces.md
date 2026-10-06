@@ -172,3 +172,26 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
   - the devnet namespace's `users` and `identities` documents are separate from production's, so a production account has no devnet profile, studies or wallet link;
   - nobody should sign in to the devnet preview with a real account.
 - **Scope (Hamza):** devnet only. Mainnet stays disabled and unsupported. The mainnet genesis and the mainnet USDC mint are refused before any signature.
+
+## 9. The step machine (`src/settlement/squads/devnet.ts`) and seam changes
+- **The factory, (a):** `devnetSettlement({ repo, chain, now, limits, roles: { platform, arbiter, feeWallet }, allowedEmails })` returns a `DevnetSquadsSettlement`. It implements both `SettlementProvider` and `DevnetSettlementOps`, the latter adding `reserveFunding`.
+- **Seam changes (please update your fake):**
+  - `DevnetChain.mintInfo` returns `{ address, owner, decimals }`, and all three are checked.
+  - `DevnetChain.createKeyFor(studyId)` is new; the seed derives from the platform secret.
+  - `DevnetStepInput` for `multisig_create` takes `studyId` (no seed).
+  - `ReceiptStep` gains `wire_b64`, so a rebroadcast resends the exact signed bytes, both signatures included.
+  - `DevnetStore` (exported) is the Firestore store, at `repo.escrow.devnet` (null on SQLite).
+  - `VaultReceipt` is the doc at `devnetVaults/{studyId}`.
+- **The checks before every signature (pqa-qa P2-DA1/DA2):** `guard(builderWallet)` runs before every `prepare`, and also in `startupCheck()` and in `prepareVault`, which creates the multisig. It checks:
+  - `assertPlatformSigner` against the pinned key, never another role, and never the study's builder wallet;
+  - the arbiter key equals its pin;
+  - the genesis;
+  - the mint account's address, classic owner and 6 decimals;
+  - the Squads and Memo programs.
+- **Error codes:** `ErrorCode` gains `DEVNET_SPEND_CAP`, `APPROVAL_MISMATCH`, `COSIGNER_NOT_SEEN` and `VAULT_NOT_READY`, all 409.
+- **Worker:**
+  - `SettlementPending` means one step was sent or is confirming, or another run holds the lease. The item is skipped and the status kept.
+  - `AwaitingCosigner` moves the settlement to `awaiting_approval`: no failure, no backoff, no attempt count.
+  - Due settlements include `awaiting_approval`. The repo gains `setInFlightStatus`.
+  - The pilot (SQLite) never raises either error, so its behaviour is unchanged.
+- **What's not wired yet:** the RPC `DevnetChain`, the hosted devnet wiring (the platform-signer-backed chain plus the `startupCheck` at boot), the arbiter CLI and the fee sweep (`kind: 'fee'`, a domain change).

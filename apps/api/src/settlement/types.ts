@@ -16,7 +16,7 @@ export interface SettlementProvider {
   /** A fresh funding reference: a key the funding transfer must carry (Solana Pay style). */
   newReference(): string;
   /** Makes the study's escrow exist on the network before funding (idempotent); returns its on-chain accounts. */
-  prepareVault?(input: { studyId: string; builderWallet: string }): Promise<{ multisig: string; vaultAuthority: string }>;
+  prepareVault?(input: { studyId: string; builderWallet: string; userId?: string }): Promise<{ multisig: string; vaultAuthority: string }>;
   /** A transfer by signature, as final as the network reports it; null if not found yet. */
   getTransfer(signature: string, expect: { vault: string; reference: string }): Promise<(ObservedTransfer & { source: string }) | null>;
   /**
@@ -54,3 +54,13 @@ export class SettlementFailure extends Error {
     super(message);
   }
 }
+
+/**
+ * Devnet (POCKETQA_ENV=devnet): the payment advanced one step and waits for the chain (a broadcast
+ * landing, finality) or for another holder of its lease. Not a failure: nothing to retry with
+ * backoff, the next run continues it.
+ */
+export class SettlementPending extends Error {}
+
+/** Devnet: the payment's proposal waits for its cosigner's vote (status awaiting_approval). */
+export class AwaitingCosigner extends Error {}

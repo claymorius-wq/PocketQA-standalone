@@ -27,6 +27,7 @@ import type { UserRow } from '../../views/core';
 import type { DisputeRow, ParticipationRow, StudyRow } from '../../views/studies';
 import { auditInTx, firestoreCoreRepo, userInTx } from '../core/firestore';
 import { firestoreStudiesRepo } from '../studies/firestore';
+import { firestoreDevnetStore } from './devnetStore';
 import type { EscrowRepo, EscrowRow, FundingRow, SettlementRow, SimTransferRow, TransferRow, WalletLink } from './types';
 
 /**
@@ -444,6 +445,8 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
   };
 
   return {
+    devnet: firestoreDevnetStore(fs, hooks),
+
     // ── Wallet links ──
     async walletLinkOf(userId) {
       const d = data<{ address: string; linked_at: string }>(await r('walletLinks', userId).get());
@@ -730,9 +733,16 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
     },
 
     async dueSettlements(nowMs) {
-      return all<SettlementRow>((await fs.collection(C.settlements).where('status', 'in', ['pending', 'failed', 'submitted']).get()).docs)
-        .filter((s) => s.status === 'pending' || (s.status === 'failed' && s.next_attempt_at <= nowMs) || (s.status === 'submitted' && s.signature === null))
+      return all<SettlementRow>((await fs.collection(C.settlements).where('status', 'in', ['pending', 'failed', 'submitted', 'awaiting_approval']).get()).docs)
+        .filter((s) => s.status === 'pending' || (s.status === 'failed' && s.next_attempt_at <= nowMs) || (s.status === 'submitted' && s.signature === null) || s.status === 'awaiting_approval')
         .sort(byCreatedAsc);
+    },
+
+    async setInFlightStatus(id, status) {
+      await tx(async (t) => {
+        const cur = data<SettlementRow>(await t.get(r('settlements', id)));
+        if (cur && (cur.status === 'submitted' || cur.status === 'awaiting_approval') && cur.status !== status) t.update(r('settlements', id), { status });
+      });
     },
 
     async beginAttempt(id, key) {

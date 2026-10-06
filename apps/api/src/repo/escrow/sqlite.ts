@@ -31,6 +31,8 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
   };
 
   return {
+    devnet: null,
+
     async walletLinkOf(userId) {
       const r = db.prepare('SELECT address, linked_at FROM wallet_links WHERE user_id = ?').get(userId) as { address: string; linked_at: string } | undefined;
       return r ? ({ address: r.address, linkedAt: r.linked_at } satisfies WalletLink) : null;
@@ -311,8 +313,12 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
 
     async dueSettlements(nowMs) {
       return db
-        .prepare(`SELECT * FROM settlements WHERE status = 'pending' OR (status = 'failed' AND next_attempt_at <= ?) OR (status = 'submitted' AND signature IS NULL) ORDER BY created_at`)
+        .prepare(`SELECT * FROM settlements WHERE status = 'pending' OR (status = 'failed' AND next_attempt_at <= ?) OR (status = 'submitted' AND signature IS NULL) OR status = 'awaiting_approval' ORDER BY created_at`)
         .all(nowMs) as SettlementRow[];
+    },
+
+    async setInFlightStatus(id, status) {
+      db.prepare(`UPDATE settlements SET status = ? WHERE id = ? AND status IN ('submitted','awaiting_approval')`).run(status, id);
     },
 
     async beginAttempt(id, key) {

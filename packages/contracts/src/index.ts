@@ -70,6 +70,14 @@ export const ErrorCode = z.enum([
   'FEATURE_UNAVAILABLE',
   /** The same Idempotency-Key was sent with a different request (plan R10). */
   'IDEMPOTENCY_KEY_REUSED',
+  /** Devnet (POCKETQA_ENV=devnet): the operation would exceed a spend cap; nothing was signed (CH-D1). */
+  'DEVNET_SPEND_CAP',
+  /** Devnet: an approval names a different Squads index or op id than the payment's receipt (CH-D3). */
+  'APPROVAL_MISMATCH',
+  /** Devnet: the cosigner's vote is not on chain (yet); the server signs nothing until it is. */
+  'COSIGNER_NOT_SEEN',
+  /** Devnet: the study's escrow vault is still being created on chain; try again shortly. */
+  'VAULT_NOT_READY',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

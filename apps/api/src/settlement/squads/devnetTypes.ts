@@ -19,7 +19,7 @@ export type DevnetStep = 'multisig_create' | 'vault_ata_create' | 'dest_ata_crea
 
 /** What `prepare` needs for each step (all from the server's own state, CH-D3). */
 export type DevnetStepInput =
-  | { step: 'multisig_create'; createKeySeed: Uint8Array; multisig: string; members: MemberState[]; threshold: number }
+  | { step: 'multisig_create'; studyId: string; multisig: string; members: MemberState[]; threshold: number }
   | { step: 'vault_ata_create' | 'dest_ata_create'; owner: string }
   | { step: 'vault_tx_create'; multisig: string; index: bigint; vaultAuthority: string; source: string; destination: string; amount: bigint; operation: string }
   | { step: 'proposal_create' | 'approve_platform' | 'execute'; multisig: string; index: bigint };
@@ -46,7 +46,10 @@ export interface DevnetChain {
   /** Public keys only: no builder key exists on the server (the builder member is the study's linked wallet). */
   readonly roles: { platform: string; arbiter: string };
   genesisHash(): Promise<string>;
-  mintInfo(mint: string): Promise<{ owner: string; decimals: number } | null>;
+  /** The mint account as the RPC returns it: its own address, owning program and decimals (pqa-qa P2-DA2: all three are checked). */
+  mintInfo(mint: string): Promise<{ address: string; owner: string; decimals: number } | null>;
+  /** The study's Squads create key: derived from the platform signer (HMAC, own domain), so the server loads one key. */
+  createKeyFor(studyId: string): string;
   programExecutable(): Promise<boolean>;
   memoProgramExecutable(): Promise<boolean>;
   /** sha256 of the Squads program-data account's bytes, re-read before and after live runs (CH-D6). */
@@ -78,6 +81,8 @@ export interface DevnetSettlementOps {
   fundingTransaction(f: FundingRow, builderWallet: string): Promise<DevnetFundingTransaction>;
   approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval>;
   submitApproval(s: SettlementRow, body: { signature: string; txIndex: number; opId: string }, builderWallet: string): Promise<SettlementApprovalResult>;
+  /** CH-D1: reserves the test USDC a funding request brings in, before the request exists (409 DEVNET_SPEND_CAP). */
+  reserveFunding(input: { studyId: string; userId: string; amountUnits: number }): Promise<void>;
 }
 export const isDevnetSettlement = (p: SettlementProvider | null): p is SettlementProvider & DevnetSettlementOps =>
   !!p && typeof (p as Partial<DevnetSettlementOps>).approval === 'function' && typeof (p as Partial<DevnetSettlementOps>).fundingTransaction === 'function';
@@ -140,6 +145,8 @@ export const DEVNET_OP_LEASE_MS = 30_000;
 /** One platform-signed step as the receipt records it: message and signature stored BEFORE broadcast (CH-D5). */
 export type ReceiptStep = {
   message_b64: string;
+  /** The exact signed bytes (public: a signed transaction holds no secret), re-broadcast unchanged while unexpired. */
+  wire_b64: string;
   signature: string;
   last_valid_block_height: number;
   est_lamports: number;
@@ -182,3 +189,54 @@ export type DevnetReceipt = {
   created_at: number;
   updated_at: number;
 };
+
+/** A study vault's preparation (multisig + vault token account): `devnetVaults/{studyId}` in the namespace. */
+export type VaultReceipt = {
+  study_id: string;
+  uid: string;
+  multisig: string;
+  vault_authority: string;
+  vault_ata: string;
+  builder_wallet: string;
+  reserved_lamports: number;
+  steps: Partial<Record<DevnetStep, ReceiptStep>>;
+  state: 'claimed' | 'ready' | 'refused';
+  refusal: string | null;
+  lease: { holder: string; fence: number; until: number } | null;
+  created_at: number;
+  updated_at: number;
+};
+
+export type ReceiptKind = 'payment' | 'vault';
+export type PaymentDraft = Omit<DevnetReceipt, 'tx_index' | 'steps' | 'state' | 'refusal' | 'lease' | 'created_at' | 'updated_at'>;
+export type VaultDraft = Omit<VaultReceipt, 'steps' | 'state' | 'refusal' | 'lease' | 'created_at' | 'updated_at'>;
+
+/**
+ * Durable devnet state (Firestore, devnet namespace): receipts, per-operation leases with fencing,
+ * Squads index claims and spend reservations. Every method is one Firestore transaction.
+ */
+export interface DevnetStore {
+  receipt(settlementId: string): Promise<DevnetReceipt | null>;
+  vault(studyId: string): Promise<VaultReceipt | null>;
+  /**
+   * Creates the payment's receipt (state 'claimed') with its Squads index (guard squadsTx, row 33)
+   * and reserves its WHOLE lamport cost, all or nothing. An existing receipt is returned as it is.
+   * `adoptIndex`: an index found on chain carrying this op id (adopted, never re-created).
+   */
+  claimPayment(draft: PaymentDraft, chainIndex: number, adoptIndex: number | null, limits: DevnetLimits, nowMs: number): Promise<{ receipt: DevnetReceipt } | { cap: string }>;
+  claimVault(draft: VaultDraft, limits: DevnetLimits, nowMs: number): Promise<{ vault: VaultReceipt } | { cap: string }>;
+  /** Takes the operation's lease if free or expired: its new fence, or null if held. */
+  acquire(kind: ReceiptKind, id: string, holder: string, nowMs: number): Promise<number | null>;
+  /**
+   * Immediately before a broadcast (CH-D5, pqa-be2 flag 1): refuses unless the fence still holds,
+   * and stores the step's serialised message and signature. False: fenced out, do not broadcast.
+   */
+  beforeBroadcast(kind: ReceiptKind, id: string, fence: number, step: DevnetStep, rec: ReceiptStep, nowMs: number): Promise<boolean>;
+  /** A fenced update of steps, state or refusal. False: fenced out, nothing written. */
+  patch(kind: ReceiptKind, id: string, fence: number, p: { steps?: Partial<Record<DevnetStep, ReceiptStep>>; state?: string; refusal?: string | null }, nowMs: number): Promise<boolean>;
+  release(kind: ReceiptKind, id: string, fence: number): Promise<void>;
+  /** Sets a reservation to what was actually spent, releasing the rest. */
+  trueUp(opKey: string, actualLamports: number): Promise<void>;
+  /** Reserves test-USDC units entering the system (a funding request), once per op key. */
+  reserveUsdc(opKey: string, uid: string, units: number, limits: DevnetLimits): Promise<boolean>;
+}

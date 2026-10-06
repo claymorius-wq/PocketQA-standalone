@@ -55,7 +55,7 @@ export type SettlementRow = {
   tester_id: string | null;
   destination: string;
   amount_units: number;
-  status: 'pending' | 'submitted' | 'confirmed' | 'failed';
+  status: 'pending' | 'submitted' | 'awaiting_approval' | 'confirmed' | 'failed';
   attempt: number;
   attempt_key: string | null;
   signature: string | null;
@@ -89,6 +89,8 @@ export type SimTransferRow = {
 export type FundingVerdict = { status: 'pending' | 'confirmed' | 'failed'; reason: string | null };
 
 export interface EscrowRepo {
+  /** POCKETQA_ENV=devnet's receipts, leases and spend (Firestore only; null on SQLite, where the pilot keeps squads_attempts). */
+  readonly devnet: import('../../settlement/squads/devnetTypes').DevnetStore | null;
   // ── Wallet links (T8) ──────────────────────────────────────────────────────────────────────
   /** The user's linked wallet, or null. Read by the core `userView`. */
   walletLinkOf(userId: string): Promise<WalletLink | null>;
@@ -182,6 +184,8 @@ export interface EscrowRepo {
   pendingFundings(): Promise<FundingRow[]>;
   /** Pending, retry-due failed, and submitted-without-signature settlements, oldest first. */
   dueSettlements(nowMs: number): Promise<SettlementRow[]>;
+  /** Devnet: an in-flight payment waits for its cosigner's vote (`awaiting_approval`), or moves on again (`submitted`). */
+  setInFlightStatus(id: string, status: 'submitted' | 'awaiting_approval'): Promise<void>;
   /** Persists a new attempt (`submitted`, attempt+1, key) BEFORE anything is sent. */
   beginAttempt(id: string, key: string): Promise<void>;
   recordSubmitSignature(id: string, signature: string): Promise<void>;
