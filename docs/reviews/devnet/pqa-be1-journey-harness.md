@@ -71,3 +71,13 @@ firebase emulators:exec --only firestore,auth --project demo-pocketqa --config f
 **Not covered:**
 - the hosted run on Solana devnet itself (it waits for be3's preview, the CSP origin and the fixture keys);
 - the Android MWA path (the Seeker lane).
+
+## Re-run on a committed SHA (QA G-W2), 2026-10-07
+
+- **What ran:** b5fa752 (feat/devnet-client after merging feat/devnet-adapter 2180b1e, which includes the builders 7f0148a), with **no temporary merge**: clean tree, same commands as above.
+- **Result:** 3 passed (1 · funding 6.6 s, 2 · reward vote 4.5 s, 3 · refund vote at close 4.8 s). The evidence is in `docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/` (screenshots plus `run.txt`).
+- **Gates on b5fa752:**
+  - mobile jest: 71 suites, 1465 tests; mobile tsc and eslint: clean;
+  - domain: 18 files, 301 tests;
+  - api unit: 49 files, 779 tests (1 file and 2 tests skipped); api tsc and eslint: clean;
+  - api emulator suite: 33 files, 683 tests (1 file and 7 tests skipped), on the be1 ports.
