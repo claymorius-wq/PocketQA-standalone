@@ -2,6 +2,7 @@ import { ownStudyOf } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { FUNDING_TTL_MS, verifyFunding, type FundingRow } from '../escrow';
 import type { SimulatedSettlement } from '../settlement/simulated';
+import { isDevnetSettlement } from '../settlement/squads/devnetTypes';
 import { SettlementFailure } from '../settlement/types';
 import { fail, notFound } from '../util';
 import { fundingViewOf, payoutViewOf } from '../views';
@@ -18,6 +19,32 @@ async function ownFunding(ctx: Ctx): Promise<FundingRow> {
   if (!f) throw notFound('Funding');
   await ownStudyOf(ctx.deps.repo, f.study_id, me(ctx)); // 404 for anyone but the study's builder
   return f;
+}
+
+/** The devnet provider (POCKETQA_ENV=devnet), else the honest refusal. Checked after ownership. */
+function devnet(ctx: Ctx) {
+  const p = ctx.deps.settlement;
+  if (!isDevnetSettlement(p)) throw fail('FEATURE_UNAVAILABLE', 'Wallet-signed devnet transactions exist only on the devnet deployment.');
+  return p;
+}
+
+/** A settlement of the caller's own study, else 404 (never 403: no existence leak). */
+async function ownSettlement(ctx: Ctx) {
+  const s = await ctx.deps.repo.escrow.settlementById(ctx.params.id!);
+  if (!s) throw notFound('Settlement');
+  try {
+    await ownStudyOf(ctx.deps.repo, s.study_id, me(ctx));
+  } catch {
+    throw notFound('Settlement');
+  }
+  return s;
+}
+
+/** The builder's linked wallet: the multisig's builder member and the funding source. */
+async function builderWallet(ctx: Ctx) {
+  const w = await linkedWallet(ctx);
+  if (!w) throw fail('CONFLICT_STATE', 'Link the wallet you fund and approve with first.');
+  return w;
 }
 
 const linkedWallet = async (ctx: Ctx) => (await ctx.deps.repo.escrow.walletLinkOf(me(ctx).id))?.address ?? null;
@@ -83,6 +110,24 @@ export const escrowHandlers = {
       throw fail('CONFLICT_STATE', 'This transfer already funded another request.');
     }
     return fundingViewOf(ctx.deps.repo, await verifyFunding(ctx.deps.repo.escrow, p, f, ctx.body.signature, ctx.deps.now(), me(ctx).id));
+  },
+
+  /** CH-D3: the server builds the builder-signed funding transfer from its own state. */
+  escrowFundingTransaction: async (ctx) => {
+    const f = await ownFunding(ctx);
+    return devnet(ctx).fundingTransaction(f, await builderWallet(ctx));
+  },
+
+  /** The cosigner vote for one payment, bound to its Squads index and op id (CH-D3). */
+  settlementApproval: async (ctx) => {
+    const s = await ownSettlement(ctx);
+    return devnet(ctx).approval(s, await builderWallet(ctx));
+  },
+
+  /** The wallet broadcast the vote: the server checks it ON CHAIN before the platform signer completes the 2-of-3. */
+  submitSettlementApproval: async (ctx) => {
+    const s = await ownSettlement(ctx);
+    return devnet(ctx).submitApproval(s, ctx.body, await builderWallet(ctx));
   },
 
   myPayouts: async (ctx) => {

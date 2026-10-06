@@ -1,4 +1,7 @@
 import type { VersionedTransaction } from '@solana/web3.js';
+import type { DevnetFundingTransaction, SettlementApproval, SettlementApprovalResult } from '@pocket-qa/contracts';
+import type { FundingRow, SettlementRow } from '../../repo/escrow/types';
+import type { SettlementProvider } from '../types';
 import type { ParsedTokenTx } from '@pocket-qa/domain';
 import type { ChainStatus, MemberState, MultisigState, ProposalState, VaultTransfer } from './chain';
 
@@ -66,6 +69,18 @@ export interface DevnetChain {
   /** An unsigned TransferChecked of the pinned mint from `from`'s token account to `vaultAta`, carrying `reference` (fee payer: `from`). */
   buildFundingTransfer(input: { from: string; vaultAta: string; amount: bigint; reference: string }): Promise<UnsignedTx>;
 }
+
+/**
+ * What the devnet provider adds to `SettlementProvider` for the builder's wallet (the three devnet
+ * routes). `builderWallet`: the requesting builder's linked wallet (the multisig's builder member).
+ */
+export interface DevnetSettlementOps {
+  fundingTransaction(f: FundingRow, builderWallet: string): Promise<DevnetFundingTransaction>;
+  approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval>;
+  submitApproval(s: SettlementRow, body: { signature: string; txIndex: number; opId: string }, builderWallet: string): Promise<SettlementApprovalResult>;
+}
+export const isDevnetSettlement = (p: SettlementProvider | null): p is SettlementProvider & DevnetSettlementOps =>
+  !!p && typeof (p as Partial<DevnetSettlementOps>).approval === 'function' && typeof (p as Partial<DevnetSettlementOps>).fundingTransaction === 'function';
 
 /** How a test or harness signs as the builder (the `bui…` fixture), standing in for Phantom or MWA. */
 export interface BuilderWallet {

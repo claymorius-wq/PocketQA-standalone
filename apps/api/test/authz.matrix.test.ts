@@ -53,8 +53,23 @@ beforeAll(async () => {
   const funding = (await t.req('POST', `/studies/${escrowStudy.id}/escrow/fundings`, builder.token)).body;
   expect(funding.status).toBe('awaiting_payment');
 
+  // A payout settlement of builder A's second escrow study, for the devnet settlement routes.
+  const paid = (await t.req('POST', '/studies', builder.token, { ...rest, payment: { mode: 'escrow', rewardUnits: 1_000_000 } })).body;
+  const pf = (await t.req('POST', `/studies/${paid.id}/escrow/fundings`, builder.token)).body;
+  const pay = (await t.req('POST', `/escrow/fundings/${pf.id}/simulated-wallet-payment`, builder.token)).body;
+  await t.req('POST', `/escrow/fundings/${pf.id}/signature`, builder.token, { signature: pay.signature });
+  expect((await t.req('POST', `/studies/${paid.id}/publish`, builder.token)).status).toBe(200);
+  const payee = await t.register('tester');
+  await t.req('PUT', '/me/device', payee.token, DEVICE);
+  const payeeWallet = await t.linkWallet(payee.token);
+  const pp = (await t.req('POST', `/studies/${paid.id}/consent`, payee.token, { consentVersion: 1, accepted: true, payoutAddress: payeeWallet.address })).body;
+  await t.req('POST', `/participations/${pp.id}/start`, payee.token);
+  await t.req('POST', `/participations/${pp.id}/submit`, payee.token);
+  expect((await t.req('POST', `/participations/${pp.id}/approve`, builder.token, {})).status).toBe(200);
+  const settlement = (await t.deps.repo.escrow.payoutSettlementOf(pp.id))!;
+
   mediaToken = (await t.req('POST', `/evidence/${ev.body.id}/playback-token`, tester.token)).body.token;
-  ids = { study: study.id, participation: participationId, task: taskId, evidence: ev.body.id, dispute: dispute.id, transfer: 'tr1', user: testerB.id, funding: funding.id };
+  ids = { study: study.id, participation: participationId, task: taskId, evidence: ev.body.id, dispute: dispute.id, transfer: 'tr1', user: testerB.id, funding: funding.id, settlement: settlement.id };
   users = { builderA: builder, builderB, testerA: tester, testerB, admin };
 });
 afterAll(async () => t.close());
@@ -74,6 +89,8 @@ function pathFor(name: RouteName): string {
               ? ids.transfer
               : p.startsWith('/escrow/fundings')
                 ? ids.funding
+              : p.startsWith('/settlements')
+                ? ids.settlement
               : p.startsWith('/admin/moderation/users')
                 ? ids.user
                 : 'x';
@@ -125,10 +142,11 @@ const BODY: Partial<Record<RouteName, () => unknown>> = {
   openDispute: () => ({ participationId: ids.participation, reason: 'This is my dispute reason.' }),
   createUploadIntent: () => ({ kind: 'screenshot', mimeType: 'image/png', sizeBytes: 100, capturedOn: 'web', clientSegmentId: 'm-1' }),
   submitFundingSignature: () => ({ signature: `sim${'a'.repeat(24)}` }),
+  submitSettlementApproval: () => ({ signature: '5'.repeat(88), txIndex: 1, opId: `pqa-op1:${'0'.repeat(64)}` }),
 };
 
 const OWNER_SCOPED: { name: RouteName; nonOwners: (keyof typeof users)[] }[] = [
-  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash', 'createEscrowFunding', 'getEscrowFunding', 'simulatedWalletPayment', 'submitFundingSignature'] as RouteName[]).map(
+  ...(['getStudy', 'updateStudy', 'publishStudy', 'pauseStudy', 'resumeStudy', 'closeStudy', 'studyParticipations', 'studyDisputes', 'createFinding', 'approve', 'reject', 'createTransfer', 'submitTransferSignature', 'transferBlockhash', 'createEscrowFunding', 'getEscrowFunding', 'simulatedWalletPayment', 'submitFundingSignature', 'escrowFundingTransaction', 'settlementApproval', 'submitSettlementApproval'] as RouteName[]).map(
     (name) => ({ name, nonOwners: ['builderB'] as (keyof typeof users)[] }),
   ),
   ...(['startParticipation', 'withdrawParticipation', 'putTaskNote', 'submitParticipation', 'uploadEvidence', 'openDispute', 'createUploadIntent', 'completeUploadIntent'] as RouteName[]).map((name) => ({
@@ -140,6 +158,15 @@ const OWNER_SCOPED: { name: RouteName; nonOwners: (keyof typeof users)[] }[] = [
     nonOwners: ['testerB', 'builderB'] as (keyof typeof users)[],
   })),
 ];
+
+describe('devnet routes off the devnet deployment', () => {
+  it('the owner gets an honest FEATURE_UNAVAILABLE (simulated settlement has no wallet-signed transactions)', async () => {
+    for (const name of ['escrowFundingTransaction', 'settlementApproval', 'submitSettlementApproval'] as RouteName[]) {
+      const r = await t.req(routes[name].method, pathFor(name), users.builderA.token, BODY[name]?.() ?? {});
+      expect(r.body.code, name).toBe('FEATURE_UNAVAILABLE');
+    }
+  });
+});
 
 describe('ownership: non-owners get 404, never 403 or data', () => {
   it('covers every owner-scoped route in the contract', () => {
