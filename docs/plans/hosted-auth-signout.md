@@ -40,3 +40,18 @@ Hamza's request, relayed by the parent: an IMPLEMENT request, not plan-only.
    Every defect found gets a failing regression test first.
 3. **R2.** Live readback plus a preflight (`OPTIONS`) for the allowed origin vs a foreign one; a real browser-signed upload > 4.5 MB, private playback and cross-user denial. The upload, playback and denial already passed (`docs/verification.md`, QA post-run r2). The preflight matrix gets recorded.
 4. **Deploy** with `build.mjs --deploy`, read back, and hand to QA. Google end-to-end needs the provider enabled (1) and a human Google login. Until then it's reported as blocked, not passed.
+
+## Outcome (2026-10-06, deployed dpl_5VmoJPPYfsncWcmcxpfZoL6DitfY from 7beaad5)
+- **Google:** the client fix (a1d58f0) and the hosted popup allowances (c439c91) are in. The button is hidden while the provider is off (`googleSignIn: false`). A local proof under the exact hosted headers, with Google on:
+  - gapi and the auth iframe loaded;
+  - the popup reached `https://pocketqa-optijara.firebaseapp.com/__/auth/handler`;
+  - the app showed "Google sign-in isn't available on this site." (the provider is off);
+  - 0 CSP violations.
+- **Sign-out (tester and builder) and account switching:** correct live, before and after. Verified independently by pqa-qa (r1b).
+- **Finish your account:** "Use another account" exit plus copy (7beaad5, pqa-be2, QA P2).
+
+## Turning Google on (after the provider is enabled in the Firebase console)
+1. Hamza or the parent: Firebase console → Authentication → Sign-in method → Google → Enable (support email) → Save. Confirm with the read-back: `defaultSupportedIdpConfigs` lists `google.com` enabled.
+2. Lead: `vercel env add POCKETQA_FIREBASE_GOOGLE production` with value `1`.
+3. Lead: rebuild with `POCKETQA_FIREBASE_GOOGLE=1` and `POCKETQA_FIREBASE_AUTH_DOMAIN` in the build environment (`build.mjs --env staging --deploy`), then `vercel deploy --prebuilt --prod`. The app routes then get gapi + frame-src + COOP `same-origin-allow-popups`.
+4. A person completes one Google login (interactive), then checks that the Finish-account role choice persists on the next login.

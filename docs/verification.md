@@ -1025,3 +1025,33 @@ CSP violations: 0
 console errors: 0
 HTTP >= 400 responses: 0
 ```
+
+### 2026-10-06: Google sign-in + sign-out fixes deployed (dpl_5VmoJPPYfsncWcmcxpfZoL6DitfY, from 7beaad5)
+```
+$ (Identity Toolkit admin v2, read-only) defaultSupportedIdpConfigs = []  → Google provider NOT enabled; signIn.email enabled; subtype IDENTITY_PLATFORM
+$ live repro BEFORE (dpl_DF68…): "Continue with Google" → no popup, no request, UI "Google sign-in didn’t complete"; root cause initializeAuth without popupRedirectResolver
+$ pnpm verify @7beaad5 → exit 0 (secrets 1130/0, scripts 83, contracts 17, domain 222, api 680+2 skipped, mobile 1372)
+$ local proof (Google ON build, serve-local :8496, /api/config stubbed googleSignIn:true): popup https://pocketqa-optijara.firebaseapp.com/__/auth/handler; requests apis.google.com/js/api.js, gapi_iframes, /__/auth/iframe; UI "Google sign-in isn’t available on this site."; CSP violations []
+$ build.mjs --env staging --deploy → secret scan clean (4/4 server-only variables, 7 values checked); app COOP same-origin, no gapi (Google off)
+$ vercel deploy --prebuilt --prod → https://pocketqa-eplfy74xt-…vercel.app, aliased https://pocketqa.vercel.app, dpl_5VmoJPPYfsncWcmcxpfZoL6DitfY ● Ready
+$ /api/config firebase.googleSignIn = false ; served entry bundle-check ok (/api) ; contains "Use another account"
+GOOGLE: provider off -> button visible=false (expect false: no dead button)
+TESTER: signed in -> discover-screen shown; url /discover; pre-logout token /api/me 200
+TESTER: settings /settings -> sign-out button shown; url /settings
+TESTER: after sign-out -> sign-in shown; url /sign-in; storage {"ls":["pocketqa.introSeen"],"fbUsers":0}
+TESTER: pre-logout token /api/me after logout -> 401 (expect 401: server-side revocation)
+TESTER: Back -> url /sign-in; discover-screen visible=false; sign-in visible=true
+TESTER: Reload -> url /sign-in; discover-screen visible=false; sign-in visible=true
+TESTER: direct protected URL -> url /sign-in; discover-screen visible=false
+TESTER: CSP 0, console errors []
+BUILDER: signed in -> studies-screen shown; url /studies; pre-logout token /api/me 200
+BUILDER: settings /builder-settings -> sign-out button shown; url /builder-settings
+BUILDER: after sign-out -> sign-in shown; url /sign-in; storage {"ls":["pocketqa.introSeen"],"fbUsers":0}
+BUILDER: pre-logout token /api/me after logout -> 401 (expect 401: server-side revocation)
+BUILDER: Back -> url /sign-in; studies-screen visible=false; sign-in visible=true
+BUILDER: Reload -> url /sign-in; studies-screen visible=false; sign-in visible=true
+BUILDER: direct protected URL -> url /sign-in; studies-screen visible=false
+BUILDER: CSP 0, console errors []
+SWITCH: builder home shown; tester-only API calls after switching: []; discover visible=false
+SWITCH: api calls ["GET /api/config","POST /api/auth/identity/session","GET /api/studies"]
+```
