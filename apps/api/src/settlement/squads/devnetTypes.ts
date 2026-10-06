@@ -237,6 +237,16 @@ export interface DevnetStore {
   /** A fenced update of steps, state or refusal. False: fenced out, nothing written. */
   patch(kind: ReceiptKind, id: string, fence: number, p: { steps?: Partial<Record<DevnetStep, ReceiptStep>>; state?: string; refusal?: string | null }, nowMs: number): Promise<boolean>;
   release(kind: ReceiptKind, id: string, fence: number): Promise<void>;
+  /** The payment holding Squads index `index` of `multisig`, or null (never claimed, or released). */
+  indexOwner(multisig: string, index: number): Promise<string | null>;
+  /**
+   * pqa-qa P3-F4: a payment that stopped before its vault transaction was ever sent gives its index
+   * back (guard deleted, tx_index 0), so later payments are not blocked by a gap. False if a vault
+   * transaction was recorded (it might still land) or the fence is lost.
+   */
+  releaseIndex(settlementId: string, fence: number, nowMs: number): Promise<boolean>;
+  /** Moves the payment to index `index` (free, or already its own): the index, or null if another payment holds it. */
+  reclaimIndex(settlementId: string, fence: number, index: number, nowMs: number): Promise<number | null>;
   /** Sets a reservation to what was actually spent, releasing the rest. */
   trueUp(opKey: string, actualLamports: number): Promise<void>;
   /** Reserves test-USDC units entering the system (a funding request), once per op key. */

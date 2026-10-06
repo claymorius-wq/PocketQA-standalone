@@ -241,7 +241,7 @@ describe('receipts and broadcasts (CH-D5, pqa-be2 flags 1 and 3)', () => {
     for (let r = 0; r < 4; r++) await Promise.allSettled(Array.from({ length: 20 }, () => settle()));
     expect(await statusOf(p!.id)).toBe('confirmed');
     for (const step of ['vault_tx_create', 'proposal_create', 'approve_platform', 'execute'] as const) expect(chain.landed.filter((l) => l.step === step), step).toHaveLength(1);
-  });
+  }, 180_000); // 20 concurrent runs on a shared, loaded emulator: ~15-55 s observed
 });
 
 describe('spend caps (CH-D1, pqa-be2 P2): the whole payment is reserved up front', () => {
@@ -263,7 +263,7 @@ describe('spend caps (CH-D1, pqa-be2 P2): the whole payment is reserved up front
     expect(chain.landed.filter((l) => l.step === 'vault_tx_create')).toHaveLength(2); // nothing half-created
     const failed = await Promise.all(ps.map(async (p) => (await repos.escrow.payoutSettlementOf(p.id))!));
     expect(failed.filter((s) => s.status === 'failed').every((s) => /DEVNET_SPEND_CAP/.test(s.failure_reason ?? ''))).toBe(true);
-  });
+  }, 180_000); // 20 concurrent runs on a shared, loaded emulator: ~15-55 s observed
 });
 
 describe('the builder’s approval routes (CH-D3, pqa-be2 flag 5)', () => {
@@ -462,5 +462,24 @@ describe('the fence holds before a SAME-BYTES re-broadcast too (pqa-qa P3-F2)', 
     expect(await a).toBeInstanceOf(SettlementPending);
     expect(chain.broadcasts.filter((b) => b.signature === sig).length).toBe(before); // A sent nothing
     expect(chain.prepared).toHaveLength(1); // and never re-signed
+  });
+});
+
+describe('liveness when a claimed Squads index is never filled (pqa-qa P3-F4)', () => {
+  it('a payment that stops before creating its vault transaction releases its index; the next payment takes it and completes', async () => {
+    await readyVault(2_000);
+    const [p1, p2] = await payouts(2);
+    chain.balances.set(adapter.vaultFor('s1'), 1_000); // on chain the vault holds exactly one 1,000-unit payout
+    // p1 asks for more than the vault holds: it claims index 1, then stops before creating anything.
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p1!.id))!.id).update({ amount_units: 50_000 });
+    for (let i = 0; i < 8; i++) await settle();
+    expect((await repos.escrow.payoutSettlementOf(p1!.id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/holds less/) });
+    expect(await statusOf(p2!.id)).toBe('awaiting_approval');
+    await approveAsBuilder(p2!.id);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p2!.id)).toBe('confirmed');
+    expect(chain.landed.filter((l) => l.step === 'vault_tx_create')).toHaveLength(1);
+    const r2 = (await fs.collection('squadsAttempts').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).get()).data()!;
+    expect(r2.tx_index).toBe(1); // p2 took the released index
   });
 });

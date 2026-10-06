@@ -332,12 +332,19 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
   /** One run of a payment under its lease. Returns the execute signature once it is finalized on chain. */
   private async drive(id: string, fence: number): Promise<{ signature: string }> {
     const { chain } = this.d;
-    const r = (await this.store.receipt(id))!;
-    const index = BigInt(r.tx_index);
+    let r = (await this.store.receipt(id))!;
     const builderWallet = (await this.store.vault(r.study_id))!.builder_wallet;
     const ms = await chain.getMultisig(r.multisig);
     if (!ms) throw new SettlementFailure('Stopped before signing: the study vault does not exist on devnet.');
     this.assertConfig(ms, builderWallet);
+    // pqa-qa P3-F4 (liveness): Squads creates indexes strictly in order. A payment without an index
+    // (it released one) or waiting behind an index nobody holds (released) moves to the next free one.
+    const next = Number(ms.transactionIndex) + 1;
+    if (!r.steps.vault_tx_create && (r.tx_index === 0 || (r.tx_index > next && (await this.store.indexOwner(r.multisig, next)) === null))) {
+      if ((await this.store.reclaimIndex(id, fence, next, this.d.now())) === null) throw new SettlementPending(`waiting for Squads index ${next} of this study`);
+      r = (await this.store.receipt(id))!;
+    }
+    const index = BigInt(r.tx_index);
     const plan = this.plan(r);
 
     // 1. The destination's token account (the platform pays its rent); a no-op once it exists.
@@ -348,9 +355,16 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     let vt = await chain.getVaultTransfer(r.multisig, index);
     if (!vt) {
       if (ms.transactionIndex < index - 1n) throw new SettlementPending(`waiting for Squads index ${index - 1n} of this study`);
-      if (ms.transactionIndex >= index) throw new SettlementFailure(`Refused: Squads index ${index} of this study is taken by another transaction; an operator must resolve it.`);
+      if (ms.transactionIndex >= index) {
+        await this.store.releaseIndex(id, fence, this.d.now());
+        throw new SettlementFailure(`Stopped: Squads index ${index} of this study is taken by another transaction; this payment takes the next free index on its next attempt.`);
+      }
       const balance = await chain.tokenBalance(r.vault_ata);
-      if (balance === null || balance < plan.amount) throw new SettlementFailure('Stopped before creating the transfer: the study vault holds less than it on devnet.');
+      if (balance === null || balance < plan.amount) {
+        // Nothing was created at this index: give it back so later payments aren't blocked (P3-F4).
+        await this.store.releaseIndex(id, fence, this.d.now());
+        throw new SettlementFailure('Stopped before creating the transfer: the study vault holds less than it on devnet.');
+      }
       await this.step('payment', id, fence, r.steps.vault_tx_create, { step: 'vault_tx_create', multisig: r.multisig, index, vaultAuthority: r.vault_authority, source: r.vault_ata, destination: r.destination_ata, amount: plan.amount, operation: r.op_id }, builderWallet);
       vt = await chain.getVaultTransfer(r.multisig, index);
       if (!vt) throw new SettlementPending('the vault transaction is not visible yet');
