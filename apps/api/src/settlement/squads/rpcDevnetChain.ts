@@ -188,6 +188,14 @@ export class RpcDevnetChain implements DevnetChain {
     return v.confirmationStatus === 'finalized' ? 'finalized' : 'processing';
   }
 
+  async costOf(signature: string) {
+    const tx = await this.conn.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 });
+    if (!tx?.meta) return null;
+    // Every transaction this chain prepares is paid by the platform signer: account 0.
+    if (!tx.transaction.message.staticAccountKeys[0]?.equals(this.platform.publicKey)) return null;
+    return { lamports: tx.meta.preBalances[0]! - tx.meta.postBalances[0]!, slot: tx.slot };
+  }
+
   async blockHeight() {
     return this.conn.getBlockHeight('finalized');
   }

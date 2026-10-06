@@ -299,3 +299,13 @@ npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 
 **What it prints:** public JSON only, `{ network: 'devnet', checked: { amountUnits, recipient, destination, source }, alreadyApproved, signature | null, sent }`. The key is never printed, and errors never contain it. Tests: `test/devnet-arbiter.test.ts`.
 
 **A fix found while tracing this:** if a proposal reached **Approved** with the cosigner's vote plus another member's (for example the arbiter voting on a builder-cosigned payment), the platform would have retried a vote that fails on chain. It now votes only on an Active proposal and executes an Approved one (`de92f7d`).
+
+## 14. The spend books equal the chain (lead request after E-28; (b) withdrawn per pqa-qa)
+- **Seam change, so please update your fake:** `DevnetChain.costOf(signature): Promise<{ lamports, slot } | null>`. It returns what a finalized, platform-paid transaction cost its fee payer, fee plus rent (`preBalances[0] − postBalances[0]`), and null while it isn't finalized or can't be read. `RpcDevnetChain` implements it from `getTransaction` at finalized, and only when account 0 is the platform.
+- **Recording:** `ReceiptStep.cost_lamports` (with `slot`) is written whenever a step resolves to finalized or failed. That happens both when the run follows its own step and when it only observes the effect.
+- **The true-up:** it sums the observed costs, so the books equal the chain to the lamport, and it runs once per operation (the reservation's `released` flag).
+  - **Cost unreadable:** where a cost can't be read, the step's estimate (an upper bound) counts, or one fee for a landed failure, so the books are **never below** the chain.
+  - **Pending steps:** a step still `sent` that never landed costs nothing.
+- **Funding reservations stay cumulative:** test-USDC reservations are **not** released on close (item (b), withdrawn).
+- **Startup log (P3-CAP1):** the log now states `devnetSpent` (the namespace's global totals) next to `devnetSpendCaps`, as numbers. That comes from the new `DevnetStore.spendOf(id)`.
+- **The historical gap:** `npx tsx apps/api/scripts/devnet-spend-report.ts`, with the devnet env, is **read-only**. Per operation it prints the reserved lamports against the observed cost of its recorded transactions (by signature), then the totals, the gap and the global books. It writes nothing; a test checks the reservations are byte-identical before and after.

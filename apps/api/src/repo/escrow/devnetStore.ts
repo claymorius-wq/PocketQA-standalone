@@ -177,6 +177,11 @@ export function firestoreDevnetStore(fs: Firestore, hooks: TxHooks = {}): Devnet
       });
     },
 
+    async spendOf(id) {
+      const d = (await spendRef(id).get()).data() as Spend | undefined;
+      return { lamports: d?.lamports ?? 0, usdcUnits: d?.usdcUnits ?? 0 };
+    },
+
     async reserveUsdc(opKey, uid, units, limits) {
       return tx(async (t) => (await reserveInTx(t, opKey, uid, { lamports: 0, usdcUnits: units }, limits)) === null);
     },

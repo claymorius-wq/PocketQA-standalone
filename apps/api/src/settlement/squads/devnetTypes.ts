@@ -61,6 +61,11 @@ export interface DevnetChain {
   findExecuteSignature(multisig: string, index: bigint): Promise<string | null>;
   getParsedTransaction(signature: string): Promise<ParsedTokenTx | null>;
   signatureStatus(signature: string): Promise<ChainStatus>;
+  /**
+   * What a finalized platform-paid transaction actually cost its fee payer (fee + any rent it paid:
+   * the payer's pre minus post balance), and its slot; null while not finalized or unreadable.
+   */
+  costOf(signature: string): Promise<{ lamports: number; slot: number } | null>;
   /** The finalized block height: a prepared transaction can still land while lastValidBlockHeight >= it. */
   blockHeight(): Promise<number>;
   /** Builds and signs with the platform signer only. Never broadcasts. */
@@ -155,6 +160,8 @@ export type ReceiptStep = {
   status: 'prepared' | 'sent' | 'finalized' | 'failed';
   slot: number | null;
   fee_lamports: number | null;
+  /** Observed on chain once resolved: what the platform really paid (fee + rent). The spend true-up counts it. */
+  cost_lamports?: number | null;
 };
 
 export type ReceiptState = 'claimed' | 'created' | 'proposed' | 'awaiting_cosigner' | 'approved' | 'executed' | 'finalized' | 'refused';
@@ -251,6 +258,8 @@ export interface DevnetStore {
   reclaimIndex(settlementId: string, fence: number, index: number, nowMs: number): Promise<number | null>;
   /** Sets a reservation to what was actually spent, releasing the rest. */
   trueUp(opKey: string, actualLamports: number): Promise<void>;
+  /** The cumulative spend totals of `global` or `user:<uid>` (zero if nothing was spent yet). */
+  spendOf(id: string): Promise<{ lamports: number; usdcUnits: number }>;
   /** Reserves test-USDC units entering the system (a funding request), once per op key. */
   reserveUsdc(opKey: string, uid: string, units: number, limits: DevnetLimits): Promise<boolean>;
 }
