@@ -1,3 +1,68 @@
-/** Core repository (owner: see ../index.ts). Intent-level async operations only. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface CoreRepo {}
+import type { UserRow } from '../../views/core';
+
+/** One audit entry (append-only). */
+export type AuditRow = {
+  id: string;
+  actor_id: string;
+  action: string;
+  target_type: 'study' | 'user' | 'dispute';
+  target_id: string;
+  reason: string;
+  created_at: string;
+};
+
+/** Result of an idempotent request lookup (plan r2 §R3). */
+export type IdempotencyHit = { kind: 'new' } | { kind: 'replay'; status: number; body: unknown } | { kind: 'mismatch' };
+
+/**
+ * Core repository (owner: lead): users, identities, sessions, audit, idempotency, rate limits,
+ * job leases. Intent-level async operations; sqlite.ts keeps today's SQL, firestore.ts is native.
+ */
+export interface CoreRepo {
+  /** A cheap round trip to the data store (health check). */
+  ping(): Promise<void>;
+
+  userById(id: string): Promise<UserRow | null>;
+  /** An account that can sign in (status != 'deleted'), by exact email. */
+  activeUserByEmail(email: string): Promise<UserRow | null>;
+  /** Any account row holds this email (deleted accounts hold a placeholder, so theirs is free again). */
+  emailTaken(email: string): Promise<boolean>;
+  /** Creates a local-password account; 'email_taken' if another holds the email (race-safe). */
+  createUser(row: UserRow): Promise<'created' | 'email_taken'>;
+  /** Creates a managed-identity account and its firebase identity atomically. */
+  createUserWithIdentity(row: UserRow, uid: string, createdAt: string): Promise<'created' | 'email_taken' | 'identity_taken'>;
+  setDevice(userId: string, deviceJson: string): Promise<void>;
+  setStatus(userId: string, status: 'active' | 'suspended'): Promise<void>;
+  setRole(userId: string, role: 'admin'): Promise<void>;
+
+  /** True if any account (even deleted) is mapped to this firebase uid. */
+  identityMapped(uid: string): Promise<boolean>;
+  /** The live account mapped to this firebase uid, with its server-side revocation time. */
+  userByIdentity(uid: string): Promise<{ user: UserRow; validAfterMs: number } | null>;
+  /** The user has signed in with a recoverable (verified email/Google) identity. */
+  markRecovery(uid: string): Promise<void>;
+  hasRecoverableIdentity(userId: string): Promise<boolean>;
+  /** Firebase subjects of this user. */
+  identitySubjects(userId: string): Promise<string[]>;
+  /** Refuses this user's ID tokens issued at or before `nowMs` (server-side logout). */
+  revokeIdentities(userId: string, nowMs: number): Promise<void>;
+
+  createSession(tokenHash: string, userId: string, createdAt: string, expiresAtMs: number): Promise<void>;
+  /** The live account behind an unexpired session. */
+  userBySession(tokenHash: string, nowMs: number): Promise<UserRow | null>;
+  deleteSession(tokenHash: string): Promise<void>;
+
+  appendAudit(row: AuditRow): Promise<void>;
+  /** Newest first. */
+  listAudit(): Promise<AuditRow[]>;
+
+  /** Account deletion: audit reasons about these targets become '[redacted on account deletion]'. */
+  redactAudit(targets: { type: 'user' | 'participation' | 'dispute'; id: string }[]): Promise<void>;
+  /**
+   * Account deletion, core part, exactly as today: sessions and identities deleted; the user row
+   * anonymised (email `deleted-<id>@deleted.invalid`, no password, 'Deleted user', no device,
+   * status 'deleted'), which frees the old email. Idempotent. On SQLite it runs inside the
+   * caller's transaction; on Firestore it is its own bounded transaction (email guards moved).
+   */
+  purgeUserCore(userId: string): Promise<void>;
+}

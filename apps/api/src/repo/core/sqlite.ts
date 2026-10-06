@@ -1,6 +1,124 @@
 import type { DB } from '../../db';
-import type { CoreRepo } from './types';
+import type { UserRow } from '../../views/core';
+import type { AuditRow, CoreRepo } from './types';
 
-export function sqliteCoreRepo(_db: DB): CoreRepo {
-  return {};
+/** Core repository on SQLite: today's SQL, moved out of app.ts and the handlers unchanged. */
+export function sqliteCoreRepo(db: DB): CoreRepo {
+  const insertUser = db.prepare(
+    'INSERT INTO users (id, email, password_hash, display_name, role, status, device_json, created_at) VALUES (@id,@email,@password_hash,@display_name,@role,@status,@device_json,@created_at)',
+  );
+  const isUniqueEmail = (e: unknown) => e instanceof Error && /UNIQUE constraint failed: users\.email/.test(e.message);
+  return {
+    async ping() {
+      db.prepare('SELECT 1').get();
+    },
+    async userById(id) {
+      return (db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined) ?? null;
+    },
+    async activeUserByEmail(email) {
+      return (db.prepare(`SELECT * FROM users WHERE email = ? AND status != 'deleted'`).get(email) as UserRow | undefined) ?? null;
+    },
+    async emailTaken(email) {
+      return !!db.prepare('SELECT 1 FROM users WHERE email = ?').get(email);
+    },
+    async createUser(row) {
+      try {
+        insertUser.run(row);
+        return 'created';
+      } catch (e) {
+        if (isUniqueEmail(e)) return 'email_taken';
+        throw e;
+      }
+    },
+    async createUserWithIdentity(row, uid, createdAt) {
+      if (db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND subject = ?`).get(uid)) return 'identity_taken';
+      try {
+        db.transaction(() => {
+          insertUser.run(row);
+          db.prepare(`INSERT INTO identities (provider, subject, user_id, has_recovery, created_at) VALUES ('firebase', ?, ?, 1, ?)`).run(uid, row.id, createdAt);
+        })();
+        return 'created';
+      } catch (e) {
+        if (isUniqueEmail(e)) return 'email_taken';
+        if (e instanceof Error && /UNIQUE constraint failed: identities/.test(e.message)) return 'identity_taken';
+        throw e;
+      }
+    },
+    async setDevice(userId, deviceJson) {
+      db.prepare('UPDATE users SET device_json = ? WHERE id = ?').run(deviceJson, userId);
+    },
+    async setStatus(userId, status) {
+      db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, userId);
+    },
+    async setRole(userId, role) {
+      db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+    },
+    async identityMapped(uid) {
+      return !!db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND subject = ?`).get(uid);
+    },
+    async userByIdentity(uid) {
+      const found = db
+        .prepare(
+          `SELECT u.*, i.valid_after_ms AS identity_valid_after_ms FROM identities i JOIN users u ON u.id = i.user_id
+           WHERE i.provider = 'firebase' AND i.subject = ? AND u.status != 'deleted'`,
+        )
+        .get(uid) as (UserRow & { identity_valid_after_ms: number }) | undefined;
+      if (!found) return null;
+      const { identity_valid_after_ms: validAfterMs, ...user } = found;
+      return { user, validAfterMs };
+    },
+    async markRecovery(uid) {
+      db.prepare(`UPDATE identities SET has_recovery = 1 WHERE provider = 'firebase' AND subject = ? AND has_recovery = 0`).run(uid);
+    },
+    async hasRecoverableIdentity(userId) {
+      return !!db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND user_id = ? AND has_recovery = 1`).get(userId);
+    },
+    async identitySubjects(userId) {
+      return (db.prepare(`SELECT subject FROM identities WHERE provider = 'firebase' AND user_id = ?`).all(userId) as { subject: string }[]).map((r) => r.subject);
+    },
+    async revokeIdentities(userId, nowMs) {
+      db.prepare(`UPDATE identities SET valid_after_ms = ? WHERE provider = 'firebase' AND user_id = ?`).run(nowMs, userId);
+    },
+    async createSession(tokenHash, userId, createdAt, expiresAtMs) {
+      db.prepare('INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?,?,?,?)').run(tokenHash, userId, createdAt, expiresAtMs);
+    },
+    async userBySession(tokenHash, nowMs) {
+      return (
+        (db
+          .prepare(
+            `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+             WHERE s.token_hash = ? AND s.expires_at > ? AND u.status != 'deleted'`,
+          )
+          .get(tokenHash, nowMs) as UserRow | undefined) ?? null
+      );
+    },
+    async deleteSession(tokenHash) {
+      db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+    },
+    async appendAudit(row) {
+      db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
+        row.id,
+        row.actor_id,
+        row.action,
+        row.target_type,
+        row.target_id,
+        row.reason,
+        row.created_at,
+      );
+    },
+    async listAudit() {
+      return db.prepare('SELECT * FROM audit ORDER BY created_at DESC, rowid DESC').all() as AuditRow[];
+    },
+    async redactAudit(targets) {
+      const stmt = db.prepare(`UPDATE audit SET reason = '[redacted on account deletion]' WHERE target_type = ? AND target_id = ?`);
+      for (const t of targets) stmt.run(t.type, t.id);
+    },
+    async purgeUserCore(userId) {
+      db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+      db.prepare('DELETE FROM identities WHERE user_id = ?').run(userId);
+      db.prepare(
+        `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
+      ).run(`deleted-${userId}@deleted.invalid`, userId);
+    },
+  };
 }
