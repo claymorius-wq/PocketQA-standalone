@@ -229,6 +229,8 @@ export const EscrowBalances = z.object({
   feesUnits: TokenUnits,
   pendingRefundUnits: TokenUnits,
   refundedUnits: TokenUnits,
+  /** Devnet: earned fees swept on close to the platform fee wallet (decision (a)). */
+  sweptFeesUnits: TokenUnits.optional(),
 });
 /**
  * `awaiting_approval` (POCKETQA_ENV=devnet only): the payment's Squads proposal exists and waits for
@@ -252,6 +254,8 @@ export const StudyPayment = z.discriminatedUnion('mode', [
     fundingWallet: z.string().nullable(),
     /** `settlementId`: the refund's settlement (devnet: GET /settlements/:id/approval for the builder's vote). */
     refund: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+    /** Devnet: the fee sweep on close, approved by the builder like the refund (GET /settlements/:id/approval). */
+    feeSweep: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable().optional(),
   }),
 ]);
 export type StudyPayment = z.infer<typeof StudyPayment>;

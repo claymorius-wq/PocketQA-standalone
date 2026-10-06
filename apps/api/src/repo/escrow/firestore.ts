@@ -4,6 +4,7 @@ import {
   holdsBudget,
   planFunding,
   planReversal,
+  planSettleFee,
   planSettlePayout,
   planSettleRefund,
   transitionPayout,
@@ -267,6 +268,35 @@ export async function authorizeRefundInTx(
 ): Promise<void> {
   const esc = prior?.esc ?? (await escrowOfInTx(t, fs, s.id))!;
   const books = prior?.books ?? (await booksInTx(t, fs, s.id));
+  // Devnet (decision (a)): the fees the study earned are swept on close to the pinned platform fee
+  // wallet, recorded on the study's devnet vault. One sweep per study (settlementGuards/fee:{study}).
+  const devnetVault = (await t.get(fs.collection('devnetVaults').doc(s.id))).data() as { fee_wallet?: string } | undefined;
+  const fees = books.accounts['fees:platform'] ?? 0;
+  const feeGuard = ref(fs, 'settlementGuards', `fee:${s.id}`);
+  const sweepFees = !!devnetVault?.fee_wallet && fees > 0 && !(await t.get(feeGuard)).exists;
+  if (sweepFees) {
+    const feeId = newId();
+    t.create(feeGuard, { settlement_id: feeId });
+    t.create(ref(fs, 'settlements', feeId), {
+      id: feeId,
+      kind: 'fee',
+      study_id: s.id,
+      participation_id: null,
+      tester_id: null,
+      destination: devnetVault!.fee_wallet!,
+      amount_units: fees,
+      status: 'pending',
+      attempt: 0,
+      attempt_key: null,
+      signature: null,
+      failure_reason: null,
+      next_attempt_at: nowMs,
+      created_at: nowMs,
+      settled_at: null,
+      cosigner,
+    } satisfies SettlementRow);
+    auditInTx(t, fs, { id: newId(), actor_id: actorId, action: 'escrow.fee_sweep_authorized', target_type: 'study', target_id: s.id, reason: `${fees} units of earned fees to the platform fee wallet (devnet test USDC, no value)`, created_at: iso(nowMs) });
+  }
   const amount = books.accounts[`vault:${s.id}`] ?? 0;
   if (amount === 0) return;
   if (!esc.funding_wallet) throw fail('INTERNAL', 'Funded escrow without a funding wallet.');
@@ -696,6 +726,11 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
       return booksFromTotals(studyId, books, quoteOf(s!, esc!), holding);
     },
 
+    async feeSweepOf(studyId) {
+      const x = await viaGuard('settlementGuards', `fee:${studyId}`);
+      return x ? { id: x.id, status: x.status, amount_units: x.amount_units } : null;
+    },
+
     async refundOf(studyId) {
       const x = await viaGuard('settlementGuards', `refund:${studyId}`);
       return x ? { id: x.id, status: x.status, amount_units: x.amount_units } : null;
@@ -775,7 +810,7 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
       await tx(async (t) => {
         const cur = data<SettlementRow>(await t.get(r('settlements', s.id)))!;
         if (cur.status !== 'submitted') return;
-        const key = s.kind === 'payout' ? `payoutSettled:${s.participation_id}` : `refundSettled:${s.study_id}`; // rows 23, 25
+        const key = s.kind === 'payout' ? `payoutSettled:${s.participation_id}` : s.kind === 'fee' ? `feeSettled:${s.study_id}` : `refundSettled:${s.study_id}`; // rows 23, 25 (+ the devnet fee sweep)
         const g = await t.claimGuard(r('escrowGuards', key), { settlement_id: s.id });
         if (!g.created) return;
         const books = await booksInTx(t, fs, s.study_id);
@@ -784,7 +819,9 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
         const postings =
           s.kind === 'payout'
             ? planSettlePayout({ studyId: s.study_id, participationId: s.participation_id!, testerId: s.tester_id!, amountUnits: s.amount_units })
-            : planSettleRefund({ studyId: s.study_id, funder: s.destination, amountUnits: s.amount_units });
+            : s.kind === 'fee'
+              ? planSettleFee({ studyId: s.study_id, feeWallet: s.destination, amountUnits: s.amount_units })
+              : planSettleRefund({ studyId: s.study_id, funder: s.destination, amountUnits: s.amount_units });
         postInTx(t, fs, s.study_id, books, postings, key, s.signature, nowMs);
         auditInTx(t, fs, {
           id: newId(),

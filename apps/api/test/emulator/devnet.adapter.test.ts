@@ -4,7 +4,7 @@ import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
 import { devnetFirestore } from '../../src/firestore/namespace';
 import { runTxCtx } from '../../src/firestore/tx';
 import { makeRepos } from '../../src/repo';
-import { authorizePayoutInTx, createEscrowInTx } from '../../src/repo/escrow/firestore';
+import { authorizePayoutInTx, authorizeRefundInTx, createEscrowInTx } from '../../src/repo/escrow/firestore';
 import { ataOf } from '../../src/settlement/squads/adapter';
 import { devnetSettlement, type DevnetSquadsSettlement } from '../../src/settlement/squads/devnet';
 import { DEFAULT_DEVNET_LIMITS, paymentLamports, STEP_LAMPORTS, VAULT_LAMPORTS, type DevnetLimits } from '../../src/settlement/squads/devnetTypes';
@@ -12,6 +12,7 @@ import { MAINNET_GENESIS, PILOT_DECIMALS, PILOT_MINT, PILOT_TOKEN_PROGRAM } from
 import { SettlementFailure, SettlementPending } from '../../src/settlement/types';
 import { runSettlement } from '../../src/settlement/worker';
 import type { ParticipationRow, StudyRow } from '../../src/views/studies';
+import { paymentViewOf } from '../../src/views/escrow';
 import { FakeDevnetChain } from '../fakeDevnetChain';
 import { clearEmulator, emulatorFirestore } from './fs';
 
@@ -379,4 +380,58 @@ describe('wallet-signed transactions are built only on a proven devnet (pqa-qa P
       expect(chain.built).toEqual([]);
     });
   }
+});
+
+describe('the fee sweep on close (decision (a), pqa-be2 E-24): vault 0, the fee wallet receives exactly the booked fees', () => {
+  it('close authorizes the refund AND the fee sweep; both cosigned by the builder; the books balance with the fees swept', async () => {
+    // A 10% fee study: funded for 2 tests of 1,000 (+100 fee each); one paid, then closed.
+    await untilDone(() => adapter.prepareVault({ studyId: 's1', builderWallet: builder.publicKey.toBase58(), userId: 'b1' }));
+    await runTxCtx(raw, (t) => createEscrowInTx(t, fs, { study_id: 's1', builder_id: 'b1', settlement: 'squads_devnet', network: 'solana:devnet', mint: PILOT_MINT, vault: adapter.vaultFor('s1'), fee_bps: 1000, created_at: ISO }));
+    await fs.collection('studyEscrows').doc('s1').update({ funding_wallet: builder.publicKey.toBase58() });
+    await fs.collection('escrowBooks').doc('s1').set({ accounts: { 'in:funding': -2_200, 'vault:s1': 2_200 } });
+    chain.fundVault(adapter.vaultFor('s1'), 2_200);
+    const p = part('p0');
+    await fs.collection('participations').doc(p.id).set(p);
+    await runTxCtx(raw, (t) => authorizePayoutInTx(t, fs, study({ slots: 2 }), p, 0, now, 'b1', 'approved', 'builder'));
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(p.id);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p.id)).toBe('confirmed');
+
+    await runTxCtx(raw, (t) => authorizeRefundInTx(t, fs, study({ slots: 2, status: 'closed' }), now, 'b1', 'builder'));
+    const rows = async () => (await fs.collection('settlements').where('study_id', '==', 's1').get()).docs.map((d) => d.data() as { id: string; kind: string; status: string; amount_units: number; destination: string; cosigner: string });
+    expect((await rows()).filter((r) => r.kind !== 'payout').map((r) => [r.kind, r.amount_units, r.destination, r.cosigner]).sort()).toEqual([
+      ['fee', 100, feeWallet, 'builder'],
+      ['refund', 1_100, builder.publicKey.toBase58(), 'builder'],
+    ]);
+    // Close twice (a retry): no second refund or fee sweep.
+    await runTxCtx(raw, (t) => authorizeRefundInTx(t, fs, study({ slots: 2, status: 'closed' }), now, 'b1', 'builder')).catch(() => undefined);
+    expect((await rows()).filter((r) => r.kind === 'fee')).toHaveLength(1);
+
+    const feeBefore = chain.balances.get(ataOf(feeWallet)) ?? 0;
+    for (let round = 0; round < 4; round++) {
+      for (let i = 0; i < 6; i++) await settle();
+      for (const r of (await rows()).filter((x) => x.status === 'awaiting_approval')) {
+        const s = (await repos.escrow.settlementById(r.id))!;
+        const a = await adapter.approval(s, builder.publicKey.toBase58());
+        chain.walletSend(a.transactionB64, builder.publicKey.toBase58());
+      }
+    }
+    expect((await rows()).map((r) => [r.kind, r.status]).sort()).toEqual([['fee', 'confirmed'], ['payout', 'confirmed'], ['refund', 'confirmed']]);
+    expect(chain.balances.get(adapter.vaultFor('s1'))).toBe(0);
+    expect((chain.balances.get(ataOf(feeWallet)) ?? 0) - feeBefore).toBe(100);
+    expect(await repos.escrow.studyBooks('s1', now)).toMatchObject({ fundedUnits: 2_200, settledUnits: 1_000, refundedUnits: 1_100, feesUnits: 0, sweptFeesUnits: 100, ok: true });
+    const view = await paymentViewOf(repos, study({ slots: 2, status: 'closed' }), now);
+    expect(view).toMatchObject({ mode: 'escrow', feeSweep: { status: 'confirmed', amountUnits: 100 }, refund: { status: 'confirmed', amountUnits: 1_100 }, balances: { sweptFeesUnits: 100 } });
+  });
+
+  it('a fee settlement to any wallet but the pinned fee wallet is refused before signing', async () => {
+    await readyVault();
+    const id = 'fee-tampered';
+    await fs.collection('settlements').doc(id).set({ id, kind: 'fee', study_id: 's1', participation_id: null, tester_id: null, destination: Keypair.generate().publicKey.toBase58(), amount_units: 50, status: 'pending', attempt: 0, attempt_key: null, signature: null, failure_reason: null, next_attempt_at: now, created_at: now, settled_at: null, cosigner: 'builder' });
+    const signed = chain.prepared.length;
+    for (let i = 0; i < 3; i++) await settle();
+    expect((await repos.escrow.settlementById(id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/fee wallet/) });
+    expect(chain.prepared.length).toBe(signed);
+  });
 });

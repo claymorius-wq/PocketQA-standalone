@@ -49,7 +49,8 @@ export type FundingRow = {
 
 export type SettlementRow = {
   id: string;
-  kind: 'payout' | 'refund';
+  /** `fee`: the devnet fee sweep on close (decision (a); Firestore only). */
+  kind: 'payout' | 'refund' | 'fee';
   study_id: string;
   participation_id: string | null;
   tester_id: string | null;
@@ -173,6 +174,8 @@ export interface EscrowRepo {
   /** The study's escrow books and invariant. */
   studyBooks(studyId: string, nowMs: number): Promise<EscrowBooks>;
   refundOf(studyId: string): Promise<Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | null>;
+  /** Devnet: the study's fee sweep settlement (null on SQLite, where none exists). */
+  feeSweepOf(studyId: string): Promise<Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | null>;
   payoutsOfTester(testerId: string): Promise<SettlementRow[]>;
   /** Every payout, failed first (operations view). */
   allPayouts(): Promise<SettlementRow[]>;

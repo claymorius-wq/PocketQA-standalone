@@ -221,7 +221,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     let v = await this.store.vault(input.studyId);
     if (!v) {
       const claimed = await this.store.claimVault(
-        { study_id: input.studyId, uid: input.userId, multisig: a.multisig, vault_authority: a.vaultAuthority, vault_ata: a.vaultAta, builder_wallet: input.builderWallet, reserved_lamports: VAULT_LAMPORTS },
+        { study_id: input.studyId, uid: input.userId, multisig: a.multisig, vault_authority: a.vaultAuthority, vault_ata: a.vaultAta, builder_wallet: input.builderWallet, fee_wallet: this.d.roles.feeWallet, reserved_lamports: VAULT_LAMPORTS },
         this.d.limits,
         this.d.now(),
       );
@@ -287,6 +287,8 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (v?.state !== 'ready') throw new SettlementFailure('Refused before signing: this study has no prepared devnet vault.');
     if (!Number.isSafeInteger(s.amount_units) || s.amount_units <= 0 || s.amount_units > MAX_ESCROW_UNITS) throw new SettlementFailure('Refused before signing: invalid amount.');
     if (!isWallet(s.destination) || s.destination === v.vault_authority) throw new SettlementFailure('Refused before signing: the destination is not a wallet address.');
+    // CH-D3: a fee sweep goes only to the pinned platform fee wallet.
+    if (s.kind === 'fee' && s.destination !== this.d.roles.feeWallet) throw new SettlementFailure('Refused before signing: a fee sweep must go to the pinned platform fee wallet (POCKETQA_DEVNET_FEE_WALLET).');
     const kind = s.kind as DevnetReceipt['kind'];
     const op = operationId(kind, s.study_id, s.participation_id);
     const draft = {

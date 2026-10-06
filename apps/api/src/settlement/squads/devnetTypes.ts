@@ -198,6 +198,8 @@ export type VaultReceipt = {
   vault_authority: string;
   vault_ata: string;
   builder_wallet: string;
+  /** The pinned platform fee wallet (POCKETQA_DEVNET_FEE_WALLET): where the study's earned fees are swept on close. */
+  fee_wallet: string;
   reserved_lamports: number;
   steps: Partial<Record<DevnetStep, ReceiptStep>>;
   state: 'claimed' | 'ready' | 'refused';

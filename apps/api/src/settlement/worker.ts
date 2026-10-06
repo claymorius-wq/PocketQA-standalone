@@ -148,7 +148,8 @@ export async function reconcileVaultOnChain(repo: EscrowRepo, provider: Settleme
   const onChain = await provider.vaultBalance!(studyId);
   if (onChain === null) return null;
   const books = await repo.studyBooks(studyId, now);
-  const expected = books.fundedUnits - books.settledUnits - books.refundedUnits;
+  // Swept fees (devnet decision (a)) left the vault too; earned-but-unswept fees are still in it.
+  const expected = books.fundedUnits - books.settledUnits - books.refundedUnits - books.sweptFeesUnits;
   const inFlight = await repo.inFlightUnits(studyId);
   // A funding still being verified explains extra units until it resolves.
   const openFunding = await repo.hasOpenFunding(studyId);

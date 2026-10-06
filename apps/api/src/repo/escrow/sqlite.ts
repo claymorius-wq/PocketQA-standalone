@@ -287,6 +287,10 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       return studyEscrowBooks(db, studyId, nowMs);
     },
 
+    async feeSweepOf() {
+      return null;
+    },
+
     async refundOf(studyId) {
       return (db.prepare(`SELECT id, status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(studyId) as Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | undefined) ?? null;
     },
@@ -339,6 +343,8 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
     },
 
     async confirmSettlement(s, nowMs, label) {
+      // The fee sweep exists only in POCKETQA_ENV=devnet (Firestore); SQLite never creates one.
+      if (s.kind === 'fee') throw new Error('A fee sweep settlement on SQLite: the devnet fee sweep runs only on Firestore.');
       db.transaction(() => {
         const cur = db.prepare('SELECT status FROM settlements WHERE id = ?').get(s.id) as { status: SettlementRow['status'] };
         if (cur.status !== 'submitted') return;
