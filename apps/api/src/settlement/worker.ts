@@ -1,8 +1,6 @@
 import { transitionPayout } from '@pocket-qa/domain';
 import type { Deps } from '../context';
-import type { DB } from '../db';
 import { settlementLabel, verifyFunding } from '../escrow';
-import { sqliteEscrowRepo } from '../repo/escrow/sqlite';
 import type { EscrowRepo } from '../repo/escrow/types';
 import { SettlementFailure, type SettlementProvider } from './types';
 
@@ -29,13 +27,10 @@ const backoff = (attempt: number) => Math.min(MAX_RETRY_MS, RETRY_MS * 2 ** Math
  * would still be safe, because every send is idempotent per persisted attempt key.
  * Unknown errors propagate: they leave the outcome unknown, and the next run resolves it.
  */
-/** The escrow repository of `deps`: `repo` when given, else SQLite over `db` (server.ts's call). */
-const escrowRepoOf = (deps: { repo?: Pick<Deps['repo'], 'escrow'>; db?: DB }): EscrowRepo => deps.repo?.escrow ?? sqliteEscrowRepo(deps.db!);
-
-export async function runSettlement(deps: Pick<Deps, 'now' | 'settlement'> & { repo?: Pick<Deps['repo'], 'escrow'>; db?: DB }): Promise<{ alerts: string[] }> {
+export async function runSettlement(deps: Pick<Deps, 'now' | 'settlement'> & { repo: Pick<Deps['repo'], 'escrow'> }): Promise<{ alerts: string[] }> {
   const { settlement: provider } = deps;
   if (!provider) return { alerts: [] };
-  const repo = escrowRepoOf(deps);
+  const repo = deps.repo.escrow;
   const now = deps.now();
   const touched = new Set<string>();
   const label = settlementLabel(provider);

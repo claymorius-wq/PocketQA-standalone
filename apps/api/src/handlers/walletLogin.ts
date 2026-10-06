@@ -3,7 +3,7 @@ import { verifyWalletLogin } from '@pocket-qa/domain';
 import type { Ctx, Handler } from '../context';
 import { RateLimiter } from '../rateLimit';
 import { fail, iso, newId, newNonce } from '../util';
-import { userView } from '../views';
+import { userViewOf } from '../views';
 import { issueSession } from './account';
 
 // Per process (see rateLimit.ts). The address limit is keyed by address *and* client, so
@@ -75,6 +75,6 @@ export const walletLoginHandlers = {
       ctx.deps.config.authMode === 'local'
         ? { kind: 'local' as const, token: (await issueSession(ctx, signedIn)).token }
         : { kind: 'firebase_custom_token' as const, customToken: await ctx.deps.identity!.createCustomToken(result.subject!) };
-    return { user: userView(ctx.deps.db, signedIn), session };
+    return { user: await userViewOf(ctx.deps.repo, signedIn), session };
   },
 } satisfies Record<string, Handler>;

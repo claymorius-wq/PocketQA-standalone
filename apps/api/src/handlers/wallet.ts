@@ -1,10 +1,10 @@
 import { appIdentityUri, DEVNET_DEMO_LAMPORTS, SOLANA_DEVNET_CHAIN, SOLANA_DEVNET_GENESIS_HASH, WALLET_NONCE_TTL_SECONDS, type DevnetTransfer, type SiwsInput } from '@pocket-qa/contracts';
 import { verifyTransfer, verifyWalletLink } from '@pocket-qa/domain';
-import { ownerParticipation, partyParticipation } from '../access';
+import { ownerParticipationOf, partyParticipationOf } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { fail, iso, newId, newNonce, notFound } from '../util';
 import type { TransferRow } from '../repo/escrow/types';
-import { userView } from '../views';
+import { userViewOf } from '../views';
 
 const TRANSFER_INTENT_TTL_MS = 10 * 60 * 1000;
 const TRANSFER_CONFIRM_WINDOW_MS = 3 * 60 * 1000;
@@ -121,7 +121,7 @@ export const walletHandlers = {
       verify: (record) => verifyWalletLink({ record, request: { userId: user.id, address, nonce, signedMessage: b64(signedMessage), signature: b64(signature) }, nowMs: now }),
     });
     if (outcome) throw outcome;
-    return userView(ctx.deps.db, user);
+    return userViewOf(ctx.deps.repo, user);
   },
 
   walletUnlink: async (ctx) => {
@@ -131,7 +131,7 @@ export const walletHandlers = {
     if (!(await ctx.deps.repo.escrow.unlinkWallet({ id: user.id, hasPassword: !!user.password_hash }))) {
       throw fail('CONFLICT_STATE', 'Add an email or Google sign-in before removing your only sign-in method.');
     }
-    return userView(ctx.deps.db, user);
+    return userViewOf(ctx.deps.repo, user);
   },
 
   createTransfer: async (ctx) => {
@@ -139,7 +139,7 @@ export const walletHandlers = {
     const user = me(ctx);
     const repo = ctx.deps.repo.escrow;
     await assertDevnet(ctx);
-    const { p } = ownerParticipation(ctx.deps.db, ctx.body.participationId, user);
+    const { p } = await ownerParticipationOf(ctx.deps.repo, ctx.body.participationId, user);
     if (p.status !== 'approved' && p.status !== 'resolved') throw fail('CONFLICT_STATE', 'Demo transfers are only for approved work.');
     const sender = await repo.walletLinkOf(user.id);
     const recipient = await repo.walletLinkOf(p.tester_id);
@@ -178,7 +178,7 @@ export const walletHandlers = {
   },
 
   participationTransfers: async (ctx) => {
-    const { p } = partyParticipation(ctx.deps.db, ctx.params.id!, me(ctx));
+    const { p } = await partyParticipationOf(ctx.deps.repo, ctx.params.id!, me(ctx));
     const rows = await ctx.deps.repo.escrow.transfersOf(p.id);
     // Re-verify pending ones so every viewer sees the chain's answer, not a stale claim.
     const fresh: TransferRow[] = [];
@@ -204,7 +204,7 @@ export const walletHandlers = {
     const row = await ctx.deps.repo.escrow.transferById(ctx.params.id!);
     if (!row) throw notFound('Transfer');
     try {
-      partyParticipation(ctx.deps.db, row.participation_id, user);
+      await partyParticipationOf(ctx.deps.repo, row.participation_id, user);
     } catch {
       throw notFound('Transfer');
     }

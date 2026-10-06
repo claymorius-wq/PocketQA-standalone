@@ -1,4 +1,4 @@
-import { ownStudy } from '../access';
+import { ownStudyOf } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { FUNDING_TTL_MS, verifyFunding, type FundingRow } from '../escrow';
 import type { SimulatedSettlement } from '../settlement/simulated';
@@ -16,7 +16,7 @@ function provider(ctx: Ctx) {
 async function ownFunding(ctx: Ctx): Promise<FundingRow> {
   const f = await ctx.deps.repo.escrow.fundingById(ctx.params.id!);
   if (!f) throw notFound('Funding');
-  ownStudy(ctx.deps.db, f.study_id, me(ctx)); // 404 for anyone but the study's builder
+  await ownStudyOf(ctx.deps.repo, f.study_id, me(ctx)); // 404 for anyone but the study's builder
   return f;
 }
 
@@ -34,7 +34,7 @@ export const escrowHandlers = {
     // The escrow must exist on the network before anyone can fund it (Squads pilot: the study's
     // multisig and vault; idempotent). Members are fixed here: the builder's linked wallet.
     if (p.prepareVault) {
-      const s = ownStudy(ctx.deps.db, ctx.params.id!, me(ctx));
+      const s = await ownStudyOf(ctx.deps.repo, ctx.params.id!, me(ctx));
       const wallet = await linkedWallet(ctx);
       if (s.payment_mode === 'escrow' && s.status === 'draft' && wallet) {
         try {
