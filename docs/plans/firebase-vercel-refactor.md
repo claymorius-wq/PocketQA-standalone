@@ -374,6 +374,13 @@ runs the handler again. Every non-GET route therefore needs one of these rules:
 
 Public and `identity` routes have no user, so no Idempotency-Key applies. Their guards are listed anyway.
 
+**Exempt routes (correction, 2026-10-06).** The client now sends a key on every mutation (P2-H). The
+dispatcher therefore skips the reservation for `IDEMPOTENCY_EXEMPT` (`apps/api/src/app.ts`):
+register, login, logout, identitySession, walletLoginChallenge, walletLogin, walletNonce, exportMe,
+deleteMe, playbackToken and createUploadIntent. Their responses are credentials (sessions, nonces,
+playback URLs/tokens, presigned PUT URLs), which must never be persisted in `idempotency/`, or too
+large to store (an export can exceed Firestore's 1 MiB doc limit). Every one is N or G above.
+
 | Route | Rule | Basis / owner |
 |---|---|---|
 | register, identitySession | G | userEmails + identities guards (retry → 409) |

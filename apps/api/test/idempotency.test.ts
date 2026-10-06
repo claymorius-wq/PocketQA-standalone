@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeApp, type TestApp } from './helpers';
 
 // Idempotency-Key on mutating routes (docs/plans/firebase-vercel-refactor.md R10): a retry with the
@@ -89,5 +89,26 @@ describe('Idempotency-Key from the web client (pqa-qa early r1 P2-H)', () => {
     await t.req('POST', '/me/credits/test-topup', b.token, { amount: 100 }, key('retry-key-0006'));
     const entries = (await t.req('GET', '/me/credits', b.token)).body.entries.filter((e: { kind: string }) => e.kind === 'topup' || e.kind === 'test_topup');
     expect(entries).toHaveLength(3);
+  });
+});
+
+describe('exempt routes never take a reservation (R12 N rows)', () => {
+  it('exportMe with a key runs, stores nothing, and a second call exports again', async () => {
+    t = await makeApp();
+    const b = await t.register('builder');
+    const core = t.deps.repo.core;
+    const begin = vi.spyOn(core, 'beginIdempotency');
+    const complete = vi.spyOn(core, 'completeIdempotency');
+    const first = await t.req('POST', '/me/export', b.token, undefined, key('export-key-0007'));
+    const again = await t.req('POST', '/me/export', b.token, undefined, key('export-key-0007'));
+    expect([first.status, again.status]).toEqual([200, 200]);
+    expect(begin).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+
+  it('a malformed key on an exempt route is ignored rather than validated', async () => {
+    t = await makeApp();
+    const b = await t.register('builder');
+    expect((await t.req('POST', '/me/export', b.token, undefined, key('bad key!'))).status).toBe(200);
   });
 });

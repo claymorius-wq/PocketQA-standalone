@@ -30,6 +30,27 @@ const handlers: Record<RouteName, Handler> = {
   ...reputationHandlers,
 };
 
+/**
+ * Mutating routes that never take an idempotency reservation (plan R12 rows N/G, pqa-qa r1 P2-H
+ * follow-up). Their response is either a credential (a session, a nonce, a playback URL or token, a
+ * presigned upload URL), which must never be persisted in the idempotency store, or too large
+ * to store (an account export can pass Firestore's 1 MiB document limit). Each one is
+ * safe to run again: it is read-only, a delete, a fresh short-lived credential, or guarded.
+ */
+export const IDEMPOTENCY_EXEMPT = new Set<RouteName>([
+  'register',
+  'login',
+  'logout',
+  'identitySession',
+  'walletLoginChallenge',
+  'walletLogin',
+  'walletNonce',
+  'exportMe',
+  'deleteMe',
+  'playbackToken',
+  'createUploadIntent',
+]);
+
 /** Routes a suspended account may still use: see itself, leave, export or delete its data. */
 const SUSPENDED_ALLOWED = new Set<RouteName>(['me', 'logout', 'exportMe', 'deleteMe']);
 
@@ -155,7 +176,7 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
         // response instead of running again. The invariants themselves are guarded in the data layer.
         const idemKey = req.headers['idempotency-key'];
         const idem =
-          typeof idemKey === 'string' && def.method !== 'GET' && (def.response as unknown) !== 'binary' && user
+          typeof idemKey === 'string' && def.method !== 'GET' && (def.response as unknown) !== 'binary' && user && !IDEMPOTENCY_EXEMPT.has(name)
             ? { scope: `${user.id}:${name}:${idemKey}`, fingerprint: sha256(canonicalJson({ params: req.params ?? {}, body: body ?? null })) }
             : null;
         if (idem) {

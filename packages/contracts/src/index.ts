@@ -442,6 +442,7 @@ export type UploadIntent = z.infer<typeof UploadIntent>;
 export const PlaybackToken = z
   .object({ token: z.string().min(32).optional(), url: z.string().url().optional(), expiresAt: IsoDate })
   .refine((v) => (v.token === undefined) !== (v.url === undefined), { message: 'exactly one of token or url' });
+export type PlaybackToken = z.infer<typeof PlaybackToken>;
 
 // ---------- findings / review ----------
 export const FindingSeverity = z.enum(['blocker', 'major', 'minor', 'info']);
