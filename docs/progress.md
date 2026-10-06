@@ -20,12 +20,18 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
   - billing for `pocketqa-optijara` can't be read: gcloud `admin@optijara.ai` needs `gcloud auth login`, or Hamza checks the console;
   - the Firestore API is still disabled (403, re-checked 2026-10-06);
   - no provisioning, deploy or Vercel project until then.
-- **Remaining:**
-  - be3 escrow Firestore races and P2-F rows;
-  - be1 migration dry run (emulator, snapshot copy only);
-  - a lazy-slice test once the escrow repo is complete;
-  - the full dual-backend regression and the pqa-qa freeze review;
-  - after the gates: provisioning, deploy, hosted tests, and the APK rebuilt against the https API.
+- **Freeze candidate (41ceba1+docs):**
+  - `pnpm verify` green; emulator 27 files, 534 passed / 3 skipped; the dual-backend regression is green;
+  - the migration dry-run manifest 686c435d is approved by QA;
+  - the hosted web rehearsal has zero CSP violations;
+  - awaiting the pqa-qa freeze verdict.
+- **Then (needs cloud):**
+  - billing verified;
+  - Firestore enabled (eur3), rules, indexes and TTL deployed;
+  - the Vercel project `pocketqa`, server-only envs, then `build.mjs --deploy` + `vercel deploy --prebuilt`;
+  - hosted tests and a header readback;
+  - the real migration plus QA's post-run check;
+  - the APK rebuilt against the https API.
 - **Incident (2026-10-06, about 2 min):** a lead `pkill -f` stopped the USB-testing local API on 8787. It was restarted from the native-voice worktree with the same data dir, health ok. The memory rule now forbids pattern kills.
 
 ## Current work (2026-10-06): native recording, new capture pipeline, merged with main (`feat/native-voice-recording` @ fe89787)

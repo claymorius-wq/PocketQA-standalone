@@ -898,3 +898,22 @@ $ curl -s http://127.0.0.1:8787/health
 {"ok":true,"contractVersion":"0.6.1"}
 ```
 From now on, stops are PID-scoped only (`$!` captured at start). Test servers use `POCKETQA_API_PORT` away from 8787.
+
+## 2026-10-06: Firebase/Vercel refactor FREEZE CANDIDATE gate (lead, `feat/firebase-vercel` @ 41ceba1). EMULATOR ONLY, nothing deployed
+```
+$ pnpm verify                      # exit 0
+check:secrets passed: 1110 committable files scanned, no findings.
+ℹ pass 76 / ℹ fail 0               # scripts/*.test.mjs
+packages/contracts   Tests  17 passed (17)
+packages/domain      Tests  222 passed (222)
+apps/api             Test Files 41 passed | 1 skipped (42); Tests 645 passed | 2 skipped (647)
+apps/mobile          Tests: 1362 passed, 1362 total
+$ POCKETQA_R2_ACCOUNT_ID=<dummy> POCKETQA_R2_BUCKET=pqa-test node scripts/vercel/build.mjs --skip-web
+built .vercel/output (staging): api.func maxDuration 60s in fra1; 3 files; secret scan clean (0/4 server-only variables, 0 values checked)
+$ (apps/api) EMU_CONFIG=../../firebase.emu-lead.json pnpm test:emulator     # exit 0, every emulator file incl. the 17 dual-backend regression files and the built-bundle test
+ Test Files  27 passed (27)
+      Tests  534 passed | 3 skipped (537)
+$ curl -s http://127.0.0.1:8787/health      # the USB local API, untouched by the gate
+{"ok":true,"contractVersion":"0.6.1"}
+```
+Also reported by the team at this round: the hosted web rehearsal (be2, 2492203 + ead2349) passes 2/2 with zero CSP violations. The migration dry-run manifest 686c435d…39a7 was APPROVED by pqa-qa (r6), reproduced byte-identical.
