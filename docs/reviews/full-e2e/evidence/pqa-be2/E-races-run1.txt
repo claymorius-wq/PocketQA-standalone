@@ -1,0 +1,53 @@
+# pqa-be2 race harness, run 1 (2026-10-06 ~18:50Z), HEAD 51aa93b, apps/api identical to 7beaad5
+# $ (apps/api) firebase emulators:exec --only firestore,auth --project demo-pocketqa --config ../../firebase.emu-be2.json '../../node_modules/.bin/vitest run --config ../../docs/reviews/full-e2e/evidence/pqa-be2/harness/vitest.races.config.ts --reporter=verbose'
+# Run 1 had two harness-side issues fixed before run 2: HTTP error code read from body.error.code (the API sends body.code), and the boundary test asserted mid-loop. Values below are as observed.
+[E-OBS reconcile] {"label":"capacity","entries":4,"transactions":2,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":0,"positiveRewardEntries":0}
+[E-OBS E-capacity] {"slots":3,"preJoined":2,"racers":20,"outcomes":{"CONFLICT_STATE":19,"ok":1},"contentionReruns":0,"slotsFilledAfter":3,"studyAccountBalance":75,"builderBalance":0}
+ ✓ races.emulator.test.ts > E-capacity: N testers race for the LAST slot > 20 testers join a 3-slot study that already has 2: exactly 1 joins, 19 refused, slots and holds exact 8537ms
+[E-OBS reconcile] {"label":"budget-exhaustion","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":0,"positiveRewardEntries":0}
+[E-OBS E-budget-exhaustion] {"topUp":100,"perStudyReserve":40,"publishes":5,"outcomes":{"BUDGET_INSUFFICIENT":3,"ok":2},"contentionReruns":0,"statuses":["draft","draft","draft","published","published"],"builderBalanceAfter":20}
+ ✓ races.emulator.test.ts > E-budget-exhaustion > a builder funded for 2 studies publishes 5 concurrently: exactly 2 publish, 3 BUDGET_INSUFFICIENT, balance never negative 3799ms
+[E-OBS reconcile] {"label":"budget-full","entries":8,"transactions":4,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":2,"positiveRewardEntries":2}
+[E-OBS E-budget-exhaustion/full] {"slots":2,"reward":30,"thirdJoin":"CONFLICT_STATE","studyStatus":"published","studyAccountAfterApprovals":0,"rewardCredited":60}
+ ✓ races.emulator.test.ts > E-budget-exhaustion > a fully committed study (every slot held) refuses one more tester; approvals never exceed the reserve 4199ms
+[E-OBS reconcile] {"label":"approvals","entries":14,"transactions":7,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":5,"positiveRewardEntries":5}
+[E-OBS E-approvals] {"submissions":5,"requests":20,"outcomes":{"CONFLICT_STATE":15,"ok":5},"contentionReruns":0,"perTesterCredits":[17,17,17,17,17],"studyAccountAfter":0}
+ ✓ races.emulator.test.ts > E-approvals: concurrent and duplicate approvals > 5 submissions × 4 duplicate approves each, all 20 concurrent: each paid exactly once, budget exact 3938ms
+[E-OBS reconcile] {"label":"crash-midflush-after-fail","entries":4,"transactions":2,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":0,"positiveRewardEntries":0}
+[E-OBS reconcile] {"label":"crash-midflush-after-retry","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-crash/midflush] {"firstAttempt":"injected failure mid-settlement after 1 ledger write(s) were applied to the transaction","afterFail":{"participation":"submitted","ledgerEntriesForParticipation":0,"rewardGuard":false,"testerBalance":0},"retry":"approved","secondRetry":"CONFLICT_STATE","testerCredits":50,"studyAccount":0}
+ ✓ races.emulator.test.ts > E-crash: failure injected mid-settlement, and a crash after commit > a failure inside the approval transaction after a ledger write was applied leaves nothing; the retry credits once 144ms
+[E-OBS reconcile] {"label":"crash-after-commit","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-crash/after-commit] {"firstAttempt":"injected crash after commit (response lost)","participation":"approved","concurrentRetries":{"CONFLICT_STATE":20},"testerCredits":50}
+ ✓ races.emulator.test.ts > E-crash: failure injected mid-settlement, and a crash after commit > a crash after the approval committed (response lost): N client retries never credit twice 110ms
+[E-OBS reconcile] {"label":"crash-close","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":0,"positiveRewardEntries":0}
+[E-OBS E-crash/close] {"firstAttempt":"injected failure mid-settlement after 1 ledger write(s) were applied to the transaction","afterFail":{"status":"published","study":30,"builder":0},"concurrentRetries":{"CONFLICT_STATE":19,"ok":1},"statusAfter":"closed","builderBalance":30,"studyAccount":0,"releaseEntries":2}
+ ✓ races.emulator.test.ts > E-crash: failure injected mid-settlement, and a crash after commit > a failure mid-close (release posting) leaves the study published and funded; the retry releases once 9334ms
+[E-OBS reconcile] {"label":"boundary-trial-0","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":0,"positiveRewardEntries":0}
+[E-OBS reconcile] {"label":"overturn-vs-close","entries":8,"transactions":4,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-dispute-refund/overturn-vs-close] {"outcomes":{"CONFLICT_STATE":19,"ok":1},"okBy":["overturn"],"closedAfterRaceByFollowUp":true,"studyStatus":"closed","testerDisputeCredit":20,"builderRelease":40,"builderBalance":40,"studyAccount":0}
+ × races.emulator.test.ts > E-dispute-refund races > close at the dispute-window boundary races a dispute: exactly one of {dispute opened, study closed} 3665ms
+   → expected 2 to be 1 // Object.is equality
+ ✓ races.emulator.test.ts > E-dispute-refund races > overturn ×10 races close ×10: one dispute credit; close only after resolution; refund = reserve − awards 3625ms
+[E-OBS reconcile] {"label":"approve-vs-close","entries":8,"transactions":4,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-dispute-refund/approve-vs-close] {"race":{"CONFLICT_STATE":19,"ok":1},"okBy":["approve"],"thenConcurrentCloses":{"CONFLICT_STATE":19,"ok":1},"testerCredit":15,"releaseEntries":1,"builderBalance":45,"studyAccount":0}
+ ✓ races.emulator.test.ts > E-dispute-refund races > last approval ×10 races close ×10, then 20 concurrent closes: one credit, one release 7318ms
+[E-OBS reconcile] {"label":"hosted-duplicate-approve","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-hosted/duplicate-approve] {"sameKey":{"409":19,"200 approved":1},"replay":"200 approved","sameKeyDifferentBody":"422 undefined","distinctKeys":{"409":20},"testerBalance":30,"rewardEntries":1}
+[E-OBS reconcile] {"label":"hosted-approve-crash","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-hosted/approve-crash-after-commit] {"first":"500 ","retrySameKey":"409 ","retry2":"409 ","participation":"approved","testerBalance":30,"rewardEntries":1}
+ × races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > duplicate approve: 20 concurrent with ONE Idempotency-Key, then 20 with distinct keys: one credit; replay returns the first response 385ms
+   → expected undefined to be 20 // Object.is equality
+ ✓ races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > approve whose idempotency completion write failed (crash after commit): retried with the same key, credited once 266ms
+[E-OBS E-roles/http] {"selfRegisterAdmin":"400 undefined","testerApproves":403,"otherBuilderApproves":404,"otherBuilderReadsStudy":404,"builderAdminDisputes":403,"testerAdminAudit":403,"testerModeratesSelf":403,"builderTopUpByTester":403,"meRoleAfter":"tester","unauthenticated":401}
+ ✓ races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > admin self-promotion and role isolation over HTTP 236ms
+[E-OBS reconcile] {"label":"hosted-erasure","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+[E-OBS E-account/export-erasure] {"export":{"status":200,"keys":["disputes","evidence","exportedAt","findings","ledger","participations","payments","reputation","studies","user"],"participations":1,"ledgerEntries":1,"containsBuilderToken":false},"deleteWrongConfirm":400,"delete":200,"meAfterDelete":"401 ","deleteRerun":401,"builderStillSeesParticipation":"200 approved"}
+ ✓ races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > export then erasure of a tester with an approved credit: export has their data only; erased account is gone; the ledger still reconciles 372ms
+[E-OBS E-persistence/hosted-restart] {"identical":true,"studyStatus":"published","budget":{"reserved":60,"awarded":20,"committed":0,"available":40},"participation":"approved","builderBalance":0,"testerBalance":20}
+[E-OBS reconcile] {"label":"hosted-restart","entries":6,"transactions":3,"total":0,"nonInteger":0,"unbalancedTx":0,"accountMismatches":[],"negativeStudy":[],"closedNonZero":[],"rewardGuards":1,"positiveRewardEntries":1}
+ ✓ races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > persistence across a hosted-app restart: a new app instance reads the same state 314ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  races.emulator.test.ts > E-dispute-refund races > close at the dispute-window boundary races a dispute: exactly one of {dispute opened, study closed}
+ FAIL  races.emulator.test.ts > E-hosted: the hosted app over HTTP on the emulators > duplicate approve: 20 concurrent with ONE Idempotency-Key, then 20 with distinct keys: one credit; replay returns the first response
+      Tests  2 failed | 13 passed (15)

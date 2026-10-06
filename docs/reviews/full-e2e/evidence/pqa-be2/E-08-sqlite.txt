@@ -1,0 +1,9 @@
+2026-10-06T18:55:58Z
+HEAD a0f201d (apps/api identical to 7beaad5)
+$ E08_DB_DIR=<scratchpad> ../../node_modules/.bin/vitest run --config ../../docs/reviews/full-e2e/evidence/pqa-be2/harness/vitest.races.config.ts e08.sqlite --reporter=verbose
+[E-OBS E-08/sqlite] {"afterClose":{"study":"closed","studyAcct":0,"builder":40},"disputeOnClosedStudy":"opened","overturn":"ok","after":{"studyAcct":-20,"builder":40,"tester":20},"minted":20,"studyView":"row ok"}
+ × e08.sqlite.test.ts > SQLite: close after the window, then a dispute timed just before it, then an overturn 8ms
+   → expected 60 to be less than or equal to 40
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 60 to be less than or equal to 40
+      Tests  1 failed (1)

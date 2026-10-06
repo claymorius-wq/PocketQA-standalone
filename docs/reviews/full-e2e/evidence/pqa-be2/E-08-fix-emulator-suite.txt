@@ -1,0 +1,282 @@
+2026-10-06T19:02:19Z
+HEAD 4fe9cea + uncommitted E-08 fix
+ ✓ test/emulator/studies.guards.test.ts > row 2: participations UNIQUE(study_id, tester_id) → participationPairs/{study}_{tester} > 20 concurrent joins by one tester: one participation, the rest CONFLICT_STATE 6581ms
+ ✓ test/emulator/studies.guards.test.ts > row 2: participations UNIQUE(study_id, tester_id) → participationPairs/{study}_{tester} > a withdrawn tester still cannot join again (the guard outlives the slot, as the UNIQUE does) 64ms
+ ✓ test/emulator/studies.guards.test.ts > row 8: ledger_one_reward (participation_id, kind) → ledgerRewards/{pid}:{kind} > 20 concurrent approvals of one submission: one reward credit, budget and balances exact 3552ms
+ ✓ test/emulator/studies.guards.test.ts > row 8: ledger_one_reward (participation_id, kind) → ledgerRewards/{pid}:{kind} > 20 concurrent approvals across 20 submissions of one study: every reward paid once, budget exact 19185ms
+ ✓ test/emulator/studies.guards.test.ts > row 7: disputes.participation_id UNIQUE → disputeByParticipation/{pid} > 20 concurrent disputes of one rejection: one dispute, the rest CONFLICT_STATE 3721ms
+ ✓ test/emulator/studies.guards.test.ts > row 7: disputes.participation_id UNIQUE → disputeByParticipation/{pid} > 20 concurrent overturns of one dispute: one dispute credit 3768ms
+ ✓ test/emulator/studies.guards.test.ts > row 11: task_notes PK(participation_id, task_id) → participations/{pid}/notes/{taskId} > 20 concurrent edits of one note: one document, one of the written values (last write wins) 88ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > intent → presigned PUT to a quarantine key → server-verified completion → private playback with ranges 4345ms
+stderr | test/emulator/hosted.test.ts > hosted evidence path (pqa-be2) > consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage
+ ✓ test/emulator/hosted.test.ts > hosted evidence path (pqa-be2) > consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage 494ms
+ ✓ test/emulator/regression.lifecycle.test.ts > study budget > cannot publish without enough test credits, and reserves reward × slots on publish 177ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > logout: no session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > logout: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > identitySession: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > identitySession: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > me: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > me: forged session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putDevice: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putDevice: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > credits: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > credits: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > topUp: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > topUp: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > exportMe: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > exportMe: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > deleteMe: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > deleteMe: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > eligibleStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > eligibleStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTesterStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTesterStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > updateStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > updateStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > publishStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > publishStudy: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > pauseStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > pauseStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resumeStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resumeStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > closeStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > closeStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyParticipations: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyParticipations: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > consent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > consent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myParticipations: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myParticipations: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > startParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > startParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > withdrawParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > withdrawParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putTaskNote: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putTaskNote: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > uploadEvidence: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > uploadEvidence: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listEvidence: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listEvidence: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > playbackToken: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > playbackToken: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createUploadIntent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createUploadIntent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > completeUploadIntent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > completeUploadIntent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listFindings: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listFindings: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createFinding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createFinding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > approve: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > approve: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > reject: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > reject: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > openDispute: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > openDispute: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resolveDispute: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resolveDispute: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateStudy: forged session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateUser: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateUser: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminAudit: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminAudit: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStuck: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStuck: forged session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDecide: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDecide: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletNonce: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletNonce: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletLink: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletLink: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletUnlink: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletUnlink: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createTransfer: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createTransfer: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitTransferSignature: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitTransferSignature: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTransfer: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTransfer: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > transferBlockhash: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > transferBlockhash: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > participationTransfers: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > participationTransfers: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > aiStatus: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > aiStatus: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createEscrowFunding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createEscrowFunding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getEscrowFunding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getEscrowFunding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > simulatedWalletPayment: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > simulatedWalletPayment: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitFundingSignature: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitFundingSignature: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myPayouts: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myPayouts: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminPayouts: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminPayouts: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myReputation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myReputation: forged session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putLeaderboard: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putLeaderboard: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > leaderboard: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > leaderboard: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminFraud: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminFraud: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putDevice: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putDevice: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > topUp: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > topUp: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > listStudies: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > listStudies: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > eligibleStudies: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > eligibleStudies: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getTesterStudy: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getTesterStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > updateStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > updateStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > publishStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > publishStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > pauseStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > pauseStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resumeStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resumeStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > closeStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > closeStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyParticipations: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyParticipations: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyDisputes: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyDisputes: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > consent: builder → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > consent: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myParticipations: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myParticipations: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > startParticipation: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > startParticipation: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > withdrawParticipation: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > withdrawParticipation: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putTaskNote: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putTaskNote: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitParticipation: builder → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitParticipation: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > uploadEvidence: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > uploadEvidence: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createUploadIntent: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createUploadIntent: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > completeUploadIntent: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > completeUploadIntent: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createFinding: tester → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createFinding: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > approve: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > approve: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > reject: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > reject: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > openDispute: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > openDispute: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myDisputes: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myDisputes: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDisputes: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDisputes: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resolveDispute: tester → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resolveDispute: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStudies: tester → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStudies: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateStudy: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateStudy: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateUser: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateUser: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminAudit: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminAudit: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStuck: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStuck: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDecide: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDecide: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createTransfer: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createTransfer: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitTransferSignature: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitTransferSignature: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > transferBlockhash: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > transferBlockhash: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createEscrowFunding: tester → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createEscrowFunding: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getEscrowFunding: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getEscrowFunding: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > simulatedWalletPayment: tester → 403 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > simulatedWalletPayment: admin → 403 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitFundingSignature: tester → 403 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitFundingSignature: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myPayouts: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myPayouts: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminPayouts: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminPayouts: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myReputation: builder → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myReputation: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putLeaderboard: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putLeaderboard: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminFraud: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminFraud: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getStudy: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > updateStudy: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > publishStudy: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > pauseStudy: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > resumeStudy: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > closeStudy: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > studyParticipations: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > studyDisputes: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createFinding: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > approve: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > reject: builderB → 404 9ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createTransfer: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitTransferSignature: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > transferBlockhash: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createEscrowFunding: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getEscrowFunding: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > simulatedWalletPayment: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitFundingSignature: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > startParticipation: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > withdrawParticipation: testerB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > putTaskNote: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitParticipation: testerB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > uploadEvidence: testerB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > openDispute: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createUploadIntent: testerB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > completeUploadIntent: testerB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getParticipation: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getParticipation: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listEvidence: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listEvidence: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > playbackToken: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > playbackToken: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listFindings: testerB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listFindings: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getTransfer: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getTransfer: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > participationTransfers: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > participationTransfers: builderB → 404 6ms
+ ✓ test/emulator/studies.flows.test.ts > study lifecycle and the test-credit ledger > publish reserves reward × slots, close withdraws in-flight testers and releases the rest 204ms
+ Test Files  29 passed (29)
+      Tests  565 passed | 3 skipped (568)
+✔  Script exited successfully (code 0)
+suite exit 0
