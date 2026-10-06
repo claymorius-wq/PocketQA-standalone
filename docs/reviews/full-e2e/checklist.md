@@ -1,6 +1,6 @@
 # Full E2E acceptance: checklist
 
-Generated from `parts/*.json` by `assemble.py`; `results.json` holds every field. Status counts: BLOCKED 11, FAIL 3, NOT OFFERED 6, NOT RUN 2, PASS 69. By environment: desktop-browser 8, devnet 6, emulator 16, hosted-simulated 41, local-api 6, physical-android 3, static 11.
+Generated from `parts/*.json` by `assemble.py`; `results.json` holds every field. Status counts: BLOCKED 11, FAIL 3, NOT OFFERED 6, NOT RUN 2, PASS 70. By environment: desktop-browser 8, devnet 6, emulator 16, hosted-simulated 42, local-api 6, physical-android 3, static 11.
 
 ## account
 
@@ -116,6 +116,7 @@ Generated from `parts/*.json` by `assemble.py`; `results.json` holds every field
 |---|---|---|---|---|---|
 | L-01 | **PASS** | hosted-simulated | Freeze candidate, deployment identity and enabled features | vercel inspect pocketqa.vercel.app: dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz Ready; serves entry-0e22ecce65b4080a0dad7d009c5007c3.js (byte-identical to pqa-qa rebuild of 7beaad5); /api/config authMode firebase, storage r2, walletLogin false, testCredits true, devnetTransfers false, settlement simulated, googleSignIn true (2026-10-06T18:31:57Z) | docs/reviews/full-e2e/README.md, docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md |
 | L-02 | **PASS** | static | Inventory every exposed route | 23 app screens (expo-router) and 72 API routes (packages/contracts routes) listed; plus cron routes (404 without the secret: H-28). Unauthenticated: 25 private API routes 401 (H-28), 12 private UI routes redirect to /sign-in (H-29). | docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md |
+| L-07 | **PASS** | hosted-simulated | Reviewed fixes deployed: deployment chain during this acceptance pass | dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz (7beaad5, frozen baseline) → dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe (a9d0e7e: Google button + copy fix, pqa-qa r3/r4 APPROVE, bundle bound to QA rebuild entry-d9b5472d…) → dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX (31c2141: E-08 API fix, pqa-qa APPROVE; client bundle unchanged entry-d9b5472d…). Each: Ready, aliased pocketqa.vercel.app, /api/config unchanged (googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated), /api/health ok contractVersion 0.6.1. | docs/verification.md |
 
 ## ledger
 

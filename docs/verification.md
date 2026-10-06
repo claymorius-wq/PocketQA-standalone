@@ -1115,3 +1115,11 @@ webkit https://pocketqa.vercel.app: busy cleared after 8883 ms (aria-busy=false)
 Note (P3): after the Google popup is closed, the button stays busy ~9 s: Firebase waits for a late auth event before reporting popup-closed-by-user; it then returns to idle with no error. Real Google login completion remains human-only.
 
 **Correction (pqa-qa r4, 2026-10-06):** the "console errors = []" lines above cover page load and the click. After the popup opens, Chromium logs 2 console errors, "Cross-Origin-Opener-Policy policy would block the window.closed call.", from Google's popup pages, which set their own COOP. They are third-party and expected, and are why Firebase notices a closed popup only at its ~9 s timeout.
+
+### 2026-10-06: E-08 fix deployed (dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX from 31c2141, pqa-qa APPROVE)
+```
+$ git -C .worktrees/deploy-a9d0e7e checkout --detach 31c2141 (diff vs a9d0e7e: apps/api/src/repo/studies/{firestore,sqlite}.ts + test only); pnpm install --offline --frozen-lockfile
+$ build-deploy-google.mjs → secret scan clean (4/4 server-only variables, 7 values checked); Google-on headers present; entry-d9b5472d9fac233b3df280ddb47bf7fa.js (unchanged client)
+$ vercel deploy --prebuilt --prod → https://pocketqa-n29jca8ld-…vercel.app aliased https://pocketqa.vercel.app; dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX ● Ready
+$ live: entry-d9b5472d…; /api/config googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated; /api/health {"ok":true,"contractVersion":"0.6.1"}
+```

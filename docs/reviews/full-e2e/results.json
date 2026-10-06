@@ -324,6 +324,23 @@
    "owner": "pocketqa-lead"
   },
   {
+   "id": "L-07",
+   "area": "freeze",
+   "title": "Reviewed fixes deployed: deployment chain during this acceptance pass",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+   "sha": "31c2141",
+   "steps": "clean detached worktree per deploy (shared tree had uncommitted work); build-deploy-google.mjs (asserts Google on + popup headers, secret scan 4/4); vercel deploy --prebuilt --prod; vercel inspect; curl /, /api/config, /api/health",
+   "fixtures": {},
+   "observed": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz (7beaad5, frozen baseline) → dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe (a9d0e7e: Google button + copy fix, pqa-qa r3/r4 APPROVE, bundle bound to QA rebuild entry-d9b5472d…) → dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX (31c2141: E-08 API fix, pqa-qa APPROVE; client bundle unchanged entry-d9b5472d…). Each: Ready, aliased pocketqa.vercel.app, /api/config unchanged (googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated), /api/health ok contractVersion 0.6.1.",
+   "evidence": [
+    "docs/verification.md"
+   ],
+   "notes": "Production data written in this pass is synthetic only (labelled \"QA synthetic … be1\").",
+   "owner": "pocketqa-lead"
+  },
+  {
    "id": "H-01",
    "area": "baseline",
    "title": "Live deployment identity and enabled features",
