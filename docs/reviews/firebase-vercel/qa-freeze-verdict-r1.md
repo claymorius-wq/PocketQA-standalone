@@ -60,3 +60,14 @@ I ran all of these in detached `.worktrees/qa-fv-run`, with an offline frozen in
 - the merge to main, by Hamza or the parent.
 
 VERDICT: APPROVE
+
+## Addendum: freeze P3-1 and P3-2 at `ef18694` (tests only)
+- **Scope:** `git diff --stat bfdb55a ef18694 -- . ':!docs'` touches only `apps/api/test/guard-coverage.test.ts` (new) and `apps/api/test/emulator/rules.test.ts` (new). My copied review files are byte-identical (`cmp`).
+- **My runs** (detached `.worktrees/qa-fv-run` at `ef18694`, my emulator ports):
+  - `vitest run test/guard-coverage.test.ts`: **32/32**;
+  - `rules.test.ts` on the emulator: **20/20**.
+- **My own mutations** (both restored; the tree is clean):
+  - `firestore.rules` replaced with **allow-all**: rules test **19 failed / 1 passed**, so the test bites;
+  - the guard `participationPairs` renamed in `src/repo/studies/firestore.ts`: guard-coverage **1 failed / 31 passed**, so a stale or missing mapping fails.
+- **Status:** P3-1 and P3-2 are **fixed**. P3-3 stays in the P5 hosted gate.
+- **The APPROVE extends to `ef18694`**, with the same scope and the same outstanding cloud, hosted and migration gates.
