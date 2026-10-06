@@ -579,6 +579,10 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
       return row;
     },
 
+    async settlementById(id) {
+      return (await settlementOf(id)) ?? null;
+    },
+
     async payoutSettlementOf(participationId) {
       return viaGuard('settlementGuards', `payout:${participationId}`);
     },

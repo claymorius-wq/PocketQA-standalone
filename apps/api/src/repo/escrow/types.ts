@@ -148,6 +148,7 @@ export interface EscrowRepo {
 
   // ── Escrow (T9) ────────────────────────────────────────────────────────────────────────────
   escrowOf(studyId: string): Promise<EscrowRow | undefined>;
+  settlementById(id: string): Promise<SettlementRow | null>;
   /** The participation's payout settlement, if one was authorized. */
   payoutSettlementOf(participationId: string): Promise<SettlementRow | undefined>;
   /** Records the study's on-chain escrow accounts (Squads pilot; after `prepareVault`). */

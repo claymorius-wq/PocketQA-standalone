@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
 import { loadConfig } from '../src/config';
 import { hostedConfig } from '../src/hosted/app';
-import { loadPlatformSigner } from '../src/settlement/squads/devnetSigner';
+import { assertPlatformSigner, loadPlatformSigner } from '../src/settlement/squads/devnetSigner';
 import { DEVNET_GENESIS, MAINNET_GENESIS, PILOT_MINT } from '../src/settlement/squads/pins';
 
 // POCKETQA_ENV=devnet (docs/plans/devnet-phase-contract.md, amendments r1): a NEW mode with its own
@@ -32,6 +32,7 @@ const devnet = {
   POCKETQA_R2_ALLOW_DELETE: '1',
   POCKETQA_SETTLEMENT: 'squads_devnet',
   POCKETQA_DEVNET_PLATFORM_SIGNER: canaryJson,
+  POCKETQA_DEVNET_PLATFORM_PUBKEY: canary.publicKey.toBase58(),
   POCKETQA_DEVNET_ARBITER_PUBKEY: arbiter,
   POCKETQA_DEVNET_FEE_WALLET: feeWallet,
   POCKETQA_DEVNET_ALLOWED_EMAILS: 'devnet-builder@example.test, devnet-tester@example.test',
@@ -53,7 +54,7 @@ describe('POCKETQA_ENV=devnet', () => {
   it('loads: hosted security, Firestore, the Squads devnet settlement, the devnet settings (no key in config)', () => {
     const c = loadConfig(devnet);
     expect(c).toMatchObject({ production: false, staging: false, dataBackend: 'firestore', authMode: 'firebase', storage: 'r2', features: { devnetTransfers: false, settlement: 'squads_devnet' }, pilotKeysDir: null });
-    expect(c.devnet).toEqual({ arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' } });
+    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' } });
     expect(JSON.stringify(c)).not.toContain(canaryJson);
     expect(c.rpcUrl).toBe('https://api.devnet.solana.com');
   });
@@ -70,7 +71,9 @@ describe('POCKETQA_ENV=devnet', () => {
     ['an empty allow-list', { POCKETQA_DEVNET_ALLOWED_EMAILS: '' }, /POCKETQA_DEVNET_ALLOWED_EMAILS/],
     ['a real (non-synthetic) account on the allow-list', { POCKETQA_DEVNET_ALLOWED_EMAILS: 'someone@gmail.com' }, /@example\.test/],
     ['a non-https RPC', { POCKETQA_SOLANA_RPC_URL: 'http://api.devnet.solana.com' }, /https/],
-    ['a mainnet RPC host', { POCKETQA_SOLANA_RPC_URL: 'https://api.mainnet-beta.solana.com' }, /devnet/],
+    ['no pinned platform key', { POCKETQA_DEVNET_PLATFORM_PUBKEY: undefined }, /POCKETQA_DEVNET_PLATFORM_PUBKEY/],
+    ['the arbiter as the platform key', { POCKETQA_DEVNET_PLATFORM_PUBKEY: arbiter }, /three different keys/],
+    ['the fee wallet as the arbiter', { POCKETQA_DEVNET_ARBITER_PUBKEY: feeWallet }, /three different keys/],
     ['the shared demo', { POCKETQA_SHARED_DEMO: '1' }, /shared demo/],
   ])('refuses %s', (_, over, msg) => {
     expect(() => loadConfig({ ...devnet, ...over })).toThrow(msg);
@@ -152,5 +155,21 @@ describe('loadPlatformSigner (CH-D4: one server key, never printed)', () => {
     expect(m).toMatch(/POCKETQA_DEVNET_PLATFORM_SIGNER/);
     expect(m).not.toContain(value);
     expect(m).not.toMatch(/\d+,\d+,\d+/);
+  });
+});
+
+describe('assertPlatformSigner (pqa-qa P2-DA1)', () => {
+  const roles = { platform: canary.publicKey.toBase58(), arbiter, feeWallet };
+  it('accepts the pinned key', () => {
+    expect(() => assertPlatformSigner(canary, roles)).not.toThrow();
+  });
+  it('refuses a different key than the pinned one (e.g. the builder fixture loaded by mistake)', () => {
+    expect(() => assertPlatformSigner(Keypair.generate(), roles)).toThrow(/not POCKETQA_DEVNET_PLATFORM_PUBKEY/);
+  });
+  it('refuses when the platform key is also the study builder wallet (a server-held second vote)', () => {
+    expect(() => assertPlatformSigner(canary, { ...roles, builderWallet: canary.publicKey.toBase58() })).toThrow(/another role/);
+  });
+  it('the RPC host is not trusted to name the cluster (devnet.example.com passes config; the genesis is read at runtime)', () => {
+    expect(() => loadConfig({ ...devnet, POCKETQA_SOLANA_RPC_URL: 'https://devnet.example.com' })).not.toThrow();
   });
 });

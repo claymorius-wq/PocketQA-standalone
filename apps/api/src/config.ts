@@ -40,7 +40,7 @@ export type Config = {
    * and never enters the config. `allowedEmails`: the labelled synthetic accounts that may start a
    * server-signed operation (CH-D1). Null in every other env.
    */
-  devnet?: { arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string } } | null;
+  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string } } | null;
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -331,18 +331,22 @@ const isWalletKey = (s: string | undefined) => {
 /** POCKETQA_ENV=devnet's own guards (devnet-phase-contract.md, amendments r1). Never reads a key. */
 function devnetSettings(env: Record<string, string | undefined>, dataBackend: Config['dataBackend'], rpcUrl: string): NonNullable<Config['devnet']> {
   if (dataBackend !== 'firestore') throw new ConfigError('POCKETQA_ENV=devnet keeps its data in the Firestore devnet namespace (POCKETQA_DATA_BACKEND=firestore).');
-  const rpc = new URL(rpcUrl);
-  if (rpc.protocol !== 'https:') throw new ConfigError('In devnet, POCKETQA_SOLANA_RPC_URL must be https.');
-  // The genesis hash is checked before every signature; this only stops an obvious misconfiguration.
-  if (!rpc.hostname.includes('devnet') || rpc.hostname.includes('mainnet')) throw new ConfigError('In devnet, POCKETQA_SOLANA_RPC_URL must be a Solana devnet RPC.');
+  // Only the transport is checked here: which cluster it is gets proven at runtime, by reading the
+  // genesis hash and the pinned mint account before every signature (pqa-qa P2-DA2).
+  if (new URL(rpcUrl).protocol !== 'https:') throw new ConfigError('In devnet, POCKETQA_SOLANA_RPC_URL must be https.');
   const fromEnv = !!env.POCKETQA_DEVNET_PLATFORM_SIGNER;
   const file = env.POCKETQA_DEVNET_PLATFORM_SIGNER_FILE;
   if (fromEnv === !!file) throw new ConfigError('POCKETQA_ENV=devnet needs exactly one of POCKETQA_DEVNET_PLATFORM_SIGNER (Vercel Preview) or POCKETQA_DEVNET_PLATFORM_SIGNER_FILE (an absolute path, local runs).');
   if (file && !isAbsolute(file)) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_SIGNER_FILE must be an absolute path.');
+  // P2-DA1: the platform signer's public key is pinned, so a mis-set signer variable (the fixture
+  // directory holds every role's key) can't silently give the server a second vote.
+  const platform = env.POCKETQA_DEVNET_PLATFORM_PUBKEY;
+  if (!isWalletKey(platform)) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_PUBKEY must be the platform signer\'s public key (base58).');
   const arbiter = env.POCKETQA_DEVNET_ARBITER_PUBKEY;
   if (!isWalletKey(arbiter)) throw new ConfigError('POCKETQA_DEVNET_ARBITER_PUBKEY must be the arbiter\'s wallet public key (base58).');
   const feeWallet = env.POCKETQA_DEVNET_FEE_WALLET;
   if (!isWalletKey(feeWallet)) throw new ConfigError('POCKETQA_DEVNET_FEE_WALLET must be the platform fee wallet public key (base58).');
+  if (new Set([platform, arbiter, feeWallet]).size !== 3) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_PUBKEY, POCKETQA_DEVNET_ARBITER_PUBKEY and POCKETQA_DEVNET_FEE_WALLET must be three different keys.');
   const allowedEmails = (env.POCKETQA_DEVNET_ALLOWED_EMAILS ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
@@ -350,5 +354,5 @@ function devnetSettings(env: Record<string, string | undefined>, dataBackend: Co
   if (allowedEmails.length === 0) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS must list the synthetic accounts that may start devnet operations.');
   // CH-D1: labelled synthetic accounts only, never a real person's address.
   if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
-  return { arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! } };
+  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! } };
 }

@@ -198,6 +198,10 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       return escrowOf(db, studyId);
     },
 
+    async settlementById(id) {
+      return (db.prepare('SELECT * FROM settlements WHERE id = ?').get(id) as SettlementRow | undefined) ?? null;
+    },
+
     async payoutSettlementOf(participationId) {
       return db.prepare(`SELECT * FROM settlements WHERE kind = 'payout' AND participation_id = ?`).get(participationId) as SettlementRow | undefined;
     },

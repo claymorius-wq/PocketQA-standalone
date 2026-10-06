@@ -115,3 +115,31 @@ Unchanged: `pqa-op1:` + `sha256(kind|studyId|participationId or '-')`, where `ki
   - Its errors name the variable, never its value (tested with a canary key).
 - **What is refused:** the builder and arbiter key files are never read by the server, and setting `POCKETQA_SETTLEMENT_PILOT_KEYS_DIR` in devnet mode is refused.
 - **Never printed:** receipts and logs carry public keys, signatures (stored as prefix + sha256 in evidence) and slots only.
+
+## 6. Route shapes for pqa-be1's client (in `packages/contracts`)
+These are in the contract now, so the client can type against them:
+- `DevnetFundingTransaction`
+- `SettlementApproval`
+- `SubmitSettlementApprovalBody`
+- `SettlementApprovalResult`
+- `DEVNET_COPY`
+- `SettlementStatus` including `awaiting_approval`
+
+Off the devnet deployment, every one of these routes returns `FEATURE_UNAVAILABLE` after the ownership check.
+
+pqa-be1's points 1–4, confirmed or amended:
+1. **`GET /escrow/fundings/:id/transaction`** returns `{ transactionB64, fundingId, studyId, reference, amountUnits, destination, mint, network: 'devnet', copy }`.
+   - **Amended:** `reference` instead of `opId`. A funding isn't a Squads operation; it carries its Solana Pay reference.
+   - `destination` is the study vault's token account, and the funding wallet is the fee payer.
+   - After the wallet broadcasts it, the client calls the existing `POST /escrow/fundings/:id/signature`.
+2. **`network: 'devnet'`** appears in both responses and in `SettlementApprovalResult`. The client refuses anything else.
+3. **Field types:**
+   - `amountUnits` is a JSON safe integer (`PositiveTokenUnits`, ≤ 10¹²).
+   - `destination`, `mint` and `multisig` are base58 (`Base58Address`).
+   - `kind` is one of `payout`, `refund` or `fee`.
+   - `txIndex` is a positive integer, and `opId` matches `pqa-op1:` followed by 64 hex characters.
+4. **`POST /settlements/:id/approval`:**
+   - **Body:** `{ signature, txIndex, opId }`.
+   - **Response:** `SettlementApprovalResult = { settlementId, kind, status, signature | null, network: 'devnet' }`. It's not `Payout`, because refunds and fees have no participation.
+
+The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET_PLATFORM_PUBKEY` is required, and the loaded key must equal it and differ from the arbiter, the fee wallet and the study's builder wallet. That's checked at startup, at multisig creation, and before every signature.

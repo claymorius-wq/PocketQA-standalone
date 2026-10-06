@@ -44,3 +44,16 @@ export function loadPlatformSigner(env: Record<string, string | undefined>): Key
     throw new SignerError(`${name} is not a valid ed25519 keypair (the value is not shown).`);
   }
 }
+
+/**
+ * pqa-qa P2-DA1: the loaded key must be the pinned platform key and no other role's. Checked at
+ * startup, and again by the adapter at multisig creation and before every signature (with the
+ * study's builder wallet, which only exists per study).
+ */
+export function assertPlatformSigner(signer: Keypair, roles: { platform: string; arbiter: string; feeWallet: string; builderWallet?: string }) {
+  const key = signer.publicKey.toBase58();
+  if (key !== roles.platform) throw new SignerError('The loaded platform signer is not POCKETQA_DEVNET_PLATFORM_PUBKEY: refusing to sign.');
+  if (key === roles.arbiter || key === roles.feeWallet || key === roles.builderWallet) {
+    throw new SignerError('The platform signer is also another role (arbiter, fee wallet or builder): refusing to sign (no server-held second vote).');
+  }
+}
