@@ -31,6 +31,14 @@ const EVIDENCE_ROOT = process.env.PQA_EVIDENCE_DIR ?? join(process.cwd(), 'test-
  * status recorded; a refusal STOPS the run, never forced), then link the tester fixture via SIWS.
  */
 const TESTER_PREVIOUS_LINK = process.env.PQA_TESTER_PREVIOUS_LINK ?? '';
+/**
+ * Resume mode (lead, 2026-10-07): segment 1 created and funded this study, then was stopped. Segment 2
+ * starts from it: no study creation and NO new funding (the fund button is never pressed; it only
+ * waits for "Funded on devnet"), and no link changes (a link other than the fixture stops the run).
+ */
+const RESUME_STUDY_ID = process.env.PQA_RESUME_STUDY_ID ?? '';
+const RESUME_PREVIOUS_EVIDENCE = process.env.PQA_RESUME_PREVIOUS_EVIDENCE ?? '';
+if (RESUME_STUDY_ID && TESTER_PREVIOUS_LINK) throw new Error('resume mode never changes links: unset PQA_TESTER_PREVIOUS_LINK');
 const SETTLE_WAIT_MS = Number(process.env.PQA_SETTLE_WAIT_MS ?? 15 * 60_000);
 
 test.skip(process.env.PQA_HOSTED_GO !== '1', 'HOSTED devnet journey: only on the lead’s GO (PQA_HOSTED_GO=1)');
@@ -195,6 +203,7 @@ test.beforeAll(async ({}, info) => {
   run.label = info.project.name;
   run.dir = join(EVIDENCE_ROOT, `${run.label}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   run.title = `Web devnet journey ${run.label} ${Date.now().toString(36)}`;
+  if (RESUME_STUDY_ID) run.chain.segments = { segment: 2, resumesStudy: RESUME_STUDY_ID, segment1Evidence: RESUME_PREVIOUS_EVIDENCE, note: 'segment 1 created and funded the study, then was stopped by the lead; segment 2 resumes it (no creation, no new funding, no link changes)' };
   mkdirSync(run.dir, { recursive: true });
   run.chain.before = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(loadFixtureSeed('tester').address) };
 });
@@ -252,6 +261,25 @@ test('2 · wallets: builder and tester link the fixture wallets (one cancel in t
 
 test('3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish', async () => {
   const b = run.builder!.page;
+  if (RESUME_STUDY_ID) {
+    // Segment 2: the study and its funding exist (segment 1). Never press fund here: only wait for the
+    // server to confirm the existing funding, then publish.
+    await b.goto(`${ORIGIN}/builder/study/${RESUME_STUDY_ID}`);
+    await expect(b.getByTestId('escrow-panel')).toBeVisible({ timeout: 60_000 });
+    run.studyUrl = b.url();
+    // The tester finds it by the title segment 1 gave it (its run.json).
+    run.title = (JSON.parse(readFileSync(join(RESUME_PREVIOUS_EVIDENCE, 'run.json'), 'utf8')) as { title: string }).title;
+    await expect(b.getByText(run.title).first()).toBeVisible();
+    await shotOf(b, 'escrow-panel', 'builder-resumed-study', `resumed study ${RESUME_STUDY_ID}`);
+    await until(b, 'the existing funding confirmed (Funded on devnet)', () => b.getByTestId('escrow-funded').isVisible(), 5 * 60_000);
+    await expect(b.getByTestId('escrow-funded')).toContainText('Funded on devnet');
+    await shotOf(b, 'escrow-panel', 'builder-funded');
+    await b.getByTestId('study-publish').click();
+    await b.getByTestId('confirm-ok').click();
+    await expect(b.getByTestId('study-status')).toContainText('PUBLISHED');
+    await step('builder-published', b);
+    return;
+  }
   await b.getByTestId('tab-studies').click();
   await b.getByTestId('new-study').click();
   await b.getByTestId('study-title').fill(run.title);
