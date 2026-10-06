@@ -274,8 +274,11 @@ test('3 · builder: escrow study on the devnet pilot, fund it in the wallet (can
     await until(b, 'the existing funding confirmed (Funded on devnet)', () => b.getByTestId('escrow-funded').isVisible(), 5 * 60_000);
     await expect(b.getByTestId('escrow-funded')).toContainText('Funded on devnet');
     await shotOf(b, 'escrow-panel', 'builder-funded');
-    await b.getByTestId('study-publish').click();
-    await b.getByTestId('confirm-ok').click();
+    // A resumed study may already be published (an earlier segment did it): never publish twice.
+    if (!/PUBLISHED/.test(await b.getByTestId('study-status').innerText())) {
+      await b.getByTestId('study-publish').click();
+      await b.getByTestId('confirm-ok').click();
+    }
     await expect(b.getByTestId('study-status')).toContainText('PUBLISHED');
     await step('builder-published', b);
     return;
@@ -326,8 +329,9 @@ test('3 · builder: escrow study on the devnet pilot, fund it in the wallet (can
 test('4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits', async () => {
   const t = run.tester!.page;
   await t.getByTestId('tab-discover').click();
-  await until(t, 'the study in Discover', () => t.getByText(run.title).isVisible(), 60_000);
-  await t.getByText(run.title).click();
+  // The card shows the title more than once (a bare getByText is a strict-mode error, which the wait swallowed).
+  await until(t, 'the study in Discover', () => t.getByText(run.title).first().isVisible(), 60_000);
+  await t.getByText(run.title).first().click();
   await step('tester-study-detail', t);
   await t.getByTestId('consent-checkbox').click();
   await t.getByTestId('consent-reward-wallet').click();
