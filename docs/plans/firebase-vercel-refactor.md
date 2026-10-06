@@ -357,3 +357,49 @@ A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this
 **Tests:** `test/staging-config.test.ts` (12, RED → GREEN). The production rules are unchanged (production-config tests pass).
 
 **Real production** (no test credits) stays a separate later step, gated on a real payment decision.
+
+### R12: every mutating route has a retry rule (pqa-qa early code review r1 P2-F, 2026-10-06)
+
+R10's reservation replays a *completed* request. The gap is crash-after-commit: the effect committed but
+the completion write never happened (crash, timeout, failed write), so a retry with the same key
+runs the handler again. Every non-GET route therefore needs one of these rules:
+
+- **G** (guarded): a guard doc or state transition in the same transaction refuses a second effect.
+  The retry gets 409 or returns the existing row.
+- **D** (deterministic id): every create uses `ctx.idemId(purpose)` = `i` + sha256(`uid:route:key:purpose`)[0..31].
+  A retry recreates the same doc. The repo must treat "already exists" as "return the existing
+  row". It must not throw and must not apply side effects again (ledger, audit).
+- **N** (naturally idempotent): an overwrite, a delete, or a fresh short-lived credential where a
+  duplicate costs nothing.
+
+Public and `identity` routes have no user, so no Idempotency-Key applies. Their guards are listed anyway.
+
+| Route | Rule | Basis / owner |
+|---|---|---|
+| register, identitySession | G | userEmails + identities guards (retry → 409) |
+| login, walletLoginChallenge, walletNonce, playbackToken | N | a new short-lived credential/nonce each call |
+| walletLogin, walletLink | G | the nonce is consumed once; wallet-link guard |
+| logout, walletUnlink, deleteMe | N | delete; a second call finds nothing or is 401 |
+| putDevice, putTaskNote, putLeaderboard, updateStudy | N | overwrite (updateStudy: draft only, tasks replaced wholesale) |
+| exportMe | N | read only |
+| **topUp** | **D** | ledger tx id + posting ids from `idemId('ledger')` (**be1**) |
+| **createStudy** | **D** | study id `idemId('study')`, task ids `idemId('task:'+i)` (**be1**) |
+| **createFinding** | **D** | finding id `idemId('finding')` (**be1**) |
+| **moderateStudy** | **D** | audit id `idemId('audit')`; a repeat with an existing audit row is a no-op (**be1**) |
+| moderateUser | D | done in `6357aef` (lead); covered by `test/idempotency-retry.test.ts` |
+| publish/pause/resume/closeStudy | G | status transition in the same tx as any ledger posting |
+| consent | G | `participationPairs/{study}_{tester}` |
+| start/withdraw/submitParticipation, approve, reject, adminDecide, resolveDispute | G | status transition; one credit at most |
+| openDispute | G | `disputeByParticipation/{pid}` |
+| adminFraud | G | upholdFraud: state check in the tx (**be3**: confirm a second call can't double-reverse) |
+| uploadEvidence | D | local storage only (r2 refuses). Evidence id `idemId('evidence')`; object key stays random (**be2**) |
+| createUploadIntent | G | one open intent per (participation, segment) |
+| completeUploadIntent | G | `claimIntent`; a retry after completion should return the existing evidence (**be2**: confirm) |
+| **createTransfer** | **D** | devnet only, never hosted (`devnetTransfers: !secured`). Id from `idemId('transfer')` (**be3**) |
+| submitTransferSignature, submitFundingSignature | G | signature guard |
+| **createEscrowFunding** | **D or G** | `idemId('funding')`, or one open funding per study (**be3**) |
+| simulatedWalletPayment | G | funding status transition |
+
+Gate: each **D** route gets a crash-after-commit test with the same shape as `test/idempotency-retry.test.ts`
+(`completeIdempotency` fails once, the retry succeeds, exactly one effect). Each repo that turns
+"exists" into "return existing" also gets a direct emulator test on Firestore.
