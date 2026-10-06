@@ -484,3 +484,15 @@ describe('liveness when a claimed Squads index is never filled (pqa-qa P3-F4)', 
     expect(r2.tx_index).toBe(1); // p2 took the released index
   });
 });
+
+describe('the approval route after the vote is on chain (E-28 #3)', () => {
+  it('offers no second vote transaction: 409 ALREADY_APPROVED, nothing built', async () => {
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    const { s } = await approveAsBuilder(p!.id);
+    const built = chain.built.length;
+    await expect(adapter.approval(s, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'ALREADY_APPROVED' });
+    expect(chain.built.length).toBe(built);
+  });
+});

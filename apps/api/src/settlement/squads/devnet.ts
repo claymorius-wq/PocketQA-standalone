@@ -463,6 +463,10 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   async approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval> {
     const r = await this.waitingFor(s, builderWallet);
+    // E-28 #3: once the vote is on chain a second one would only fail in the wallet (Squads 6008):
+    // say so instead of offering another transaction.
+    const p = await this.d.chain.getProposal(r.multisig, BigInt(r.tx_index));
+    if (p?.approved.includes(builderWallet)) throw fail('ALREADY_APPROVED', 'You already approved this payment; Pocket QA completes it on devnet.');
     await this.guardForWallet(builderWallet);
     const tx = await this.d.chain.buildCosignerApprove(r.multisig, BigInt(r.tx_index), builderWallet);
     return {

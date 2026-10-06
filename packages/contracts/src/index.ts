@@ -78,6 +78,8 @@ export const ErrorCode = z.enum([
   'COSIGNER_NOT_SEEN',
   /** Devnet: the study's escrow vault is still being created on chain; try again shortly. */
   'VAULT_NOT_READY',
+  /** Devnet: the member's vote on this payment is already on chain; no second vote transaction is offered. */
+  'ALREADY_APPROVED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
