@@ -143,3 +143,20 @@ pqa-be1's points 1–4, confirmed or amended:
    - **Response:** `SettlementApprovalResult = { settlementId, kind, status, signature | null, network: 'devnet' }`. It's not `Payout`, because refunds and fees have no participation.
 
 The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET_PLATFORM_PUBKEY` is required, and the loaded key must equal it and differ from the arbiter, the fee wallet and the study's builder wallet. That's checked at startup, at multisig creation, and before every signature.
+
+## 7. Landed for pqa-be2's stage 2 (types in `devnetTypes.ts`)
+- **(b) The receipt** is `DevnetReceipt` (the `squadsAttempts/{settlementId}` doc), with `ReceiptStep` and `ReceiptState`, and the lease life is `DEVNET_OP_LEASE_MS = 30_000`. The receipt adds:
+  - `uid`, the builder whose cap the payment counts against;
+  - `reserved_lamports`;
+  - `refusal`, which holds operator copy grounded in a fresh chain read.
+- **(c) The namespace:** `devnetFirestore(fs)` in `src/firestore/namespace.ts`, with root `DEVNET_ROOT = 'pocketqaNamespaces/devnet'`.
+  - `makeRepos({ kind: 'firestore', fs, namespace: 'devnet' })` applies it.
+  - `r2Store(r2, { keyPrefix: 'devnet/' })` puts R2 objects under `devnet/`.
+  - Tests: setting `PQA_TEST_NAMESPACE=devnet` with `PQA_TEST_BACKEND=firestore` runs any suite under both, and `t.fs` is namespaced too.
+- **pqa-be2's P2 (liveness), adopted:** lamports are reserved for a **whole operation** when it starts, never per step.
+  - **A payment** reserves `paymentLamports(destinationAtaMissing)` atomically when it claims its Squads index: vault tx, proposal, approve and execute, plus the destination token account's rent if it's missing, plus `RETRY_MARGIN_LAMPORTS`. If that doesn't fit, it's refused up front with `409 DEVNET_SPEND_CAP` and nothing signed.
+  - **A study vault** reserves `VAULT_LAMPORTS` when its multisig is prepared.
+  - **On finalize,** the reservation is trued up to what the landed transactions actually cost, and the remainder is released.
+  - **Per-step estimates:** `STEP_LAMPORTS`.
+  - **Replaces §4's per-transaction rule.** The idempotency key is now the operation, `devnetSpendReservations/{opKey}`, not the transaction signature. Re-broadcasts and rebuilds don't reserve again.
+- **Still to land:** (a) the `devnetSettlement()` factory with the step machine.

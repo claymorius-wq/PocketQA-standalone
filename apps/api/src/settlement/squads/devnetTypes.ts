@@ -89,13 +89,19 @@ export interface BuilderWallet {
 }
 
 /**
- * Spend caps (CH-D1), checked durably before every platform-signed broadcast.
- * - lamports: fees plus rent of platform-signed transactions (the `estLamports` of each), reserved
- *   once per transaction signature; a rebuilt transaction releases its expired predecessor's
- *   reservation in the same Firestore transaction.
+ * Spend caps (CH-D1), checked durably before any platform-signed broadcast.
+ * - lamports (fees plus rent of platform-signed transactions) are reserved for a WHOLE operation
+ *   when it starts, never per step (pqa-be2 P2: per-step reservations let concurrent payouts each
+ *   take a first step and strand all of them half-created). A payment reserves
+ *   `paymentLamports(destinationAtaMissing)` atomically when it claims its Squads index, and is
+ *   refused up front (409 DEVNET_SPEND_CAP, nothing signed) if that doesn't fit. A study's vault
+ *   reserves `VAULT_LAMPORTS` when the multisig is prepared. On finalize the reservation is trued up
+ *   to what the landed transactions actually cost, releasing the remainder.
  * - usdcUnits: test USDC entering the system, reserved when a funding request is opened (the only
- *   way funds enter; payouts and refunds move funds already reserved).
- * A reservation that would exceed a cap is refused before signing (409 DEVNET_SPEND_CAP).
+ *   way funds enter; payouts, refunds and the fee sweep move funds already reserved).
+ * Reservations are guard docs (`devnetSpendReservations/{opKey}`), so a retried claim or a
+ * re-broadcast never reserves twice; totals are read and written in the same transaction, so N
+ * concurrent claims at the last unit of headroom give exactly one success.
  */
 export type DevnetLimits = {
   global: { lamports: number; usdcUnits: number };
@@ -106,4 +112,73 @@ export type DevnetLimits = {
 export const DEFAULT_DEVNET_LIMITS: DevnetLimits = {
   global: { lamports: 50_000_000, usdcUnits: 3_000_000 },
   perUser: { lamports: 50_000_000, usdcUnits: 3_000_000 },
+};
+
+/**
+ * Upper estimates of what each platform-signed step costs (fee plus the rent it pays), in
+ * lamports. A payment (vault tx + proposal + approve + execute) is about 5.14M, as measured on the
+ * pilot (amendments r1 CH-D1); a token account's rent is 2,039,280.
+ */
+export const STEP_LAMPORTS: Record<DevnetStep, number> = {
+  multisig_create: 1_825_000,
+  vault_ata_create: 2_044_280,
+  dest_ata_create: 2_044_280,
+  vault_tx_create: 3_005_000,
+  proposal_create: 2_120_000,
+  approve_platform: 5_000,
+  execute: 10_000,
+};
+/** Rebuilds after an expired, unlanded broadcast cost nothing; a landed failure costs one fee: this covers a few. */
+export const RETRY_MARGIN_LAMPORTS = 20_000;
+export const paymentLamports = (destinationAtaMissing: boolean) =>
+  STEP_LAMPORTS.vault_tx_create + STEP_LAMPORTS.proposal_create + STEP_LAMPORTS.approve_platform + STEP_LAMPORTS.execute + (destinationAtaMissing ? STEP_LAMPORTS.dest_ata_create : 0) + RETRY_MARGIN_LAMPORTS;
+export const VAULT_LAMPORTS = STEP_LAMPORTS.multisig_create + STEP_LAMPORTS.vault_ata_create + RETRY_MARGIN_LAMPORTS;
+
+/** A per-operation lease's life. Every write and every broadcast re-checks the fence first. */
+export const DEVNET_OP_LEASE_MS = 30_000;
+
+/** One platform-signed step as the receipt records it: message and signature stored BEFORE broadcast (CH-D5). */
+export type ReceiptStep = {
+  message_b64: string;
+  signature: string;
+  last_valid_block_height: number;
+  est_lamports: number;
+  status: 'prepared' | 'sent' | 'finalized' | 'failed';
+  slot: number | null;
+  fee_lamports: number | null;
+};
+
+export type ReceiptState = 'claimed' | 'created' | 'proposed' | 'awaiting_cosigner' | 'approved' | 'executed' | 'finalized' | 'refused';
+
+/**
+ * The receipt of one payment (payout, refund or fee sweep): `squadsAttempts/{settlementId}` in the
+ * devnet namespace. Written before the first broadcast; every later write is fenced by `lease`.
+ */
+export type DevnetReceipt = {
+  settlement_id: string;
+  kind: 'payout' | 'refund' | 'fee';
+  study_id: string;
+  participation_id: string | null;
+  /** The user whose spend cap the payment counts against (the study's builder). */
+  uid: string;
+  op_id: string;
+  multisig: string;
+  vault_authority: string;
+  vault_ata: string;
+  destination: string;
+  destination_ata: string;
+  amount_units: number;
+  cosigner: 'builder' | 'arbiter';
+  cosigner_key: string;
+  /** Claimed index; guard `squadsTx/{multisig}:{index}` (R2 row 33). */
+  tx_index: number;
+  /** Lamports reserved for the whole payment (`paymentLamports`), trued up on finalize. */
+  reserved_lamports: number;
+  steps: Partial<Record<DevnetStep, ReceiptStep>>;
+  state: ReceiptState;
+  /** Why the payment stopped for an operator (state 'refused'), from a fresh chain read; never a guess. */
+  refusal: string | null;
+  lease: { holder: string; fence: number; until: number } | null;
+  created_at: number;
+  updated_at: number;
 };
