@@ -1,6 +1,7 @@
 import { base58, base64 } from '@scure/base';
 import { approvalPlan, approveIx, ATTACKER, COPY, encodeV0, fundingPlan, LINKED, MINT, MULTISIG, OP, REFERENCE, systemTransferIx, transferCheckedIx, VAULT_ATA } from '../test-support/devnetTx';
 import type { ServerTxPlan } from '../src/wallet/serverTx';
+import type { SettlementApproval } from '@pocket-qa/contracts';
 import type { StandardWallet } from '../src/wallet/standard';
 
 // The devnet pilot's server-built transactions (escrow funding; the builder's Squads approval,
@@ -16,7 +17,7 @@ const mockWallets: StandardWallet[] = [];
 jest.mock('../src/wallet/registry', () => ({ availableWallets: () => mockWallets }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { checkServerTxPlan, DEVNET_PILOT_COPY } = require('../src/wallet/serverTx') as typeof import('../src/wallet/serverTx');
+const { applyVaultRead, checkServerTxPlan, DEVNET_PILOT_COPY } = require('../src/wallet/serverTx') as typeof import('../src/wallet/serverTx');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const android = require('../src/wallet/signServerTransaction.android') as typeof import('../src/wallet/signServerTransaction.android');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -29,6 +30,8 @@ const someone = ATTACKER;
 const plan = (over: Record<string, unknown> = {}) => approvalPlan(over) as unknown as ServerTxPlan;
 const funding = (over: Record<string, unknown> = {}) => fundingPlan(over) as unknown as ServerTxPlan;
 const ctx = { settlement: 'squads_devnet' as const, linkedWallet: linked };
+/** A funding is always checked against this request's vault (pqa-qa CS2). */
+const fctx = { ...ctx, expectedDestination: VAULT_ATA };
 
 describe('checkServerTxPlan (the bytes must match the template; pqa-qa P2-CS1)', () => {
   it('a vote: the multisig and proposal are checked in the bytes; the payment details are only described', () => {
@@ -61,11 +64,11 @@ describe('checkServerTxPlan (the bytes must match the template; pqa-qa P2-CS1)',
     ['no linked wallet', plan(), { ...ctx, linkedWallet: null }, /Link your devnet wallet/],
     ['another fee payer', plan({ transactionB64: encodeV0([approveIx()], ATTACKER) }), ctx, /fee payer/],
     ['already signed', plan({ transactionB64: encodeV0([approveIx()], LINKED, true) }), ctx, /already signed/],
-    ['QA repro: a System transfer of 1 SOL presented as a funding', funding({ transactionB64: encodeV0([systemTransferIx()]) }), ctx, /TransferChecked/],
+    ['QA repro: a System transfer of 1 SOL presented as a funding', funding({ transactionB64: encodeV0([systemTransferIx()]) }), fctx, /TransferChecked/],
     ['a System transfer next to the vote', plan({ transactionB64: encodeV0([approveIx(), systemTransferIx()]) }), ctx, /extra instruction/],
     ['a vote for another payment index', plan({ transactionB64: encodeV0([approveIx(5n)]) }), ctx, /proposal/],
-    ['a funding whose bytes move another amount than the plan says', funding({ transactionB64: encodeV0([transferCheckedIx({ amount: 9_999_999n })]) }), ctx, /amount/],
-    ['a funding to another destination', funding({ transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) }), ctx, /destination/],
+    ['a funding whose bytes move another amount than the plan says', funding({ transactionB64: encodeV0([transferCheckedIx({ amount: 9_999_999n })]) }), fctx, /amount/],
+    ['a funding to another destination', funding({ transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) }), fctx, /destination/],
     ['a funding to a destination that is not this study’s vault', funding({ destination: ATTACKER, transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) }), { ...ctx, expectedDestination: VAULT_ATA }, /vault/],
     ['a fractional amount', plan({ amountUnits: 1.5 }), ctx, /amount/],
     ['a zero amount', plan({ amountUnits: 0 }), ctx, /amount/],
@@ -75,6 +78,37 @@ describe('checkServerTxPlan (the bytes must match the template; pqa-qa P2-CS1)',
   ])('refuses: %s', (_name, p, c, msg) => {
     expect(() => checkServerTxPlan(p, c)).toThrow(msg);
     expect(() => checkServerTxPlan(p, c)).toThrow(/Nothing was signed\./);
+  });
+});
+
+describe('pqa-qa CS2: a funding needs the vault of this funding request', () => {
+  it('refuses a funding plan when the screen gave no vault to compare', () => {
+    expect(() => checkServerTxPlan(funding(), ctx)).toThrow(/study’s vault.*Nothing was signed\./);
+  });
+});
+
+describe('pqa-qa CS3: the payment a vote approves, read on Solana devnet', () => {
+  const vote = () => plan() as unknown as SettlementApproval;
+  it('checked: amount, recipient and operation id move to the checked rows; nothing is left described', () => {
+    const c = applyVaultRead(checkServerTxPlan(vote(), ctx), vote(), { state: 'checked', amountUnits: 1_500_000, recipient: someone, opId: OP });
+    expect(c.checked.map((r) => r.label)).toEqual(['Vote in multisig', 'On payment proposal', 'Amount', 'To', 'Operation id']);
+    expect(c.checked.slice(2).map((r) => r.value)).toEqual(['1.50 devnet test USDC', someone, OP]);
+    expect(c.described).toEqual([]);
+    expect(c.describedNote).toBeUndefined();
+  });
+  it('unavailable: the rows stay described, and the note says why it wasn’t checked', () => {
+    const c = applyVaultRead(checkServerTxPlan(vote(), ctx), vote(), { state: 'unavailable', reason: 'We couldn’t reach Solana devnet' });
+    expect(c.checked.map((r) => r.label)).toEqual(['Vote in multisig', 'On payment proposal']);
+    expect(c.described.map((r) => r.label)).toEqual(['Amount', 'To', 'Operation id']);
+    expect(c.describedNote).toBe('We couldn’t reach Solana devnet');
+  });
+  it('mismatch: refused, nothing signed', () => {
+    expect(() => applyVaultRead(checkServerTxPlan(vote(), ctx), vote(), { state: 'mismatch', reason: 'The payment on Solana devnet doesn’t match what Pocket QA described: the amount differs.' })).toThrow(
+      /the amount differs\. Nothing was signed\./,
+    );
+  });
+  it('a checked read that disagrees with the plan is refused too (defence in depth)', () => {
+    expect(() => applyVaultRead(checkServerTxPlan(vote(), ctx), vote(), { state: 'checked', amountUnits: 1, recipient: someone, opId: OP })).toThrow(/Nothing was signed/);
   });
 });
 

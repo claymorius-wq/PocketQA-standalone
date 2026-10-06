@@ -1,5 +1,5 @@
 import { base58, base64 } from '@scure/base';
-import { associatedTokenAddress, PILOT_MINT, squadsProposalPda } from '@pocket-qa/domain';
+import { associatedTokenAddress, PILOT_MINT, squadsProposalPda, squadsVaultPda, VAULT_TRANSACTION_DISCRIMINATOR } from '@pocket-qa/domain';
 
 // Test fixture: hand-encoded v0 transactions for the devnet pilot's server-built templates
 // (packages/domain devnetTemplates.ts). The fee payer is the first static key and the only signer.
@@ -57,3 +57,23 @@ export const fundingPlan = (over: Record<string, unknown> = {}) => ({
   transactionB64: encodeV0([transferCheckedIx()]), fundingId: 'f-1', studyId: 's-1', reference: REFERENCE, amountUnits: 2_200_000,
   destination: VAULT_ATA, mint: MINT, network: 'devnet', copy: COPY, ...over,
 });
+
+// ── The Squads VaultTransaction account a vote approves (layout pinned in packages/domain vaultTransfer.test.ts) ──
+const MEMO = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+const u32 = (n: number) => Array.from(new Uint8Array(new Uint32Array([n]).buffer));
+export const VAULT = squadsVaultPda(MULTISIG, 0);
+/** The VaultTransaction for approvalPlan(): 1.50 test USDC from the vault to ATTACKER's token account, memo OP. */
+export function vaultAccount(o: { amount?: bigint; recipient?: string; opId?: string; index?: bigint } = {}): string {
+  const ixs: Ix[] = [
+    { program: TOKEN, accounts: [associatedTokenAddress(VAULT, MINT), MINT, associatedTokenAddress(o.recipient ?? ATTACKER, MINT), VAULT], data: [12, ...u64(o.amount ?? 1_500_000n), 6] },
+    { program: MEMO, accounts: [], data: Array.from(new TextEncoder().encode(o.opId ?? OP)) },
+  ];
+  const keys: string[] = [];
+  for (const ix of ixs) for (const k of [...ix.accounts, ix.program]) if (!keys.includes(k)) keys.push(k);
+  const b: number[] = [...VAULT_TRANSACTION_DISCRIMINATOR, ...base58.decode(MULTISIG), ...base58.decode(LINKED), ...u64(o.index ?? 4n), 254, 0, 255, ...u32(0), 1, 1, 2, ...u32(keys.length)];
+  for (const k of keys) b.push(...base58.decode(k));
+  b.push(...u32(ixs.length));
+  for (const ix of ixs) b.push(keys.indexOf(ix.program), ...u32(ix.accounts.length), ...ix.accounts.map((a) => keys.indexOf(a)), ...u32(ix.data.length), ...ix.data);
+  b.push(...u32(0));
+  return base64.encode(Uint8Array.from(b));
+}

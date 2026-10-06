@@ -23,6 +23,8 @@ jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'p1' }), Re
 // The builder's linked devnet wallet (used by the devnet pilot's payout approval).
 jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder', wallet: { address: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV' } }, features: { testCredits: true, devnetTransfers: true } }) }));
 const mockSign = jest.fn();
+// The devnet read of a vote's payment (devnetRpc.ts, tested on its own); never the network here.
+jest.mock('../src/wallet/devnetRpc', () => ({ readVaultTransfer: async () => ({ state: 'unavailable', reason: 'We couldn’t reach Solana devnet to read the payment' }) }));
 jest.mock('../src/wallet/signServerTransaction', () => ({ signServerTransaction: (...a: unknown[]) => mockSign(...a) }));
 jest.mock('expo-video', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');

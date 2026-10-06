@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { useSession } from '../auth/SessionProvider';
 import { Button, Card, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList } from '../ui/patterns';
-import { checkServerTxPlan, type CheckedPlan, type ServerTxPlan, type SignContext } from './serverTx';
+import { readVaultTransfer } from './devnetRpc';
+import { applyVaultRead, checkServerTxPlan, type CheckedPlan, type ServerTxPlan, type SignContext } from './serverTx';
 import { signServerTransaction } from './signServerTransaction';
 
 const KIND: Record<CheckedPlan['kind'], string> = {
@@ -15,7 +16,7 @@ const KIND: Record<CheckedPlan['kind'], string> = {
 
 /**
  * Devnet pilot: a server-built transaction for the builder's wallet, in two steps. "Review" loads
- * it and shows the decoded plan (what, how much, to whom, the operation id or funding reference,
+ * it (for a vote, also reads the payment it approves on devnet) and shows the decoded plan (what, how much, to whom, the operation id or funding reference,
  * the signing wallet and the pilot copy); only then does "Sign" ask the wallet, which sends it,
  * and the signature is submitted. Every check and refusal is in serverTx.ts; a refusal shows its
  * reason and nothing is signed.
@@ -51,7 +52,10 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
     setLoaded(null);
     try {
       const plan = await props.load();
-      setLoaded({ plan, checked: checkServerTxPlan(plan, ctx) });
+      let checked = checkServerTxPlan(plan, ctx);
+      // A vote: read the payment it approves on devnet (pqa-qa CS3); a funding's bytes already hold it.
+      if (!('fundingId' in plan)) checked = applyVaultRead(checked, plan, await readVaultTransfer(plan));
+      setLoaded({ plan, checked });
     } catch (e) {
       setError(message(e));
     } finally {
@@ -92,7 +96,12 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
           </KeyValueList>
           {c.described.length ? (
             <>
-              <Text variant="label">As described by Pocket QA (not in this transaction; checked on chain before it executes)</Text>
+              <Text variant="label">As described by Pocket QA (not in this transaction)</Text>
+              {c.describedNote ? (
+                <Text variant="small" tone="muted" testID={`${props.testID}-described-note`}>
+                  {`Not checked on Solana devnet: ${c.describedNote}.`}
+                </Text>
+              ) : null}
               <KeyValueList testID={`${props.testID}-described`}>
                 {c.described.map((r) => (
                   <KeyValue key={r.label} label={r.label} value={r.value} />

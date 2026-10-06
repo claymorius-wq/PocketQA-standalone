@@ -27,6 +27,9 @@ jest.mock('../src/api/client', () => {
   }
   return { ApiError, api: (...a: unknown[]) => mockApi(...a) };
 });
+const mockRead = jest.fn();
+// The devnet read of a vote's payment (devnetRpc.ts, tested on its own); never the network here.
+jest.mock('../src/wallet/devnetRpc', () => ({ readVaultTransfer: (...a: unknown[]) => mockRead(...a) }));
 const mockSign = jest.fn();
 jest.mock('../src/wallet/signServerTransaction', () => ({ signServerTransaction: (...a: unknown[]) => mockSign(...a) }));
 
@@ -54,6 +57,8 @@ const settle = () => act(async () => { await Promise.resolve(); await Promise.re
 beforeEach(() => {
   mockApi.mockReset();
   mockSign.mockReset();
+  mockRead.mockReset();
+  mockRead.mockResolvedValue({ state: 'unavailable', reason: 'We couldn’t reach Solana devnet to read the payment' });
   mockUser = { id: 'b1', role: 'builder', wallet: { address: linked } };
 });
 
@@ -79,7 +84,10 @@ describe('ServerTxSign', () => {
     // A vote's bytes don't hold the amount or destination: shown as described, never as checked (P2-CS1).
     expect(planCard).not.toHaveTextContent(has('1.50 devnet test USDC'));
     expect(planCard).not.toHaveTextContent(has(ATTACKER));
-    expect(screen.getByText(/As described by Pocket QA \(not in this transaction/)).toBeTruthy();
+    expect(mockRead).toHaveBeenCalledWith(approval());
+    expect(screen.getByText(/As described by Pocket QA \(not in this transaction\)/)).toBeTruthy();
+    expect(screen.queryByText(/checked on chain/)).toBeNull(); // pqa-qa CS3: no claim the client didn't make
+    expect(screen.getByTestId('t-described-note')).toHaveTextContent(/couldn’t reach Solana devnet/);
     const described = screen.getByTestId('t-described');
     expect(described).toHaveTextContent(has('1.50 devnet test USDC'));
     expect(described).toHaveTextContent(has(ATTACKER));
@@ -90,6 +98,38 @@ describe('ServerTxSign', () => {
     expect(mockSign).toHaveBeenCalledWith(approval(), { settlement: 'squads_devnet', linkedWallet: linked }, expect.any(Function));
     expect(submit).toHaveBeenCalledWith('5igSent', approval());
     expect(onDone).toHaveBeenCalled();
+  });
+
+  it('pqa-qa CS3: the payment read on devnet matches → amount, recipient and op id are checked, nothing is described', async () => {
+    mockRead.mockResolvedValue({ state: 'checked', amountUnits: 1_500_000, recipient: ATTACKER, opId: OP });
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" reviewLabel="Review" signLabel="Sign" load={async () => approval()} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    const planCard = screen.getByTestId('t-plan');
+    expect(planCard).toHaveTextContent(has('1.50 devnet test USDC'));
+    expect(planCard).toHaveTextContent(has(ATTACKER));
+    expect(planCard).toHaveTextContent(has(OP));
+    expect(screen.queryByTestId('t-described')).toBeNull();
+    expect(screen.queryByText(/As described by Pocket QA/)).toBeNull();
+    expect(screen.getByTestId('t-sign')).toBeTruthy();
+  });
+
+  it('pqa-qa CS3: the payment on devnet differs from the plan → refused, nothing to sign', async () => {
+    mockRead.mockResolvedValue({ state: 'mismatch', reason: 'The payment on Solana devnet doesn’t match what Pocket QA described: the amount differs.' });
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" reviewLabel="Review" signLabel="Sign" load={async () => approval()} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    expect(screen.getByTestId('t-error')).toHaveTextContent(/the amount differs\. Nothing was signed\./);
+    expect(screen.queryByTestId('t-sign')).toBeNull();
+    expect(mockSign).not.toHaveBeenCalled();
+  });
+
+  it('a funding is never read as a vote on devnet (its bytes already hold the transfer)', async () => {
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" expectedDestination={vault} reviewLabel="Review" signLabel="Sign" load={async () => fundingPlan() as never} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    expect(screen.getByTestId('t-plan')).toBeTruthy();
+    expect(mockRead).not.toHaveBeenCalled();
   });
 
   it('a plan the client refuses shows why and never offers to sign', async () => {
