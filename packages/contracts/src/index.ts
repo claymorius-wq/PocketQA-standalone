@@ -1,6 +1,8 @@
 // Pocket QA API contract (lead-authored foundation; backend owns changes after the
 // foundation commit, and every change needs an entry in docs/decisions/contract-changes.md).
 // All request and response bodies are validated with these schemas on both sides.
+// Must stay the first import: see zodConfig.ts.
+import './zodConfig';
 import { z } from 'zod';
 
 export * from './siws';

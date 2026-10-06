@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -10,7 +12,8 @@ const run = (args, env) => spawnSync(process.execPath, [BUILD, ...args], { env: 
 
 describe('vercel build --deploy', () => {
   it('refuses when a server-only variable is missing, naming it, before writing anything', () => {
-    const r = run(['--deploy'], { POCKETQA_R2_ACCESS_KEY_ID: 'x'.repeat(16), POCKETQA_R2_SECRET_ACCESS_KEY: 'y'.repeat(16), CRON_SECRET: 'z'.repeat(40) });
+    const r = run(['--deploy'], { // check-secrets: allow (fake values; the run refuses before building)
+      POCKETQA_R2_ACCESS_KEY_ID: 'x'.repeat(16), POCKETQA_R2_SECRET_ACCESS_KEY: 'y'.repeat(16), CRON_SECRET: 'z'.repeat(40) });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /missing: FIREBASE_SERVICE_ACCOUNT_JSON/);
   });
@@ -23,9 +26,14 @@ describe('vercel build --deploy', () => {
 
   it('the scan refuses (and deletes) an output that contains a server-only value', () => {
     // A stand-in "secret" that the output is known to contain (a header name in config.json).
-    const r = run(['--skip-web'], { CRON_SECRET: 'x-content-type-options' });
-    assert.notEqual(r.status, 0);
-    assert.match(r.stderr, /secret scan: \d+ match/);
-    assert.equal(spawnSync('test', ['-e', join(import.meta.dirname, '../.vercel/output')]).status, 1);
+    const out = join(mkdtempSync(join(tmpdir(), 'pqa-vercel-')), 'output');
+    try {
+      const r = run(['--skip-web', '--out', out], { CRON_SECRET: 'x-content-type-options' }); // check-secrets: allow (a header name planted as a fake secret)
+      assert.notEqual(r.status, 0);
+      assert.match(r.stderr, /secret scan: \d+ match/);
+      assert.equal(existsSync(out), false);
+    } finally {
+      rmSync(join(out, '..'), { recursive: true, force: true });
+    }
   });
 });
