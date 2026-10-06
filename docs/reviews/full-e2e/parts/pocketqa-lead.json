@@ -42,7 +42,7 @@
   "sha": "a9d0e7e",
   "steps": "",
   "fixtures": {},
-  "observed": "Live dpl_TRefQGTd (entry-d9b5472d…, from a9d0e7e; pqa-qa r3 APPROVE). Official G light/dark (sha-pinned), Google-approved colours measured (light rgb(255,255,255)/rgb(116,119,117), dark rgb(19,19,20)/rgb(142,145,143)), x/width equal to the primary on /sign-in and /sign-up at 390 (16/358) and 1280 (280/720), 0 console errors; 0 Google requests before the click; click → aria-busy true + popup at pocketqa-optijara.firebaseapp.com/__/auth/handler (Chromium + WebKit); close → idle after ~9 s (Firebase waits for a late auth event; P3), no error shown.",
+  "observed": "Live dpl_TRefQGTd (entry-d9b5472d…, from a9d0e7e; pqa-qa r3 APPROVE). Official G light/dark (sha-pinned), Google-approved colours measured (light rgb(255,255,255)/rgb(116,119,117), dark rgb(19,19,20)/rgb(142,145,143)), x/width equal to the primary on /sign-in and /sign-up at 390 (16/358) and 1280 (280/720), 0 console errors before the click; 0 Google requests before the click; click → aria-busy true + popup at pocketqa-optijara.firebaseapp.com/__/auth/handler (Chromium + WebKit); close → idle after ~9 s (Firebase waits for a late auth event; P3), no error shown. Correction (pqa-qa r4): after the click Chromium logs 2 console errors \"Cross-Origin-Opener-Policy policy would block the window.closed call.\" from Google's popup pages (their own COOP), third-party and expected; it is why the SDK only notices a closed popup at its ~9 s timeout. pqa-qa r4 bound the live bundle to its own rebuild of a9d0e7e.",
   "evidence": [
    "docs/verification.md",
    "docs/reviews/firebase-vercel/google-button/live-dpl_TRefQGTd/",

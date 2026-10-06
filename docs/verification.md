@@ -1113,3 +1113,5 @@ webkit google=on: Google requests before any click = 0; console errors = []; but
 webkit https://pocketqa.vercel.app: busy cleared after 8883 ms (aria-busy=false); message: []
 ```
 Note (P3): after the Google popup is closed, the button stays busy ~9 s: Firebase waits for a late auth event before reporting popup-closed-by-user; it then returns to idle with no error. Real Google login completion remains human-only.
+
+**Correction (pqa-qa r4, 2026-10-06):** the "console errors = []" lines above cover page load and the click. After the popup opens, Chromium logs 2 console errors, "Cross-Origin-Opener-Policy policy would block the window.closed call.", from Google's popup pages, which set their own COOP. They are third-party and expected, and are why Firebase notices a closed popup only at its ~9 s timeout.

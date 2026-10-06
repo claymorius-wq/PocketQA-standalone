@@ -46,7 +46,7 @@
    "sha": "a9d0e7e",
    "steps": "",
    "fixtures": {},
-   "observed": "Live dpl_TRefQGTd (entry-d9b5472d…, from a9d0e7e; pqa-qa r3 APPROVE). Official G light/dark (sha-pinned), Google-approved colours measured (light rgb(255,255,255)/rgb(116,119,117), dark rgb(19,19,20)/rgb(142,145,143)), x/width equal to the primary on /sign-in and /sign-up at 390 (16/358) and 1280 (280/720), 0 console errors; 0 Google requests before the click; click → aria-busy true + popup at pocketqa-optijara.firebaseapp.com/__/auth/handler (Chromium + WebKit); close → idle after ~9 s (Firebase waits for a late auth event; P3), no error shown.",
+   "observed": "Live dpl_TRefQGTd (entry-d9b5472d…, from a9d0e7e; pqa-qa r3 APPROVE). Official G light/dark (sha-pinned), Google-approved colours measured (light rgb(255,255,255)/rgb(116,119,117), dark rgb(19,19,20)/rgb(142,145,143)), x/width equal to the primary on /sign-in and /sign-up at 390 (16/358) and 1280 (280/720), 0 console errors before the click; 0 Google requests before the click; click → aria-busy true + popup at pocketqa-optijara.firebaseapp.com/__/auth/handler (Chromium + WebKit); close → idle after ~9 s (Firebase waits for a late auth event; P3), no error shown. Correction (pqa-qa r4): after the click Chromium logs 2 console errors \"Cross-Origin-Opener-Policy policy would block the window.closed call.\" from Google's popup pages (their own COOP), third-party and expected; it is why the SDK only notices a closed popup at its ~9 s timeout. pqa-qa r4 bound the live bundle to its own rebuild of a9d0e7e.",
    "evidence": [
     "docs/verification.md",
     "docs/reviews/firebase-vercel/google-button/live-dpl_TRefQGTd/",
@@ -824,6 +824,414 @@
    "evidence": [],
    "notes": "",
    "owner": "pqa-be1"
+  },
+  {
+   "id": "E-01",
+   "area": "capacity",
+   "title": "Capacity race: N testers join the LAST slot concurrently",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-capacity': 3-slot study (reward 25) with 2 already joined; 20 distinct testers consent concurrently (contention losers rerun). Then reconcile(). Also existing studies.guards '20 testers race for 3 slots' and '20 concurrent joins by one tester'. (apps/api) firebase emulators:exec --only firestore,auth --project demo-pocketqa --config ../../firebase.emu-be2.json '../../node_modules/.bin/vitest run --config ../../docs/reviews/full-e2e/evidence/pqa-be2/harness/vitest.races.config.ts --reporter=verbose'",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Harness: outcomes {ok:1, CONFLICT_STATE:19}, contentionReruns 0, slotsFilled 3, study account 75 (=3×25 held), builder 0; reconcile: 4 entries / 2 tx, total 0, 0 non-integer, 0 unbalanced, 0 account mismatches. Suite: '20 testers race for 3 slots: exactly 3 join, every study write reran consistently' ✓ 7936ms; '20 concurrent joins by one tester: one participation, the rest CONFLICT_STATE' ✓ 11235ms; 'a full study refuses more consents; withdrawal frees the slot' ✓ 218ms (regression.lifecycle on Firestore).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-02",
+   "area": "settlement",
+   "title": "Concurrent approvals (and duplicate approvals of one submission)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-approvals': 5 submissions, each approved 4× → 20 concurrent decideParticipation(approve). Suite: studies.guards row 8.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Harness: outcomes {ok:5, CONFLICT_STATE:15}, per-tester reward_credit [17,17,17,17,17], study account 0 after; reconcile: 14 entries / 7 tx, total 0, 0 non-integer, 0 unbalanced, 0 mismatches, rewardGuards 5 = positive reward entries 5. Suite: '20 concurrent approvals of one submission: one reward credit, budget and balances exact' ✓ 3692ms; '20 concurrent approvals across 20 submissions of one study: every reward paid once, budget exact' ✓ 13227ms; 'approval credits exactly once (idempotent) and never takes the budget negative' ✓ 196ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "One-reward is enforced on Firestore by the app-level ledgerRewards/{pid}:{kind} guard; the SQLite DB-trigger test ('the database itself refuses a second reward posting and any ledger edit') is SQLite-only and skipped on Firestore (↓ in the suite). API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-03",
+   "area": "settlement",
+   "title": "Duplicate approve/settle requests with Idempotency-Key (HTTP, hosted app)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-hosted/duplicate-approve' on buildHostedApp (Firestore + Auth emulator, simulated settlement): 20 concurrent POST /participations/:id/approve with ONE Idempotency-Key; replay; same key different body; then 20 concurrent with distinct keys. Suite: settlement worker / simRecordTransfer idempotency (fake chain).",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2 (HTTP, hosted app on emulators): 20 concurrent approves with ONE Idempotency-Key → {'200 approved':1, '409 CONFLICT_STATE':19}; replay with the key → 200 approved; same key different body → 422 IDEMPOTENCY_KEY_REUSED; 20 concurrent approves with distinct keys → {'409 CONFLICT_STATE':20}; tester balance 30, exactly 1 reward_credit entry; reconcile 6 entries / 3 tx, total 0, no mismatches. Suite: '20 concurrent worker runs: one transfer per attempt key, one settle posting' ✓ 7056ms; 'simRecordTransfer: 20 sends with one idempotency key record one transfer and agree on its signature' ✓ 3592ms; hosted 'a top-up whose completion write failed is retried with its key: one credit' ✓ 114ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "Settlement worker rows use the simulator through the repo (fake chain, not devnet). API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-04",
+   "area": "budget",
+   "title": "Budget exhaustion: concurrent publishes beyond the balance; a fully committed study",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-budget-exhaustion': builder topped up 100, 5 drafts each reserving 40 (20×2), all 5 published concurrently; and a 2-slot study with both slots held refuses a 3rd join and approvals stop at the reserve.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Harness: publish outcomes {ok:2, BUDGET_INSUFFICIENT:3}, statuses [draft,draft,draft,published,published], builder balance 20 (never negative); full study: 3rd join CONFLICT_STATE, both approvals paid 60 total, study account 0; reconcile balanced (6 and 8 entries, total 0, no mismatches). Suite: 'publish without enough credits fails and writes nothing' ✓ / 'cannot publish without enough test credits, and reserves reward × slots on publish' ✓ 202ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-05",
+   "area": "settlement",
+   "title": "Crash/retry mid-settlement: failure injected inside the approval and close transactions; crash after commit",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-crash': a Proxy over Firestore whose transaction throws on the 2nd ledger create during flush (after the reward guard + 1st ledger entry were applied to the transaction), and a variant that throws after a successful commit (response lost). Approve: inject, inspect, retry, retry again. After-commit: 20 concurrent client retries. Close: inject on the release posting, then 20 concurrent retries. HTTP: completeIdempotency made to throw once (crash after commit), retried with the same key.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2. Approve, failure injected on the 2nd ledger create during flush (reward guard + 1st ledger entry already applied to the tx): first attempt threw 'injected failure mid-settlement after 1 ledger write(s)…'; after it: participation 'submitted', 0 ledger entries for it, no ledgerRewards guard, tester balance 0, reconcile balanced; retry → 'approved'; 2nd retry → CONFLICT_STATE; tester credits 50 exactly, study 0. Crash after commit (response lost): participation 'approved', 20 concurrent client retries → {CONFLICT_STATE:20}, tester credits 50. Close, failure injected on the release posting: study stayed 'published', study 30, builder 0; 20 concurrent retries → {ok:1, CONFLICT_STATE:19}, closed, builder 30, study 0 (releaseEntries 2 = the 2 legs of ONE release posting: study −30 / builder +30). HTTP approve whose idempotency completion write failed: first 500 INTERNAL, retries with the same key 409 CONFLICT_STATE, 409 CONFLICT_STATE; participation approved, tester 30, 1 reward entry. Suite: 'a failed rule inside the transaction writes nothing (no guard, no entry, no participation)' ✓ 49ms; '20 concurrent top-ups of one account rerun, yet each posts exactly one balanced pair' ✓ 7475ms; crash-after-commit retries (createStudy/createFinding/topUp/moderate*) ✓ on Firestore.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "Hosted approve crash-after-commit: the retry with the same key re-executes the handler (failed-request-is-retryable rule) and the domain guard answers 409, unlike top-up where rule D makes re-execution a replayed 200. Invariant holds (one credit); the client sees 409 instead of a replay. Lead's call whether that is a P3 UX note. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-06",
+   "area": "settlement",
+   "title": "Simulated settlement worker: concurrent runs and duplicate sends (fake chain)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Existing suite tests, fresh run: escrow.repo (b) settlement worker over Firestore; escrow.intx payouts/refunds; regression.escrow-retry.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "'20 concurrent worker runs: one transfer per attempt key, one settle posting (rows 23, 28, 29)' ✓ 7056ms; 'simRecordTransfer: 20 sends with one idempotency key record one transfer and agree on its signature (row 29)' ✓ 3592ms; '20 concurrent authorizations of one participation: one payout, one set of postings, balanced books' ✓ 3606ms; '20 concurrent refunds on close: one refund of the whole vault to the funding wallet' ✓ 7894ms; createEscrowFunding/createTransfer/adminFraud crash-after-commit retries ✓ (239/285/254ms).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt"
+   ],
+   "notes": "fakeSquadsChain / simulator only; not devnet (not this lane). The hosted deployment does not use escrow (settlement=simulated, test credits). The E-08 close-then-overturn ordering was NOT exercised on authorizeRefundInTx/authorizePayoutInTx; that is the obvious follow-up. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-07",
+   "area": "disputes",
+   "title": "Dispute/refund races: overturn vs close, last approval vs close, concurrent closes, concurrent disputes/overturns",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness: (a) dispute open, then 10 overturns + 10 closes concurrently, follow-up close if the race left it open; (b) last submission: 10 approves + 10 closes concurrently, then 20 concurrent closes. Suite: studies.guards row 7.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Harness (a): outcomes {ok:1, CONFLICT_STATE:19}, okBy [overturn] (close refused while disputed), follow-up close succeeded, tester dispute_credit 20, builder release 40, builder balance 40, study 0; (b): race {ok:1, CONFLICT_STATE:19} okBy [approve], then 20 closes {ok:1, CONFLICT_STATE:19}, tester 15, exactly 1 release posting, builder 45, study 0; reconcile balanced. Suite: '20 concurrent disputes of one rejection: one dispute, the rest CONFLICT_STATE' ✓ 3723ms; '20 concurrent overturns of one dispute: one dispute credit' ✓ 3837ms; 'rejection needs a reason; dispute overturned credits once; close is blocked until resolved' ✓ 233ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-08",
+   "area": "disputes",
+   "title": "Close vs dispute at the 7-day window boundary: a dispute opens on a closed study; its overturn pays from the released budget",
+   "status": "FAIL",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'close at the dispute-window boundary races a dispute' (5 trials, 10 disputes at T0+W−1 vs 10 closes at T0+W+1 concurrently) and the deterministic 'BUG repro': reject at T0 → close at T0+W+1 → openDispute(now=T0+W−1) → admin overturn. Plus the same sequence on the SQLite repository (local-api backend).",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "BEFORE FIX (frozen code). Emulator deterministic: after close study 'closed', study acct 0, builder 40; openDispute(now=T0+W−1) → 'opened' on the closed study; overturn → ok; after: study acct −20, builder 40, tester 20 (dispute_credit 20, builder release 40) → 20 credits minted; studyBudget throws 'INTERNAL: Ledger invariant violated: study budget over-committed.'. Emulator race (10 disputes at T0+W−1 vs 10 closes at T0+W+1, 5 trials): 5/5 'close+dispute' (ok=2, disputes=1, study=closed). SQLite: identical (study −20, builder 40, tester 20, minted 20; no DB trigger refuses). Upheld disputes post nothing. FIX: fixed in 31c2141 on feat/firebase-vercel (not yet deployed; frozen dpl_GAmo… still has the bug). Tests written first in apps/api/test/lifecycle.test.ts, RED before / GREEN after on SQLite and on Firestore (regression.lifecycle): 'a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice' and 'an overturn never pays from a closed study (a dispute left open on one is refused, not credited)'. With the fix: boundary race 5 trials → exactly one winner each (1× dispute only, study published, acct 40; 4× close only, 0 disputes, builder 40); deterministic repro → dispute CONFLICT_STATE, study acct 0, tester 0, minted 0, studyBudget {reserved 40, awarded 0, committed 0, available 0}; SQLite repro → CONFLICT_STATE, minted 0. Full emulator suite with the fix 29 files / 565 passed / 3 skipped (exit 0); full API unit suite (SQLite) 682 passed / 2 skipped; typecheck 0; eslint 0.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-08-sqlite.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-08-fix-red-green.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-08-fix-emulator-suite.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run3-fixed.txt",
+    "docs/reviews/full-e2e/bugs/E-dispute-close-race.md",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/e08.sqlite.test.ts"
+   ],
+   "notes": "See bugs/E-08.md. Test credits only on the frozen deployment (no value moves); the window is ms-wide around the 7-day boundary or clock skew between instances. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-09",
+   "area": "ledger",
+   "title": "Ledger reconciles as integers after every race/failure scenario",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "reconcile() after every harness scenario: every ledger amount Number.isInteger, every tx_id sums to 0, whole ledger sums to 0, each accounts/{a} balance and by_kind equal to the sum of its own entries, no negative study account, closed study at exactly 0, ledgerRewards guards = positive reward entries.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2: reconcile() passed after every scenario that runs on unmodified invariants (capacity, budget ×2, approvals, crash midflush ×2, crash after commit, crash close, overturn-vs-close, approve-vs-close, 4 hosted HTTP scenarios): every scenario 0 non-integer amounts, 0 unbalanced transactions, ledger total 0, 0 account/by_kind mismatches, no negative study, every closed study at 0, rewardGuards = positive reward entries (e.g. approvals: 14 entries / 7 tx, guards 5 = 5). The single violation found is E-08 (study account −20 after the closed-study overturn), recorded there and fixed; with the fix the E-08 scenarios reconcile too (see E-08).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run3-fixed.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-10",
+   "area": "budget",
+   "title": "Close refunds (releases) the unused budget",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness E-07(b)/E-05 close + suite flows.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Harness: 4-slot×15 study, 1 approval (15) → close released exactly 45 to the builder in 1 posting, study 0; 3×10 study closed after an injected failure → builder 30, study 0; overturn case → release 40 = reserve 60 − dispute credit 20. Suite: 'publish reserves reward × slots, close withdraws in-flight testers and releases the rest' ✓ 215ms; 'closing withdraws in-flight testers and releases the remaining budget to the builder' ✓ 150ms. These are test-credit bookkeeping (simulation), not devnet.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "Simulation (test credits). Escrow refund on close: '20 concurrent refunds on close: one refund of the whole vault' ✓ (fake chain). API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-11",
+   "area": "budget",
+   "title": "Cancel study",
+   "status": "NOT OFFERED",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "grep StudyAction in packages/domain/src/study.ts; routes in packages/contracts/src/index.ts.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "StudyAction = 'publish' | 'pause' | 'resume' | 'close' (packages/domain/src/study.ts:5); no cancel route in the contract. Close is the only end state and covers the refund (E-10).",
+   "evidence": [],
+   "notes": "Product copy should not promise 'cancel'. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-12",
+   "area": "security",
+   "title": "Admin self-promotion denied",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-roles/http': POST /auth/identity/session newAccount.role='admin' with a verified Firebase user; local-api: POST /auth/register role='admin'. Static: no route writes role except sign-up with SelfServeRole = z.enum(['tester','builder']) (packages/contracts/src/index.ts:54, 93, 661, 771). Suite: account/admin-grant.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2 HTTP: POST /auth/identity/session {newAccount:{role:'admin'}} with a verified Firebase user → 400 VALIDATION; local-api POST /auth/register role 'admin' → 400 VALIDATION (E-restart-persistence.txt); GET /me after the role checks → role 'tester'; tester POST /admin/moderation/users/x → 403. Suite: 'cannot self-register as admin; wrong password is 401; logout ends the session' ✓ 152ms (Firestore); 'never links an admin, even one marked by mistake' ✓ 16ms. Static: SelfServeRole = z.enum(['tester','builder']) is the only role input on any route.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-restart-persistence.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "Admin is granted only by the operator CLI admin:grant (not reachable over HTTP). API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-13",
+   "area": "security",
+   "title": "Role isolation (role guard 403, non-owner 404)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Suite regression.authz.matrix on Firestore (fresh) + harness HTTP checks.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Suite (Firestore, fresh): role guard 96/96 ✓ (every admin route → 403 for builder and tester; every builder route → 403 for tester/admin; every tester route → 403 for builder/admin), ownership 42/42 ✓ (non-owner builderB/testerB → 404, never 403 or data), 'suspended accounts are locked out except me/logout/export/delete' ✓ 70ms. Harness HTTP (run 2): tester approves → 403, other builder approves → 404, other builder GET study → 404, builder GET /admin/disputes → 403, tester GET /admin/audit → 403, tester POST test-topup (builder route) → 403, unauthenticated GET /me → 401.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-14",
+   "area": "security",
+   "title": "Firestore rules: client direct read/write denied (rules emulator)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "test/emulator/rules.test.ts against the Firestore emulator rules engine over REST (firestore.rules = deny all), anonymous and signed-in Firebase user, 9 sensitive collections × get/list/create/update/delete.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "20/20 ✓: 'control: the admin can read the seeded documents' ✓ 49ms; anonymous × {users, identities, sessions, evidence, participations, ledger, audit, idempotency, storageObjects}: statuses [403,403,403,403,403] each ✓; signed-in user × same 9 ✓; 'nothing a client tried changed the data' ✓ 47ms. firestore.rules: match /{document=**} allow read, write: if false.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt"
+   ],
+   "notes": "Production rules deployment state is not checked in this lane (emulator only). API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-15",
+   "area": "security",
+   "title": "Server-only secrets absent from the client bundle",
+   "status": "PASS",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "curl the live frozen bundle (entry-0e22ecce65b4080a0dad7d009c5007c3.js, sha256 f1c09223…04ec, 5,890,003 B); count server-only env names and secret-shaped content; inspect every 64-hex run; GET /api/config.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "0 occurrences each of CRON_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON, POCKETQA_R2_SECRET_ACCESS_KEY, POCKETQA_R2_ACCESS_KEY_ID, POCKETQA_R2_ACCOUNT_ID, POCKETQA_R2_ENDPOINT, POCKETQA_R2_BUCKET, POCKETQA_SETTLEMENT_PILOT_KEYS_DIR, POCKETQA_SOLANA_RPC_URL, POCKETQA_DATA_DIR, POCKETQA_AI_PROVIDER; 0 of 'BEGIN … PRIVATE KEY', \"private_key\", private_key_id, service_account, client_email, gserviceaccount.com, sk_live_/sk_test_, xox[bp]-, ghp_, AKIA…, r2.cloudflarestorage.com, 'Bearer <token>'; 8 64-hex runs = the @noble/curves ed25519 small-order point list (public constants); only EXPO_PUBLIC_API_URL and EXPO_PUBLIC_PREVIEW present; no AIza key in the bundle (the public Firebase web config comes from /api/config: authMode firebase, storage r2, walletLogin false, testCredits true, devnetTransfers false, settlement simulated, projectId pocketqa-optijara, googleSignIn true).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-secrets-bundle-scan.txt"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-16",
+   "area": "persistence",
+   "title": "Persistence across API restart (local SQLite API)",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "harness/restart-persistence.sh: SQLite API on 127.0.0.1:8862 (never 8787), fresh scratch POCKETQA_DATA_DIR; seed (register builder+tester, device, top-up 500, create+publish 40×3 study, consent); kill ONLY the recorded PIDs; health 000 and 0 listeners; restart on the same data dir; re-read every view with the same bearer tokens.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Seed: builder balance 380 (test_topup +500, study_reserve −120), study published budget {reserved 120, awarded 0, committed 40, available 80}, 1 participation consented, tester device android/15/API 35. After kill: health 000, 0 listeners on 8862, sqlite 405,504 B. After restart (new listener pid): readback identical:true for /me (both), /me/credits, /studies/:id, /studies/:id/participations, /participations; sessions survived (same tokens 200).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-restart-persistence.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/restart-persistence.sh",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/restart-persistence.mjs"
+   ],
+   "notes": "Synthetic users pqa-e2e-builder-mux1153s@example.test / pqa-e2e-tester-…; the scratch data dir was deleted afterwards. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-17",
+   "area": "persistence",
+   "title": "Persistence across hosted-app restart (Firestore)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness 'E-persistence/hosted-restart': approve via HTTP, snapshot study/participation/both credit views, app.close(), build a NEW hosted app instance, snapshot again. Suite: hosted 'has no SQLite and no local media' (the hosted API is stateless; state lives in Firestore/R2).",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2: after an HTTP approval, study/participation/builder+tester credits snapshotted, app.close(), a NEW hosted app instance built: identical:true; study 'published', budget {reserved 60, awarded 20, committed 0, available 40}, participation 'approved', builder 0, tester 20; reconcile balanced. Suite: hosted 'has no SQLite and no local media' ✓ 10ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "A Vercel redeploy is the same situation (stateless functions over Firestore); live redeploy persistence is the hosted lane's. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-18",
+   "area": "account",
+   "title": "Account export (emulator)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness HTTP POST /me/export for a tester with an approved credit; suite export tests on Firestore.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2 HTTP POST /me/export (tester with one approved credit) → 200; keys [disputes, evidence, exportedAt, findings, ledger, participations, payments, reputation, studies, user]; participations 1, ledger entries 1; the builder's token not present. Suite (Firestore): 'export contains only the requester’s data' ✓ 278ms; 'exportUser returns own rows; purgeUser applies the deletion rules and is idempotent' ✓; regression.export-wallet tester/builder exports ✓ (3580/1424/1075/258ms).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
+  },
+  {
+   "id": "E-19",
+   "area": "account",
+   "title": "Account erasure (emulator only)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator/local; binds to frozen dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz code via sha)",
+   "sha": "7beaad5",
+   "steps": "Harness HTTP DELETE /me (wrong confirm, right confirm, rerun) for that tester, then the builder's view and reconcile(); suite deletion tests on Firestore.",
+   "fixtures": {
+    "data": "synthetic, emulator-cleared per test (pqa-e2e-*@example.test, 'QA synthetic …')"
+   },
+   "observed": "Run 2 HTTP: DELETE /me {confirm:'nope'} → 400; {confirm:'DELETE MY ACCOUNT'} → 200; GET /me after → 401 UNAUTHENTICATED; rerun DELETE → 401; the builder still sees the participation (200 'approved'); ledger reconcile after erasure balanced (6 entries / 3 tx, total 0, no mismatches). Suite (Firestore): 'deletion removes media and personal data but keeps anonymized ledger rows' ✓ 305ms; 'a builder must close live studies before deleting' ✓ 129ms; hosted 'consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage' ✓ 544ms.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run1.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/E-races-run2.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/emulator-suite-full.txt",
+    "docs/reviews/full-e2e/evidence/pqa-be2/harness/races.emulator.test.ts"
+   ],
+   "notes": "Destructive checks on emulator only, synthetic users only. Nothing deleted on the hosted deployment. API source identical to frozen 7beaad5 (git diff 7beaad5..HEAD -- apps/api packages is empty); runs made at HEAD 6324e01..51aa93b (docs/mobile-only commits in between).",
+   "owner": "pqa-be2"
   },
   {
    "id": "D-01",
