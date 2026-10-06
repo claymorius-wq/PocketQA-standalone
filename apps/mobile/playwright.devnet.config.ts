@@ -12,4 +12,8 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: { trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'] },
+  // The LOCAL journey's backend (its own ESM process; only under `firebase emulators:exec` with PQA_WEB_DIR).
+  ...(process.env.FIRESTORE_EMULATOR_HOST && process.env.PQA_WEB_DIR
+    ? { webServer: { command: 'npx tsx e2e-devnet/local-devnet-server.mts', url: `http://127.0.0.1:${process.env.PQA_DEVNET_API_PORT ?? 8693}/__harness/health`, reuseExistingServer: false, timeout: 90_000 } }
+    : {}),
 });

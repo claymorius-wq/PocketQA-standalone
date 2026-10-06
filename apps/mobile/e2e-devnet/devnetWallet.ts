@@ -12,7 +12,7 @@ import { decodeServerTx } from '@pocket-qa/domain';
 //   bytes to `send` (local: the fake devnet behind the connectors seam; hosted: a devnet RPC).
 export const DEVNET = 'solana:devnet';
 
-export type WalletLogEntry = { kind: string; chain?: string; bytes?: number; approved: boolean; refused?: string; signature?: string };
+export type WalletLogEntry = { kind: string; chain?: string; bytes?: number; programs?: string[]; approved: boolean; refused?: string; signature?: string };
 export type DevnetWalletOptions = {
   secretKey: Uint8Array;
   name?: string;
@@ -40,7 +40,7 @@ export async function installDevnetWallet(page: Page, opts: DevnetWalletOptions)
   const address = base58.encode(ed25519.getPublicKey(opts.secretKey));
   const log: WalletLogEntry[] = [];
   const approve = opts.approve ?? (() => true);
-  const guard = (kind: string, chain: string | null, account: string | null, extra: Omit<WalletLogEntry, 'kind' | 'approved'> & { programs?: string[] } = {}) => {
+  const guard = (kind: string, chain: string | null, account: string | null, extra: Omit<WalletLogEntry, 'kind' | 'approved'> = {}) => {
     const { programs, ...rest } = extra;
     const refuse = (why: string) => {
       log.push({ kind, chain: chain ?? DEVNET, ...rest, approved: false, refused: why });
@@ -52,7 +52,7 @@ export async function installDevnetWallet(page: Page, opts: DevnetWalletOptions)
       log.push({ kind, chain: chain ?? DEVNET, ...rest, approved: false, refused: 'policy' });
       throw Object.assign(new Error('User rejected the request.'), { code: 4001 });
     }
-    log.push({ kind, chain: chain ?? DEVNET, ...rest, approved: true });
+    log.push({ kind, chain: chain ?? DEVNET, ...rest, ...(programs ? { programs } : {}), approved: true });
   };
 
   await page.exposeFunction('__pqaDevnetWallet', async (kind: string, payload: Record<string, unknown>) => {
