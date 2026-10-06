@@ -1,9 +1,10 @@
 import type { Dispute, Finding, Participation, Study, StudyReward, StudySummary } from '@pocket-qa/contracts';
 import type { z } from 'zod';
-import { studyAccount } from '@pocket-qa/domain';
+import { holdsBudget, studyAccount, studyBudget, type Kind } from '@pocket-qa/domain';
 import type { DB } from '../db';
+import type { Repos } from '../repo';
 
-import { budgetOf, paymentView, payoutView } from './escrow';
+import { budgetOf, paymentView, paymentViewOf, payoutView, payoutViewOf } from './escrow';
 import { escrowOf, type SettlementRow } from '../escrow';
 
 export type StudyRow = {
@@ -151,7 +152,7 @@ export function participationView(db: DB, row: ParticipationRow, opts: { withTes
   };
 }
 
-type FindingRow = {
+export type FindingRow = {
   id: string;
   participation_id: string;
   title: string;
@@ -178,7 +179,7 @@ export function findingView(row: FindingRow): Finding {
   };
 }
 
-type DisputeRow = {
+export type DisputeRow = {
   id: string;
   participation_id: string;
   opened_by: string;
@@ -210,4 +211,106 @@ export function disputeView(row: DisputeRow): z.infer<typeof Dispute> {
 export function rewardView(db: DB, row: StudyRow): StudyReward {
   if (row.payment_mode !== 'escrow') return { kind: 'test_credits', credits: row.reward_credits };
   return { kind: 'token', asset: 'USDC', decimals: 6, units: row.reward_credits, settlement: escrowOf(db, row.id)?.settlement ?? 'simulated' };
+}
+
+// Async views over the repository (sqlite or firestore). The sync `(db, …)` views above stay until
+// every caller has moved to these, then they are removed.
+
+/** The test-credit budget of a study (ledger sums per kind plus the participations holding it). */
+export async function studyBudgetOf(repo: Repos, row: StudyRow, nowMs: number) {
+  // Escrow studies never use test credits; their books are in `payment.balances`.
+  if (row.payment_mode === 'escrow') return { reserved: 0, awarded: 0, committed: 0, available: 0 };
+  const [sums, statuses] = await Promise.all([repo.studies.studyKindSums(row.id), repo.studies.participationStatuses(row.id)]);
+  const by = (k: Kind) => sums[k] ?? 0;
+  return studyBudget({
+    reserved: by('study_reserve'),
+    awarded: -(by('reward_credit') + by('dispute_credit')),
+    released: -by('study_release'),
+    rewardCredits: row.reward_credits,
+    committingCount: statuses.filter((p) => holdsBudget(p, nowMs)).length,
+    closed: row.status === 'closed',
+  });
+}
+
+/** What a tester is offered: test credits, or a (simulated-settlement) token reward. */
+export async function rewardViewOf(repo: Repos, row: StudyRow): Promise<StudyReward> {
+  if (row.payment_mode !== 'escrow') return { kind: 'test_credits', credits: row.reward_credits };
+  return { kind: 'token', asset: 'USDC', decimals: 6, units: row.reward_credits, settlement: (await repo.escrow.escrowOf(row.id))?.settlement ?? 'simulated' };
+}
+
+export async function studyViewOf(repo: Repos, row: StudyRow, nowMs: number): Promise<Study> {
+  const [tasks, payment, reward, budget, filled] = await Promise.all([
+    repo.studies.tasksOf(row.id),
+    paymentViewOf(repo, row, nowMs),
+    rewardViewOf(repo, row),
+    studyBudgetOf(repo, row, nowMs),
+    repo.studies.slotsFilled(row.id),
+  ]);
+  return {
+    id: row.id,
+    builderId: row.builder_id,
+    title: row.title,
+    objective: row.objective,
+    ...(row.build_under_test ? { buildUnderTest: row.build_under_test } : {}),
+    tasks,
+    deviceCriteria: JSON.parse(row.device_criteria_json),
+    rewardCredits: row.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    payment,
+    reward,
+    slots: row.slots,
+    consentText: row.consent_text,
+    consentVersion: row.consent_version,
+    status: row.status,
+    moderation: row.moderation,
+    budget,
+    slotsFilled: filled,
+    createdAt: row.created_at,
+    publishedAt: row.published_at,
+    closedAt: row.closed_at,
+  };
+}
+
+export async function studySummaryOf(repo: Repos, row: StudyRow): Promise<StudySummary> {
+  const [reward, tasks, filled] = await Promise.all([rewardViewOf(repo, row), repo.studies.tasksOf(row.id), repo.studies.slotsFilled(row.id)]);
+  return {
+    id: row.id,
+    title: row.title,
+    objective: row.objective,
+    rewardCredits: row.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    reward,
+    deviceCriteria: JSON.parse(row.device_criteria_json),
+    status: row.status,
+    publishedAt: row.published_at,
+    taskCount: tasks.length,
+    slotsRemaining: Math.max(0, row.slots - filled),
+  };
+}
+
+export async function participationViewOf(repo: Repos, row: ParticipationRow, opts: { withTesterName: boolean }): Promise<Participation> {
+  const [notes, tester, study, payout] = await Promise.all([
+    repo.studies.taskNotes(row.id),
+    opts.withTesterName ? repo.core.userById(row.tester_id) : Promise.resolve(null),
+    repo.studies.getStudy(row.study_id),
+    repo.escrow.payoutSettlementOf(row.id),
+  ]);
+  const s = study!;
+  return {
+    id: row.id,
+    studyId: row.study_id,
+    testerId: row.tester_id,
+    testerDisplayName: tester?.display_name ?? null,
+    status: row.status,
+    consentVersion: row.consent_version,
+    consentedAt: row.consented_at,
+    startedAt: row.started_at,
+    submittedAt: row.submitted_at,
+    decidedAt: row.decided_at,
+    decidedBy: row.decided_by,
+    decisionReason: row.decision_reason,
+    rewardCredits: s.payment_mode === 'escrow' ? 0 : row.reward_credits,
+    reward: await rewardViewOf(repo, s),
+    payoutAddress: row.payout_address,
+    payout: payout ? await payoutViewOf(repo, payout) : null,
+    taskNotes: notes.map((n) => ({ taskId: n.task_id, note: n.note })),
+  };
 }
