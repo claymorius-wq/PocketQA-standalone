@@ -76,6 +76,8 @@ export function sqliteEvidenceRepo(db: DB): EvidenceRepo {
         if (cur.n >= MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) throw fail('CONFLICT_STATE', `At most ${MAX_EVIDENCE_ITEMS_PER_PARTICIPATION} evidence items per participation.`);
         if (cur.bytes + e.size_bytes > MAX_EVIDENCE_BYTES_PER_PARTICIPATION) throw fail('PAYLOAD_TOO_LARGE', 'Evidence storage limit for this participation reached.');
         if (segmentUploaded(e.participation_id, e.client_segment_id)) throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
+        // A deterministic (Idempotency-Key) id already used: a clean conflict, not a PK error.
+        if (getEvidence(e.id)) throw fail('CONFLICT_STATE', 'This upload was already recorded.');
         insertEvidence(e, now);
       })();
       return done(getEvidence(e.id)!);

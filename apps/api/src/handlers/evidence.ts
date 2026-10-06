@@ -73,6 +73,16 @@ export const evidenceHandlers = {
     }
 
     const repo = ctx.deps.repo.evidence;
+    // Under an Idempotency-Key the evidence id is deterministic (plan R12), so a retry after a
+    // committed upload whose response was lost finds that evidence and returns it instead of adding
+    // a second row. Without a key the id is fresh. The object key stays random either way.
+    const id = ctx.idemId('evidence');
+    const prior = await repo.getEvidence(id);
+    if (prior) {
+      file.file.resume();
+      if (prior.participation_id === p.id && prior.client_segment_id === meta.data.clientSegmentId) return evidenceView(prior);
+      throw fail('CONFLICT_STATE', 'This Idempotency-Key was already used for a different upload.');
+    }
     const usage = await repo.evidenceUsage(p.id);
     if (usage.n >= MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) {
       file.file.resume();
@@ -102,7 +112,6 @@ export const evidenceHandlers = {
       const isVideo = mime.startsWith('video/');
       if (isVideo !== (meta.data.kind === 'screen_recording')) throw fail('VALIDATION', 'File type does not match the evidence kind.');
 
-      const id = newId();
       return evidenceView(
         await repo.addUploadedEvidence(
           {
@@ -257,6 +266,11 @@ export const evidenceHandlers = {
     const now = ctx.deps.now();
     const intent = await repo.getIntent(ctx.params.id!);
     if (!intent || intent.tester_id !== user.id) throw notFound('Upload');
+    // A retry after a committed completion (its response lost): the same evidence, never a second row.
+    if (intent.status === 'completed' && intent.evidence_id) {
+      const done = await repo.getEvidence(intent.evidence_id);
+      if (done) return evidenceView(done);
+    }
     if (intent.status !== 'pending') throw fail('CONFLICT_STATE', `This upload is ${intent.status}.`);
     if (intent.expires_at <= now) {
       await repo.expireIntent(intent.id);

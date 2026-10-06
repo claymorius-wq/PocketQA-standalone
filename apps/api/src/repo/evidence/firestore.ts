@@ -196,10 +196,13 @@ export function firestoreEvidenceRepo(fs: Firestore, hooks: TxHooks = {}): Evide
         const status = await participationStatus(t, e.participation_id);
         const usage = await readUsage(t, r.usage(e.participation_id));
         const seg = await t.get(r.segment(e.participation_id, e.client_segment_id));
+        const existing = await t.get(r.evidence(e.id));
         if (!canUploadEvidence(status)) throw fail('CONFLICT_STATE', 'The participation was submitted; evidence is frozen.');
         if (usage.evidence_count >= MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) throw fail('CONFLICT_STATE', `At most ${MAX_EVIDENCE_ITEMS_PER_PARTICIPATION} evidence items per participation.`);
         if (usage.evidence_bytes + e.size_bytes > MAX_EVIDENCE_BYTES_PER_PARTICIPATION) throw fail('PAYLOAD_TOO_LARGE', 'Evidence storage limit for this participation reached.');
         if (seg.exists) throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
+        // A deterministic (Idempotency-Key) id already used: a clean conflict, not ALREADY_EXISTS.
+        if (existing.exists) throw fail('CONFLICT_STATE', 'This upload was already recorded.');
         const row = newEvidenceDoc(e, now);
         t.create(r.evidence(e.id), row);
         t.create(r.segment(e.participation_id, e.client_segment_id), { evidence_id: e.id });

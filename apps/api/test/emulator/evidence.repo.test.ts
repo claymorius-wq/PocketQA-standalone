@@ -400,3 +400,13 @@ describe('in-transaction reads for the studies domain', () => {
     expect(await check('missing', 'p1')).toBe(false);
   });
 });
+
+describe('deterministic (Idempotency-Key) evidence ids', () => {
+  it('a reused evidence id is a clean conflict, never a second row or a raw ALREADY_EXISTS', async () => {
+    await participation('p1');
+    await repo.addUploadedEvidence(evidence('idem-1', 'seg-a'), NOW);
+    await expect(repo.addUploadedEvidence(evidence('idem-1', 'seg-b'), NOW)).rejects.toThrow('This upload was already recorded.');
+    expect(await count('evidence')).toBe(1);
+    expect(await repo.evidenceUsage('p1')).toEqual({ n: 1, bytes: 1000 });
+  });
+});
