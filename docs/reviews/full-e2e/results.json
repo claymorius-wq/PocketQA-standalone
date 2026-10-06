@@ -1746,7 +1746,7 @@
    "fixtures": {},
    "observed": "The only devnet fixture is the pilot key dir ~/.config/pocketqa-devnet-pilot (arbiter.json, builder.json, outsider.json, pocketqa.json, tester.json, create-seed.bin; mode 600, outside the repo). Every fresh run (squads-devnet.pilot.live.test.ts) loads those secret keys and signs ~26 transactions; earlier runs each needed explicit approval (docs/verification.md: \"No further sends\", parent hold). Read-only balances: pocketqa test key 4959995240 lamports, builder 17790000 test-USDC units, so funds are not the blocker. Not run.",
    "evidence": [],
-   "notes": "BLOCKED: needs explicit authorization to load and sign with the existing pilot keys. If granted, the bounded run is: cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts (new multisig + new operation ids; originals preserved). Historic receipts are NOT substituted for this row.",
+   "notes": "BLOCKED: needs explicit authorization to load and sign with the existing pilot keys. If granted, the bounded run is: cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts (new multisig + new operation ids; originals preserved). Historic receipts are NOT substituted for this row. Superseded by D-08 after Hamza's explicit authorization (2026-10-06); this row stays as the record of the earlier block.",
    "owner": "pqa-ios"
   },
   {
@@ -2065,6 +2065,63 @@
     "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/tester-session-settled-dark.png"
    ],
    "notes": "Simulated settlement on loopback; no devnet transaction. Not offered on hosted (W-01).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-08",
+   "area": "devnet",
+   "title": "Fresh bounded devnet pilot run: funding, payout with crash-after-submit adoption, refund, on-chain refusal, ledger reconciliation",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": "7beaad5",
+   "steps": "Label: fresh devnet pilot run (SQLite, server-held pilot keys). NOT the hosted integrated journey. Authorized by Hamza 2026-10-06 (relayed by pocketqa-lead): bounded fresh devnet-only test transactions with the existing ~/.config/pocketqa-devnet-pilot fixtures. Bounds stated BEFORE sending (in the runner and in d08-report.json bounds): funding <= 3,000,000 test-USDC units total; devnet SOL spent (fees AND rent) <= 50,000,000 lamports, live balance checked before every send (refuse past 45,000,000); raw sends outside the journal refused. Own worktree .worktrees/pqa-ios-e2e at 7beaad5 + runner test-live/pqa-ios-d08.live.test.ts (copied to evidence). Command: cd apps/api && POCKETQA_LIVE_D08=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot D08_OUT=<evidence>/d08 D08_PRIVATE=<scratch file> npx vitest run --config vitest.live.config.ts test-live/pqa-ios-d08.live.test.ts, 2026-10-06T19:35:48Z to 19:37:20Z, exit 0. Flow (real API + worker + Squads adapter in-process, temporary SQLite): preflight reads -> study (2 slots x 1.00, escrow) -> funding request (adapter creates the multisig + vault token account) -> builder wallet funds 2.20 with the reference -> one tester (existing pilot tester key) approved -> payout with a simulated crash right after the execute LANDED, local squads_attempts wiped -> recovery -> close -> refund -> deliberate second execute (on-chain refusal) -> ledger books -> per-op RPC readback. Every send was journaled (operation id, decoded instructions, message sha256, signature prefix+sha256) and fsynced before sendTransaction. Original pilot receipts untouched.",
+   "fixtures": {
+    "study": "bd7614da-0cf8-4668-a0ae-b54ef9e34d4c",
+    "multisig": "8Bsov1q6D5mhMhJsfVPVRXMpBa2Z6RtfJZb7B1CPTpCo",
+    "vaultAuthority": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+    "vaultUsdcAta": "28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv",
+    "operations": {
+     "payout": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+     "refund": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+     "funding": "funding:59543f89-294a-4138-873d-583c80b654cb"
+    },
+    "roles": {
+     "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+     "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+     "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+     "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+    }
+   },
+   "observed": "Preflight 19:35:50Z: genesis EtWTRABZ… (devnet); mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU owner TokenkegQfeZ… decimals 6; Squads SQDS4ep6… and Memo executable; pocketqa 4959995240 lamports, builder 17790000 units, tester 1000000 units. New study bd7614da-0cf8-4668-a0ae-b54ef9e34d4c, multisig 8Bsov1q6D5mhMhJsfVPVRXMpBa2Z6RtfJZb7B1CPTpCo (2-of-3, autonomous, no rent collector), vault ATA 28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv. 14 sends, 14/14 finalized, fee payer DoUXiXfn… on all; only #14 (deliberate) failed. Slots 508200264..508200524. Token deltas (mint 4zMM…): #3 funding builder -2200000 / vault +2200000; #8 execute 1 vault -1000000 / tester +1000000; #13 execute 2 (refund) vault -1100000 / builder +1100000; #14 none. Crash-after-submit: recovery sent 0 transactions, exactly 1 execute and 1 vault transaction for operation pqa-op1:f6800070b503…, the adopted settlement signature equals the landed execute. On-chain refusal: second execute of index 1 -> {\"InstructionError\":[0,{\"Custom\":6008}]}, tester still +1000000 only. Ledger integers: books funded 2200000 = settled 1000000 + fees 100000 + refunded 1100000, ok true; settlements payout 1000000 confirmed, refund 1100000 confirmed; vault on chain 100000; chain net builder -1100000, tester +1000000, vault +100000 (equal). Costs: spent 13684080 lamports (0.0137 SOL) = fees 90000 + rent 13594080; funded 2200000 units: within both bounds. Journal lines written before each block (1 s blockTime resolution): 14/14.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/d08-write-ahead-journal.jsonl",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/d08-report.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/d08-journal-before-chain.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/d08-journal-before-chain.mjs",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/pqa-ios-d08.live.test.ts",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d08/d08-vitest-run.log"
+   ],
+   "notes": "Devnet test USDC and devnet SOL have no value. Test keys simulate every role (not independent custody, no physical wallet). Signatures stored as prefix + sha256 (full values only in a local scratch file, never committed or printed). Not the hosted integrated journey (pqa-be3's lane); hosted settlement stays simulated (D-07).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-05",
+   "area": "physical",
+   "title": "Physical readiness: what must be accepted on the device",
+   "status": "BLOCKED",
+   "environment": "physical-android",
+   "deployment": null,
+   "sha": null,
+   "steps": "adb version; adb devices -l at 2026-10-06T19:38:16Z; MD5 fingerprint of the host's PUBLIC adb key (~/.android/adbkey.pub; the private key was not read).",
+   "fixtures": {
+    "serial": "SM02E4072811963"
+   },
+   "observed": "SM02E4072811963 still \"unauthorized\" (usb:3-1). Host adb key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF. Needed at the device: unlock, accept \"Allow USB debugging?\" for that fingerprint with \"Always allow from this computer\"; if no dialog, confirm Developer options > USB debugging is on and replug.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt"
+   ],
+   "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device.",
    "owner": "pqa-ios"
   }
  ]
