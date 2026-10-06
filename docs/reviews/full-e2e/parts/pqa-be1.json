@@ -1,0 +1,496 @@
+[
+ {
+  "id": "H-01",
+  "area": "baseline",
+  "title": "Live deployment identity and enabled features",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "curl https://pocketqa.vercel.app/api/config (2026-10-06T18:34:54Z); GET / and extract the entry bundle name; GET /api/health",
+  "fixtures": {},
+  "observed": "/api/config: authMode=firebase, storage=r2, walletLogin=false, features {testCredits:true, devnetTransfers:false, settlement:'simulated'}, firebase {projectId:'pocketqa-optijara', authDomain:'pocketqa-optijara.firebaseapp.com', authEmulatorUrl:null, googleSignIn:true}; served bundle entry-0e22ecce65b4080a0dad7d009c5007c3.js (= frozen baseline); /api/health 200 {ok:true, contractVersion:'0.6.1'}; x-vercel-id cdg1::fra1::…",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/config.json",
+   "docs/reviews/full-e2e/evidence/pqa-be1/config.headers.txt"
+  ],
+  "notes": "apiKey in config.json redacted (public web key)."
+ },
+ {
+  "id": "H-02",
+  "area": "auth",
+  "title": "Tester email registration through the real UI, up to the verify-email gate",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "Playwright Chromium 1280x900 → /sign-up → 'I test apps' → display name 'QA synthetic tester be1-1', email pqa-e2e-tester-be1-1@example.test, 18+ char random password → Create account",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "Notice 'Check your email: We sent a verification link to <email>. Open it, then sign in to finish creating your account.' No /api call is made at sign-up (the Pocket QA account is created only after verification, by design).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/02-signup-tester.png"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "H-03",
+  "area": "auth",
+  "title": "Builder email registration through the real UI, up to the verify-email gate",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "Same as H-02 with 'I build apps', 'QA synthetic builder be1-1', pqa-e2e-builder-be1-1@example.test",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "Notice 'Check your email: We sent a verification link …'; no /api call at sign-up.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/02-signup-builder.png"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "H-04",
+  "area": "auth",
+  "title": "Sign-in before email verification is refused with a clear message and a resend path",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "/sign-in with the H-02 tester's email + correct password → Sign in",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "POST /api/auth/identity/session → 403; stays on /sign-in; message 'Couldn’t sign in · Verify your email first: open the link we sent you, then sign in again.'; a resend control is shown (1 match for /send.*again|resend/).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/03-signin-unverified-tester.png"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "H-05",
+  "area": "auth",
+  "title": "Wrong password",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "/sign-in with the tester email and a wrong password",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "Stays on /sign-in; 'Couldn’t sign in · Email or password is incorrect.' (no account enumeration).",
+  "evidence": [],
+  "notes": ""
+ },
+ {
+  "id": "H-06",
+  "area": "auth",
+  "title": "Password recovery: reset-link request",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "/sign-in → enter the builder email → 'Forgot password?' → 'Send password reset link'",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "Firebase POST identitytoolkit /v1/accounts:sendOobCode → 200; notice 'Check your inbox · If an account uses this email, a reset link is on its way.' (non-enumerating).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/04-forgot-password.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/04-forgot-password-sent.png"
+  ],
+  "notes": "Completing the reset is H-08 (BLOCKED: no inbox)."
+ },
+ {
+  "id": "H-07",
+  "area": "auth",
+  "title": "Email verification completion",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED: apply the oobCode of the verification email (inbox) or, if Hamza approves, admin.generateEmailVerificationLink(email) in memory → open the link → sign in again.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "Answer to lead (3): the public flow offers NO other legitimate route: the API requires email_verified for both accepted providers (RECOVERABLE_PROVIDERS = password, google.com; account.ts:84); there is no allow-listed test domain, bypass or test inbox in apps/api/src or apps/mobile/src (grep: none). Legitimate options: (a) a real mailbox controlled by the team for synthetic accounts; (b) Google sign-in with a dedicated synthetic Google account, done by an authorized human (Google accounts are verified); (c) the admin step, pending Hamza."
+ },
+ {
+  "id": "H-08",
+  "area": "auth",
+  "title": "Password reset completion and sign-in with the new password",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED: open the reset link (oobCode) → set a new 18+ char password → sign in with it → old password refused.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: the reset link goes to an @example.test address (no inbox); same blocker as H-07.",
+  "evidence": [],
+  "notes": ""
+ },
+ {
+  "id": "H-09",
+  "area": "auth",
+  "title": "Login after verification, role persistence and home routing (tester and builder)",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): verify (H-07) → /sign-in tester → POST /api/auth/identity/session {newAccount:{role:'tester',displayName}} → expect 200 and landing on the tester home (/discover); GET /api/me role=tester; reload → still /discover; sign out; same for builder → expect /studies, role=builder; sign out/in again: role unchanged; tester visiting /studies and builder visiting /discover are redirected.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-10",
+  "area": "tester",
+  "title": "Tester profile, device and language persistence",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /settings: set device web 'Chrome', androidApiLevel null, languages ['en-US'] → PUT /api/me/device 200 → reload → GET /api/me device equals the saved profile; change language to ['fr'] → persists across sign-out/in.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-11",
+  "area": "tester",
+  "title": "Positive and negative eligibility",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder publishes study A (platforms ['web'], languages ['en']) and study B (platforms ['android'], minAndroidApi 34) → tester GET /api/studies/eligible lists A and not B; /discover shows A only; GET /api/tester/studies/B → 404; consent to B → 409 'Not eligible: Needs android.'",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-12",
+  "area": "builder",
+  "title": "Study draft, edit, tasks, criteria, reward, slots",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /builder/new-study (test credits): title 'QA synthetic study be1-1', 2 tasks, criteria web/en, reward 50, slots 2 → POST /api/studies 200 status draft; PATCH title, tasks (3), slots 3 → GET /api/studies/:id reflects it and consentVersion bumps only when the consent text changes; non-draft edit → 409.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-13",
+  "area": "builder",
+  "title": "Fee quote (wallet-escrow mode, simulated)",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): new-study 'Wallet escrow' (offered because settlement=simulated): rewardUnits 1000000 (1 USDC simulated), slots 2 → expect payment.quote: perTestFee = ceil(1000000×1000/10000)=100000, rewardPool 2000000, platformFee 200000, total 2200000 (POCKETQA_ESCROW_FEE_BPS default 1000 = 10%, config.ts:266); compare UI quote with GET /api/studies/:id payment.quote as integers.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "Fee source traced: packages/domain/src/escrow.ts quoteEscrow (integer ceil per test). Test-credit studies carry no platform fee. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-14",
+  "area": "builder",
+  "title": "Insufficient budget refusal",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder with 0 credits publishes a test-credit draft needing reward×slots → POST /api/studies/:id/publish 402/409 BUDGET_INSUFFICIENT 'Publishing needs N test credits; you have 0.'; the study stays draft; ledger unchanged.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-15",
+  "area": "economics",
+  "title": "How hosted builders get credits (trace)",
+  "status": "PASS",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "Source and live-config trace: packages/contracts CREDITS_DISCLAIMER; packages/domain/src/ledger.ts planTopUp/MAX_TOPUP; apps/api handlers/account.ts topUp (feature gate); apps/mobile/src/screens/CreditsScreen.tsx topUp mutation; live /api/config testCredits=true",
+  "fixtures": {},
+  "observed": "Hosted builders mint TEST CREDITS themselves: POST /api/me/credits/test-topup {amount} (builder only), whole number 1..10000 per top-up (MAX_TOPUP), posted faucet 'system:test-faucet' → 'user:<id>' as an append-only double-entry pair; available because testCredits=true on the live config (production would refuse: 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.'). UI: the Budget/Credits screen top-up card. Labelled 'Test credits · no cash value'. No purchase, redemption or withdrawal exists. Wallet-escrow studies (simulated) are funded through POST /api/studies/:id/escrow/fundings + /api/escrow/fundings/:id/simulated-wallet-payment (no wallet charged).",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money. Live execution of a top-up is H-16 (BLOCKED)."
+ },
+ {
+  "id": "H-16",
+  "area": "builder",
+  "title": "Funding (test-credit top-up) and publish, with integer reconciliation",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder GET /api/me/credits (balance B0, expect 0) → top-up 1000 via the UI (Idempotency-Key) → balance B0+1000, one test_topup entry → publish the H-12 study (reward 50 × slots 2) → balance B0+900, study budget {reserved:100, awarded:0, committed:0, available:100}; repeat the same top-up request with the same key → no second credit.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-17",
+  "area": "tester",
+  "title": "Join, consent, task notes, withdraw and rejoin rules",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester opens the H-16 study → consent (current version) → status consented → start → in_progress → PUT a note on task 1 → reload shows it → withdraw (reason) → status withdrawn, slot freed (slotsFilled −1) → rejoin refused 409 'already joined' (UNIQUE study/tester); consent with a stale consentVersion → 409.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "There is no 'resume after withdraw' in the product: withdrawal is final for that study (by design); report as NOT OFFERED when run. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-18",
+  "area": "evidence",
+  "title": "Browser upload over 4.5 MB to private R2, finalize, retry, hash",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester in progress → upload a 30 MB synthetic MP4 from the browser → POST upload-intents (presigned PUT, signed content-type/length) → PUT goes directly to R2 (not via Vercel) → complete → evidence row with sizeBytes 31457280; retry 'complete' with the same Idempotency-Key → same evidence id; GET the object via playback → sha256 equals the local file.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-19",
+  "area": "evidence",
+  "title": "R2 CORS: allowed vs foreign-origin preflight",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "OPTIONS https://<account>.r2.cloudflarestorage.com/pocketqa-evidence/evidence/preflight-probe-0001 with Access-Control-Request-Method PUT, -Headers content-type; Origin https://pocketqa.vercel.app, then https://evil.example (host taken from the live CSP connect-src; account id redacted)",
+  "fixtures": {},
+  "observed": "App origin: 204, Access-Control-Allow-Origin https://pocketqa.vercel.app, Allow-Methods PUT, Allow-Headers content-type, Max-Age 3600. Foreign origin: 403 (no CORS headers).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/r2-cors-preflight.txt"
+  ],
+  "notes": "Unauthenticated preflight only; no object written."
+ },
+ {
+  "id": "H-20",
+  "area": "evidence",
+  "title": "Playback and signed-URL expiry",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder POST /api/evidence/:id/playback-token → presigned S3-endpoint GET url (expires ≤ 300 s) → GET 200 with the sniffed type inline, no-store → after expiry the same URL → 403 from R2.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-21",
+  "area": "evidence",
+  "title": "Submit; builder sees only own-study evidence; findings; cross-account denial",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester submits → builder A GET /api/participations/:id/evidence lists it and creates a finding (title, severity, evidenceId, timestampMs) → builder B (second synthetic builder) GET the same participation/evidence/playback-token → 404 each; tester B → 404.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-22",
+  "area": "review",
+  "title": "Approve, duplicate approve, reject with reason",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder approves P1 → 200 approved, tester credit +50 (one reward_credit), study awarded 50 → approve again → 409, no second credit → reject P2 with reason ≥10 chars → 200 rejected with decisionReason; reject with 'no' → 400.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-23",
+  "area": "review",
+  "title": "Tester dispute and admin resolution",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester of P2 POST /api/disputes within 7 days → participation disputed; close refused while open. Admin resolution: NOT OFFERED on production for this run: no admin may be granted on prod and no existing synthetic admin is known; if one is provided: POST /api/admin/disputes/:id/resolve overturned → one dispute_credit, audit dispute.overturned.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "Even after verification, the admin half stays BLOCKED/NOT OFFERED unless an existing synthetic admin is provided. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-24",
+  "area": "economics",
+  "title": "Settlement, refund and platform fee: before/after integer reconciliation",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Read via API before and after each step (top-up, publish, approve, reject, dispute, close): builder GET /api/me/credits balance, GET /api/studies/:id budget {reserved, awarded, committed, available}, tester GET /api/me/credits balance; for an escrow (simulated) study also payment.balances and quote.platformFee; assert Σ deltas = 0 per step and every value an integer.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-25",
+  "area": "reputation",
+  "title": "Reputation awarded once, badges, helpful, leaderboard opt-in/privacy",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): After H-22 approval with helpful=true: tester GET /api/me/reputation accepted=1, helpful=1, points per rule; re-approval impossible so no second award; leaderboard GET /api/leaderboard does not list the tester until PUT /api/me/leaderboard {optIn:true, alias:'QA synthetic be1'}; opt-out removes the alias; no email/display name exposed.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-26",
+  "area": "builder",
+  "title": "Close study and unused-budget refund",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder closes the H-16 study after all submissions decided and dispute windows passed (or with only in-flight testers) → in-flight participations withdrawn 'Study closed by the builder.' → study budget released: builder balance += reserved − awarded; study account 0; ledger sum 0.",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-27",
+  "area": "settings",
+  "title": "Settings, connected-wallet state and export (no erasure)",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder /settings: theme and profile persist; wallet section shows 'not connected' (walletLogin=false; linking needs a wallet signature, report state only); POST /api/me/export → JSON with own studies/participations/evidence/findings/ledger/disputes only; DELETE /api/me is NOT run on production (erasure is emulator-only per the checklist).",
+  "fixtures": {
+   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+  },
+  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+ },
+ {
+  "id": "H-28",
+  "area": "auth",
+  "title": "Unauthenticated API denial on every non-public route",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "27 requests without Authorization (GET/POST/PUT/DELETE across me, credits, top-up, export, delete, studies, eligible, tester study, consent, participations, approve, upload intents, playback token, disputes, admin disputes/audit/moderation, reputation, leaderboard, wallet nonce, payouts, and the cron routes)",
+  "fixtures": {},
+  "observed": "25 contract routes → 401 {code:'UNAUTHENTICATED', message:'Sign in to continue.'}; GET /api/jobs/settle and /api/jobs/sweep without the cron secret → 404 'Route not found.' (not advertised).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/unauth-api-denial.txt"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "H-29",
+  "area": "auth",
+  "title": "Private UI routes redirect without a session",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "Fresh browser context per route: /discover, /work, /credits, /settings, /studies, /budget, /builder/new-study, /disputes, /audit, /moderation, /leaderboard, /reputation",
+  "fixtures": {},
+  "observed": "All 12 end on /sign-in.",
+  "evidence": [],
+  "notes": ""
+ }
+]

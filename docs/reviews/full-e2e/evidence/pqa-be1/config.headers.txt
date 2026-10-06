@@ -1,0 +1,18 @@
+HTTP/2 200 
+age: 0
+cache-control: no-store
+content-security-policy: default-src 'none'; sandbox
+content-type: application/json; charset=utf-8
+cross-origin-opener-policy: same-origin
+date: Tue, 06 Oct 2026 18:34:54 GMT
+permissions-policy: camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()
+referrer-policy: no-referrer
+server: Vercel
+strict-transport-security: max-age=31536000
+vary: Origin
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-vercel-cache: MISS
+x-vercel-id: cdg1::fra1::cmn4b-1791311694866-a82259e458db
+content-length: 327
+
