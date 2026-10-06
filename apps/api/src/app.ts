@@ -108,27 +108,17 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
         if (e instanceof IdentityError) return none;
         throw e; // provider outage etc.: a server error, not a silent sign-out
       }
-      const found = deps.db
-        .prepare(
-          `SELECT u.*, i.valid_after_ms AS identity_valid_after_ms FROM identities i JOIN users u ON u.id = i.user_id
-           WHERE i.provider = 'firebase' AND i.subject = ? AND u.status != 'deleted'`,
-        )
-        .get(identity.uid) as (UserRow & { identity_valid_after_ms: number }) | undefined;
+      const found = await deps.repo.core.userByIdentity(identity.uid);
       // Server-side revocation (logout): tokens from sign-ins at or before it are dead.
-      if (found && identity.authTimeMs <= found.identity_valid_after_ms) return none;
-      const user: UserRow | undefined = found ? (({ identity_valid_after_ms: _v, ...u }) => u)(found) : undefined;
+      if (found && identity.authTimeMs <= found.validAfterMs) return none;
+      const user: UserRow | undefined = found?.user;
       if (user && isRecoverableSignIn(identity)) {
         // Signed in with a verified email/Google identity: the wallet is no longer the only way in.
-        deps.db.prepare(`UPDATE identities SET has_recovery = 1 WHERE provider = 'firebase' AND subject = ? AND has_recovery = 0`).run(identity.uid);
+        await deps.repo.core.markRecovery(identity.uid);
       }
       return { user: user ?? null, identity };
     }
-    const row = deps.db
-      .prepare(
-        `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-         WHERE s.token_hash = ? AND s.expires_at > ? AND u.status != 'deleted'`,
-      )
-      .get(sha256(token), deps.now()) as UserRow | undefined;
+    const row = await deps.repo.core.userBySession(sha256(token), deps.now());
     return { user: row ?? null, identity: null };
   }
 

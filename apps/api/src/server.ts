@@ -48,7 +48,7 @@ writeFileSync(pidFile, `${process.pid}\n`, { mode: 0o600 });
 await app.listen({ host: config.host, port: config.port });
 // Storage housekeeping: expire abandoned uploads, clear quarantine, retry deletions.
 const sweep = () =>
-  sweepStorage({ db, store: deps.store, now: Date.now }).catch(() => app.log.warn('storage sweep failed; will retry'));
+  sweepStorage({ repo: deps.repo, store: deps.store, now: Date.now }).catch(() => app.log.warn('storage sweep failed; will retry'));
 void sweep();
 const sweeper = setInterval(sweep, 60_000);
 // Escrow settlement (simulated or the devnet pilot): verify fundings, send and confirm payouts and refunds, and
