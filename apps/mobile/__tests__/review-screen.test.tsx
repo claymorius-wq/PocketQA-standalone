@@ -377,9 +377,10 @@ describe('review screen', () => {
     return new ApiError('CONFLICT_STATE', message);
   };
 
-  it('H-33: an approval already decided elsewhere closes the sheet and shows that decision, with no error', async () => {
+  it('H-33 / E-05: an approve whose retry finds it approved (its own earlier commit) says so neutrally, with no error', async () => {
     mockApi.mockImplementation(async () => {
-      // Another tab approved first: the server now holds the decision and refuses this one.
+      // The same decision is already in: e.g. this builder's own approve committed and the response
+      // was lost (crash after commit), so the retry hears 409.
       mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z' });
       throw conflict('Cannot approve a participation that is approved.');
     });
@@ -392,7 +393,10 @@ describe('review screen', () => {
     expect(mockApi).toHaveBeenCalledTimes(1); // money path: one request, never retried
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
     expect(screen.queryByTestId('decision-error', { includeHiddenElements: true })).toBeNull();
-    expect(screen.getByTestId('review-already-decided', { includeHiddenElements: true })).toHaveTextContent(/Already decided/);
+    const notice = screen.getByTestId('review-already-decided', { includeHiddenElements: true });
+    expect(notice).toHaveTextContent(/Already approved/);
+    expect(notice).toHaveTextContent(/Nothing more to do/);
+    expect(notice).not.toHaveTextContent(/elsewhere|wasn’t applied/);
     expect(screen.getByTestId('review-decided')).toHaveTextContent(/Decision: Approved/);
     await advance(600);
     expect(screen.queryByTestId('review-approve')).toBeNull();
@@ -412,8 +416,30 @@ describe('review screen', () => {
     await advance(400);
     expect(screen.queryByTestId('confirm-sheet')).toBeNull();
     expect(screen.queryByTestId('decision-error', { includeHiddenElements: true })).toBeNull();
-    expect(screen.getByTestId('review-already-decided', { includeHiddenElements: true })).toHaveTextContent(/Already decided/);
+    const notice = screen.getByTestId('review-already-decided', { includeHiddenElements: true });
+    expect(notice).toHaveTextContent(/Already decided/);
+    expect(notice).toHaveTextContent(/decided elsewhere/);
+    expect(notice).toHaveTextContent(/wasn’t applied/);
     expect(screen.getByTestId('review-decided')).toHaveTextContent(/Decision: Approved/);
+  });
+
+  it('H-33: a conflict that lands on a decided state without a Decision notice still says where it stands', async () => {
+    mockApi.mockImplementation(async () => {
+      // The tester withdrew meanwhile: decided, but no decision notice exists for it.
+      mockPart = participation({ status: 'withdrawn', decidedAt: null });
+      throw conflict('Cannot approve a participation that is withdrawn.');
+    });
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('review-approve'));
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await settle();
+    await settle();
+    await advance(400);
+    expect(screen.queryByTestId('confirm-sheet')).toBeNull();
+    expect(screen.queryByTestId('review-decided')).toBeNull();
+    const notice = screen.getByTestId('review-already-decided', { includeHiddenElements: true });
+    expect(notice).toHaveTextContent(/no longer awaiting review/);
+    expect(notice).toHaveTextContent(/Withdrawn/i);
   });
 
   it('H-33: a conflict that leaves the submission undecided keeps the sheet and its message', async () => {
