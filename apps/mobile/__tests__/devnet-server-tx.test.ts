@@ -1,4 +1,5 @@
 import { base58, base64 } from '@scure/base';
+import { approvalPlan, approveIx, ATTACKER, COPY, encodeV0, fundingPlan, LINKED, MINT, MULTISIG, OP, REFERENCE, systemTransferIx, transferCheckedIx, VAULT_ATA } from '../test-support/devnetTx';
 import type { ServerTxPlan } from '../src/wallet/serverTx';
 import type { StandardWallet } from '../src/wallet/standard';
 
@@ -15,7 +16,7 @@ const mockWallets: StandardWallet[] = [];
 jest.mock('../src/wallet/registry', () => ({ availableWallets: () => mockWallets }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { checkServerTxPlan, DEVNET_PILOT_COPY, SQUADS_V4 } = require('../src/wallet/serverTx') as typeof import('../src/wallet/serverTx');
+const { checkServerTxPlan, DEVNET_PILOT_COPY } = require('../src/wallet/serverTx') as typeof import('../src/wallet/serverTx');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const android = require('../src/wallet/signServerTransaction.android') as typeof import('../src/wallet/signServerTransaction.android');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -23,55 +24,34 @@ const web = require('../src/wallet/signServerTransaction.web') as typeof import(
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const fallback = require('../src/wallet/signServerTransaction') as typeof import('../src/wallet/signServerTransaction');
 
-const linked = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV';
-const someone = '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin';
-const vaultAta = 'GHtXQBsoZHVnNFa9YevAzFr17DJjgHXk3ycTKD5xD3Zi';
-const OP = `pqa-op1:${'ab'.repeat(32)}`;
-
-/** A hand-built v0 transaction: one signature slot per signer, static programs, no lookups. */
-function v0Tx(o: { feePayer?: string; signers?: number; signed?: boolean; programs?: string[] } = {}): string {
-  const signers = o.signers ?? 1;
-  const programs = o.programs ?? [SQUADS_V4];
-  const keys = [o.feePayer ?? linked, ...(signers > 1 ? [someone] : []), vaultAta, ...programs];
-  const bytes: number[] = [signers];
-  for (let i = 0; i < signers; i++) bytes.push(...new Array(64).fill(o.signed && i === 0 ? 9 : 0));
-  bytes.push(0x80, signers, 0, programs.length, keys.length);
-  for (const k of keys) bytes.push(...base58.decode(k));
-  bytes.push(...base58.decode(vaultAta)); // blockhash (any 32 bytes)
-  bytes.push(programs.length);
-  programs.forEach((_, i) => bytes.push(keys.length - programs.length + i, 1, signers, 1, 7));
-  bytes.push(0); // no lookup tables
-  return base64.encode(Uint8Array.from(bytes));
-}
-const MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
-const REF = 'AddressLookupTab1e1111111111111111111111111';
-const COPY = 'Devnet test USDC, no value · test keys · not independent custody';
-/** GET /settlements/:id/approval (contracts SettlementApproval). */
-const plan = (over: Record<string, unknown> = {}) => ({ settlementId: 'set-1', kind: 'payout', transactionB64: v0Tx(), multisig: vaultAta, txIndex: 3, opId: OP, amountUnits: 1_500_000, destination: someone, mint: MINT, network: 'devnet', copy: COPY, ...over }) as unknown as ServerTxPlan;
-/** GET /escrow/fundings/:id/transaction (contracts DevnetFundingTransaction): a reference, no op id. */
-const fundingPlan = (over: Record<string, unknown> = {}) => ({ transactionB64: v0Tx({ programs: ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'] }), fundingId: 'f-1', studyId: 's-1', reference: REF, amountUnits: 2_200_000, destination: vaultAta, mint: MINT, network: 'devnet', copy: COPY, ...over }) as unknown as ServerTxPlan;
+const linked = LINKED;
+const someone = ATTACKER;
+const plan = (over: Record<string, unknown> = {}) => approvalPlan(over) as unknown as ServerTxPlan;
+const funding = (over: Record<string, unknown> = {}) => fundingPlan(over) as unknown as ServerTxPlan;
 const ctx = { settlement: 'squads_devnet' as const, linkedWallet: linked };
 
-describe('checkServerTxPlan', () => {
-  it('returns the plan to show: kind, amount in devnet test USDC, destination, op id and the pilot copy', () => {
-    expect(checkServerTxPlan(plan(), ctx)).toEqual({
-      kind: 'payout',
-      opId: OP,
-      reference: null,
-      amountUnits: 1_500_000,
-      amountText: '1.50 devnet test USDC', // the app's tokenAmount format; the exact units are amountUnits
-      destination: someone,
-      mint: MINT,
-      signer: linked,
-      programs: [SQUADS_V4],
-      copy: COPY,
-    });
+describe('checkServerTxPlan (the bytes must match the template; pqa-qa P2-CS1)', () => {
+  it('a vote: the multisig and proposal are checked in the bytes; the payment details are only described', () => {
+    const c = checkServerTxPlan(plan(), ctx);
+    expect(c.kind).toBe('payout');
+    expect(c.signer).toBe(linked);
+    expect(c.checked.map((r) => r.label)).toEqual(['Vote in multisig', 'On payment proposal']);
+    expect(c.checked[0]!.value).toBe(MULTISIG);
+    expect(c.checked[1]!.value).toMatch(/^#4 \(/);
+    expect(c.described).toEqual([
+      { label: 'Amount', value: '1.50 devnet test USDC' },
+      { label: 'To', value: someone },
+      { label: 'Operation id', value: OP },
+    ]);
+    expect(c.copy).toBe(COPY);
     expect(DEVNET_PILOT_COPY).toBe(COPY); // the contracts' DEVNET_COPY
   });
 
-  it('a funding transfer: shown with its reference (a funding has no Squads op id)', () => {
-    expect(checkServerTxPlan(fundingPlan(), ctx)).toMatchObject({ kind: 'funding', opId: null, reference: REF, amountUnits: 2_200_000, destination: vaultAta, mint: MINT, copy: COPY });
-    expect(() => checkServerTxPlan(fundingPlan({ reference: 'nope' }), ctx)).toThrow(/reference/);
+  it('a funding: amount, vault, source, reference and mint all come from the bytes', () => {
+    const c = checkServerTxPlan(funding(), { ...ctx, expectedDestination: VAULT_ATA });
+    expect(c.kind).toBe('funding');
+    expect(c.described).toEqual([]);
+    expect(Object.fromEntries(c.checked.map((r) => [r.label, r.value]))).toMatchObject({ Amount: '2.20 devnet test USDC', 'To the study vault (token account)': VAULT_ATA, Reference: REFERENCE, 'Token mint': MINT });
   });
 
   it.each([
@@ -79,17 +59,22 @@ describe('checkServerTxPlan', () => {
     ['no network', plan({ network: undefined }), ctx, /isn’t for Solana devnet/],
     ['mainnet', plan({ network: 'mainnet-beta' }), ctx, /isn’t for Solana devnet/],
     ['no linked wallet', plan(), { ...ctx, linkedWallet: null }, /Link your devnet wallet/],
-    ['another fee payer', plan({ transactionB64: v0Tx({ feePayer: someone }) }), ctx, /not for your linked wallet/],
-    ['already signed', plan({ transactionB64: v0Tx({ signed: true }) }), ctx, /already signed/],
-    ['a second signer', plan({ transactionB64: v0Tx({ signers: 2 }) }), ctx, /only your wallet/],
-    ['an unexpected program', plan({ transactionB64: v0Tx({ programs: ['BPFLoaderUpgradeab1e11111111111111111111111'] }) }), ctx, /unexpected program/],
+    ['another fee payer', plan({ transactionB64: encodeV0([approveIx()], ATTACKER) }), ctx, /fee payer/],
+    ['already signed', plan({ transactionB64: encodeV0([approveIx()], LINKED, true) }), ctx, /already signed/],
+    ['QA repro: a System transfer of 1 SOL presented as a funding', funding({ transactionB64: encodeV0([systemTransferIx()]) }), ctx, /TransferChecked/],
+    ['a System transfer next to the vote', plan({ transactionB64: encodeV0([approveIx(), systemTransferIx()]) }), ctx, /extra instruction/],
+    ['a vote for another payment index', plan({ transactionB64: encodeV0([approveIx(5n)]) }), ctx, /proposal/],
+    ['a funding whose bytes move another amount than the plan says', funding({ transactionB64: encodeV0([transferCheckedIx({ amount: 9_999_999n })]) }), ctx, /amount/],
+    ['a funding to another destination', funding({ transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) }), ctx, /destination/],
+    ['a funding to a destination that is not this study’s vault', funding({ destination: ATTACKER, transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) }), { ...ctx, expectedDestination: VAULT_ATA }, /vault/],
     ['a fractional amount', plan({ amountUnits: 1.5 }), ctx, /amount/],
     ['a zero amount', plan({ amountUnits: 0 }), ctx, /amount/],
-    ['a bad destination', plan({ destination: 'nope' }), ctx, /destination/],
+    ['a bad destination', plan({ destination: 'nope' }), ctx, /addresses/],
     ['a bad op id', plan({ opId: 'op-1' }), ctx, /operation/],
     ['garbage bytes', plan({ transactionB64: 'AAAA' }), ctx, /valid devnet transaction/],
   ])('refuses: %s', (_name, p, c, msg) => {
     expect(() => checkServerTxPlan(p, c)).toThrow(msg);
+    expect(() => checkServerTxPlan(p, c)).toThrow(/Nothing was signed\./);
   });
 });
 

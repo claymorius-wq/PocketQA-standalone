@@ -2,9 +2,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { base58 } from '@scure/base';
 import type { SettlementApproval, Study } from '@pocket-qa/contracts';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
+import { approvalPlan, ATTACKER, COPY, encodeV0, fundingPlan, MINT, MULTISIG, OP, REFERENCE, systemTransferIx, transferCheckedIx, VAULT_ATA } from '../test-support/devnetTx';
 
 // Devnet pilot UI for server-built transactions: the builder reviews the decoded plan (what, how
 // much, to whom, the operation id or funding reference, the pilot copy), then signs in the wallet.
@@ -13,7 +13,7 @@ jest.mock('lucide-react-native', () =>
   jest.requireActual(jest.requireActual<typeof import('node:path')>('node:path').join(process.cwd(), '../../node_modules/lucide-react-native/dist/cjs/lucide-react-native.js')),
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
-const linked = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV';
+const linked = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV'; // test-support LINKED (jest.mock factories can't import)
 let mockUser: { id: string; role: string; wallet: { address: string } | null } = { id: 'b1', role: 'builder', wallet: { address: linked } };
 jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: mockUser }) }));
 const mockApi = jest.fn();
@@ -34,25 +34,10 @@ jest.mock('../src/wallet/signServerTransaction', () => ({ signServerTransaction:
 const { ServerTxSign } = require('../src/wallet/ServerTxSign') as typeof import('../src/wallet/ServerTxSign');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { EscrowPanel } = require('../src/screens/EscrowPanel') as typeof import('../src/screens/EscrowPanel');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { SQUADS_V4 } = require('../src/wallet/serverTx') as typeof import('../src/wallet/serverTx');
-
-const someone = '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin';
-const vault = 'GHtXQBsoZHVnNFa9YevAzFr17DJjgHXk3ycTKD5xD3Zi';
-const MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
-const REF = 'AddressLookupTab1e1111111111111111111111111';
-const COPY = 'Devnet test USDC, no value · test keys · not independent custody';
-const OP = `pqa-op1:${'ab'.repeat(32)}`;
-const TOKEN = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-function v0Tx(program: string): string {
-  const keys = [linked, vault, program];
-  const bytes = [1, ...new Array(64).fill(0), 0x80, 1, 0, 1, keys.length];
-  for (const k of keys) bytes.push(...base58.decode(k));
-  bytes.push(...base58.decode(vault), 1, 2, 1, 1, 1, 7, 0);
-  return Buffer.from(Uint8Array.from(bytes)).toString('base64');
-}
-const approval = (over: Record<string, unknown> = {}) => ({ settlementId: 'set-1', kind: 'payout', transactionB64: v0Tx(SQUADS_V4), multisig: vault, txIndex: 3, opId: OP, amountUnits: 1_000_000, destination: someone, mint: MINT, network: 'devnet', copy: COPY, ...over }) as unknown as SettlementApproval;
-const fundingTx = { transactionB64: v0Tx(TOKEN), fundingId: 'f1', studyId: 's1', reference: REF, amountUnits: 3_300_000, destination: vault, mint: MINT, network: 'devnet', copy: COPY };
+const vault = VAULT_ATA;
+const REF = REFERENCE;
+const approval = (over: Record<string, unknown> = {}) => approvalPlan(over) as unknown as SettlementApproval;
+const fundingTx = fundingPlan({ fundingId: 'f1', studyId: 's1', amountUnits: 3_300_000, transactionB64: encodeV0([transferCheckedIx({ amount: 3_300_000n })]) });
 
 const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } };
 const tree = (ui: ReactNode) => (
@@ -85,12 +70,20 @@ describe('ServerTxSign', () => {
     expect(screen.queryByTestId('t-sign')).toBeNull(); // nothing to sign before the plan is shown
     await act(async () => fireEvent.press(screen.getByTestId('t-review')));
     await settle();
+    expect(screen.getByText(/Reward to the tester · checked in this transaction/)).toBeTruthy();
+    // Checked (read from the bytes): the multisig, the proposal, the signer.
     const planCard = screen.getByTestId('t-plan');
-    expect(planCard).toHaveTextContent(/Reward to the tester/);
-    expect(planCard).toHaveTextContent(has('1.00 devnet test USDC'));
-    expect(planCard).toHaveTextContent(has(someone));
-    expect(planCard).toHaveTextContent(has(OP));
+    expect(planCard).toHaveTextContent(has(MULTISIG));
+    expect(planCard).toHaveTextContent(/#4 \(/);
     expect(planCard).toHaveTextContent(has(linked));
+    // A vote's bytes don't hold the amount or destination: shown as described, never as checked (P2-CS1).
+    expect(planCard).not.toHaveTextContent(has('1.50 devnet test USDC'));
+    expect(planCard).not.toHaveTextContent(has(ATTACKER));
+    expect(screen.getByText(/As described by Pocket QA \(not in this transaction/)).toBeTruthy();
+    const described = screen.getByTestId('t-described');
+    expect(described).toHaveTextContent(has('1.50 devnet test USDC'));
+    expect(described).toHaveTextContent(has(ATTACKER));
+    expect(described).toHaveTextContent(has(OP));
     expect(screen.getByTestId('t-copy')).toHaveTextContent(COPY);
     await act(async () => fireEvent.press(screen.getByTestId('t-sign')));
     await settle();
@@ -106,6 +99,26 @@ describe('ServerTxSign', () => {
     expect(screen.getByTestId('t-error')).toHaveTextContent(/isn’t for Solana devnet\. Nothing was signed\./);
     expect(screen.queryByTestId('t-sign')).toBeNull();
     expect(mockSign).not.toHaveBeenCalled();
+  });
+
+  it('QA repro (P2-CS1): a funding plan whose bytes are a System transfer is refused; nothing to sign', async () => {
+    const evil = fundingPlan({ transactionB64: encodeV0([systemTransferIx()]) });
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" expectedDestination={vault} reviewLabel="Review" signLabel="Sign" load={async () => evil as never} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    expect(screen.getByTestId('t-error')).toHaveTextContent(/TransferChecked.*Nothing was signed\./);
+    expect(screen.queryByTestId('t-sign')).toBeNull();
+    expect(screen.queryByTestId('t-plan')).toBeNull();
+    expect(mockSign).not.toHaveBeenCalled();
+  });
+
+  it('a funding whose destination is not the vault of this request is refused', async () => {
+    const other = fundingPlan({ destination: ATTACKER, transactionB64: encodeV0([transferCheckedIx({ dest: ATTACKER })]) });
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" expectedDestination={vault} reviewLabel="Review" signLabel="Sign" load={async () => other as never} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    expect(screen.getByTestId('t-error')).toHaveTextContent(/vault.*Nothing was signed\./);
+    expect(screen.queryByTestId('t-sign')).toBeNull();
   });
 
   it('no linked wallet: says to link one', async () => {
@@ -162,8 +175,12 @@ describe('EscrowPanel · devnet funding with the wallet', () => {
     await act(async () => fireEvent.press(screen.getByTestId('escrow-wallet-review')));
     await settle();
     expect(mockApi).toHaveBeenCalledWith('escrowFundingTransaction', { params: { id: 'f1' } });
+    // A funding transfer's amount, vault, reference and mint are all checked in the bytes.
     expect(screen.getByTestId('escrow-wallet-plan')).toHaveTextContent(has(REF));
     expect(screen.getByTestId('escrow-wallet-plan')).toHaveTextContent(has('3.30 devnet test USDC'));
+    expect(screen.getByTestId('escrow-wallet-plan')).toHaveTextContent(has(vault));
+    expect(screen.getByTestId('escrow-wallet-plan')).toHaveTextContent(has(MINT));
+    expect(screen.queryByTestId('escrow-wallet-described')).toBeNull();
     await act(async () => fireEvent.press(screen.getByTestId('escrow-wallet-sign')));
     await settle();
     expect(mockApi).toHaveBeenCalledWith('submitFundingSignature', { params: { id: 'f1' }, body: { signature: '5igFund' } });

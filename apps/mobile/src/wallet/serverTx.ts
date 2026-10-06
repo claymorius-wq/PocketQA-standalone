@@ -1,45 +1,36 @@
 import { base58 } from '@scure/base';
 import { DEVNET_COPY, type DevnetFundingTransaction, type SettlementApproval } from '@pocket-qa/contracts';
-import { decodeServerTx } from '@pocket-qa/domain';
+import { decodeServerTx, verifyApprovalTx, verifyFundingTx } from '@pocket-qa/domain';
 import { tokenAmount } from '../lib/money';
 
 /**
  * Devnet pilot: transactions the SERVER builds for the builder's wallet to sign and send (escrow
- * funding; the builder's Squads approval of a payout or refund, pqa-be3-interfaces.md §2). Before
- * any wallet opens, the client checks the server's plan AND the transaction bytes, and returns the
- * plan to show: what it is, how much, to whom, and the operation id. Every refusal happens before
- * the wallet is asked anything, so nothing is signed or sent.
+ * funding; the builder's Squads vote on one payment, pqa-be3-interfaces.md §2). Before any wallet
+ * opens, the bytes must match an exact template (packages/domain devnetTemplates.ts, pqa-qa P2-CS1)
+ * and the server's plan must agree with them. What is shown as checked is READ FROM THE BYTES.
+ * A vote's bytes don't contain the payment's amount or destination (they are in the vault
+ * transaction already on chain), so those are shown as described by Pocket QA, never as checked.
  */
 export const DEVNET_PILOT_COPY = DEVNET_COPY;
 export const SQUADS_V4 = 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf';
-/** The only programs a server-built pilot transaction may call. */
-export const PILOT_PROGRAMS: readonly string[] = [
-  SQUADS_V4,
-  '11111111111111111111111111111111', // System
-  'ComputeBudget111111111111111111111111111111',
-  'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token (classic)
-  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token Account
-  'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', // Memo (op id)
-];
 
-/**
- * What the server returns for a transaction to sign: the builder's vote on one payment
- * (GET /settlements/:id/approval) or the escrow funding transfer (GET /escrow/fundings/:id/transaction).
- * Fields are checked here even though the API client validates them: the check is the safety rule.
- */
+/** What the server returns for a transaction to sign: a vote on one payment, or the escrow funding transfer. */
 export type ServerTxPlan = SettlementApproval | DevnetFundingTransaction;
-export type SignContext = { settlement: string; linkedWallet: string | null };
+export type SignContext = {
+  settlement: string;
+  linkedWallet: string | null;
+  /** Funding: the vault token account from the funding request (POST /escrow/fundings), compared too. */
+  expectedDestination?: string;
+};
+export type PlanRow = { label: string; value: string };
 export type CheckedPlan = {
   kind: SettlementApproval['kind'] | 'funding';
-  /** The Squads operation id (a vote), or null for a funding (it carries a reference instead). */
-  opId: string | null;
-  reference: string | null;
-  amountUnits: number;
-  amountText: string;
-  destination: string;
-  mint: string;
+  /** The wallet that signs and pays the network fee (the linked wallet). */
   signer: string;
-  programs: string[];
+  /** Read from the transaction bytes and matched against the template and the plan. */
+  checked: PlanRow[];
+  /** From Pocket QA's plan, not contained in this transaction (a vote's payment details). */
+  described: PlanRow[];
   copy: string;
 };
 
@@ -54,39 +45,51 @@ const isAddress = (a: unknown) => {
 };
 
 export function checkServerTxPlan(plan: ServerTxPlan, ctx: SignContext): CheckedPlan {
-  const funding = 'fundingId' in plan;
-  const refuse = (why: string) => new PlanRefused(`${why} Nothing was signed.`);
-  if (ctx.settlement !== 'squads_devnet') throw refuse('Wallet signing is offered only in the devnet pilot.');
+  const refuse = (why: string) => new PlanRefused(`${why.replace(/\.$/, '')}. Nothing was signed.`);
+  if (ctx.settlement !== 'squads_devnet') throw refuse('Wallet signing is offered only in the devnet pilot');
   // A transaction carries no chain id: the server must say devnet, and the wallet is asked on devnet.
-  if (plan.network !== 'devnet') throw refuse('This transaction isn’t for Solana devnet.');
-  if (!ctx.linkedWallet) throw refuse('Link your devnet wallet first.');
-  if (!Number.isSafeInteger(plan.amountUnits) || plan.amountUnits <= 0) throw refuse('The amount isn’t a whole number of test-USDC units.');
-  if (!isAddress(plan.destination)) throw refuse('The destination isn’t a Solana address.');
-  if (!isAddress(plan.mint)) throw refuse('The token mint isn’t a Solana address.');
-  if (funding ? !isAddress(plan.reference) : !/^pqa-op1:[0-9a-f]{64}$/.test(plan.opId)) {
-    throw refuse(funding ? 'The funding reference isn’t a Solana address.' : 'The operation id isn’t a Pocket QA operation.');
-  }
-  let tx: ReturnType<typeof decodeServerTx>;
+  if (plan.network !== 'devnet') throw refuse('This transaction isn’t for Solana devnet');
+  const linked = ctx.linkedWallet;
+  if (!linked) throw refuse('Link your devnet wallet first');
+  if (!Number.isSafeInteger(plan.amountUnits) || plan.amountUnits <= 0) throw refuse('The amount isn’t a whole number of test-USDC units');
+  if (!isAddress(plan.destination) || !isAddress(plan.mint)) throw refuse('The plan’s addresses aren’t Solana addresses');
   try {
-    tx = decodeServerTx(plan.transactionB64);
+    const tx = decodeServerTx(plan.transactionB64);
+    if ('fundingId' in plan) {
+      const v = verifyFundingTx(tx, { owner: linked, amountUnits: plan.amountUnits, destination: plan.destination, reference: plan.reference, mint: plan.mint });
+      if (ctx.expectedDestination !== undefined && v.destination !== ctx.expectedDestination) throw refuse('The destination is not this study’s vault');
+      return {
+        kind: 'funding',
+        signer: linked,
+        checked: [
+          { label: 'Amount', value: tokenAmount(v.amountUnits, 'squads_devnet') },
+          { label: 'To the study vault (token account)', value: v.destination },
+          { label: 'From your devnet test USDC account', value: v.source },
+          { label: 'Reference', value: v.reference },
+          { label: 'Token mint', value: v.mint },
+        ],
+        described: [],
+        copy: DEVNET_COPY,
+      };
+    }
+    if (!/^pqa-op1:[0-9a-f]{64}$/.test(plan.opId)) throw refuse('The operation id isn’t a Pocket QA operation');
+    const v = verifyApprovalTx(tx, { member: linked, multisig: plan.multisig, txIndex: plan.txIndex, opId: plan.opId });
+    return {
+      kind: plan.kind,
+      signer: linked,
+      checked: [
+        { label: 'Vote in multisig', value: v.multisig },
+        { label: 'On payment proposal', value: `#${v.txIndex} (${v.proposal})` },
+      ],
+      described: [
+        { label: 'Amount', value: tokenAmount(plan.amountUnits, 'squads_devnet') },
+        { label: 'To', value: plan.destination },
+        { label: 'Operation id', value: plan.opId },
+      ],
+      copy: DEVNET_COPY,
+    };
   } catch (e) {
-    throw refuse(e instanceof Error ? e.message : 'Not a valid devnet transaction.');
+    if (e instanceof PlanRefused) throw e;
+    throw refuse(e instanceof Error ? e.message : 'This transaction doesn’t match what Pocket QA asked for');
   }
-  if (tx.feePayer !== ctx.linkedWallet) throw refuse('This transaction is not for your linked wallet.');
-  if (tx.requiredSignatures !== 1) throw refuse('This transaction needs other signers; only your wallet may sign it.');
-  if (tx.signed.some(Boolean)) throw refuse('This transaction is already signed.');
-  const unexpected = tx.programIds.filter((p) => !PILOT_PROGRAMS.includes(p));
-  if (unexpected.length) throw refuse(`This transaction calls an unexpected program (${unexpected[0]}).`);
-  return {
-    kind: funding ? 'funding' : plan.kind,
-    opId: funding ? null : plan.opId,
-    reference: funding ? plan.reference : null,
-    amountUnits: plan.amountUnits,
-    amountText: tokenAmount(plan.amountUnits, 'squads_devnet'),
-    destination: plan.destination,
-    mint: plan.mint,
-    signer: tx.feePayer,
-    programs: tx.programIds,
-    copy: DEVNET_COPY,
-  };
 }

@@ -8,6 +8,7 @@ import { DockSlot, LAND_PEAK, useLanding } from '../src/screens/review/ReviewPar
 import { ThemeProvider, useTheme, type ThemePreference } from '../src/theme/ThemeProvider';
 import { PASS_LEAVE_AFTER, PASS_MIN_AFTER_PRESS } from '../src/ui/patterns';
 import Review from '../app/builder/review/[id]';
+import { approvalPlan, ATTACKER, OP } from '../test-support/devnetTx';
 
 // Builder review (A-Review): every testID, label and flow of the pre-Lens screen; the evidence
 // strip (open on demand, the failure under the strip); the docked Decision bar; U7 on Approve (the
@@ -379,22 +380,6 @@ describe('review screen', () => {
     destination: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', settlement, status, signature: null, failureReason: null, attempts: 0,
     authorizedAt: '2026-10-03T14:30:00.000Z', settledAt: null,
   });
-  /** A server-built Squads approval for the linked wallet (fee payer = linked, Squads v4, unsigned). */
-  function approvalPlan() {
-    const { base58 } = jest.requireActual<typeof import('@scure/base')>('@scure/base');
-    const linked = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV';
-    const vault = 'GHtXQBsoZHVnNFa9YevAzFr17DJjgHXk3ycTKD5xD3Zi';
-    const keys = [linked, vault, 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf'];
-    const bytes = [1, ...new Array(64).fill(0), 0x80, 1, 0, 1, keys.length];
-    for (const k of keys) bytes.push(...base58.decode(k));
-    bytes.push(...base58.decode(vault), 1, 2, 1, 1, 1, 7, 0);
-    return {
-      settlementId: 'set-1', kind: 'payout', transactionB64: Buffer.from(Uint8Array.from(bytes)).toString('base64'), multisig: vault, txIndex: 4,
-      opId: `pqa-op1:${'cd'.repeat(32)}`, amountUnits: 1_000_000, destination: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',
-      mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', network: 'devnet', copy: 'Devnet test USDC, no value · test keys · not independent custody',
-    };
-  }
-
   it('devnet pilot: a payout awaiting approval → review the vote → sign in the wallet → submitted with its index and op id', async () => {
     mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
     const plan = approvalPlan();
@@ -409,7 +394,10 @@ describe('review screen', () => {
     await settle();
     await settle();
     expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-1' } });
-    expect(screen.getByTestId('reward-approval-plan')).toHaveTextContent(/pqa-op1:cdcd/);
+    // The vote (multisig, proposal #4) is checked in the bytes; the payment's amount, recipient and op id are described.
+    expect(screen.getByTestId('reward-approval-plan')).toHaveTextContent(/#4 \(/);
+    expect(screen.getByTestId('reward-approval-described')).toHaveTextContent(new RegExp(OP));
+    expect(screen.getByTestId('reward-approval-described')).toHaveTextContent(new RegExp(ATTACKER));
     await fireEvent.press(screen.getByTestId('reward-approval-sign'));
     await settle();
     await settle();

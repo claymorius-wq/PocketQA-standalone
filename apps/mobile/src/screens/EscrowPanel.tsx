@@ -112,6 +112,7 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
               <ServerTxSign
                 testID="escrow-wallet"
                 settlement={p.settlement}
+                expectedDestination={funding.vault}
                 reviewLabel="Review the transfer to sign in your wallet"
                 signLabel="Sign and send in your wallet"
                 load={() => api('escrowFundingTransaction', { params: { id: funding.id } })}

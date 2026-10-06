@@ -23,6 +23,8 @@ const KIND: Record<CheckedPlan['kind'], string> = {
 export function ServerTxSign<P extends ServerTxPlan>(props: {
   testID: string;
   settlement: string;
+  /** Funding: the vault token account from the funding request; the transfer must go there. */
+  expectedDestination?: string;
   reviewLabel: string;
   signLabel: string;
   load: () => Promise<P>;
@@ -30,7 +32,7 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
   onDone?: () => void;
 }) {
   const { user } = useSession();
-  const ctx = { settlement: props.settlement, linkedWallet: user?.wallet?.address ?? null };
+  const ctx = { settlement: props.settlement, linkedWallet: user?.wallet?.address ?? null, ...(props.expectedDestination ? { expectedDestination: props.expectedDestination } : {}) };
   const [loaded, setLoaded] = useState<{ plan: P; checked: CheckedPlan } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'review' | 'sign' | null>(null);
@@ -74,15 +76,23 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
       ) : null}
       {c ? (
         <Card k={0.64} style={styles.card}>
+          <Text variant="label">{`${KIND[c.kind]} · checked in this transaction`}</Text>
           <KeyValueList testID={`${props.testID}-plan`}>
-            <KeyValue label="What" value={KIND[c.kind]} />
-            <KeyValue label="Amount" value={c.amountText} />
-            <KeyValue label="To" value={c.destination} />
-            {c.opId ? <KeyValue label="Operation id" value={c.opId} /> : null}
-            {c.reference ? <KeyValue label="Reference" value={c.reference} /> : null}
-            <KeyValue label="Token mint" value={c.mint} />
+            {c.checked.map((r) => (
+              <KeyValue key={r.label} label={r.label} value={r.value} />
+            ))}
             <KeyValue label="Signed by your wallet" value={c.signer} />
           </KeyValueList>
+          {c.described.length ? (
+            <>
+              <Text variant="label">As described by Pocket QA (not in this transaction; checked on chain before it executes)</Text>
+              <KeyValueList testID={`${props.testID}-described`}>
+                {c.described.map((r) => (
+                  <KeyValue key={r.label} label={r.label} value={r.value} />
+                ))}
+              </KeyValueList>
+            </>
+          ) : null}
           <Text variant="small" tone="muted" testID={`${props.testID}-copy`}>
             {c.copy}
           </Text>
