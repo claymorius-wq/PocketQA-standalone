@@ -139,3 +139,17 @@ pid 69667 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
 pid 69739 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
 pid 69886 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
 ```
+
+## 2026-10-06 ~19:40Z: devnet phase lanes (live proof via `herdr agent list`, workspace wX)
+```
+pocketqa-lead wX:p1 working /Users/hamzadiaz/Projects/pocket-qa da661565
+pqa-ios wX:p3 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios 05ae0360
+pqa-qa wX:p2 idle /Users/hamzadiaz/Projects/pocket-qa e1acf907
+pqa-be1 wX:p4 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel 8ba16467
+pqa-be2 wX:p5 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel bf021446
+pqa-be3 wX:p6 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel a379b1f3
+```
+- Lanes (contract docs/plans/devnet-phase-contract.md, base dc5da90): pqa-be1 → .worktrees/e2e-fix-h33 (fix/e2e-h33) then the devnet browser journey; pqa-be2 → .worktrees/devnet-races (feat/devnet-races); pqa-be3 → .worktrees/devnet-adapter (feat/devnet-adapter); pqa-ios → D-08 fresh devnet pilot run + device readiness; pqa-qa → review.
+- pqa-be3 already existed (pane wX:p6, launched earlier); `herdr agent start pqa-be3` in a new tab was refused for the duplicate name, and that tab (wX:t3) was closed.
+- Each lane worktree was added to its agent with `/add-dir` → "Yes, for this session" (no saved permission or global policy change).
+- Model: every Claude process in the team runs with `--model opus` (ps). The exact-id flag `claude-opus-5-5` is not visible in the process arguments; be1, be2 and pqa-ios self-reported `claude-opus-5-5`, and be3 was asked to report it. The running panes' flags cannot be changed without restarting them.
