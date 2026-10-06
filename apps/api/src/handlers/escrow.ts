@@ -70,7 +70,7 @@ export const escrowHandlers = {
     const from = await linkedWallet(ctx);
     if (!from) throw fail('CONFLICT_STATE', 'Link the wallet you’ll fund this study from first.');
     const done = await sim.fundingSignatureFor(f.reference);
-    const signature = done ?? (await sim.recordTransfer({ source: from, destination: (await ctx.deps.repo.escrow.escrowOf(f.study_id))!.vault, amountUnits: f.amount_units, reference: f.reference }, 'funding'));
+    const signature = done ?? (await sim.sendTransfer({ source: from, destination: (await ctx.deps.repo.escrow.escrowOf(f.study_id))!.vault, amountUnits: f.amount_units, reference: f.reference }, 'funding'));
     return { signature, settlement: 'simulated' as const };
   },
 

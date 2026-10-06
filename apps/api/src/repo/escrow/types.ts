@@ -70,6 +70,21 @@ export type SettlementRow = {
 /** The escrow books of a study and its invariant (ADR 0007 §5), as `escrowInvariant` returns them. */
 export type EscrowBooks = ReturnType<typeof import('@pocket-qa/domain').escrowInvariant>;
 
+/** One transfer on the SIMULATED chain (ADR 0007 §4): no network, no asset, no value. */
+export type SimTransferRow = {
+  signature: string;
+  network: string;
+  mint: string;
+  source: string;
+  destination: string;
+  amount_units: number;
+  reference: string;
+  kind: 'funding' | 'payout' | 'refund' | 'other';
+  status: 'processing' | 'finalized' | 'failed';
+  idempotency_key: string | null;
+  block_time_ms: number;
+};
+
 /** What a funding transfer's verification concluded (computed outside the transaction). */
 export type FundingVerdict = { status: 'pending' | 'confirmed' | 'failed'; reason: string | null };
 
@@ -180,6 +195,19 @@ export interface EscrowRepo {
   hasOpenFunding(studyId: string): Promise<boolean>;
   /** Studies whose escrow of this settlement kind has an on-chain multisig. */
   escrowStudiesWithMultisig(mode: EscrowRow['settlement']): Promise<string[]>;
+
+  // ── Simulated chain (settlement/simulated.ts; hosted runs simulated settlement only) ──────────
+  /**
+   * Records a simulated transfer. With an idempotency key already used (row 29), nothing is
+   * written and the existing transfer's signature is returned.
+   */
+  simRecordTransfer(row: SimTransferRow): Promise<string>;
+  simTransfer(signature: string): Promise<SimTransferRow | null>;
+  simSignatureForKey(key: string): Promise<string | null>;
+  /** A held (`processing`) transfer finalizes: a late confirmation. */
+  simFinalizeProcessing(signature: string): Promise<void>;
+  /** The simulated funding transfer already sent for this funding reference, if any. */
+  simFundingSignature(reference: string): Promise<string | null>;
 
   // ── Reputation (T10) ───────────────────────────────────────────────────────────────────────
   reputationOf(userId: string, nowMs: number): Promise<Reputation>;

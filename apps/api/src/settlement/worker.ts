@@ -27,21 +27,45 @@ const backoff = (attempt: number) => Math.min(MAX_RETRY_MS, RETRY_MS * 2 ** Math
  * would still be safe, because every send is idempotent per persisted attempt key.
  * Unknown errors propagate: they leave the outcome unknown, and the next run resolves it.
  */
-export async function runSettlement(deps: Pick<Deps, 'now' | 'settlement'> & { repo: Pick<Deps['repo'], 'escrow'> }): Promise<{ alerts: string[] }> {
+/**
+ * A bounded slice (plan §5, R5): at most `maxItems` items (fundings verified, settlements sent or
+ * polled), and none started at or after `deadlineMs`. With a `lease`, the job's fence is checked
+ * (`repo.core.leaseValid`) before every item, so a holder whose lease was taken over stops.
+ * Every item is idempotent, so a slice cut short is simply resumed by the next run.
+ */
+export type SettlementSlice = { maxItems?: number; deadlineMs?: number; lease?: { job: string; fence: number } };
+
+export async function runSettlement(
+  deps: Pick<Deps, 'now' | 'settlement'> & { repo: Pick<Deps['repo'], 'escrow'> & Partial<Pick<Deps['repo'], 'core'>> },
+  slice: SettlementSlice = {},
+): Promise<{ alerts: string[]; complete: boolean }> {
   const { settlement: provider } = deps;
-  if (!provider) return { alerts: [] };
+  if (!provider) return { alerts: [], complete: true };
   const repo = deps.repo.escrow;
   const now = deps.now();
   const touched = new Set<string>();
   const label = settlementLabel(provider);
+  if (slice.lease && !deps.repo.core) throw new Error('runSettlement: a lease needs repo.core');
+  let items = 0;
+  let complete = true;
+  /** May the next item start? Stops the slice (complete: false) when the budget or lease is gone. */
+  const next = async () => {
+    if (!complete) return false;
+    if ((slice.maxItems !== undefined && items >= slice.maxItems) || (slice.deadlineMs !== undefined && deps.now() >= slice.deadlineMs)) complete = false;
+    else if (slice.lease && !(await deps.repo.core!.leaseValid(slice.lease.job, slice.lease.fence, deps.now()))) complete = false;
+    if (complete) items += 1;
+    return complete;
+  };
 
   await repo.expireUnpaidFundings(now);
   for (const f of await repo.pendingFundings()) {
+    if (!(await next())) break;
     await verifyFunding(repo, provider, f, f.signature!, now, 'system');
     touched.add(f.study_id);
   }
 
   for (const s of await repo.dueSettlements(now)) {
+    if (!(await next())) break;
     touched.add(s.study_id);
     let key = s.attempt_key;
     if (s.status !== 'submitted') {
@@ -72,6 +96,7 @@ export async function runSettlement(deps: Pick<Deps, 'now' | 'settlement'> & { r
   }
 
   for (const s of await repo.submittedSettlements()) {
+    if (!(await next())) break;
     touched.add(s.study_id);
     const st = await provider.status(s.signature!);
     if (st === 'finalized') {
@@ -96,7 +121,7 @@ export async function runSettlement(deps: Pick<Deps, 'now' | 'settlement'> & { r
       if (alert) alerts.push(alert);
     }
   }
-  return { alerts };
+  return { alerts, complete };
 }
 
 /**

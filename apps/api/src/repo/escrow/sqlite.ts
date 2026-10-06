@@ -6,7 +6,7 @@ import { leaderboardRows, reputationExport, reputationView, reverseForFraud } fr
 import { fail, iso, newId, notFound } from '../../util';
 import type { StudyRow } from '../../views/studies';
 import type { UserRow } from '../../views/core';
-import type { EscrowRepo, FundingRow, SettlementRow, TransferRow, WalletLink } from './types';
+import type { EscrowRepo, FundingRow, SettlementRow, SimTransferRow, TransferRow, WalletLink } from './types';
 
 /**
  * SQLite escrow repository: today's SQL, moved verbatim out of the handlers, settlement worker and
@@ -358,6 +358,29 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
 
     async escrowStudiesWithMultisig(mode) {
       return (db.prepare(`SELECT study_id FROM study_escrows WHERE settlement = ? AND multisig IS NOT NULL`).all(mode) as { study_id: string }[]).map((r) => r.study_id);
+    },
+
+    async simRecordTransfer(r) {
+      db.prepare(
+        `INSERT INTO sim_chain_transfers (signature, network, mint, source, destination, amount_units, reference, kind, status, idempotency_key, block_time_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      ).run(r.signature, r.network, r.mint, r.source, r.destination, r.amount_units, r.reference, r.kind, r.status, r.idempotency_key, r.block_time_ms);
+      return r.signature;
+    },
+
+    async simTransfer(signature) {
+      return (db.prepare('SELECT * FROM sim_chain_transfers WHERE signature = ?').get(signature) as SimTransferRow | undefined) ?? null;
+    },
+
+    async simSignatureForKey(key) {
+      return (db.prepare('SELECT signature FROM sim_chain_transfers WHERE idempotency_key = ?').get(key) as { signature: string } | undefined)?.signature ?? null;
+    },
+
+    async simFinalizeProcessing(signature) {
+      db.prepare(`UPDATE sim_chain_transfers SET status = 'finalized' WHERE signature = ? AND status = 'processing'`).run(signature);
+    },
+
+    async simFundingSignature(reference) {
+      return (db.prepare(`SELECT signature FROM sim_chain_transfers WHERE reference = ? AND kind = 'funding'`).get(reference) as { signature: string } | undefined)?.signature ?? null;
     },
 
     async reputationOf(userId, nowMs) {
