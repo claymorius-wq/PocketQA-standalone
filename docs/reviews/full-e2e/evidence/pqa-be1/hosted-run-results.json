@@ -1351,5 +1351,93 @@
     ]
    ]
   }
+ },
+ "p12": {
+  "at": "2026-10-06T19:44:17.964Z",
+  "bundle": "entry-03fa1a9897a6fa8d485ac9bb9a680e2e.js",
+  "ledger": [
+   {
+    "label": "before",
+    "builder": 800,
+    "tester": 130
+   },
+   {
+    "label": "after publishing J1, J2 (10x1 each) and the tester submitting both",
+    "builder": 780,
+    "tester": 130
+   }
+  ],
+  "fixtures": {
+   "J1": {
+    "study": "i3453b1df91de91d862a9465a710325e",
+    "pid": "e977b0a9-2683-41d9-a87e-3e258060c766"
+   },
+   "J2": {
+    "study": "ie0676e33702f66c2817629238b1d7d8",
+    "pid": "f31b1f3d-f4d4-44f7-8626-93d3141538d5"
+   }
+  },
+  "same": {
+   "tab1": {
+    "method": "POST",
+    "path": "/api/participations/e977b0a9-2683-41d9-a87e-3e258060c766/approve",
+    "status": 200
+   },
+   "tab2Call": {
+    "method": "POST",
+    "path": "/api/participations/e977b0a9-2683-41d9-a87e-3e258060c766/approve",
+    "status": 409
+   },
+   "tab2": {
+    "sheetOpen": false,
+    "decisionError": null,
+    "alreadyDecided": "Already approved This submission is already approved. Nothing more to do.",
+    "decided": "Decision: Approved Decided Oct 6, 9:44 PM",
+    "approveButton": 0,
+    "status": "Status: APPROVED"
+   },
+   "ledgerAfterTab1": {
+    "label": "same-outcome: after tab 1 approved",
+    "builder": 780,
+    "tester": 140
+   },
+   "ledgerAfterTab2": {
+    "label": "same-outcome: after tab 2 confirmed",
+    "builder": 780,
+    "tester": 140
+   },
+   "finalStatus": "approved"
+  },
+  "different": {
+   "tab1": {
+    "method": "POST",
+    "path": "/api/participations/f31b1f3d-f4d4-44f7-8626-93d3141538d5/approve",
+    "status": 200
+   },
+   "tab2Call": {
+    "method": "POST",
+    "path": "/api/participations/f31b1f3d-f4d4-44f7-8626-93d3141538d5/reject",
+    "status": 409
+   },
+   "tab2": {
+    "sheetOpen": false,
+    "decisionError": null,
+    "alreadyDecided": "Already decided This submission was decided elsewhere (another tab or device) before your decision arrived, so yours wasn\u2019t applied. Its decision is shown below.",
+    "decided": "Decision: Approved Decided Oct 6, 9:45 PM",
+    "approveButton": 0,
+    "status": "Status: APPROVED"
+   },
+   "ledgerAfterTab1": {
+    "label": "different-outcome: after tab 1 approved",
+    "builder": 780,
+    "tester": 150
+   },
+   "ledgerAfterTab2": {
+    "label": "different-outcome: after tab 2 confirmed",
+    "builder": 780,
+    "tester": 150
+   },
+   "finalStatus": "approved"
+  }
  }
 }
