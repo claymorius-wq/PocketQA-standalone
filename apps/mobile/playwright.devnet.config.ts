@@ -14,10 +14,11 @@ export default defineConfig({
   use: { trace: 'retain-on-failure', actionTimeout: 20_000, ...devices['Pixel 7'] },
   // The HOSTED web devnet journey (hosted-journey.spec.ts) runs desktop first, then Pixel 7 emulation
   // ("mobile viewport, NOT a physical-device wallet deep-link (MWA) test"); the other specs use the default.
+  // The hosted runs use the installed Google Chrome (channel 'chrome'): no Playwright browser download.
   projects: [
     { name: 'default', testIgnore: /hosted-journey/ },
-    { name: 'desktop', testMatch: /hosted-journey/, use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
-    { name: 'pixel7', testMatch: /hosted-journey/, use: { ...devices['Pixel 7'] }, dependencies: ['desktop'] },
+    { name: 'desktop', testMatch: /hosted-journey/, use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 }, channel: 'chrome' } },
+    { name: 'pixel7', testMatch: /hosted-journey/, use: { ...devices['Pixel 7'], channel: 'chrome' }, dependencies: ['desktop'] },
   ],
   // The LOCAL journey's backend (its own ESM process; only under `firebase emulators:exec` with PQA_WEB_DIR).
   ...(process.env.FIRESTORE_EMULATOR_HOST && process.env.PQA_WEB_DIR
