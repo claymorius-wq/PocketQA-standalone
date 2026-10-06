@@ -4,6 +4,7 @@ import { buildApp, loggerOptions } from './app';
 import { loadConfig, readEnvFile, REPO_ROOT } from './config';
 import { PID_FILE, unfinishedRestore } from './backup';
 import { openDb } from './db';
+import { makeRepos } from './repo';
 import { localStore } from './storage/local';
 import { sweepStorage } from './storage/sweep';
 import { httpDevnetRpc } from './rpc';
@@ -20,6 +21,8 @@ mkdirSync(join(config.dataDir, 'media'), { recursive: true, mode: 0o700 });
 const db = openDb(join(config.dataDir, 'pocketqa.sqlite'));
 const deps = {
     db,
+    // Local server: SQLite (local and USB testing). Hosted (Vercel) builds Firestore repos instead.
+    repo: makeRepos({ kind: 'sqlite', db }),
     config,
     now: Date.now,
     rpc: httpDevnetRpc(config.rpcUrl),

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { buildApp } from '../src/app';
 import { ConfigError, loadConfig } from '../src/config';
 import { openDb } from '../src/db';
+import { makeRepos } from '../src/repo';
 import { localStore } from '../src/storage/local';
 import { FakeRpc } from './helpers';
 
@@ -28,7 +29,7 @@ describe('local-only configuration', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pqa-bind-'));
     const config = loadConfig({ POCKETQA_DATA_DIR: dir, POCKETQA_API_PORT: '0' });
     const db = openDb(join(dir, 'x.sqlite'));
-    const app = await buildApp({ db, config, now: Date.now, rpc: new FakeRpc(), mediaDir: dir, identity: null, store: localStore(dir), settlement: null });
+    const app = await buildApp({ db, repo: makeRepos({ kind: 'sqlite', db }), config, now: Date.now, rpc: new FakeRpc(), mediaDir: dir, identity: null, store: localStore(dir), settlement: null });
     await app.listen({ host: config.host, port: config.port });
     const addrs = app.addresses();
     expect(addrs.length).toBeGreaterThan(0);

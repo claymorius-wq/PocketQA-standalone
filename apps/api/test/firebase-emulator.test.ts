@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
 import { openDb } from '../src/db';
+import { makeRepos } from '../src/repo';
 import { firebaseIdentity } from '../src/identity/firebase';
 import { localStore } from '../src/storage/local';
 import { FakeRpc } from './helpers';
@@ -47,7 +48,8 @@ d('Firebase Admin adapter against the Auth emulator', () => {
 
   beforeAll(async () => {
     mkdirSync(join(dir, 'media'));
-    app = await buildApp({ db: openDb(join(dir, 'e.sqlite')), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity, store: localStore(join(dir, 'media')), settlement: null });
+    const db = openDb(join(dir, 'e.sqlite'));
+    app = await buildApp({ db, repo: makeRepos({ kind: 'sqlite', db }), config, now: Date.now, rpc: new FakeRpc(), mediaDir: join(dir, 'media'), identity, store: localStore(join(dir, 'media')), settlement: null });
     await app.ready();
   });
   afterAll(async () => {

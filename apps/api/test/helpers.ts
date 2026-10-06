@@ -7,6 +7,7 @@ import type { ParsedTx } from '@pocket-qa/domain';
 import { buildApp, loggerOptions } from '../src/app';
 import type { Deps, DevnetRpc } from '../src/context';
 import { openDb } from '../src/db';
+import { makeRepos } from '../src/repo';
 import { localStore } from '../src/storage/local';
 import { r2Store } from '../src/storage/r2';
 import { SimulatedSettlement } from '../src/settlement/simulated';
@@ -64,6 +65,7 @@ export async function makeApp(opts: { captureLogs?: boolean; authMode?: 'local' 
   });
   const deps: Deps = {
       db,
+      repo: makeRepos({ kind: 'sqlite', db }),
       config: {
         production: opts.production ?? false,
         trustProxy: opts.trustProxy ? ['127.0.0.1', '::1'] : false,

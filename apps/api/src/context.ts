@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ParsedTx } from '@pocket-qa/domain';
 import type { Config } from './config';
 import type { DB } from './db';
+import type { Repos } from './repo';
 import type { IdentityProvider, VerifiedIdentity } from './identity/types';
 import type { SettlementProvider } from './settlement/types';
 import type { EvidenceStore } from './storage/types';
@@ -17,6 +18,8 @@ export type DevnetRpc = {
 
 export type Deps = {
   db: DB;
+  /** Intent-level data access (docs/plans/firebase-vercel-refactor.md §2); sqlite or firestore. */
+  repo: Repos;
   config: Config;
   now: Clock;
   rpc: DevnetRpc;

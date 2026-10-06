@@ -147,6 +147,7 @@ Each SQLite transaction becomes **one Firestore transaction**:
    - `pocketqa.sqlite` sha256 `3501bc9e96436b10b58ba843509ff670dff08354ca61bfdf698429fbede610e3`; `integrity_check` = ok; 31 tables (`manifest.json` holds the per-table counts: 77 users, 39 studies, 30 participations, 11 evidence, 154 ledger rows).
    - The Seeker evidence row `4aef8a84…` is present (screen_recording, video/mp4, 27,178,114 bytes).
    - `media/` copied (not moved; 11 files, `media.sha256`). The Seeker file's sha256 equals the R2 receipt (`3ee5d78c…a73`).
+   - The snapshot is read-only on disk (0400; sidecars removed after pqa-qa's P3). The migration opens a **copy** with SQLite `immutable=1` (or `mode=ro`), so no `-shm`/`-wal` is ever created next to it.
    - The migration reads **only copies of this snapshot**: never the live database (`scratchpad/nv-api-data`, WAL, still serving USB testing), and never this backup in place.
 2. **Dry run** against the **emulator**:
    - deterministic doc ids, so it's idempotent;
