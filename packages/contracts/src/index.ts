@@ -433,7 +433,15 @@ export const UploadIntent = z.object({
 export type UploadIntent = z.infer<typeof UploadIntent>;
 
 /** Bound to one evidence item and the requesting user; single resource, short-lived. */
-export const PlaybackToken = z.object({ token: z.string().min(32), expiresAt: IsoDate });
+/**
+ * Bound to one evidence item and the requesting user; short-lived. Local storage: a token for
+ * GET /media/:token (the API streams the bytes). Private R2: a presigned GET on the bucket's S3
+ * endpoint (<= 5 min, no custom domain), issued after the same authorisation, so the bytes never
+ * pass through the API (Vercel body limit). Exactly one of the two.
+ */
+export const PlaybackToken = z
+  .object({ token: z.string().min(32).optional(), url: z.string().url().optional(), expiresAt: IsoDate })
+  .refine((v) => (v.token === undefined) !== (v.url === undefined), { message: 'exactly one of token or url' });
 
 // ---------- findings / review ----------
 export const FindingSeverity = z.enum(['blocker', 'major', 'minor', 'info']);
