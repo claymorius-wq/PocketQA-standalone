@@ -98,3 +98,50 @@ describe('account deletion (core part)', () => {
     expect(await repo.createUser(user('d2', 'gone@example.test'))).toBe('created');
   });
 });
+
+describe('idempotency (plan R3/R10)', () => {
+  it('20 concurrent first requests: one runs, the rest are in progress; then replay; a different body is a mismatch', async () => {
+    const out = await Promise.all(Array.from({ length: 20 }, () => repo.beginIdempotency('u1:decide:k1', 'fp-a', 1000)));
+    expect(out.filter((o) => o.kind === 'new')).toHaveLength(1);
+    expect(out.filter((o) => o.kind === 'in_progress')).toHaveLength(19);
+    await repo.completeIdempotency('u1:decide:k1', 200, { ok: true });
+    expect(await repo.beginIdempotency('u1:decide:k1', 'fp-a', 2000)).toEqual({ kind: 'replay', status: 200, body: { ok: true } });
+    expect(await repo.beginIdempotency('u1:decide:k1', 'fp-b', 2000)).toEqual({ kind: 'mismatch' });
+    expect((await repo.beginIdempotency('u2:decide:k1', 'fp-a', 2000)).kind).toBe('new'); // scoped per user
+  });
+
+  it('an abandoned request can be retried, and records expire after 24 h', async () => {
+    expect((await repo.beginIdempotency('s', 'fp', 0)).kind).toBe('new');
+    await repo.abandonIdempotency('s');
+    expect((await repo.beginIdempotency('s', 'fp', 1)).kind).toBe('new');
+    await repo.completeIdempotency('s', 201, { id: 'x' });
+    expect((await repo.beginIdempotency('s', 'fp', 24 * 3600 * 1000)).kind).toBe('replay');
+    expect((await repo.beginIdempotency('s', 'fp', 24 * 3600 * 1000 + 2)).kind).toBe('new');
+  });
+});
+
+describe('shared rate limit (plan R6)', () => {
+  it('two app instances share one window: 30 hits, max 10 -> exactly 10 allowed', async () => {
+    const { initializeApp } = await import('firebase-admin/app');
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const second = firestoreCoreRepo(getFirestore(initializeApp({ projectId: 'demo-pocketqa' }, `second-instance-${Date.now()}`)));
+    const hits = await Promise.all(Array.from({ length: 30 }, (_, i) => (i % 2 ? repo : second).rateLimitHit('login:ip-1', 60_000, 10, 5_000)));
+    expect(hits.filter(Boolean)).toHaveLength(10);
+    expect(await repo.rateLimitHit('login:ip-1', 60_000, 10, 65_000)).toBe(true); // next window
+  });
+});
+
+describe('job leases with fencing (plan §5)', () => {
+  it('20 concurrent acquirers: one fence; after expiry a new holder fences out the stale one', async () => {
+    const fences = await Promise.all(Array.from({ length: 20 }, (_, i) => repo.acquireLease('sweep', `h${i}`, 1000, 0)));
+    const won = fences.filter((f) => f !== null);
+    expect(won).toEqual([1]);
+    expect(await repo.leaseValid('sweep', 1, 500)).toBe(true);
+    expect(await repo.acquireLease('sweep', 'late', 1000, 1500)).toBe(2);
+    expect(await repo.leaseValid('sweep', 1, 1600)).toBe(false); // the stale holder is refused
+    await repo.releaseLease('sweep', 1); // a stale release changes nothing
+    expect(await repo.leaseValid('sweep', 2, 1600)).toBe(true);
+    await repo.releaseLease('sweep', 2);
+    expect(await repo.acquireLease('sweep', 'next', 1000, 1700)).toBe(3);
+  });
+});

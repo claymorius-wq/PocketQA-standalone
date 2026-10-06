@@ -65,4 +65,26 @@ export interface CoreRepo {
    * caller's transaction; on Firestore it is its own bounded transaction (email guards moved).
    */
   purgeUserCore(userId: string): Promise<void>;
+
+  /**
+   * Idempotency reservation (plan R3, as revised in R10): the first request with a scope claims
+   * it `pending`; a retry gets the stored response once `completeIdempotency` ran, `in_progress`
+   * while the first is still running, and `mismatch` if the body fingerprint differs. Records
+   * live 24 h, and the TTL is checked on read.
+   */
+  beginIdempotency(scope: string, fingerprint: string, nowMs: number): Promise<IdempotencyHit | { kind: 'in_progress' }>;
+  completeIdempotency(scope: string, status: number, body: unknown): Promise<void>;
+  /** The handler failed: drop the reservation so the client can retry. */
+  abandonIdempotency(scope: string): Promise<void>;
+
+  /** Shared fixed-window rate limit (plan R6): true if this hit is allowed. */
+  rateLimitHit(bucket: string, windowMs: number, max: number, nowMs: number): Promise<boolean>;
+
+  /**
+   * Job leases with fencing (plan §5): the holder gets a fence number while the lease is live;
+   * every item write checks `leaseValid(job, fence)`, so a stale holder is refused.
+   */
+  acquireLease(job: string, holder: string, ttlMs: number, nowMs: number): Promise<number | null>;
+  leaseValid(job: string, fence: number, nowMs: number): Promise<boolean>;
+  releaseLease(job: string, fence: number): Promise<void>;
 }

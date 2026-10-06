@@ -14,6 +14,7 @@ import type { AuditRow, CoreRepo } from './types';
  *  audit/{id}                          append-only; ordered by created_at, then commit time
  */
 const emailKey = (email: string) => sha256(email);
+export const IDEMPOTENCY_TTL_MS = 24 * 3600 * 1000;
 
 /** In-transaction user read for other domains' composite operations. */
 export async function userInTx(t: TxCtx, fs: Firestore, id: string): Promise<UserRow | null> {
@@ -162,6 +163,63 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
         if (row.email !== placeholder && oldGuard.exists && oldGuard.data()!.userId === userId) t.delete(oldGuard.ref);
         if (!newGuard.exists) t.create(newGuard.ref, { userId, createdAt: FieldValue.serverTimestamp() });
         t.update(users.doc(userId), { email: placeholder, password_hash: null, display_name: 'Deleted user', device_json: null, status: 'deleted' });
+      });
+    },
+    async beginIdempotency(scope, fingerprint, nowMs) {
+      const ref = fs.collection('idempotency').doc(sha256(scope));
+      return runTxCtx(fs, async (t) => {
+        const snap = await t.get(ref);
+        const d = snap.data();
+        if (snap.exists && (d!.expiresAt as number) > nowMs) {
+          if (d!.fingerprint !== fingerprint) return { kind: 'mismatch' as const };
+          if (d!.state === 'done') return { kind: 'replay' as const, status: d!.status as number, body: JSON.parse(d!.body as string) as unknown };
+          return { kind: 'in_progress' as const };
+        }
+        t.set(ref, { scope, fingerprint, state: 'pending', expiresAt: nowMs + IDEMPOTENCY_TTL_MS });
+        return { kind: 'new' as const };
+      });
+    },
+    async completeIdempotency(scope, status, body) {
+      await fs.collection('idempotency').doc(sha256(scope)).update({ state: 'done', status, body: JSON.stringify(body ?? null) });
+    },
+    async abandonIdempotency(scope) {
+      const ref = fs.collection('idempotency').doc(sha256(scope));
+      await runTxCtx(fs, async (t) => {
+        const snap = await t.get(ref);
+        if (snap.exists && snap.data()!.state === 'pending') t.delete(ref);
+      });
+    },
+    async rateLimitHit(bucket, windowMs, max, nowMs) {
+      const window = Math.floor(nowMs / windowMs);
+      const ref = fs.collection('rateLimits').doc(`${sha256(bucket)}:${window}`);
+      return runTxCtx(fs, async (t) => {
+        const snap = await t.get(ref);
+        const count = snap.exists ? (snap.data()!.count as number) : 0;
+        if (count >= max) return false;
+        t.set(ref, { count: count + 1, expiresAt: (window + 1) * windowMs });
+        return true;
+      });
+    },
+    async acquireLease(job, holder, ttlMs, nowMs) {
+      const ref = fs.collection('jobLeases').doc(job);
+      return runTxCtx(fs, async (t) => {
+        const snap = await t.get(ref);
+        const d = snap.data();
+        if (snap.exists && (d!.expiresAt as number) > nowMs) return null;
+        const fence = (snap.exists ? (d!.fence as number) : 0) + 1;
+        t.set(ref, { holder, fence, expiresAt: nowMs + ttlMs });
+        return fence;
+      });
+    },
+    async leaseValid(job, fence, nowMs) {
+      const d = (await fs.collection('jobLeases').doc(job).get()).data();
+      return !!d && d.fence === fence && (d.expiresAt as number) > nowMs;
+    },
+    async releaseLease(job, fence) {
+      const ref = fs.collection('jobLeases').doc(job);
+      await runTxCtx(fs, async (t) => {
+        const snap = await t.get(ref);
+        if (snap.exists && snap.data()!.fence === fence) t.update(ref, { expiresAt: 0 });
       });
     },
   };

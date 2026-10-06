@@ -234,9 +234,9 @@ Partial semantics are kept exactly: a guard document is created **only when the 
 | 1 | users.email UNIQUE | — | `userEmails/{sha256(lower(email))}` | 20 sign-ups, same email |
 | 2 | participations UNIQUE(study_id, tester_id) | — | doc id `participations/{study}_{tester}` | 20 joins, same tester |
 | 3 | (slots) | `slotsUsed < slots` | counter on `studies/{id}` in the join tx | 20 testers for the last slot |
-| 4 | evidence UNIQUE(participation_id, client_segment_id) | — | `evidenceSegments/{pid}:{seg}` | 20 completes, same segment |
+| 4 | evidence UNIQUE(participation_id, client_segment_id) | — | `evidenceSegments/{pid}:{sha256(seg)}` (free text hashed, as for every guard built from free text) | 20 completes, same segment |
 | 5 | upload_intents.object_key UNIQUE | — | doc id derived from the object key (`uploadIntents/{sha256(key)}`) | key collision test |
-| 6 | upload_intents_one_open_segment (pid, client_segment_id) | — | `openSegments/{pid}:{seg}` | 20 intents, same segment |
+| 6 | upload_intents_one_open_segment (pid, client_segment_id) | — | `openSegments/{pid}:{sha256(seg)}` | 20 intents, same segment |
 | 7 | disputes.participation_id UNIQUE | — | doc id `disputes/{pid}` | 20 opens |
 | 8 | ledger_one_reward (participation_id, kind) | — | `ledgerRewards/{pid}:{kind}` | 20 approves |
 | 9 | identities PK(provider, subject) | — | doc id `identities/{provider}:{subject}` | 20 first sign-ins, same uid |
@@ -282,7 +282,7 @@ A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this
 
 ### R4 (P2-4): R2 deletes
 - Production sets `POCKETQA_R2_ALLOW_DELETE=1` (literal A5, approved), as `config.ts` requires (it refuses r2 without ALLOW_DELETE=1 or RETAIN_NONPROD=1). The T7 deletion worker is otherwise inert.
-- **Protection:** the deletion worker deletes **only** keys under the app-created prefix `evidence/` that are recorded in `storageObjects`. Anything else, in particular `retained-local-submissions/**` (the Seeker archive), is refused and audited.
+- **Protection:** the deletion worker deletes **only** registered app-created keys under `evidence/` or `quarantine/` (today's r2.ts allow-list) that are recorded in `storageObjects`. Anything else, in particular `retained-local-submissions/**` (the Seeker archive), is refused and audited.
 - **Tests:** a refusal outside the prefix; the Seeker key refused.
 
 ### R5 (P2-3): jobs on Hobby
@@ -318,3 +318,27 @@ A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this
   - Emulator tests: composition, read-after-write refusal, a 20-way composite race.
 - **SQLite:** composite operations stay ONE `db.transaction`, calling the existing synchronous domain functions inside it.
 - **Ids:** participations and disputes keep their **legacy id as the document id** (most routes address them by id). Uniqueness comes from guard documents: `participationPairs/{studyId}_{testerId}` (UNIQUE(study, tester)) and `disputeByParticipation/{participationId}` (disputes.participation_id UNIQUE). These replace the "deterministic doc id" in rows 2 and 7 of the r2 table, with the same race tests.
+
+### R10: idempotency as a reservation (revises R3, decided in P0, 2026-10-06)
+**Why not R3's mechanism:** writing the idempotency record inside every effect's transaction would thread the record through every domain's transactions.
+
+**Instead:**
+1. `beginIdempotency` claims `idempotency/{sha256(uid:route:key)}` as `pending`, with the body fingerprint.
+2. The handler runs.
+3. `completeIdempotency` stores the status and body. On a handler error, `abandonIdempotency` drops the pending record so the client can retry.
+
+**What a retry gets:**
+- `replay`: the stored response.
+- `409 IN_PROGRESS`: the first request is still running.
+- `422 IDEMPOTENCY_KEY_REUSED`: a different body.
+- The TTL is 24 h, checked on read.
+
+**Why it's safe:** every invariant (rewards, claims, settlements, aliases, …) is enforced by the guard documents in the same transaction as its effect. So a crash between an effect and `completeIdempotency` can't double an effect; the retry hits the guard and returns the existing result.
+
+**Emulator tests:** a 20-way first request (one `new`), replay, mismatch, per-user scope, abandon-and-retry, and TTL.
+
+**Also landed in core:**
+- **Shared rate limit:** `rateLimits/{bucket}:{window}`. Test: two app instances, 30 hits, max 10 → 10 allowed.
+- **Job leases with fencing:** `jobLeases/{job}`. Tests: a 20-way acquire → one fence; a stale holder is fenced out after takeover.
+
+**Local SQLite** (one process) keeps these in memory.

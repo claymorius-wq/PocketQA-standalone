@@ -4,6 +4,11 @@ import type { AuditRow, CoreRepo } from './types';
 
 /** Core repository on SQLite: today's SQL, moved out of app.ts and the handlers unchanged. */
 export function sqliteCoreRepo(db: DB): CoreRepo {
+  const mem = {
+    idem: new Map<string, { fingerprint: string; state: 'pending' | 'done'; expiresAt: number; status?: number; body?: unknown }>(),
+    rate: new Map<string, number>(),
+    lease: new Map<string, { holder: string; fence: number; expiresAt: number }>(),
+  };
   const insertUser = db.prepare(
     'INSERT INTO users (id, email, password_hash, display_name, role, status, device_json, created_at) VALUES (@id,@email,@password_hash,@display_name,@role,@status,@device_json,@created_at)',
   );
@@ -119,6 +124,48 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
       db.prepare(
         `UPDATE users SET email = ?, password_hash = NULL, display_name = 'Deleted user', device_json = NULL, status = 'deleted' WHERE id = ?`,
       ).run(`deleted-${userId}@deleted.invalid`, userId);
+    },
+    // The local server is one process: idempotency records, rate-limit windows and job leases live
+    // in memory there (hosted Pocket QA keeps them in Firestore, shared by every instance).
+    async beginIdempotency(scope, fingerprint, nowMs) {
+      const d = mem.idem.get(scope);
+      if (d && d.expiresAt > nowMs) {
+        if (d.fingerprint !== fingerprint) return { kind: 'mismatch' as const };
+        if (d.state === 'done') return { kind: 'replay' as const, status: d.status!, body: d.body };
+        return { kind: 'in_progress' as const };
+      }
+      mem.idem.set(scope, { fingerprint, state: 'pending', expiresAt: nowMs + 24 * 3600 * 1000 });
+      return { kind: 'new' as const };
+    },
+    async completeIdempotency(scope, status, body) {
+      const d = mem.idem.get(scope);
+      if (d) Object.assign(d, { state: 'done', status, body });
+    },
+    async abandonIdempotency(scope) {
+      if (mem.idem.get(scope)?.state === 'pending') mem.idem.delete(scope);
+    },
+    async rateLimitHit(bucket, windowMs, max, nowMs) {
+      const key = `${bucket}:${Math.floor(nowMs / windowMs)}`;
+      const n = mem.rate.get(key) ?? 0;
+      if (n >= max) return false;
+      mem.rate.set(key, n + 1);
+      if (mem.rate.size > 10_000) for (const k of mem.rate.keys()) if (!k.endsWith(`:${Math.floor(nowMs / windowMs)}`)) mem.rate.delete(k);
+      return true;
+    },
+    async acquireLease(job, holder, ttlMs, nowMs) {
+      const d = mem.lease.get(job);
+      if (d && d.expiresAt > nowMs) return null;
+      const fence = (d?.fence ?? 0) + 1;
+      mem.lease.set(job, { holder, fence, expiresAt: nowMs + ttlMs });
+      return fence;
+    },
+    async leaseValid(job, fence, nowMs) {
+      const d = mem.lease.get(job);
+      return !!d && d.fence === fence && d.expiresAt > nowMs;
+    },
+    async releaseLease(job, fence) {
+      const d = mem.lease.get(job);
+      if (d && d.fence === fence) d.expiresAt = 0;
     },
   };
 }
