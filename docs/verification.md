@@ -882,3 +882,19 @@ $ firebase firestore:databases:list --project pocketqa-optijara --json
 $ gcloud billing projects describe pocketqa-optijara --account=admin@optijara.ai
 ERROR: (gcloud.billing.projects.describe) There was a problem refreshing your current auth tokens: Reauthentication failed. cannot prompt during non-interactive execution.
 ```
+
+## 2026-10-06: live USB API database after the lead's pkill incident (pqa-qa r4 request): read-only check
+The local API (`127.0.0.1:8787`, data `scratchpad/nv-api-data`) was SIGTERMed by a lead `pkill -f` for about 2 minutes. That signal goes through its clean-stop handler. It was restarted from the native-voice worktree with the same command and data dir.
+```
+$ python3 (sqlite3 'file:…/nv-api-data/pocketqa.sqlite?mode=ro', compared with ~/.local/share/pocketqa/backups/20261006T000054Z/manifest.json)
+integrity_check: ok
+tables compared: 31 | below manifest: none
+  users: backup 77 live 77
+  studies: backup 39 live 39
+  participations: backup 30 live 30
+  evidence: backup 11 live 11
+seeker evidence present: 1
+$ curl -s http://127.0.0.1:8787/health
+{"ok":true,"contractVersion":"0.6.1"}
+```
+From now on, stops are PID-scoped only (`$!` captured at start). Test servers use `POCKETQA_API_PORT` away from 8787.
