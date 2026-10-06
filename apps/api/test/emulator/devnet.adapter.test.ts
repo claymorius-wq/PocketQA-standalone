@@ -435,3 +435,32 @@ describe('the fee sweep on close (decision (a), pqa-be2 E-24): vault 0, the fee 
     expect(chain.prepared.length).toBe(signed);
   });
 });
+
+describe('the fence holds before a SAME-BYTES re-broadcast too (pqa-qa P3-F2)', () => {
+  it('a holder paused before re-broadcasting its unlanded transaction, then fenced out, re-broadcasts nothing', async () => {
+    const go = () => adapter.prepareVault({ studyId: 's1', builderWallet: builder.publicKey.toBase58(), userId: 'b1' });
+    chain.dropNext = 1;
+    await go().catch(() => undefined); // multisig_create sent, never landed
+    const sig = chain.prepared[0]!.signature;
+    let release!: () => void;
+    const paused = new Promise<void>((r) => (release = r));
+    let pausedOnce = false;
+    const realHeight = chain.blockHeight.bind(chain);
+    chain.blockHeight = async () => {
+      if (!pausedOnce) {
+        pausedOnce = true;
+        await paused; // holder A: decided "not landed, still valid", about to re-broadcast the same bytes
+      }
+      return realHeight();
+    };
+    const a = go().catch((e) => e);
+    while (!pausedOnce) await new Promise((r) => setImmediate(r));
+    now += 31_000; // A's lease lapsed; B takes over and re-broadcasts (the bytes land)
+    await go().catch(() => undefined);
+    const before = chain.broadcasts.filter((b) => b.signature === sig).length;
+    release();
+    expect(await a).toBeInstanceOf(SettlementPending);
+    expect(chain.broadcasts.filter((b) => b.signature === sig).length).toBe(before); // A sent nothing
+    expect(chain.prepared).toHaveLength(1); // and never re-signed
+  });
+});
