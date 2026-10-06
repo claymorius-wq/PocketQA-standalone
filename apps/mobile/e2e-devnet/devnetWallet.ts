@@ -12,7 +12,7 @@ import { decodeServerTx } from '@pocket-qa/domain';
 //   bytes to `send` (local: the fake devnet behind the connectors seam; hosted: a devnet RPC).
 export const DEVNET = 'solana:devnet';
 /** The honest label: this is a test wallet Playwright injects, never a real browser extension. */
-export const TEST_WALLET_NAME = 'Pocket QA Test Wallet (devnet) — injected by Playwright, not an extension';
+export const TEST_WALLET_NAME = 'Pocket QA Test Wallet (devnet): injected by Playwright, not an extension';
 
 export type WalletLogEntry = { kind: string; chain?: string; bytes?: number; programs?: string[]; approved: boolean; refused?: string; signature?: string };
 export type DevnetWalletOptions = {

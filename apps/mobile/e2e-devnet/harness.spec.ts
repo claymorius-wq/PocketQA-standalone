@@ -77,7 +77,7 @@ test('test wallet + fake devnet RPC', async ({ page }) => {
   );
 
   expect(out.address).toBe(address);
-  expect(out.name).toBe('Pocket QA Test Wallet (devnet) — injected by Playwright, not an extension');
+  expect(out.name).toBe('Pocket QA Test Wallet (devnet): injected by Playwright, not an extension');
   // Funding and vote: signed exactly in the fee-payer slot, sent, and the signature verifies over the message.
   expect(sent).toHaveLength(2);
   for (const [i, s] of sent.entries()) {
