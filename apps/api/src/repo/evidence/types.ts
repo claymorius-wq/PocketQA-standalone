@@ -47,8 +47,6 @@ export interface EvidenceRepo {
   evidenceInParticipation(evidenceId: string, participationId: string): Promise<boolean>;
   /** For submission (studies domain): intents still open (pending/completing, unexpired). */
   openIntentCount(participationId: string, now: number): Promise<number>;
-  /** Interim: the task belongs to the study (a studies read; moves to the studies repo when it has one). */
-  taskInStudy(taskId: string, studyId: string): Promise<boolean>;
 
   // Multipart upload (local storage). Re-checks participation state, quota and the segment in one transaction.
   addUploadedEvidence(e: NewEvidence, now: number): Promise<EvidenceRow>;
@@ -79,7 +77,7 @@ export interface EvidenceRepo {
   ownsObject(key: string): Promise<boolean>;
   /** Queues a key for retried deletion (first attempt failed); no-op if already queued. */
   enqueueDeletion(key: string, purpose: DeletionPurpose, now: number): Promise<void>;
-  dueDeletions(now: number, limit: number): Promise<{ object_key: string; attempts: number }[]>;
+  dueDeletions(now: number, limit: number): Promise<{ object_key: string; attempts: number; purpose: DeletionPurpose }[]>;
   deletionDone(key: string): Promise<void>;
   deletionRetry(key: string, nextAttemptAt: number): Promise<void>;
 

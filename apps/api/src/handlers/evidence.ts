@@ -10,13 +10,13 @@ import {
   UPLOAD_INTENT_TTL_SECONDS,
 } from '@pocket-qa/contracts';
 import { canUploadEvidence } from '@pocket-qa/domain';
-import { partyParticipation, testerParticipation } from '../access';
+import { partyParticipationOf, testerParticipationOf } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { fail, iso, newId, newToken, notFound, sha256 } from '../util';
 import type { IntentRow } from '../repo/evidence/types';
 import { deleteOrQueue } from '../storage/sweep';
 import { readHead as storeHead, StorageChanged } from '../storage/types';
-import { evidenceView, type EvidenceRow, type UserRow } from '../views';
+import { evidenceView, type EvidenceRow } from '../views';
 
 /** Longest life of a presigned PUT; always within the intent's own lifetime. */
 const PRESIGN_SECONDS = 10 * 60;
@@ -50,8 +50,7 @@ function readHead(path: string): Buffer {
 export const evidenceHandlers = {
   uploadEvidence: async (ctx: Ctx) => {
     const user = me(ctx);
-    const db = ctx.deps.db;
-    const { p } = testerParticipation(db, ctx.params.id!, user);
+    const { p } = await testerParticipationOf(ctx.deps.repo, ctx.params.id!, user);
     if (ctx.deps.store.kind !== 'local') {
       (await ctx.req.file())?.file.resume();
       throw fail('CONFLICT_STATE', 'This deployment uses direct uploads: create an upload intent instead.');
@@ -83,7 +82,7 @@ export const evidenceHandlers = {
       file.file.resume();
       throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
     }
-    if (meta.data.taskId && !(await repo.taskInStudy(meta.data.taskId, p.study_id))) {
+    if (meta.data.taskId && !(await ctx.deps.repo.studies.taskInStudy(meta.data.taskId, p.study_id))) {
       file.file.resume();
       throw fail('VALIDATION', 'Unknown task for this study.');
     }
@@ -128,19 +127,18 @@ export const evidenceHandlers = {
   },
 
   listEvidence: async (ctx) => {
-    const { p } = partyParticipation(ctx.deps.db, ctx.params.id!, me(ctx));
+    const { p } = await partyParticipationOf(ctx.deps.repo, ctx.params.id!, me(ctx));
     const rows = await ctx.deps.repo.evidence.listEvidence(p.id);
     return { items: rows.map(evidenceView) };
   },
 
   playbackToken: async (ctx) => {
     const user = me(ctx);
-    const db = ctx.deps.db;
     const repo = ctx.deps.repo.evidence;
     const ev = await repo.getEvidence(ctx.params.id!);
     if (!ev) throw notFound('Evidence');
     try {
-      partyParticipation(db, ev.participation_id, user);
+      await partyParticipationOf(ctx.deps.repo, ev.participation_id, user);
     } catch {
       throw notFound('Evidence');
     }
@@ -151,16 +149,16 @@ export const evidenceHandlers = {
   },
 
   media: async (ctx) => {
-    const db = ctx.deps.db;
     const repo = ctx.deps.repo.evidence;
     const t = await repo.getPlaybackToken(sha256(ctx.params.token ?? ''));
     if (!t || t.expires_at <= ctx.deps.now()) throw notFound('Media');
     const ev = await repo.getEvidence(t.evidence_id);
-    const holder = db.prepare(`SELECT * FROM users WHERE id = ? AND status = 'active'`).get(t.user_id) as UserRow | undefined;
+    const found = await ctx.deps.repo.core.userById(t.user_id);
+    const holder = found?.status === 'active' ? found : undefined;
     if (!ev || !holder) throw notFound('Media');
     // Access is re-checked at use time, not only at issuance.
     try {
-      partyParticipation(db, ev.participation_id, holder);
+      await partyParticipationOf(ctx.deps.repo, ev.participation_id, holder);
     } catch {
       throw notFound('Media');
     }
@@ -197,15 +195,14 @@ export const evidenceHandlers = {
    */
   createUploadIntent: async (ctx: Ctx) => {
     const user = me(ctx);
-    const db = ctx.deps.db;
     const repo = ctx.deps.repo.evidence;
     // Ownership first, so non-owners always get 404 whatever the storage mode.
-    const { p } = testerParticipation(db, ctx.params.id!, user);
+    const { p } = await testerParticipationOf(ctx.deps.repo, ctx.params.id!, user);
     if (ctx.deps.store.kind === 'local') throw fail('CONFLICT_STATE', 'This deployment stores evidence locally: use the multipart upload.');
     if (!canUploadEvidence(p.status)) throw fail('CONFLICT_STATE', 'Evidence can only be added while the participation is in progress.');
     const b = ctx.body as { kind: string; mimeType: EvidenceRow['mime_type']; sizeBytes: number; durationMs?: number; taskId?: string; capturedOn: string; clientSegmentId: string };
     if (b.mimeType.startsWith('video/') !== (b.kind === 'screen_recording')) throw fail('VALIDATION', 'File type does not match the evidence kind.');
-    if (b.taskId && !(await repo.taskInStudy(b.taskId, p.study_id))) throw fail('VALIDATION', 'Unknown task for this study.');
+    if (b.taskId && !(await ctx.deps.repo.studies.taskInStudy(b.taskId, p.study_id))) throw fail('VALIDATION', 'Unknown task for this study.');
     const now = ctx.deps.now();
     const existing = await repo.findOpenIntent(p.id, b.clientSegmentId, now);
     let intent: IntentRow;
@@ -274,7 +271,7 @@ export const evidenceHandlers = {
     };
     const reject = async (message: string) => {
       await setStatus('rejected');
-      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
+      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload', user.id);
       return fail('VALIDATION', message);
     };
 
@@ -321,8 +318,8 @@ export const evidenceHandlers = {
       );
     } catch (e) {
       await setStatus('rejected');
-      await deleteOrQueue(ctx.deps, finalKey, 'failed_upload');
-      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
+      await deleteOrQueue(ctx.deps, finalKey, 'failed_upload', user.id);
+      await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload', user.id);
       throw e;
     }
     // The quarantine copy of a successful upload is kept (not a failed upload); it is deleted

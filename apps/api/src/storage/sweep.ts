@@ -1,8 +1,7 @@
 import type { Deps } from '../context';
-import type { DB } from '../db';
-import { sqliteEvidenceRepo } from '../repo/evidence/sqlite';
 import type { DeletionPurpose } from '../repo/evidence/types';
 import type { Repos } from '../repo';
+import { iso, newId, sha256 } from '../util';
 
 const MAX_BACKOFF_MS = 3600_000;
 
@@ -19,23 +18,51 @@ const MAX_BACKOFF_MS = 3600_000;
  */
 export type { DeletionPurpose };
 
-/**
- * What sweep and deletion need. `repo` is the normal path; a bare `db` (server.ts startup sweep,
- * until it passes `repo`) gets the SQLite evidence repository.
- */
-export type StorageDeps = Pick<Deps, 'store' | 'now'> & ({ repo: Pick<Repos, 'evidence'> } | { db: DB });
+/** What sweep and deletion need. */
+export type StorageDeps = Pick<Deps, 'store' | 'now'> & { repo: Pick<Repos, 'evidence' | 'core'> };
 
-function evidenceRepo(deps: StorageDeps) {
-  return 'repo' in deps ? deps.repo.evidence : sqliteEvidenceRepo(deps.db);
+const evidenceRepo = (deps: StorageDeps) => deps.repo.evidence;
+
+/**
+ * Key shapes the app itself creates (plan r2 §R4): `evidence/{id}` and `quarantine/{id}` in R2;
+ * the local media directory also has bare-id keys from the multipart route. Anything else
+ * (e.g. the `retained-local-submissions/` archive) is never deleted or queued, even if registered.
+ */
+const APP_KEY = /^(evidence|quarantine)\/[A-Za-z0-9_-]{8,64}$/;
+const LOCAL_KEY = /^[A-Za-z0-9_-]{8,64}$/;
+export function deletableKey(deps: Pick<StorageDeps, 'store'>, key: string): boolean {
+  return APP_KEY.test(key) || (deps.store.kind === 'local' && LOCAL_KEY.test(key));
+}
+
+/** Actor of refusals not driven by a request (the sweep), as the escrow worker uses. */
+const SYSTEM_ACTOR = 'system';
+
+/**
+ * The deletion gate (A5, plan r2 §R4): an app key shape AND registered by this app. A refusal is
+ * audited by key hash (never the raw key) and nothing is deleted or queued.
+ */
+async function mayDelete(deps: StorageDeps, key: string, purpose: DeletionPurpose, actorId: string): Promise<boolean> {
+  const shape = deletableKey(deps, key);
+  if (shape && (await evidenceRepo(deps).ownsObject(key))) return true;
+  await deps.repo.core.appendAudit({
+    id: newId(),
+    actor_id: actorId,
+    action: 'storage.delete_refused',
+    target_type: 'storage_object',
+    target_id: sha256(key),
+    reason: `${purpose}: ${shape ? 'not registered' : 'outside evidence/|quarantine/'}`,
+    created_at: iso(deps.now()),
+  });
+  return false;
 }
 
 /**
  * Delete an object now, or queue it in the retried outbox if the provider fails. A key the app
  * didn't create is never deleted or queued (returns false), whatever the caller passes.
  */
-export async function deleteOrQueue(deps: StorageDeps, key: string, purpose: DeletionPurpose): Promise<boolean> {
+export async function deleteOrQueue(deps: StorageDeps, key: string, purpose: DeletionPurpose, actorId = SYSTEM_ACTOR): Promise<boolean> {
   const repo = evidenceRepo(deps);
-  if (!(await repo.ownsObject(key))) return false;
+  if (!(await mayDelete(deps, key, purpose, actorId))) return false;
   try {
     await deps.store.delete(key);
     return true;
@@ -72,8 +99,8 @@ export async function sweepStorage(deps: StorageDeps) {
     await repo.markQuarantineSwept(c.id);
   }
   for (const d of await repo.dueDeletions(now, 500)) {
-    // Defence in depth: the outbox only ever holds registered keys, but never act on one that isn't.
-    if (!(await repo.ownsObject(d.object_key))) {
+    // Defence in depth: the outbox only ever holds registered app keys, but never act on one that isn't.
+    if (!(await mayDelete(deps, d.object_key, d.purpose, SYSTEM_ACTOR))) {
       await repo.deletionDone(d.object_key);
       continue;
     }

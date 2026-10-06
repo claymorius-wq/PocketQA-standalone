@@ -6,7 +6,7 @@ import { canUploadEvidence } from '@pocket-qa/domain';
 import type { DB } from '../../db';
 import { fail, iso } from '../../util';
 import { evidenceView, type EvidenceRow } from '../../views/evidence';
-import type { EvidenceRepo, IntentRow, NewEvidence, Usage } from './types';
+import type { DeletionPurpose, EvidenceRepo, IntentRow, NewEvidence, Usage } from './types';
 
 /**
  * Today's SQL, moved out of handlers/evidence.ts and storage/sweep.ts unchanged.
@@ -64,7 +64,6 @@ export function sqliteEvidenceRepo(db: DB): EvidenceRepo {
       done(
         (db.prepare(`SELECT COUNT(*) AS n FROM upload_intents WHERE participation_id = ? AND status IN ('pending','completing') AND expires_at > ?`).get(participationId, now) as { n: number }).n,
       ),
-    taskInStudy: (taskId, studyId) => done(db.prepare('SELECT 1 FROM tasks WHERE id = ? AND study_id = ?').get(taskId, studyId) !== undefined),
 
     addUploadedEvidence(e, now) {
       db.transaction(() => {
@@ -172,7 +171,13 @@ export function sqliteEvidenceRepo(db: DB): EvidenceRepo {
       return done(undefined);
     },
     dueDeletions: (now, limit) =>
-      done(db.prepare('SELECT object_key, attempts FROM storage_deletions WHERE next_attempt_at <= ? LIMIT ?').all(now, limit) as { object_key: string; attempts: number }[]),
+      done(
+        db.prepare('SELECT object_key, attempts, purpose FROM storage_deletions WHERE next_attempt_at <= ? LIMIT ?').all(now, limit) as {
+          object_key: string;
+          attempts: number;
+          purpose: DeletionPurpose;
+        }[],
+      ),
     deletionDone(key) {
       db.prepare('DELETE FROM storage_deletions WHERE object_key = ?').run(key);
       return done(undefined);
