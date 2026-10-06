@@ -29,7 +29,7 @@ import type { StudiesRepo } from './studies/types';
 /** `namespace: 'devnet'`: POCKETQA_ENV=devnet's isolated data (CH-D2), through devnetFirestore only. */
 export type Backend = { kind: 'sqlite'; db: DB } | { kind: 'firestore'; fs: Firestore; namespace?: 'devnet' };
 
-export type Repos = { kind: Backend['kind']; core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
+export type Repos = { kind: Backend['kind']; namespace?: 'devnet'; core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
 
 export function makeRepos(backend: Backend): Repos {
   if (backend.kind === 'sqlite') {
@@ -37,5 +37,5 @@ export function makeRepos(backend: Backend): Repos {
     return { kind: 'sqlite', core: sqliteCoreRepo(db), studies: sqliteStudiesRepo(db), evidence: sqliteEvidenceRepo(db), escrow: sqliteEscrowRepo(db) };
   }
   const fs = backend.namespace === 'devnet' ? devnetFirestore(backend.fs) : backend.fs;
-  return { kind: 'firestore', core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
+  return { kind: 'firestore', ...(backend.namespace === 'devnet' ? { namespace: 'devnet' as const } : {}), core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
 }

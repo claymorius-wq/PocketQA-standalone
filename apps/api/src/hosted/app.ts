@@ -10,6 +10,7 @@ import { httpDevnetRpc } from '../rpc';
 import { SimulatedSettlement } from '../settlement/simulated';
 import { runSettlement } from '../settlement/worker';
 import { r2Store } from '../storage/r2';
+import type { EvidenceStore } from '../storage/types';
 import { sweepStorage } from '../storage/sweep';
 
 /**
@@ -56,9 +57,24 @@ export function hostedConfig(env: NodeJS.ProcessEnv): { config: Config; cronSecr
   return { config, cronSecret };
 }
 
+/**
+ * The data and evidence backends of the hosted API. POCKETQA_ENV=devnet (CH-D2) keeps its data in the
+ * Firestore devnet namespace and its R2 objects under devnet/, never in production's collections or
+ * keys; the deployment refuses to start unless both are in place (pqa-qa P1-NS1).
+ */
+export function hostedBackends(config: Config, env: NodeJS.ProcessEnv): { repo: Repos; store: EvidenceStore } {
+  const devnet = !!config.devnet;
+  const repo = makeRepos({ kind: 'firestore', fs: openFirestore(env, config.firebase!.projectId), ...(devnet ? { namespace: 'devnet' as const } : {}) });
+  const store = r2Store(config.r2!, devnet ? { keyPrefix: 'devnet/' } : {});
+  if (devnet && (repo.namespace !== 'devnet' || store.keyPrefix !== 'devnet/')) {
+    throw new ConfigError('POCKETQA_ENV=devnet must run on the Firestore devnet namespace and the devnet/ R2 prefix; refusing to start.');
+  }
+  return { repo, store };
+}
+
 export function hostedDeps(env: NodeJS.ProcessEnv): HostedDeps {
   const { config, cronSecret } = hostedConfig(env);
-  const repo = makeRepos({ kind: 'firestore', fs: openFirestore(env, config.firebase!.projectId) });
+  const { repo, store } = hostedBackends(config, env);
   return {
     db: null,
     repo,
@@ -67,7 +83,7 @@ export function hostedDeps(env: NodeJS.ProcessEnv): HostedDeps {
     rpc: httpDevnetRpc(config.rpcUrl),
     mediaDir: null,
     identity: firebaseIdentity(config.firebase!),
-    store: r2Store(config.r2!),
+    store,
     // Staging (R11): SIMULATED settlement over Firestore, labelled, never real money.
     settlement: config.features.settlement === 'simulated' ? new SimulatedSettlement(repo, Date.now) : null,
     cronSecret,

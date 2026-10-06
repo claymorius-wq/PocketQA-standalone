@@ -38,6 +38,7 @@ export function r2Store(r2: NonNullable<Config['r2']>, opts: { keyPrefix?: 'devn
   return {
     canDelete: r2.allowDelete,
     kind: 'r2',
+    keyPrefix: prefix,
     async head(key) {
       assertKey(key);
       try {

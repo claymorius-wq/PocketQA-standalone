@@ -160,3 +160,15 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
   - **Per-step estimates:** `STEP_LAMPORTS`.
   - **Replaces §4's per-transaction rule.** The idempotency key is now the operation, `devnetSpendReservations/{opKey}`, not the transaction signature. Re-broadcasts and rebuilds don't reserve again.
 - **Still to land:** (a) the `devnetSettlement()` factory with the step machine.
+
+## 8. Hosted wiring and the limits of the namespace (pqa-qa P1-NS1, P3)
+- **The wiring:** `hostedBackends(config, env)` (in `src/hosted/app.ts`), used by `hostedDeps`, builds the repositories with `namespace: 'devnet'` and the R2 store with `keyPrefix: 'devnet/'` whenever `config.devnet` is set.
+- **Refuses to start without both:** it checks `repo.namespace === 'devnet'` and `store.keyPrefix === 'devnet/'`.
+- **Tested:** `test/emulator/devnet.hosted.test.ts`.
+  - In devnet, every write is under `pocketqaNamespaces/devnet` and every R2 key starts with `devnet/`.
+  - Staging and production are unchanged.
+- **Firebase Auth isn't namespaced (P3).** Its users are **project-global**: a devnet preview signs in against the same Firebase Auth user pool as production. So:
+  - devnet uses **only labelled synthetic `@example.test` identities**, the same list that gates server-signed operations (`POCKETQA_DEVNET_ALLOWED_EMAILS`);
+  - the devnet namespace's `users` and `identities` documents are separate from production's, so a production account has no devnet profile, studies or wallet link;
+  - nobody should sign in to the devnet preview with a real account.
+- **Scope (Hamza):** devnet only. Mainnet stays disabled and unsupported. The mainnet genesis and the mainnet USDC mint are refused before any signature.
