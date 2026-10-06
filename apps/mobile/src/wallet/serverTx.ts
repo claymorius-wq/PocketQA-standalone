@@ -1,4 +1,5 @@
 import { base58 } from '@scure/base';
+import { DEVNET_COPY, type DevnetFundingTransaction, type SettlementApproval } from '@pocket-qa/contracts';
 import { decodeServerTx } from '@pocket-qa/domain';
 import { tokenAmount } from '../lib/money';
 
@@ -9,7 +10,7 @@ import { tokenAmount } from '../lib/money';
  * plan to show: what it is, how much, to whom, and the operation id. Every refusal happens before
  * the wallet is asked anything, so nothing is signed or sent.
  */
-export const DEVNET_PILOT_COPY = 'devnet test USDC, no value · test keys · not independent custody';
+export const DEVNET_PILOT_COPY = DEVNET_COPY;
 export const SQUADS_V4 = 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf';
 /** The only programs a server-built pilot transaction may call. */
 export const PILOT_PROGRAMS: readonly string[] = [
@@ -21,23 +22,22 @@ export const PILOT_PROGRAMS: readonly string[] = [
   'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', // Memo (op id)
 ];
 
-/** What the server returns for a transaction to sign (approval route; the funding route mirrors it). */
-export type ServerTxPlan = {
-  transactionB64: string;
-  opId: string;
-  kind?: string;
-  amountUnits: number;
-  destination: string;
-  network?: string;
-  copy?: string;
-};
+/**
+ * What the server returns for a transaction to sign: the builder's vote on one payment
+ * (GET /settlements/:id/approval) or the escrow funding transfer (GET /escrow/fundings/:id/transaction).
+ * Fields are checked here even though the API client validates them: the check is the safety rule.
+ */
+export type ServerTxPlan = SettlementApproval | DevnetFundingTransaction;
 export type SignContext = { settlement: string; linkedWallet: string | null };
 export type CheckedPlan = {
-  kind: string;
-  opId: string;
+  kind: 'payout' | 'refund' | 'fee' | 'funding';
+  /** The Squads operation id (a vote), or null for a funding (it carries a reference instead). */
+  opId: string | null;
+  reference: string | null;
   amountUnits: number;
   amountText: string;
   destination: string;
+  mint: string;
   signer: string;
   programs: string[];
   copy: string;
@@ -54,6 +54,7 @@ const isAddress = (a: unknown) => {
 };
 
 export function checkServerTxPlan(plan: ServerTxPlan, ctx: SignContext): CheckedPlan {
+  const funding = 'fundingId' in plan;
   const refuse = (why: string) => new PlanRefused(`${why} Nothing was signed.`);
   if (ctx.settlement !== 'squads_devnet') throw refuse('Wallet signing is offered only in the devnet pilot.');
   // A transaction carries no chain id: the server must say devnet, and the wallet is asked on devnet.
@@ -61,7 +62,10 @@ export function checkServerTxPlan(plan: ServerTxPlan, ctx: SignContext): Checked
   if (!ctx.linkedWallet) throw refuse('Link your devnet wallet first.');
   if (!Number.isSafeInteger(plan.amountUnits) || plan.amountUnits <= 0) throw refuse('The amount isn’t a whole number of test-USDC units.');
   if (!isAddress(plan.destination)) throw refuse('The destination isn’t a Solana address.');
-  if (!/^pqa-op1:[0-9a-f]{64}$/.test(plan.opId)) throw refuse('The operation id isn’t a Pocket QA operation.');
+  if (!isAddress(plan.mint)) throw refuse('The token mint isn’t a Solana address.');
+  if (funding ? !isAddress(plan.reference) : !/^pqa-op1:[0-9a-f]{64}$/.test(plan.opId)) {
+    throw refuse(funding ? 'The funding reference isn’t a Solana address.' : 'The operation id isn’t a Pocket QA operation.');
+  }
   let tx: ReturnType<typeof decodeServerTx>;
   try {
     tx = decodeServerTx(plan.transactionB64);
@@ -74,13 +78,15 @@ export function checkServerTxPlan(plan: ServerTxPlan, ctx: SignContext): Checked
   const unexpected = tx.programIds.filter((p) => !PILOT_PROGRAMS.includes(p));
   if (unexpected.length) throw refuse(`This transaction calls an unexpected program (${unexpected[0]}).`);
   return {
-    kind: plan.kind ?? 'transaction',
-    opId: plan.opId,
+    kind: funding ? 'funding' : plan.kind,
+    opId: funding ? null : plan.opId,
+    reference: funding ? plan.reference : null,
     amountUnits: plan.amountUnits,
     amountText: tokenAmount(plan.amountUnits, 'squads_devnet'),
     destination: plan.destination,
+    mint: plan.mint,
     signer: tx.feePayer,
     programs: tx.programIds,
-    copy: DEVNET_PILOT_COPY,
+    copy: DEVNET_COPY,
   };
 }

@@ -1,4 +1,5 @@
 import { base58, base64 } from '@scure/base';
+import type { ServerTxPlan } from '../src/wallet/serverTx';
 import type { StandardWallet } from '../src/wallet/standard';
 
 // The devnet pilot's server-built transactions (escrow funding; the builder's Squads approval,
@@ -42,7 +43,13 @@ function v0Tx(o: { feePayer?: string; signers?: number; signed?: boolean; progra
   bytes.push(0); // no lookup tables
   return base64.encode(Uint8Array.from(bytes));
 }
-const plan = (over: Record<string, unknown> = {}) => ({ transactionB64: v0Tx(), opId: OP, kind: 'payout', amountUnits: 1_500_000, destination: someone, network: 'devnet', copy: 'from the server', ...over });
+const MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+const REF = 'AddressLookupTab1e1111111111111111111111111';
+const COPY = 'Devnet test USDC, no value · test keys · not independent custody';
+/** GET /settlements/:id/approval (contracts SettlementApproval). */
+const plan = (over: Record<string, unknown> = {}) => ({ settlementId: 'set-1', kind: 'payout', transactionB64: v0Tx(), multisig: vaultAta, txIndex: 3, opId: OP, amountUnits: 1_500_000, destination: someone, mint: MINT, network: 'devnet', copy: COPY, ...over }) as unknown as ServerTxPlan;
+/** GET /escrow/fundings/:id/transaction (contracts DevnetFundingTransaction): a reference, no op id. */
+const fundingPlan = (over: Record<string, unknown> = {}) => ({ transactionB64: v0Tx({ programs: ['TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'] }), fundingId: 'f-1', studyId: 's-1', reference: REF, amountUnits: 2_200_000, destination: vaultAta, mint: MINT, network: 'devnet', copy: COPY, ...over }) as unknown as ServerTxPlan;
 const ctx = { settlement: 'squads_devnet' as const, linkedWallet: linked };
 
 describe('checkServerTxPlan', () => {
@@ -50,14 +57,21 @@ describe('checkServerTxPlan', () => {
     expect(checkServerTxPlan(plan(), ctx)).toEqual({
       kind: 'payout',
       opId: OP,
+      reference: null,
       amountUnits: 1_500_000,
       amountText: '1.50 devnet test USDC', // the app's tokenAmount format; the exact units are amountUnits
       destination: someone,
+      mint: MINT,
       signer: linked,
       programs: [SQUADS_V4],
-      copy: DEVNET_PILOT_COPY,
+      copy: COPY,
     });
-    expect(DEVNET_PILOT_COPY).toBe('devnet test USDC, no value · test keys · not independent custody');
+    expect(DEVNET_PILOT_COPY).toBe(COPY); // the contracts' DEVNET_COPY
+  });
+
+  it('a funding transfer: shown with its reference (a funding has no Squads op id)', () => {
+    expect(checkServerTxPlan(fundingPlan(), ctx)).toMatchObject({ kind: 'funding', opId: null, reference: REF, amountUnits: 2_200_000, destination: vaultAta, mint: MINT, copy: COPY });
+    expect(() => checkServerTxPlan(fundingPlan({ reference: 'nope' }), ctx)).toThrow(/reference/);
   });
 
   it.each([

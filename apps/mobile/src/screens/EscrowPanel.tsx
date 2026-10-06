@@ -8,6 +8,7 @@ import { useIntentKey } from '../api/intentKey';
 import { formatUnits, PILOT_DISCLOSURE, settlementTag, tokenAmount } from '../lib/money';
 import { Button, Card, Field, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
+import { ServerTxSign } from '../wallet/ServerTxSign';
 
 type EscrowPayment = Extract<Study['payment'], { mode: 'escrow' }>;
 
@@ -107,7 +108,17 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
                 <KeyValue label="To the study vault (token account)" value={funding.vault} valueTestID="escrow-pilot-vault" />
                 <KeyValue label="Reference (include it in the transfer)" value={funding.reference} valueTestID="escrow-pilot-reference" />
               </KeyValueList>
-              <Text variant="small" tone="muted">From your linked wallet, on Solana devnet, as a TransferChecked of devnet test USDC. Then paste the transaction signature.</Text>
+              {/* The server builds this exact transfer; the wallet signs and sends it after the plan is shown. */}
+              <ServerTxSign
+                testID="escrow-wallet"
+                settlement={p.settlement}
+                reviewLabel="Review the transfer to sign in your wallet"
+                signLabel="Sign and send in your wallet"
+                load={() => api('escrowFundingTransaction', { params: { id: funding.id } })}
+                submit={(sig) => api('submitFundingSignature', { params: { id: funding.id }, body: { signature: sig } }).then((f) => setFunding(f))}
+                onDone={() => void refresh()}
+              />
+              <Text variant="small" tone="muted">Or send it yourself from your linked wallet, on Solana devnet, as a TransferChecked of devnet test USDC, then paste the transaction signature.</Text>
               <Field label="Transaction signature" value={signature} onChangeText={setSignature} autoCapitalize="none" testID="escrow-pilot-signature" />
               <Button label="Verify transfer" icon={Wallet} onPress={() => verify.mutate()} loading={verify.isPending} testID="escrow-pilot-verify" />
             </Card>
