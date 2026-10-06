@@ -107,7 +107,10 @@ describe('migration dry run (plan §8)', () => {
     expect(manifest.ledger).toEqual({ accounts: 3, mismatches: 0, totalSum: 0, faucet: -30, matchesSource: true });
     expect(manifest.source.passwordHashesDropped).toBe(5);
     expect(manifest.source.skipped.sessions?.rows).toBe(1);
-    expect(manifest.users).toEqual({ migratedLinkPlanned: 5, migratedLinkFound: 5 });
+    // Admins are never claimable by email (plan §7(b): the audited admin-link script only).
+    expect(manifest.users).toEqual({ migratedLinkPlanned: 4, migratedLinkFound: 4, adminsExcluded: 1 });
+    expect((await fs.doc('users/a1').get()).data()).not.toHaveProperty('migrated_link');
+    expect((await fs.doc('users/b1').get()).data()).toMatchObject({ migrated_link: 'verified_email' });
     expect(manifest.evidence.objects.find((e) => e.evidenceId === 'e1')).toMatchObject({ action: 'upload-copy', sourceKey: 'm1', targetKey: 'evidence/e1' });
     // The archived recording: a planned server-side copy to the app key, verified against the receipt.
     expect(manifest.seeker).toEqual({
@@ -173,5 +176,6 @@ describe('migration dry run (plan §8)', () => {
     expect(run(['--real'], process.env)).toMatch(/--real needs --approved-manifest/);
     expect(run(['--real', '--approved-manifest', 'a'.repeat(64)], process.env)).toMatch(/hosted migration is not enabled/);
     expect(run(['--snapshot', snapshot, '--expect-sha256', snapshotSha, '--media-dir', media, '--out', join(dir, 'm.json')], noEmu)).toMatch(/only to the Firestore emulator/);
+    expect(run(['--snapshot', snapshot, '--expect-sha256', snapshotSha, '--media-dir', media, '--receipt', '/x/.preview/handoff/r.json', '--out', join(dir, 'm.json')], process.env)).toMatch(/must not be read from \.preview/);
   }, 60_000);
 });

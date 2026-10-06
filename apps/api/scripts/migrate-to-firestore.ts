@@ -2,8 +2,11 @@
 // §8 steps 1–3, r2 §R4, R9). DRY RUN ONLY in this build: the target is the Firestore emulator.
 //
 //   firebase emulators:exec ... 'tsx scripts/migrate-to-firestore.ts --snapshot <copy.sqlite>
-//     --expect-sha256 <hex> --media-dir <copy/media> --seeker-receipt <receipt.json>
+//     --expect-sha256 <hex> --media-dir <copy/media> [--receipt <seeker-receipt.json>]
 //     --out <manifest.json outside the repo>'
+//
+// The Seeker receipt defaults to ~/.local/share/pocketqa/migration/seeker-receipt.json (0600);
+// nothing under .preview is ever read.
 //
 // Safety rules (each enforced below, not just documented):
 //  - The snapshot is a COPY. Its sha256 is checked before it is opened, it is opened with
@@ -14,12 +17,14 @@
 //  - No R2 calls: evidence objects are only PLANNED (target key + expected sha256). The Seeker
 //    recording is planned as a server-side copy from its archived key (receipt) to evidence/{id},
 //    never a re-upload; the archived original is never registered, deletable or touched.
-//  - Migrated users carry `migrated_link: 'verified_email'`: the first sign-in with a verified
-//    password or Google email equal to the stored one may claim the account (plan §7(a)).
+//  - Migrated non-admin users carry `migrated_link: 'verified_email'`: the first sign-in with a
+//    verified password or Google email equal to the stored one may claim the account (plan §7(a)).
+//    Admins never do: they are linked by the audited admin-link script (§7(b)).
 //  - Deterministic doc ids and contents (no server timestamps, no random ids), written with
 //    `set`, so a rerun rewrites identical documents and yields an identical manifest.
 //  - Output is counts only; the manifest file holds ids, keys and hashes, never user content.
 import { createHash } from 'node:crypto';
+import { homedir } from 'node:os';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -30,6 +35,7 @@ import { openFirestore } from '../src/firestore/admin';
 export const TOOL_VERSION = 'migrate-to-firestore/1';
 const BATCH = 400;
 const FAUCET = 'system:test-faucet';
+export const DEFAULT_RECEIPT = join(homedir(), '.local', 'share', 'pocketqa', 'migration', 'seeker-receipt.json');
 
 type Row = Record<string, string | number | null>;
 type Data = Record<string, unknown>;
@@ -58,6 +64,7 @@ export type Plan = {
   evidence: EvidencePlan[];
   passwordHashesDropped: number;
   migratedLinkUsers: number;
+  adminsExcluded: number;
   sourceLedger: Record<string, number>;
 };
 
@@ -136,7 +143,8 @@ export function planMigration(db: DatabaseSync, opts: { mediaSha256: (sourceKey:
     // Local password hashes are never migrated to the cloud (plan §7).
     if (u.password_hash !== null) passwordHashesDropped += 1;
     // Plan §7(a): claimable once by a verified sign-in with this exact email (field cleared then).
-    put(`users/${u.id}`, { ...u, password_hash: null, migrated_link: 'verified_email' });
+    // Never for admins (§7(b): audited admin-link script only).
+    put(`users/${u.id}`, u.role === 'admin' ? { ...u, password_hash: null } : { ...u, password_hash: null, migrated_link: 'verified_email' });
     // UNIQUE(users.email): exact email, as the core repo keys it (deleted users hold a placeholder).
     put(`userEmails/${sha(String(u.email))}`, { userId: u.id, createdAt: ts(u.created_at) });
   }
@@ -230,7 +238,7 @@ export function planMigration(db: DatabaseSync, opts: { mediaSha256: (sourceKey:
     if (paths.has(w.path)) throw new Error(`two source rows map to one document (${w.path.split('/')[0]}): a uniqueness rule is violated in the source`);
     paths.add(w.path);
   }
-  return { writes, sourceCounts, skipped, evidence, passwordHashesDropped, migratedLinkUsers: users.length, sourceLedger };
+  return { writes, sourceCounts, skipped, evidence, passwordHashesDropped, migratedLinkUsers: users.filter((u) => u.role !== 'admin').length, adminsExcluded: users.filter((u) => u.role === 'admin').length, sourceLedger };
 }
 
 /** Writes the plan with `set` (deterministic contents), so a rerun is a no-op in effect. */
@@ -258,7 +266,7 @@ export type Manifest = {
   tool: string;
   snapshotSha256: string;
   source: { tables: Record<string, number>; skipped: Plan['skipped']; passwordHashesDropped: number };
-  users: { migratedLinkPlanned: number; migratedLinkFound: number };
+  users: { migratedLinkPlanned: number; migratedLinkFound: number; adminsExcluded: number };
   target: { collections: Record<string, { planned: number; found: number; checksum: string; matchesPlan: boolean }> };
   relations: { check: string; total: number; unresolved: number }[];
   ledger: { accounts: number; mismatches: number; totalSum: number; faucet: number; matchesSource: boolean };
@@ -313,7 +321,7 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
   const check = (name: string, items: unknown[], ok: (x: Data) => boolean) => relations.push({ check: name, total: items.length, unresolved: (items as Data[]).filter((x) => !ok(x)).length });
   check('users have an email guard', rows('users'), (u) => docs.get('userEmails')?.get(`userEmails/${sha(String(u.email))}`)?.userId === u.id);
   check('no password hash in Firestore', rows('users'), (u) => u.password_hash === null);
-  check('users carry migrated_link', rows('users'), (u) => u.migrated_link === 'verified_email');
+  check('non-admin users carry migrated_link, admins never', rows('users'), (u) => (u.role === 'admin' ? !('migrated_link' in u) : u.migrated_link === 'verified_email'));
   check('studies.builder_id -> users', rows('studies'), (s) => users.has(String(s.builder_id)));
   check('tasks -> parent study', rows('studies/*/tasks'), (t) => studies.has(String(t.study_id)));
   check('participations.study_id -> studies', rows('participations'), (p) => studies.has(String(p.study_id)));
@@ -382,7 +390,11 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
     tool: TOOL_VERSION,
     snapshotSha256,
     source: { tables: plan.sourceCounts, skipped: plan.skipped, passwordHashesDropped: plan.passwordHashesDropped },
-    users: { migratedLinkPlanned: plan.migratedLinkUsers, migratedLinkFound: rows('users').filter((u) => u.migrated_link === 'verified_email').length },
+    users: {
+      migratedLinkPlanned: plan.migratedLinkUsers,
+      migratedLinkFound: rows('users').filter((u) => u.migrated_link === 'verified_email').length,
+      adminsExcluded: plan.adminsExcluded,
+    },
     target: { collections },
     relations,
     ledger,
@@ -400,6 +412,7 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
       ledger.totalSum === 0 &&
       ledger.matchesSource &&
       plan.migratedLinkUsers === rows('users').filter((u) => u.migrated_link === 'verified_email').length &&
+      rows('users').every((u) => u.role !== 'admin' || !('migrated_link' in u)) &&
       (!seekerOut ||
         (seekerOut.action === 'server-copy' &&
           seekerOut.participationFound &&
@@ -445,15 +458,18 @@ async function main() {
   const snapshot = opt('--snapshot');
   const expect = opt('--expect-sha256');
   const mediaDir = opt('--media-dir');
-  const receiptFile = opt('--seeker-receipt');
+  const receiptFile = opt('--receipt') ?? DEFAULT_RECEIPT;
+  // The receipt comes from the 0600 migration dir; nothing under .preview is ever read.
+  if (resolve(receiptFile).split('/').includes('.preview')) throw new Error('refusing: the receipt must not be read from .preview');
   const out = opt('--out');
   if (!snapshot || !expect || !mediaDir || !out) {
-    throw new Error('usage: --snapshot <copy.sqlite> --expect-sha256 <hex> --media-dir <copy/media> [--seeker-receipt <json>] --out <manifest.json outside the repo>');
+    throw new Error('usage: --snapshot <copy.sqlite> --expect-sha256 <hex> --media-dir <copy/media> [--receipt <seeker-receipt.json>] --out <manifest.json outside the repo>');
   }
   if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('refusing: the dry run writes only to the Firestore emulator (FIRESTORE_EMULATOR_HOST is not set)');
   if (!outsideRepo(out)) throw new Error('refusing: the manifest must be written outside the repository');
 
-  const receipt = receiptFile ? (JSON.parse(readFileSync(receiptFile, 'utf8')) as SeekerReceipt) : null;
+  if (!existsSync(receiptFile)) throw new Error('refusing: the Seeker receipt is missing (default ~/.local/share/pocketqa/migration/seeker-receipt.json, or --receipt)');
+  const receipt = JSON.parse(readFileSync(receiptFile, 'utf8')) as SeekerReceipt;
   const seeker = receipt ? { evidenceId: receipt.evidenceId, key: receipt.key, sha256: receipt.sha256, bytes: receipt.bytes } : null;
   const db = openSnapshot(snapshot, expect);
   const plan = planMigration(db, { mediaSha256: mediaHasher(mediaDir), seeker });
@@ -471,7 +487,7 @@ async function main() {
   for (const [g, v] of Object.entries(c)) console.log(`  ${g.padEnd(26)} planned ${String(v.planned).padStart(4)} found ${String(v.found).padStart(4)} ${v.matchesPlan ? 'checksum ok' : 'CHECKSUM MISMATCH'}`);
   console.log(`relations: ${manifest.relations.length} checks, ${manifest.relations.reduce((s, r) => s + r.unresolved, 0)} unresolved`);
   console.log(`ledger: ${manifest.ledger.accounts} accounts, ${manifest.ledger.mismatches} mismatches, sum ${manifest.ledger.totalSum}, matches source ${manifest.ledger.matchesSource}`);
-  console.log(`users: ${manifest.users.migratedLinkFound}/${manifest.users.migratedLinkPlanned} carry migrated_link`);
+  console.log(`users: ${manifest.users.migratedLinkFound}/${manifest.users.migratedLinkPlanned} carry migrated_link, ${manifest.users.adminsExcluded} admin(s) excluded`);
   console.log(`evidence: ${manifest.evidence.uploads} uploads planned, ${manifest.evidence.serverCopies} server copy(ies), ${manifest.evidence.totalBytes} bytes`);
   if (manifest.seeker) {
     const k = manifest.seeker;
