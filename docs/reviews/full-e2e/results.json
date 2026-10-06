@@ -40,18 +40,19 @@
    "id": "L-03",
    "area": "auth",
    "title": "Google sign-in/sign-up UI and popup (branded button, official G)",
-   "status": "NOT RUN",
+   "status": "PASS",
    "environment": "hosted-simulated",
-   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "deployment": "dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
    "sha": "a9d0e7e",
    "steps": "",
    "fixtures": {},
-   "observed": "Candidate a9d0e7e (not yet deployed). Local build, exact hosted headers: official G light/dark sha-pinned, Google-approved colours, aligned with the primary, busy state, popup opens on click only; Google-off build makes 0 Google requests. pqa-qa r2: CHANGES_REQUIRED (P2-G1 gapi preload, P2-G2 busy), fixed in a9d0e7e and awaiting re-review. Live re-run follows the reviewed deploy.",
+   "observed": "Live dpl_TRefQGTd (entry-d9b5472d…, from a9d0e7e; pqa-qa r3 APPROVE). Official G light/dark (sha-pinned), Google-approved colours measured (light rgb(255,255,255)/rgb(116,119,117), dark rgb(19,19,20)/rgb(142,145,143)), x/width equal to the primary on /sign-in and /sign-up at 390 (16/358) and 1280 (280/720), 0 console errors; 0 Google requests before the click; click → aria-busy true + popup at pocketqa-optijara.firebaseapp.com/__/auth/handler (Chromium + WebKit); close → idle after ~9 s (Firebase waits for a late auth event; P3), no error shown.",
    "evidence": [
-    "docs/reviews/firebase-vercel/google-button/local/",
-    "docs/verification.md"
+    "docs/verification.md",
+    "docs/reviews/firebase-vercel/google-button/live-dpl_TRefQGTd/",
+    "docs/reviews/firebase-vercel/qa-google-button-r1.md (pqa-qa worktree)"
    ],
-   "notes": "",
+   "notes": "P3: ~9 s busy after closing the popup; shared busy spins Sign in too (QA P3).",
    "owner": "pocketqa-lead"
   },
   {
@@ -90,17 +91,17 @@
    "id": "L-06",
    "area": "economics",
    "title": "UI money/credit copy is accurate on hosted",
-   "status": "FAIL",
+   "status": "PASS",
    "environment": "hosted-simulated",
-   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
-   "sha": "7beaad5",
+   "deployment": "dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
+   "sha": "a9d0e7e",
    "steps": "",
    "fixtures": {},
-   "observed": "Hosted /sign-up builder note \"fund them with local test credits\" and Credits \"Add local test credits\" / \"Fund studies in this local build\" are wrong on the hosted site (found by pqa-ios). All money labels otherwise carry \"simulation\" or \"devnet pilot, no value\".",
+   "observed": "Was FAIL on dpl_GAmo (\"local test credits\" on /sign-up and Credits). Fixed in a0f201d (tests first) and deployed: live entry-d9b5472d… has 0 \"local test credit\" / \"this local build\", and has \"Add test credits (no cash value)\" and \"fund them with test credits (no cash value)\".",
    "evidence": [
     "docs/reviews/full-e2e/economics.md"
    ],
-   "notes": "Fixed in a0f201d (test first); FAIL until the reviewed deploy re-run.",
+   "notes": "Bug found by pqa-ios; re-run on the deployed bundle.",
    "owner": "pocketqa-lead"
   },
   {
