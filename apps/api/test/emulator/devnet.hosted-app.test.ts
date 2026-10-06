@@ -193,3 +193,21 @@ describe('escrow studies: devnet yes, production still no (A)', () => {
     }
   });
 });
+
+describe('CH-D1: the shared rate limiter on every devnet send route (pqa-be2 E-25)', () => {
+  it('rapid calls by one allow-listed builder get 429 RATE_LIMITED, before any chain read or signature', async () => {
+    // The allow-listed builder from the journey above (sign-in again: a fresh token).
+    const token = (await rest('accounts:signInWithPassword', { email: BUILDER_EMAIL, password: 'correct horse battery staple', returnSecureToken: true })).idToken!;
+    const studies = (await call('GET', '/studies', token)).body.items as { id: string; payment: { mode: string } }[];
+    const escrowStudy = studies.find((x) => x.payment.mode === 'escrow')!;
+    const fundings = await Promise.all(Array.from({ length: 30 }, () => call('POST', `/studies/${escrowStudy.id}/escrow/fundings`, token)));
+    const limited = fundings.filter((r) => r.status === 429);
+    expect(limited.length).toBeGreaterThan(0);
+    expect(limited[0]!.body.code).toBe('RATE_LIMITED');
+    const fid = fundings.find((r) => r.status === 200)!.body.id as string;
+    const signed = chain.prepared.length;
+    const reads = await Promise.all(Array.from({ length: 30 }, () => call('GET', `/escrow/fundings/${fid}/transaction`, token)));
+    expect(reads.filter((r) => r.status === 429).length).toBeGreaterThan(0);
+    expect(chain.prepared.length).toBe(signed);
+  });
+});

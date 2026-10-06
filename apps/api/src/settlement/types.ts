@@ -28,7 +28,7 @@ export interface SettlementProvider {
   submit(req: {
     key: string;
     settlementId: string;
-    kind: 'payout' | 'refund';
+    kind: 'payout' | 'refund' | 'fee';
     studyId: string;
     vault: string;
     destination: string;

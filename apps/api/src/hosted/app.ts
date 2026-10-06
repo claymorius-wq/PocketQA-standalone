@@ -16,6 +16,7 @@ import type { IdentityProvider } from '../identity/types';
 import { devnetSettlement, DevnetSquadsSettlement } from '../settlement/squads/devnet';
 import { assertPlatformSigner, loadPlatformSigner } from '../settlement/squads/devnetSigner';
 import { DEFAULT_DEVNET_LIMITS, type DevnetChain } from '../settlement/squads/devnetTypes';
+import { RpcDevnetChain } from '../settlement/squads/rpcDevnetChain';
 import { sweepStorage } from '../storage/sweep';
 
 /**
@@ -43,9 +44,11 @@ const CRON_LEASE_WAIT_MS = 12_000;
 const CRON_LEASE_RETRY_MS = 500;
 
 /** Mutations after which settlement has work (a payout, a refund, a funding to verify). */
-const SETTLE_AFTER = new Set(['approve', 'reject', 'adminDecide', 'resolveDispute', 'adminFraud', 'closeStudy', 'simulatedWalletPayment', 'submitFundingSignature']);
+const SETTLE_AFTER = new Set(['approve', 'reject', 'adminDecide', 'resolveDispute', 'adminFraud', 'closeStudy', 'simulatedWalletPayment', 'submitFundingSignature', 'submitSettlementApproval']);
 /** Mutations after which storage has work (a quarantine copy to clear, deletions queued). */
 const SWEEP_AFTER = new Set(['completeUploadIntent', 'deleteMe']);
+/** Devnet: inline settle slices per minute across all users (a global bucket, CH-D1). */
+const DEVNET_SLICE_LIMIT = 60;
 
 export type HostedDeps = Deps & { repo: Repos; cronSecret: string };
 
@@ -83,10 +86,11 @@ export const productionConnectors: HostedConnectors = {
   identity: (config) => firebaseIdentity(config.firebase!),
   r2: (config) => config.r2!,
   devnetChain: (config, env) => {
-    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1).
+    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1); the
+    // chain signs with exactly this key (its roles.platform is this key's public key).
     const signer = loadPlatformSigner(env);
     assertPlatformSigner(signer, config.devnet!);
-    throw new ConfigError('The devnet RPC chain is not wired yet (next commit): refusing to start POCKETQA_ENV=devnet.');
+    return RpcDevnetChain.connect(config.rpcUrl, signer, config.devnet!.arbiter);
   },
   now: Date.now,
 };
@@ -193,7 +197,10 @@ function hostedSetup(app: FastifyInstance, deps: HostedDeps, cronLeaseWaitMs: nu
   app.addHook('onSend', async (req, reply, payload) => {
     const route = (req.routeOptions.config as { pqaRoute?: string } | undefined)?.pqaRoute;
     if (reply.statusCode >= 400 || !route) return payload;
-    const job = deps.settlement && SETTLE_AFTER.has(route) ? 'settle' : SWEEP_AFTER.has(route) ? 'sweep' : null;
+    let job: 'settle' | 'sweep' | null = deps.settlement && SETTLE_AFTER.has(route) ? 'settle' : SWEEP_AFTER.has(route) ? 'sweep' : null;
+    // Devnet (CH-D1): the inline settle slices that can sign share one global bucket; when it is
+    // full the slice is skipped (the next one or the cron run continues the work).
+    if (job === 'settle' && deps.settlement instanceof DevnetSquadsSettlement && !(await deps.repo.core.rateLimitHit('devnet:settle-slice', 60_000, DEVNET_SLICE_LIMIT, deps.now()))) job = null;
     if (job) {
       await runJob(deps, job, { maxItems: LAZY_ITEMS, budgetMs: LAZY_BUDGET_MS, leaseMs: LAZY_LEASE_MS }, (a) => req.log.error({ alert: 'escrow' }, a)).catch(() =>
         req.log.warn({ job }, 'inline slice failed; the next run resumes it'),

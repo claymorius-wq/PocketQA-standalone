@@ -78,6 +78,8 @@ export const ErrorCode = z.enum([
   'COSIGNER_NOT_SEEN',
   /** Devnet: the study's escrow vault is still being created on chain; try again shortly. */
   'VAULT_NOT_READY',
+  /** Devnet: the member's vote on this payment is already on chain; no second vote transaction is offered. */
+  'ALREADY_APPROVED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -229,6 +231,8 @@ export const EscrowBalances = z.object({
   feesUnits: TokenUnits,
   pendingRefundUnits: TokenUnits,
   refundedUnits: TokenUnits,
+  /** Devnet: earned fees swept on close to the platform fee wallet (decision (a)). */
+  sweptFeesUnits: TokenUnits.optional(),
 });
 /**
  * `awaiting_approval` (POCKETQA_ENV=devnet only): the payment's Squads proposal exists and waits for
@@ -252,6 +256,8 @@ export const StudyPayment = z.discriminatedUnion('mode', [
     fundingWallet: z.string().nullable(),
     /** `settlementId`: the refund's settlement (devnet: GET /settlements/:id/approval for the builder's vote). */
     refund: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+    /** Devnet: the fee sweep on close, approved by the builder like the refund (GET /settlements/:id/approval). */
+    feeSweep: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable().optional(),
   }),
 ]);
 export type StudyPayment = z.infer<typeof StudyPayment>;
@@ -440,6 +446,24 @@ export const SettlementApproval = z.object({
 });
 export type SettlementApproval = z.infer<typeof SettlementApproval>;
 /** After the wallet broadcast the vote: its signature, and the index and op id it was for (refused if they differ from the receipt). */
+/**
+ * The operator's view of one devnet payment (admin only, read-only): exactly the inputs of the
+ * arbiter CLI (apps/api/scripts/devnet-arbiter.ts), which re-checks all of them on devnet itself.
+ */
+export const DevnetSettlementPlan = z.object({
+  settlementId: Id,
+  kind: z.enum(['payout', 'refund', 'fee']),
+  cosigner: z.enum(['builder', 'arbiter']),
+  state: z.string(),
+  multisig: Base58Address,
+  txIndex: z.number().int().positive(),
+  opId: z.string().regex(/^pqa-op1:[0-9a-f]{64}$/),
+  recipient: Base58Address,
+  amountUnits: PositiveTokenUnits,
+  mint: Base58Address,
+  network: DevnetNetwork,
+});
+export type DevnetSettlementPlan = z.infer<typeof DevnetSettlementPlan>;
 /** Where the payment stands after the vote was checked on chain (the platform signer completes it only then). */
 export const SettlementApprovalResult = z.object({ settlementId: Id, kind: z.enum(['payout', 'refund', 'fee']), status: SettlementStatus, signature: Base58Signature.nullable(), network: DevnetNetwork });
 export type SettlementApprovalResult = z.infer<typeof SettlementApprovalResult>;
@@ -930,6 +954,7 @@ export const routes = {
   submitFundingSignature: r({ method: 'POST', path: '/escrow/fundings/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitFundingSignatureBody, response: EscrowFunding }),
   escrowFundingTransaction: r({ method: 'GET', path: '/escrow/fundings/:id/transaction', auth: 'builder', scope: 'study-owner', body: null, response: DevnetFundingTransaction }),
   settlementApproval: r({ method: 'GET', path: '/settlements/:id/approval', auth: 'builder', scope: 'study-owner', body: null, response: SettlementApproval }),
+  adminDevnetSettlement: r({ method: 'GET', path: '/admin/settlements/:id/devnet', auth: 'admin', scope: 'none', body: null, response: DevnetSettlementPlan }),
   submitSettlementApproval: r({ method: 'POST', path: '/settlements/:id/approval', auth: 'builder', scope: 'study-owner', body: SubmitSettlementApprovalBody, response: SettlementApprovalResult }),
   myPayouts: r({ method: 'GET', path: '/me/payouts', auth: 'tester', scope: 'self', body: null, response: list(Payout) }),
   adminPayouts: r({ method: 'GET', path: '/admin/payouts', auth: 'admin', scope: 'none', body: null, response: list(Payout) }),

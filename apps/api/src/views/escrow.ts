@@ -103,6 +103,7 @@ export async function paymentViewOf(repo: Repos, row: StudyRow, nowMs: number): 
   const funded = await repo.escrow.isFunded(row.id);
   const { ok: _ok, ...balances } = await repo.escrow.studyBooks(row.id, nowMs);
   const refund = await repo.escrow.refundOf(row.id);
+  const feeSweep = await repo.escrow.feeSweepOf(row.id);
   return {
     mode: 'escrow',
     settlement: esc.settlement,
@@ -115,6 +116,7 @@ export async function paymentViewOf(repo: Repos, row: StudyRow, nowMs: number): 
     balances,
     fundingWallet: esc.funding_wallet,
     refund: refund ? { settlementId: refund.id, status: refund.status, amountUnits: refund.amount_units } : null,
+    feeSweep: feeSweep ? { settlementId: feeSweep.id, status: feeSweep.status, amountUnits: feeSweep.amount_units } : null,
   };
 }
 

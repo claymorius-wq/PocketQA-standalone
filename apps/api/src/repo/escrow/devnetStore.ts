@@ -129,6 +129,40 @@ export function firestoreDevnetStore(fs: Firestore, hooks: TxHooks = {}): Devnet
       });
     },
 
+    async indexOwner(multisig, index) {
+      return ((await fs.collection('squadsTx').doc(`${multisig}:${index}`).get()).data() as { settlement_id: string } | undefined)?.settlement_id ?? null;
+    },
+
+    async releaseIndex(id, fence, nowMs) {
+      return tx(async (t) => {
+        const r = await fenced<DevnetReceipt>(t, doc('payment', id), fence, nowMs);
+        if (!r || r.tx_index === 0 || r.steps.vault_tx_create) return false;
+        const guardRef = fs.collection('squadsTx').doc(`${r.multisig}:${r.tx_index}`);
+        const guard = (await t.get(guardRef)).data() as { settlement_id: string } | undefined;
+        if (guard?.settlement_id === id) t.delete(guardRef);
+        t.update(doc('payment', id), { tx_index: 0, updated_at: nowMs });
+        return true;
+      });
+    },
+
+    async reclaimIndex(id, fence, index, nowMs) {
+      return tx(async (t) => {
+        const r = await fenced<DevnetReceipt>(t, doc('payment', id), fence, nowMs);
+        if (!r || r.steps.vault_tx_create) return null;
+        if (r.tx_index === index) return index;
+        const newRef = fs.collection('squadsTx').doc(`${r.multisig}:${index}`);
+        const oldRef = fs.collection('squadsTx').doc(`${r.multisig}:${r.tx_index}`);
+        const counterRef = fs.collection('squadsIndex').doc(r.multisig);
+        const [taken, old, counter] = await t.getAll(newRef, oldRef, counterRef);
+        if (taken!.exists && (taken!.data() as { settlement_id: string }).settlement_id !== id) return null;
+        if (!taken!.exists) t.create(newRef, { settlement_id: id });
+        if (r.tx_index !== 0 && old!.exists && (old!.data() as { settlement_id: string }).settlement_id === id) t.delete(oldRef);
+        t.set(counterRef, { claimed: Math.max(((counter!.data() as { claimed: number } | undefined)?.claimed ?? 0), index) });
+        t.update(doc('payment', id), { tx_index: index, updated_at: nowMs });
+        return index;
+      });
+    },
+
     async trueUp(opKey, actualLamports) {
       await tx(async (t) => {
         const r = (await t.get(resvRef(opKey))).data() as Reservation | undefined;

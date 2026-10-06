@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildApp, loggerOptions } from './app';
-import { loadConfig, readEnvFile, REPO_ROOT } from './config';
+import { assertLocalServer, loadConfig, readEnvFile, REPO_ROOT } from './config';
 import { PID_FILE, unfinishedRestore } from './backup';
 import { openDb } from './db';
 import { makeRepos } from './repo';
@@ -12,6 +12,7 @@ import { SimulatedSettlement } from './settlement/simulated';
 import { runSettlement } from './settlement/worker';
 
 const config = loadConfig({ ...readEnvFile(join(REPO_ROOT, '.env.local')), ...process.env });
+assertLocalServer(config);
 const unfinished = unfinishedRestore(config.dataDir);
 if (unfinished) {
   console.error(unfinished);

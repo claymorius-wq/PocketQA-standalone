@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { Keypair } from '@solana/web3.js';
 import { describe, expect, it } from 'vitest';
 import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
-import { loadConfig } from '../src/config';
+import { assertLocalServer, loadConfig } from '../src/config';
+import { readFileSync } from 'node:fs';
 import { hostedConfig } from '../src/hosted/app';
 import { assertPlatformSigner, loadPlatformSigner } from '../src/settlement/squads/devnetSigner';
 import { DEVNET_GENESIS, MAINNET_GENESIS, PILOT_MINT } from '../src/settlement/squads/pins';
@@ -171,5 +172,20 @@ describe('assertPlatformSigner (pqa-qa P2-DA1)', () => {
   });
   it('the RPC host is not trusted to name the cluster (devnet.example.com passes config; the genesis is read at runtime)', () => {
     expect(() => loadConfig({ ...devnet, POCKETQA_SOLANA_RPC_URL: 'https://devnet.example.com' })).not.toThrow();
+  });
+});
+
+describe('the local server refuses POCKETQA_ENV=devnet (pqa-qa P3-F3)', () => {
+  it('assertLocalServer refuses a devnet config and accepts the others', () => {
+    expect(() => assertLocalServer(loadConfig(devnet))).toThrow(/never the local server/);
+    expect(() => assertLocalServer(loadConfig(staging))).not.toThrow();
+    expect(() => assertLocalServer(loadConfig({ POCKETQA_DATA_DIR: '/tmp/pqa-devnet-local' }))).not.toThrow();
+  });
+  it('server.ts calls it right after loading config, before opening anything', () => {
+    const src = readFileSync(join(__dirname, '../src/server.ts'), 'utf8');
+    const at = (s: string) => src.indexOf(s);
+    expect(at('assertLocalServer(config);')).toBeGreaterThan(at('const config = loadConfig('));
+    expect(at('assertLocalServer(config);')).toBeLessThan(at('openDb('));
+    expect(at('assertLocalServer(config);')).toBeLessThan(at('unfinishedRestore('));
   });
 });

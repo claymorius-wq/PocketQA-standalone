@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { PublicKey } from '@solana/web3.js';
 import * as multisig from '@sqds/multisig';
-import { DEVNET_COPY, type DevnetFundingTransaction, type SettlementApproval, type SettlementApprovalResult } from '@pocket-qa/contracts';
+import { DEVNET_COPY, type DevnetFundingTransaction, type DevnetSettlementPlan, type SettlementApproval, type SettlementApprovalResult } from '@pocket-qa/contracts';
 import { MAX_ESCROW_UNITS, observeTokenTransfer } from '@pocket-qa/domain';
 import type { Repos } from '../../repo';
 import type { FundingRow, SettlementRow } from '../../repo/escrow/types';
@@ -117,6 +117,19 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (!(await chain.memoProgramExecutable())) throw new SettlementFailure('Refused before signing: the pinned SPL Memo program is not deployed as pinned on this cluster.');
   }
 
+  /**
+   * pqa-qa P2-F1: a transaction built for the builder's own wallet is a signature too (theirs), so
+   * the same pins hold before one is built. On a route, a refusal is 503 CHAIN_UNAVAILABLE.
+   */
+  private async guardForWallet(builderWallet: string) {
+    try {
+      await this.guard(builderWallet);
+    } catch (e) {
+      if (e instanceof SettlementFailure) throw fail('CHAIN_UNAVAILABLE', e.message);
+      throw e;
+    }
+  }
+
   /** At startup: the same checks, so a misconfigured deployment refuses before serving. */
   async startupCheck() {
     await this.guard();
@@ -172,6 +185,17 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     throw new SettlementPending(`${input.step} sent`);
   }
 
+  /**
+   * The chain shows `step`'s effect: resolve its recorded transaction from its signature, so the
+   * receipt (and the spend true-up, which counts finalized steps) reflects what landed (pqa-be2 E-25:
+   * a step whose effect a run merely observes would otherwise stay `sent` and cost nothing).
+   */
+  private async observed(kind: ReceiptKind, id: string, fence: number, step: DevnetStep, rec: ReceiptStep | undefined) {
+    if (!rec || rec.status === 'finalized' || rec.status === 'failed') return;
+    const st = await this.d.chain.signatureStatus(rec.signature);
+    if (st === 'finalized' || st === 'failed') await this.patchOrPend(kind, id, fence, { steps: { [step]: { ...rec, status: st } } });
+  }
+
   private async patchOrPend(kind: ReceiptKind, id: string, fence: number, p: Parameters<DevnetStore['patch']>[3]) {
     if (!(await this.store.patch(kind, id, fence, p, this.d.now()))) throw new SettlementPending('fenced out');
   }
@@ -197,7 +221,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     let v = await this.store.vault(input.studyId);
     if (!v) {
       const claimed = await this.store.claimVault(
-        { study_id: input.studyId, uid: input.userId, multisig: a.multisig, vault_authority: a.vaultAuthority, vault_ata: a.vaultAta, builder_wallet: input.builderWallet, reserved_lamports: VAULT_LAMPORTS },
+        { study_id: input.studyId, uid: input.userId, multisig: a.multisig, vault_authority: a.vaultAuthority, vault_ata: a.vaultAta, builder_wallet: input.builderWallet, fee_wallet: this.d.roles.feeWallet, reserved_lamports: VAULT_LAMPORTS },
         this.d.limits,
         this.d.now(),
       );
@@ -213,14 +237,15 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
         await this.step('vault', input.studyId, fence, cur.steps.multisig_create, { step: 'multisig_create', studyId: input.studyId, multisig: a.multisig, members: this.members(input.builderWallet), threshold: THRESHOLD }, input.builderWallet);
         ms = await this.d.chain.getMultisig(a.multisig);
         if (!ms) throw new SettlementPending('the multisig is not visible yet');
-      }
+      } else await this.observed('vault', input.studyId, fence, 'multisig_create', cur.steps.multisig_create);
       this.assertConfig(ms, input.builderWallet);
       if ((await this.d.chain.tokenBalance(a.vaultAta)) === null) {
         await this.step('vault', input.studyId, fence, cur.steps.vault_ata_create, { step: 'vault_ata_create', owner: a.vaultAuthority }, input.builderWallet);
         if ((await this.d.chain.tokenBalance(a.vaultAta)) === null) throw new SettlementPending('the vault token account is not visible yet');
-      }
+      } else await this.observed('vault', input.studyId, fence, 'vault_ata_create', cur.steps.vault_ata_create);
       await this.patchOrPend('vault', input.studyId, fence, { state: 'ready' });
-      await this.store.trueUp(`vault:${input.studyId}`, spent(cur.steps));
+      // The cumulative spend keeps what the landed transactions cost (re-read: steps were just resolved).
+      await this.store.trueUp(`vault:${input.studyId}`, spent((await this.store.vault(input.studyId))!.steps));
       return { multisig: a.multisig, vaultAuthority: a.vaultAuthority };
     });
   }
@@ -262,6 +287,8 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (v?.state !== 'ready') throw new SettlementFailure('Refused before signing: this study has no prepared devnet vault.');
     if (!Number.isSafeInteger(s.amount_units) || s.amount_units <= 0 || s.amount_units > MAX_ESCROW_UNITS) throw new SettlementFailure('Refused before signing: invalid amount.');
     if (!isWallet(s.destination) || s.destination === v.vault_authority) throw new SettlementFailure('Refused before signing: the destination is not a wallet address.');
+    // CH-D3: a fee sweep goes only to the pinned platform fee wallet.
+    if (s.kind === 'fee' && s.destination !== this.d.roles.feeWallet) throw new SettlementFailure('Refused before signing: a fee sweep must go to the pinned platform fee wallet (POCKETQA_DEVNET_FEE_WALLET).');
     const kind = s.kind as DevnetReceipt['kind'];
     const op = operationId(kind, s.study_id, s.participation_id);
     const draft = {
@@ -305,29 +332,43 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
   /** One run of a payment under its lease. Returns the execute signature once it is finalized on chain. */
   private async drive(id: string, fence: number): Promise<{ signature: string }> {
     const { chain } = this.d;
-    const r = (await this.store.receipt(id))!;
-    const index = BigInt(r.tx_index);
+    let r = (await this.store.receipt(id))!;
     const builderWallet = (await this.store.vault(r.study_id))!.builder_wallet;
     const ms = await chain.getMultisig(r.multisig);
     if (!ms) throw new SettlementFailure('Stopped before signing: the study vault does not exist on devnet.');
     this.assertConfig(ms, builderWallet);
+    // pqa-qa P3-F4 (liveness): Squads creates indexes strictly in order. A payment without an index
+    // (it released one) or waiting behind an index nobody holds (released) moves to the next free one.
+    const next = Number(ms.transactionIndex) + 1;
+    if (!r.steps.vault_tx_create && (r.tx_index === 0 || (r.tx_index > next && (await this.store.indexOwner(r.multisig, next)) === null))) {
+      if ((await this.store.reclaimIndex(id, fence, next, this.d.now())) === null) throw new SettlementPending(`waiting for Squads index ${next} of this study`);
+      r = (await this.store.receipt(id))!;
+    }
+    const index = BigInt(r.tx_index);
     const plan = this.plan(r);
 
     // 1. The destination's token account (the platform pays its rent); a no-op once it exists.
     if ((await chain.tokenBalance(r.destination_ata)) === null) {
       await this.step('payment', id, fence, r.steps.dest_ata_create, { step: 'dest_ata_create', owner: r.destination }, builderWallet);
-    }
+    } else await this.observed('payment', id, fence, 'dest_ata_create', r.steps.dest_ata_create);
     // 2. The vault transaction [TransferChecked(plan), Memo(op id)], created by the platform.
     let vt = await chain.getVaultTransfer(r.multisig, index);
     if (!vt) {
       if (ms.transactionIndex < index - 1n) throw new SettlementPending(`waiting for Squads index ${index - 1n} of this study`);
-      if (ms.transactionIndex >= index) throw new SettlementFailure(`Refused: Squads index ${index} of this study is taken by another transaction; an operator must resolve it.`);
+      if (ms.transactionIndex >= index) {
+        await this.store.releaseIndex(id, fence, this.d.now());
+        throw new SettlementFailure(`Stopped: Squads index ${index} of this study is taken by another transaction; this payment takes the next free index on its next attempt.`);
+      }
       const balance = await chain.tokenBalance(r.vault_ata);
-      if (balance === null || balance < plan.amount) throw new SettlementFailure('Stopped before creating the transfer: the study vault holds less than it on devnet.');
+      if (balance === null || balance < plan.amount) {
+        // Nothing was created at this index: give it back so later payments aren't blocked (P3-F4).
+        await this.store.releaseIndex(id, fence, this.d.now());
+        throw new SettlementFailure('Stopped before creating the transfer: the study vault holds less than it on devnet.');
+      }
       await this.step('payment', id, fence, r.steps.vault_tx_create, { step: 'vault_tx_create', multisig: r.multisig, index, vaultAuthority: r.vault_authority, source: r.vault_ata, destination: r.destination_ata, amount: plan.amount, operation: r.op_id }, builderWallet);
       vt = await chain.getVaultTransfer(r.multisig, index);
       if (!vt) throw new SettlementPending('the vault transaction is not visible yet');
-    }
+    } else await this.observed('payment', id, fence, 'vault_tx_create', r.steps.vault_tx_create);
     if (!sameTransfer(vt, plan)) throw new SettlementFailure(`Refused: Squads transaction ${index} of this study is not exactly this payment; it is never approved.`);
     // 3. The proposal (Initiate only: the platform does NOT vote here).
     let p = await chain.getProposal(r.multisig, index);
@@ -335,7 +376,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       await this.step('payment', id, fence, r.steps.proposal_create, { step: 'proposal_create', multisig: r.multisig, index }, builderWallet);
       p = await chain.getProposal(r.multisig, index);
       if (!p) throw new SettlementPending('the proposal is not visible yet');
-    }
+    } else await this.observed('payment', id, fence, 'proposal_create', r.steps.proposal_create);
     if (['Rejected', 'Cancelled', 'Draft'].includes(p.status)) throw new SettlementFailure(`Refused: the proposal for Squads transaction ${index} is ${p.status.toLowerCase()}; an operator must resolve it.`);
     if (p.status === 'Executed' || p.status === 'Executing') return this.finish(r, fence);
     // 4. The cosigner votes first, in their own wallet (or the arbiter's CLI). Until then, nothing more is signed.
@@ -344,10 +385,12 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       throw new AwaitingCosigner(`waiting for the ${r.cosigner}'s approval`);
     }
     // 5. The platform completes the 2-of-3, then executes.
-    if (!p.approved.includes(this.d.roles.platform)) {
+    // The platform votes only on an Active proposal. If the cosigner's vote and another member's
+    // already made it Approved, a platform vote would fail on chain forever: execute instead.
+    if (!p.approved.includes(this.d.roles.platform) && p.status === 'Active') {
       await this.step('payment', id, fence, r.steps.approve_platform, { step: 'approve_platform', multisig: r.multisig, index }, builderWallet);
       p = await chain.getProposal(r.multisig, index);
-    }
+    } else await this.observed('payment', id, fence, 'approve_platform', r.steps.approve_platform);
     if (p?.status === 'Approved') {
       await this.step('payment', id, fence, r.steps.execute, { step: 'execute', multisig: r.multisig, index }, builderWallet);
     }
@@ -358,6 +401,10 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   /** Executed: adopt the execute signature (recorded, or found on chain), true up the spend. */
   private async finish(r: DevnetReceipt, fence: number) {
+    // Every step's effect is on chain now: resolve each recorded transaction before counting.
+    for (const step of ['dest_ata_create', 'vault_tx_create', 'proposal_create', 'approve_platform', 'execute'] as const) {
+      await this.observed('payment', r.settlement_id, fence, step, (await this.store.receipt(r.settlement_id))!.steps[step]);
+    }
     const fresh = (await this.store.receipt(r.settlement_id))!;
     const recorded = fresh.steps.execute?.status === 'finalized' ? fresh.steps.execute.signature : null;
     const signature = recorded ?? (await this.d.chain.findExecuteSignature(r.multisig, BigInt(r.tx_index)));
@@ -402,6 +449,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       if ((await this.store.vault(f.study_id))?.state !== 'ready') throw fail('VAULT_NOT_READY', 'The study’s devnet vault is still being created. Try again in a few seconds.');
     }
     const vaultAta = this.vaultFor(f.study_id);
+    await this.guardForWallet(builderWallet);
     // CH-D3: from the server's own state only: this study's vault, the quoted amount, the request's reference.
     const tx = await this.d.chain.buildFundingTransfer({ from: builderWallet, vaultAta, amount: BigInt(f.amount_units), reference: f.reference });
     return { transactionB64: tx.wireB64, fundingId: f.id, studyId: f.study_id, reference: f.reference, amountUnits: f.amount_units, destination: vaultAta, mint: PILOT_MINT, network: 'devnet', copy: DEVNET_COPY };
@@ -417,6 +465,11 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   async approval(s: SettlementRow, builderWallet: string): Promise<SettlementApproval> {
     const r = await this.waitingFor(s, builderWallet);
+    // E-28 #3: once the vote is on chain a second one would only fail in the wallet (Squads 6008):
+    // say so instead of offering another transaction.
+    const p = await this.d.chain.getProposal(r.multisig, BigInt(r.tx_index));
+    if (p?.approved.includes(builderWallet)) throw fail('ALREADY_APPROVED', 'You already approved this payment; Pocket QA completes it on devnet.');
+    await this.guardForWallet(builderWallet);
     const tx = await this.d.chain.buildCosignerApprove(r.multisig, BigInt(r.tx_index), builderWallet);
     return {
       settlementId: s.id,
@@ -440,6 +493,13 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     const p = await this.d.chain.getProposal(r.multisig, BigInt(r.tx_index));
     if (!p?.approved.includes(builderWallet)) throw fail('COSIGNER_NOT_SEEN', 'Your approval is not on devnet yet. Try again once your wallet shows it confirmed.');
     return { settlementId: s.id, kind: r.kind, status: 'submitted', signature: null, network: 'devnet' };
+  }
+
+  /** The arbiter CLI's inputs, from the receipt (admin read-only; builds and signs nothing). */
+  async operatorPlan(s: SettlementRow): Promise<DevnetSettlementPlan> {
+    const r = await this.store.receipt(s.id);
+    if (!r || r.tx_index === 0) throw fail('CONFLICT_STATE', 'This payment has no devnet receipt yet; the next settle run creates it.');
+    return { settlementId: s.id, kind: r.kind, cosigner: r.cosigner, state: r.state, multisig: r.multisig, txIndex: r.tx_index, opId: r.op_id, recipient: r.destination, amountUnits: r.amount_units, mint: PILOT_MINT, network: 'devnet' };
   }
 
   /** CH-D1: test USDC entering the system, reserved once per study's funding (before the request exists). */

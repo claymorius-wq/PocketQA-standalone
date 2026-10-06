@@ -1,18 +1,19 @@
 import { Keypair } from '@solana/web3.js';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
+import { decodeServerTx, MAINNET_USDC_MINT, verifyFundingTx } from '@pocket-qa/domain';
 import { devnetFirestore } from '../../src/firestore/namespace';
 import { runTxCtx } from '../../src/firestore/tx';
 import { makeRepos } from '../../src/repo';
-import { authorizePayoutInTx, createEscrowInTx } from '../../src/repo/escrow/firestore';
+import { authorizePayoutInTx, authorizeRefundInTx, createEscrowInTx } from '../../src/repo/escrow/firestore';
 import { ataOf } from '../../src/settlement/squads/adapter';
 import { devnetSettlement, type DevnetSquadsSettlement } from '../../src/settlement/squads/devnet';
-import { DEFAULT_DEVNET_LIMITS, paymentLamports, type DevnetLimits } from '../../src/settlement/squads/devnetTypes';
+import { DEFAULT_DEVNET_LIMITS, paymentLamports, STEP_LAMPORTS, VAULT_LAMPORTS, type DevnetLimits } from '../../src/settlement/squads/devnetTypes';
 import { MAINNET_GENESIS, PILOT_DECIMALS, PILOT_MINT, PILOT_TOKEN_PROGRAM } from '../../src/settlement/squads/pins';
 import { SettlementFailure, SettlementPending } from '../../src/settlement/types';
 import { runSettlement } from '../../src/settlement/worker';
 import type { ParticipationRow, StudyRow } from '../../src/views/studies';
-import { FakeDevnetChain } from '../fakeDevnetChain';
+import { paymentViewOf } from '../../src/views/escrow';
+import { FakeDevnetChain, walletSign } from '../fakeDevnetChain';
 import { clearEmulator, emulatorFirestore } from './fs';
 
 // The devnet adapter on Firestore (devnet namespace) over the fake chain: pqa-qa P2-DA1/DA2,
@@ -90,7 +91,7 @@ const statusOf = async (pid: string) => (await repos.escrow.payoutSettlementOf(p
 const approveAsBuilder = async (pid: string) => {
   const s = (await repos.escrow.payoutSettlementOf(pid))!;
   const a = await adapter.approval(s, builder.publicKey.toBase58());
-  return { s, a, signature: chain.walletSend(a.transactionB64, builder.publicKey.toBase58()) };
+  return { s, a, signature: chain.walletSend(walletSign(a.transactionB64, builder)) };
 };
 
 describe('custody order: the cosigner votes first, the platform only completes the 2-of-3', () => {
@@ -240,7 +241,7 @@ describe('receipts and broadcasts (CH-D5, pqa-be2 flags 1 and 3)', () => {
     for (let r = 0; r < 4; r++) await Promise.allSettled(Array.from({ length: 20 }, () => settle()));
     expect(await statusOf(p!.id)).toBe('confirmed');
     for (const step of ['vault_tx_create', 'proposal_create', 'approve_platform', 'execute'] as const) expect(chain.landed.filter((l) => l.step === step), step).toHaveLength(1);
-  });
+  }, 180_000); // 20 concurrent runs on a shared, loaded emulator: ~15-55 s observed
 });
 
 describe('spend caps (CH-D1, pqa-be2 P2): the whole payment is reserved up front', () => {
@@ -262,7 +263,7 @@ describe('spend caps (CH-D1, pqa-be2 P2): the whole payment is reserved up front
     expect(chain.landed.filter((l) => l.step === 'vault_tx_create')).toHaveLength(2); // nothing half-created
     const failed = await Promise.all(ps.map(async (p) => (await repos.escrow.payoutSettlementOf(p.id))!));
     expect(failed.filter((s) => s.status === 'failed').every((s) => /DEVNET_SPEND_CAP/.test(s.failure_reason ?? ''))).toBe(true);
-  });
+  }, 180_000); // 20 concurrent runs on a shared, loaded emulator: ~15-55 s observed
 });
 
 describe('the builder’s approval routes (CH-D3, pqa-be2 flag 5)', () => {
@@ -284,7 +285,8 @@ describe('the builder’s approval routes (CH-D3, pqa-be2 flag 5)', () => {
     const f = { id: 'f1', study_id: 's1', amount_units: 3_000, reference: adapter.newReference(), status: 'awaiting_payment' as const, signature: null, source: null, failure_reason: null, created_at: now, expires_at: now + 60_000, confirmed_at: null };
     const tx = await adapter.fundingTransaction(f, builder.publicKey.toBase58());
     expect(tx).toMatchObject({ fundingId: 'f1', studyId: 's1', amountUnits: 3_000, destination: adapter.vaultFor('s1'), mint: PILOT_MINT, network: 'devnet' });
-    expect(JSON.parse(Buffer.from(tx.transactionB64, 'base64').toString('utf8'))).toMatchObject({ from: builder.publicKey.toBase58(), vaultAta: adapter.vaultFor('s1'), amount: '3000', reference: f.reference });
+    // Real v0 bytes that pass the client's exact template (the builder's ATA → this vault, the amount, the reference).
+    expect(verifyFundingTx(decodeServerTx(tx.transactionB64), { owner: builder.publicKey.toBase58(), amountUnits: 3_000, destination: adapter.vaultFor('s1'), reference: f.reference, mint: PILOT_MINT })).toMatchObject({ amountUnits: 3_000, reference: f.reference });
     await expect(adapter.fundingTransaction({ ...f, expires_at: now }, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CONFLICT_STATE' });
   });
 });
@@ -318,4 +320,215 @@ describe('the server verifies the on-chain vault transaction before every furthe
       expect(await statusOf(p!.id)).toBe('failed');
     });
   }
+});
+
+describe('cumulative spend (pqa-be2 E-25): the caps bound TOTAL spend, not just in-flight work', () => {
+  /** What the platform signer paid on chain: every landed platform-signed step's fee + rent. */
+  const paidOnChain = () => chain.landed.filter((l) => l.step !== 'cosigner_approve' && l.step !== 'funding').reduce((sum, l) => sum + STEP_LAMPORTS[l.step as keyof typeof STEP_LAMPORTS], 0);
+  const spend = async (id: string) => ((await fs.collection('devnetSpend').doc(id).get()).data() ?? { lamports: 0 }).lamports as number;
+  async function complete(pid: string) {
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(pid);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(pid)).toBe('confirmed');
+  }
+
+  it('after a vault and two payouts finish, user and global spend equal what the platform paid', async () => {
+    await readyVault();
+    const ps = await payouts(2);
+    for (const p of ps) await complete(p.id);
+    const paid = paidOnChain();
+    expect(paid).toBeGreaterThan(0);
+    expect(await spend('user:b1')).toBe(paid);
+    expect(await spend('global')).toBe(paid);
+    for (const r of (await fs.collection('squadsAttempts').get()).docs.map((d) => d.data())) {
+      expect(Object.values(r.steps as Record<string, { status: string }>).every((x) => x.status === 'finalized')).toBe(true);
+    }
+  });
+
+  it('sequential payments are capped: a cap that fits the vault and ONE payment refuses the second, after the first finished', async () => {
+    adapter = make({ global: { lamports: 1e12, usdcUnits: 1e12 }, perUser: { lamports: VAULT_LAMPORTS + paymentLamports(true), usdcUnits: 1e12 } });
+    await readyVault();
+    const [p1, p2] = await payouts(2);
+    // Finish p1 alone first (p2's claim would otherwise race it).
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).update({ status: 'confirmed' });
+    await complete(p1!.id);
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).update({ status: 'pending' });
+    const signed = chain.prepared.length;
+    for (let i = 0; i < 3; i++) await settle();
+    expect((await repos.escrow.payoutSettlementOf(p2!.id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/DEVNET_SPEND_CAP/) });
+    expect(chain.prepared.length).toBe(signed);
+  });
+});
+
+describe('wallet-signed transactions are built only on a proven devnet (pqa-qa P2-F1)', () => {
+  const bad: [string, (c: FakeDevnetChain) => void][] = [
+    ['the mainnet genesis', (c) => (c.genesis = MAINNET_GENESIS)],
+    ['the mainnet USDC mint account', (c) => (c.mintAccount = { address: MAINNET_USDC_MINT, owner: PILOT_TOKEN_PROGRAM, decimals: PILOT_DECIMALS })],
+    ['wrong decimals', (c) => (c.mintAccount = { address: PILOT_MINT, owner: PILOT_TOKEN_PROGRAM, decimals: 9 })],
+    ['the Squads program not as pinned', (c) => (c.programOk = false)],
+  ];
+  for (const [name, breakIt] of bad) {
+    it(`${name}: no funding transaction and no approval transaction is built for the builder's wallet`, async () => {
+      await readyVault();
+      const [p] = await payouts(1);
+      for (let i = 0; i < 6; i++) await settle();
+      const s = (await repos.escrow.payoutSettlementOf(p!.id))!;
+      const f = { id: 'f1', study_id: 's1', amount_units: 3_000, reference: adapter.newReference(), status: 'awaiting_payment' as const, signature: null, source: null, failure_reason: null, created_at: now, expires_at: now + 60_000, confirmed_at: null };
+      breakIt(chain);
+      await expect(adapter.fundingTransaction(f, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CHAIN_UNAVAILABLE' });
+      await expect(adapter.approval(s, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'CHAIN_UNAVAILABLE' });
+      expect(chain.built).toEqual([]);
+    });
+  }
+});
+
+describe('the fee sweep on close (decision (a), pqa-be2 E-24): vault 0, the fee wallet receives exactly the booked fees', () => {
+  it('close authorizes the refund AND the fee sweep; both cosigned by the builder; the books balance with the fees swept', async () => {
+    // A 10% fee study: funded for 2 tests of 1,000 (+100 fee each); one paid, then closed.
+    await untilDone(() => adapter.prepareVault({ studyId: 's1', builderWallet: builder.publicKey.toBase58(), userId: 'b1' }));
+    await runTxCtx(raw, (t) => createEscrowInTx(t, fs, { study_id: 's1', builder_id: 'b1', settlement: 'squads_devnet', network: 'solana:devnet', mint: PILOT_MINT, vault: adapter.vaultFor('s1'), fee_bps: 1000, created_at: ISO }));
+    await fs.collection('studyEscrows').doc('s1').update({ funding_wallet: builder.publicKey.toBase58() });
+    await fs.collection('escrowBooks').doc('s1').set({ accounts: { 'in:funding': -2_200, 'vault:s1': 2_200 } });
+    chain.fundVault(adapter.vaultFor('s1'), 2_200);
+    const p = part('p0');
+    await fs.collection('participations').doc(p.id).set(p);
+    await runTxCtx(raw, (t) => authorizePayoutInTx(t, fs, study({ slots: 2 }), p, 0, now, 'b1', 'approved', 'builder'));
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(p.id);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p.id)).toBe('confirmed');
+
+    await runTxCtx(raw, (t) => authorizeRefundInTx(t, fs, study({ slots: 2, status: 'closed' }), now, 'b1', 'builder'));
+    const rows = async () => (await fs.collection('settlements').where('study_id', '==', 's1').get()).docs.map((d) => d.data() as { id: string; kind: string; status: string; amount_units: number; destination: string; cosigner: string });
+    expect((await rows()).filter((r) => r.kind !== 'payout').map((r) => [r.kind, r.amount_units, r.destination, r.cosigner]).sort()).toEqual([
+      ['fee', 100, feeWallet, 'builder'],
+      ['refund', 1_100, builder.publicKey.toBase58(), 'builder'],
+    ]);
+    // Close twice (a retry): no second refund or fee sweep.
+    await runTxCtx(raw, (t) => authorizeRefundInTx(t, fs, study({ slots: 2, status: 'closed' }), now, 'b1', 'builder')).catch(() => undefined);
+    expect((await rows()).filter((r) => r.kind === 'fee')).toHaveLength(1);
+
+    const feeBefore = chain.balances.get(ataOf(feeWallet)) ?? 0;
+    for (let round = 0; round < 4; round++) {
+      for (let i = 0; i < 6; i++) await settle();
+      for (const r of (await rows()).filter((x) => x.status === 'awaiting_approval')) {
+        const s = (await repos.escrow.settlementById(r.id))!;
+        const a = await adapter.approval(s, builder.publicKey.toBase58());
+        chain.walletSend(walletSign(a.transactionB64, builder));
+      }
+    }
+    expect((await rows()).map((r) => [r.kind, r.status]).sort()).toEqual([['fee', 'confirmed'], ['payout', 'confirmed'], ['refund', 'confirmed']]);
+    expect(chain.balances.get(adapter.vaultFor('s1'))).toBe(0);
+    expect((chain.balances.get(ataOf(feeWallet)) ?? 0) - feeBefore).toBe(100);
+    expect(await repos.escrow.studyBooks('s1', now)).toMatchObject({ fundedUnits: 2_200, settledUnits: 1_000, refundedUnits: 1_100, feesUnits: 0, sweptFeesUnits: 100, ok: true });
+    const view = await paymentViewOf(repos, study({ slots: 2, status: 'closed' }), now);
+    expect(view).toMatchObject({ mode: 'escrow', feeSweep: { status: 'confirmed', amountUnits: 100 }, refund: { status: 'confirmed', amountUnits: 1_100 }, balances: { sweptFeesUnits: 100 } });
+  });
+
+  it('a fee settlement to any wallet but the pinned fee wallet is refused before signing', async () => {
+    await readyVault();
+    const id = 'fee-tampered';
+    await fs.collection('settlements').doc(id).set({ id, kind: 'fee', study_id: 's1', participation_id: null, tester_id: null, destination: Keypair.generate().publicKey.toBase58(), amount_units: 50, status: 'pending', attempt: 0, attempt_key: null, signature: null, failure_reason: null, next_attempt_at: now, created_at: now, settled_at: null, cosigner: 'builder' });
+    const signed = chain.prepared.length;
+    for (let i = 0; i < 3; i++) await settle();
+    expect((await repos.escrow.settlementById(id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/fee wallet/) });
+    expect(chain.prepared.length).toBe(signed);
+  });
+});
+
+describe('the fence holds before a SAME-BYTES re-broadcast too (pqa-qa P3-F2)', () => {
+  it('a holder paused before re-broadcasting its unlanded transaction, then fenced out, re-broadcasts nothing', async () => {
+    const go = () => adapter.prepareVault({ studyId: 's1', builderWallet: builder.publicKey.toBase58(), userId: 'b1' });
+    chain.dropNext = 1;
+    await go().catch(() => undefined); // multisig_create sent, never landed
+    const sig = chain.prepared[0]!.signature;
+    let release!: () => void;
+    const paused = new Promise<void>((r) => (release = r));
+    let pausedOnce = false;
+    const realHeight = chain.blockHeight.bind(chain);
+    chain.blockHeight = async () => {
+      if (!pausedOnce) {
+        pausedOnce = true;
+        await paused; // holder A: decided "not landed, still valid", about to re-broadcast the same bytes
+      }
+      return realHeight();
+    };
+    const a = go().catch((e) => e);
+    while (!pausedOnce) await new Promise((r) => setImmediate(r));
+    now += 31_000; // A's lease lapsed; B takes over and re-broadcasts (the bytes land)
+    await go().catch(() => undefined);
+    const before = chain.broadcasts.filter((b) => b.signature === sig).length;
+    release();
+    expect(await a).toBeInstanceOf(SettlementPending);
+    expect(chain.broadcasts.filter((b) => b.signature === sig).length).toBe(before); // A sent nothing
+    expect(chain.prepared).toHaveLength(1); // and never re-signed
+  });
+});
+
+describe('liveness when a claimed Squads index is never filled (pqa-qa P3-F4)', () => {
+  it('a payment that stops before creating its vault transaction releases its index; the next payment takes it and completes', async () => {
+    await readyVault(2_000);
+    const [p1, p2] = await payouts(2);
+    chain.balances.set(adapter.vaultFor('s1'), 1_000); // on chain the vault holds exactly one 1,000-unit payout
+    // p1 asks for more than the vault holds: it claims index 1, then stops before creating anything.
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p1!.id))!.id).update({ amount_units: 50_000 });
+    for (let i = 0; i < 8; i++) await settle();
+    expect((await repos.escrow.payoutSettlementOf(p1!.id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/holds less/) });
+    expect(await statusOf(p2!.id)).toBe('awaiting_approval');
+    await approveAsBuilder(p2!.id);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p2!.id)).toBe('confirmed');
+    expect(chain.landed.filter((l) => l.step === 'vault_tx_create')).toHaveLength(1);
+    const r2 = (await fs.collection('squadsAttempts').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).get()).data()!;
+    expect(r2.tx_index).toBe(1); // p2 took the released index
+  });
+});
+
+describe('the approval route after the vote is on chain (E-28 #3)', () => {
+  it('offers no second vote transaction: 409 ALREADY_APPROVED, nothing built', async () => {
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    const { s } = await approveAsBuilder(p!.id);
+    const built = chain.built.length;
+    await expect(adapter.approval(s, builder.publicKey.toBase58())).rejects.toMatchObject({ code: 'ALREADY_APPROVED' });
+    expect(chain.built.length).toBe(built);
+  });
+});
+
+describe('a proposal already approved by its cosigner and another member (dispute path edge)', () => {
+  it('the platform does not vote on an Approved proposal; it executes once', async () => {
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    const { s } = await approveAsBuilder(p!.id);
+    // The arbiter also votes (e.g. an operator mistake): 2 of 3 without the platform.
+    const r = (await repos.escrow.devnet!.receipt(s.id))!;
+    const vote = await chain.buildCosignerApprove(r.multisig, BigInt(r.tx_index), chain.roles.arbiter);
+    chain.walletSend(walletSign(vote.wireB64, chain.arbiterKp));
+    expect((await chain.getProposal(r.multisig, BigInt(r.tx_index)))!.status).toBe('Approved');
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p!.id)).toBe('confirmed');
+    expect(chain.prepared.map((x) => x.step)).not.toContain('approve_platform');
+    expect(chain.landed.filter((l) => l.step === 'execute')).toHaveLength(1);
+  });
+});
+
+describe('the operator plan of a payment (the arbiter CLI inputs, admin read-only)', () => {
+  it('an arbiter-cosigned payout: the plan names the multisig, index, op id, recipient and amount; it builds nothing', async () => {
+    await readyVault();
+    const p = part('p-arb');
+    await fs.collection('participations').doc(p.id).set(p);
+    await runTxCtx(raw, (t) => authorizePayoutInTx(t, fs, study(), p, 0, now, 'admin', 'dispute overturned', 'arbiter'));
+    const s = (await repos.escrow.payoutSettlementOf(p.id))!;
+    await expect(adapter.operatorPlan(s)).rejects.toMatchObject({ code: 'CONFLICT_STATE' }); // not claimed yet
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p.id)).toBe('awaiting_approval');
+    const built = chain.built.length;
+    const plan = await adapter.operatorPlan(s);
+    const r = (await repos.escrow.devnet!.receipt(s.id))!;
+    expect(plan).toEqual({ settlementId: s.id, kind: 'payout', cosigner: 'arbiter', state: 'awaiting_cosigner', multisig: r.multisig, txIndex: r.tx_index, opId: r.op_id, recipient: p.payout_address, amountUnits: 1_000, mint: PILOT_MINT, network: 'devnet' });
+    expect(chain.built.length).toBe(built);
+  });
 });
