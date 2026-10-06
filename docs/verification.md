@@ -1085,3 +1085,31 @@ sign-up-dark-phone-webkit: 358x52 role=button label="Sign up with Google" G draw
   console errors (dark phone): []
 ```
 Screenshots: docs/reviews/firebase-vercel/google-button/local/ (full screens, keyboard focus crops, WebKit phone).
+
+### 2026-10-06: branded Google buttons deployed (dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe from a9d0e7e, pqa-qa r3 APPROVE)
+```
+$ git worktree add --detach .worktrees/deploy-a9d0e7e a9d0e7e; pnpm install --offline --frozen-lockfile (clean tree: the shared worktree had pqa-be2 uncommitted E-08 work, not built)
+$ build-deploy-google.mjs → secret scan clean (4/4 server-only variables, 7 values checked); app COOP same-origin-allow-popups, gapi+frame-src present; api COOP same-origin; entry-d9b5472d9fac233b3df280ddb47bf7fa.js
+$ vercel deploy --prebuilt --prod → https://pocketqa-kv2cjkg61-…vercel.app, aliased https://pocketqa.vercel.app; vercel inspect: dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe ● Ready
+$ live: entry-d9b5472d…; /api/config googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated; COOP same-origin-allow-popups; script-src 'self' https://apis.google.com; frame-src https://pocketqa-optijara.firebaseapp.com
+$ live playwright (no stubs), sign-in + sign-up × light/dark × 390/1280 (chromium):
+  sign-in-light-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  sign-up-light-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  console errors (light phone): []
+  sign-in-light-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  sign-up-light-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  console errors (light desktop): []
+  sign-in-dark-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  sign-up-dark-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  console errors (dark phone): []
+  sign-in-dark-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  sign-up-dark-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  console errors (dark desktop): []
+chromium google=on: Google requests before any click = 0; console errors = []; button shown = true
+  after click: aria-busy=true; popup=https://pocketqa-optijara.firebaseapp.com/__/auth/handler?apiK; Google requests now = 4
+chromium https://pocketqa.vercel.app: busy cleared after 8865 ms (aria-busy=false); message: []
+webkit google=on: Google requests before any click = 0; console errors = []; button shown = true
+  after click: aria-busy=true; popup=https://pocketqa-optijara.firebaseapp.com/__/auth/handler?apiK; Google requests now = 4
+webkit https://pocketqa.vercel.app: busy cleared after 8883 ms (aria-busy=false); message: []
+```
+Note (P3): after the Google popup is closed, the button stays busy ~9 s: Firebase waits for a late auth event before reporting popup-closed-by-user; it then returns to idle with no error. Real Google login completion remains human-only.
