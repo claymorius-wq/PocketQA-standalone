@@ -19,10 +19,11 @@ if (unfinished) {
 }
 mkdirSync(join(config.dataDir, 'media'), { recursive: true, mode: 0o700 });
 const db = openDb(join(config.dataDir, 'pocketqa.sqlite'));
+// Local server: SQLite (local and USB testing). Hosted (Vercel) builds Firestore repos instead (src/hosted).
+const repo = makeRepos({ kind: 'sqlite', db });
 const deps = {
     db,
-    // Local server: SQLite (local and USB testing). Hosted (Vercel) builds Firestore repos instead.
-    repo: makeRepos({ kind: 'sqlite', db }),
+    repo,
     config,
     now: Date.now,
     rpc: httpDevnetRpc(config.rpcUrl),
@@ -35,7 +36,7 @@ const deps = {
     // test keys simulate every role). loadConfig refuses both in production.
     settlement:
       config.features.settlement === 'simulated'
-        ? new SimulatedSettlement(db, Date.now)
+        ? new SimulatedSettlement(repo, Date.now)
         : config.features.settlement === 'squads_devnet'
           ? (await import('./settlement/squads/pilot')).squadsDevnetPilot(db, Date.now, config.pilotKeysDir!)
           : null,

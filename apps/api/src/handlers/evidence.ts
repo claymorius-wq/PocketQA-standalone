@@ -97,8 +97,10 @@ export const evidenceHandlers = {
       throw fail('VALIDATION', 'Unknown task for this study.');
     }
 
+    const mediaDir = ctx.deps.mediaDir;
+    if (!mediaDir) throw new Error('Local evidence storage without a media directory');
     const key = newId();
-    const path = join(ctx.deps.mediaDir, key);
+    const path = join(mediaDir, key);
     // Registered before the file exists, like every other key the app writes (migration 4).
     await repo.registerObject(key, ctx.deps.now());
     try {

@@ -1,4 +1,4 @@
-import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import { MAX_EVIDENCE_BYTES, redactPath, routes, type RouteName } from '@pocket-qa/contracts';
@@ -75,14 +75,18 @@ export function logUrl(request: Pick<FastifyRequest, 'url'> & { routeOptions?: {
 
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions['logger'] } = {}) {
+export async function buildApp(
+  deps: Deps,
+  opts: { logger?: FastifyServerOptions['logger']; /** Runs before the routes are registered, so its hooks apply to them. */ setup?: (app: FastifyInstance) => void | Promise<void> } = {},
+) {
   const app = Fastify({
     logger: opts.logger ?? false,
     // Only a local reverse proxy (tunnel or gate) can sit in front of a loopback-bound API.
     trustProxy: deps.config.trustProxy,
   });
   await app.register(cors, {
-    origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin)),
+    // Local dev origins, and the deployment's own public origin (same-origin on Vercel anyway).
+    origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin) || origin === deps.config.publicOrigin),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['authorization', 'content-type', 'range', 'idempotency-key'],
   });
@@ -108,6 +112,7 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
     return reply.code(500).send({ code: 'INTERNAL', message: 'Something went wrong.' });
   });
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ code: 'NOT_FOUND', message: 'Route not found.' }));
+  await opts.setup?.(app);
 
   /**
    * Resolves the caller. Firebase mode: a verified Firebase ID token (revocation checked)
@@ -148,6 +153,8 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
     app.route({
       method: def.method,
       url: def.path,
+      // The contract's route name, for hooks (the hosted inline settlement slice, R5).
+      config: { pqaRoute: name },
       handler: async (req, reply) => {
         let user: UserRow | null = null;
         let identity: VerifiedIdentity | null = null;

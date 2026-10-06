@@ -1,5 +1,4 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { hash, verify } from '@node-rs/argon2';
 import type { ErrorCode } from '@pocket-qa/contracts';
 import { DomainError } from '@pocket-qa/domain';
 
@@ -38,11 +37,14 @@ export function newNonce(length = 24): string {
   return out;
 }
 
-export const hashPassword = (password: string) => hash(password);
+// Local password accounts only. Loaded on first use: argon2 is a native module, and the hosted
+// (Firebase sign-in) bundle leaves it out, so it must never load at import time there.
+const argon2 = () => import('@node-rs/argon2');
+export const hashPassword = async (password: string) => (await argon2()).hash(password);
 export async function verifyPassword(stored: string | null, password: string): Promise<boolean> {
   if (!stored) return false;
   try {
-    return await verify(stored, password);
+    return await (await argon2()).verify(stored, password);
   } catch {
     return false;
   }

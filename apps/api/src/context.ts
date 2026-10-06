@@ -17,13 +17,15 @@ export type DevnetRpc = {
 };
 
 export type Deps = {
-  db: DB;
+  /** SQLite (local server and tests); null on the hosted Firestore deployment. */
+  db: DB | null;
   /** Intent-level data access (docs/plans/firebase-vercel-refactor.md §2); sqlite or firestore. */
   repo: Repos;
   config: Config;
   now: Clock;
   rpc: DevnetRpc;
-  mediaDir: string;
+  /** Local evidence directory; null when evidence lives in R2. */
+  mediaDir: string | null;
   /** Managed identity provider; null in local auth mode. */
   identity: IdentityProvider | null;
   /** Evidence object store (local media directory or R2). */

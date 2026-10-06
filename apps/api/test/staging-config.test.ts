@@ -57,4 +57,10 @@ describe('staging (hosted test deployment)', () => {
     expect(() => loadConfig({ ...staging, POCKETQA_DATA_BACKEND: 'postgres' })).toThrow(/POCKETQA_DATA_BACKEND/);
     expect(loadConfig({}).dataBackend).toBe('sqlite');
   });
+
+  it('POCKETQA_TRUST_PROXY=vercel trusts the first forwarded hop, only on Vercel and only when secured', () => {
+    expect(loadConfig({ ...staging, POCKETQA_TRUST_PROXY: 'vercel', VERCEL: '1' }).trustProxy).toBe(true);
+    expect(() => loadConfig({ ...staging, POCKETQA_TRUST_PROXY: 'vercel' })).toThrow(/only for the hosted/);
+    expect(() => loadConfig({ POCKETQA_TRUST_PROXY: 'vercel', VERCEL: '1' })).toThrow(/only for the hosted/);
+  });
 });

@@ -26,7 +26,7 @@ export type Config = {
    * limits). The API binds loopback only, so the only proxy that can exist is local:
    * `loopback` trusts 127.0.0.1 and ::1 and nothing else. Production defaults to it.
    */
-  trustProxy: false | string[];
+  trustProxy: boolean | string[];
   /** Local test features; both off in production (no fake funding, no demo transfers). */
   features: { testCredits: boolean; devnetTransfers: boolean; settlement: SettlementMode };
   /** Platform fee for escrow studies, basis points of each reward (provisional; ADR 0007 §5). */
@@ -263,13 +263,17 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (!Number.isInteger(escrowFeeBps) || escrowFeeBps < 0 || escrowFeeBps > 10_000) throw new ConfigError('POCKETQA_ESCROW_FEE_BPS must be a whole number from 0 to 10000.');
 
   const trust = env.POCKETQA_TRUST_PROXY ?? (production ? 'loopback' : 'none');
-  if (trust !== 'loopback' && trust !== 'none') throw new ConfigError('POCKETQA_TRUST_PROXY must be loopback or none.');
+  if (trust !== 'loopback' && trust !== 'none' && trust !== 'vercel') throw new ConfigError('POCKETQA_TRUST_PROXY must be loopback, none or vercel.');
+  // Vercel's edge replaces any client-sent X-Forwarded-For with the real client address, so
+  // the first hop is trustworthy there, and only there: per-IP rate limits need it, or every
+  // caller would share Vercel's socket address. Refused anywhere Vercel isn't the runtime.
+  if (trust === 'vercel' && (env.VERCEL !== '1' || !secured)) throw new ConfigError('POCKETQA_TRUST_PROXY=vercel is only for the hosted (staging or production) deployment on Vercel.');
 
   return {
     production,
     staging,
     dataBackend,
-    trustProxy: trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
+    trustProxy: trust === 'vercel' ? true : trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
     // Staging keeps labelled test credits (and simulated settlement) for hosted testing; demo
     // devnet transfers stay local-only.
     features: { testCredits: !production, devnetTransfers: !secured, settlement },

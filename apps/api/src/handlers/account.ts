@@ -240,9 +240,11 @@ export const accountHandlers = {
     // identities, the user anonymised) and the fixed-text deletion audit row.
     let mediaKeys: string[] = [];
     if (repo.kind === 'sqlite') {
+      const db = ctx.deps.db;
+      if (!db) throw new Error('SQLite repositories without their database');
       // One transaction, as before: the sqlite purges run and throw synchronously inside it.
       const pending: Promise<{ mediaKeys: string[] }>[] = [];
-      ctx.deps.db.transaction(() => {
+      db.transaction(() => {
         pending.push(repo.escrow.purgeUser(user.id, now));
         pending.push(repo.studies.purgeUser(user.id, now));
         pending.push(repo.evidence.purgeUser(user.id, now));
