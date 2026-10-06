@@ -3,17 +3,19 @@
 import { API_CSP, appCsp, connectOrigins, r2BucketSource, securityHeaders } from '../production/security-headers.mjs';
 
 /** The hosted app CSP: Firebase Auth plus the one private bucket for uploads (connect) and presigned playback (media, img). */
-export function hostedAppCsp(r2AccountId, bucket) {
-  return appCsp(connectOrigins(r2AccountId, bucket), [r2BucketSource(r2AccountId, bucket)]);
+export function hostedAppCsp(r2AccountId, bucket, googleAuthDomain) {
+  return appCsp(connectOrigins(r2AccountId, bucket), [r2BucketSource(r2AccountId, bucket)], googleAuthDomain ? { googleAuthDomain } : {});
 }
 
-export function vercelConfig({ r2AccountId, bucket }) {
+/** `googleAuthDomain`: set when the deployment offers Google sign-in (POCKETQA_FIREBASE_GOOGLE=1). */
+export function vercelConfig({ r2AccountId, bucket, googleAuthDomain }) {
   const security = securityHeaders();
+  const appSecurity = securityHeaders({ popups: !!googleAuthDomain });
   return {
     version: 3,
     routes: [
       // The app (everything but /api): security headers and the app CSP.
-      { src: '^/(?!api(?:/|$)).*', headers: { ...security, 'content-security-policy': hostedAppCsp(r2AccountId, bucket) }, continue: true },
+      { src: '^/(?!api(?:/|$)).*', headers: { ...appSecurity, 'content-security-policy': hostedAppCsp(r2AccountId, bucket, googleAuthDomain) }, continue: true },
       // The API: never a document to render, never cached.
       { src: '^/api(?:/.*)?$', headers: { ...security, 'content-security-policy': API_CSP, 'cache-control': 'no-store' }, continue: true },
       { src: '^/api(?:/.*)?$', dest: '/api' },

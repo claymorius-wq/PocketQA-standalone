@@ -46,7 +46,11 @@ const r2AccountId = process.env.POCKETQA_R2_ACCOUNT_ID;
 const bucket = process.env.POCKETQA_R2_BUCKET;
 if (!r2AccountId || !bucket) throw new Error('POCKETQA_R2_ACCOUNT_ID and POCKETQA_R2_BUCKET are needed for the CSP.');
 // Built (and validated) before anything is written.
-const config = vercelConfig({ r2AccountId, bucket });
+// Google sign-in on (the server flag): the app routes get the popup-flow allowances for this auth domain.
+const google = process.env.POCKETQA_FIREBASE_GOOGLE === '1';
+const googleAuthDomain = google ? process.env.POCKETQA_FIREBASE_AUTH_DOMAIN : undefined;
+if (google && !googleAuthDomain) throw new Error('POCKETQA_FIREBASE_GOOGLE=1 needs POCKETQA_FIREBASE_AUTH_DOMAIN for the CSP.');
+const config = vercelConfig({ r2AccountId, bucket, googleAuthDomain });
 
 rmSync(OUT, { recursive: true, force: true });
 const fn = join(OUT, 'functions/api.func');

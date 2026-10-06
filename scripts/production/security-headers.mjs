@@ -18,7 +18,12 @@ export function connectOrigins(r2AccountId, bucket) {
   return [...FIREBASE_AUTH_ORIGINS, r2BucketSource(r2AccountId, bucket)];
 }
 
-export function securityHeaders() {
+/**
+ * `popups`: Google sign-in's popup reports back through window.opener, which COOP `same-origin`
+ * severs; `same-origin-allow-popups` keeps the opener for popups this page opens and still isolates
+ * this page from pages that open it. Only the hosted app routes, and only with Google sign-in on.
+ */
+export function securityHeaders({ popups = false } = {}) {
   return {
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
@@ -26,7 +31,7 @@ export function securityHeaders() {
     // Microphone and screen capture for this origin only: the local-only web recorder
     // (docs/plans/web-screen-audio-recording.md). The camera stays off.
     'permissions-policy': 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()',
-    'cross-origin-opener-policy': 'same-origin',
+    'cross-origin-opener-policy': popups ? 'same-origin-allow-popups' : 'same-origin',
     'strict-transport-security': 'max-age=31536000',
   };
 }
@@ -41,8 +46,13 @@ const SOURCE = /^https:\/\/[a-z0-9.-]+(\/[a-z0-9-]+\/)?$/;
  * GET (hosted R2); for video (media-src) and screenshots (img-src). The local front door plays
  * through /api, so it passes none.
  */
-export function appCsp(connect, media = []) {
+export function appCsp(connect, media = [], { googleAuthDomain } = {}) {
   for (const o of [...connect, ...media]) if (!SOURCE.test(o)) throw new Error(`CSP source must be an https origin, optionally with one /path/: ${o}`);
   const extra = media.length ? ` ${media.join(' ')}` : '';
-  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${extra}; media-src 'self' blob:${extra}; font-src 'self' data:; connect-src 'self' ${connect.join(' ')}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'`;
+  // Google sign-in (Firebase signInWithPopup): the SDK loads gapi from apis.google.com and frames
+  // https://<authDomain>/__/auth/iframe. Exactly those two hosts, only when Google is on.
+  if (googleAuthDomain !== undefined && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(googleAuthDomain)) throw new Error(`Firebase auth domain must be an exact hostname: ${googleAuthDomain}`);
+  const gScript = googleAuthDomain ? ' https://apis.google.com' : '';
+  const gFrame = googleAuthDomain ? ` frame-src https://${googleAuthDomain};` : '';
+  return `default-src 'self'; script-src 'self'${gScript}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${extra}; media-src 'self' blob:${extra}; font-src 'self' data:; connect-src 'self' ${connect.join(' ')}; frame-ancestors 'none';${gFrame} base-uri 'none'; form-action 'self'; object-src 'none'`;
 }

@@ -55,4 +55,21 @@ describe('Vercel config headers', () => {
     assert.deepEqual(cfg.crons.map((c) => c.path), ['/api/jobs/sweep', '/api/jobs/settle']);
     for (const c of cfg.crons) assert.match(c.schedule, /^\d+ \d+ \* \* \*$/);
   });
+
+  it('Google sign-in on: the app route allows exactly gapi and the auth-domain iframe, and popups; /api is unchanged', () => {
+    const g = vercelConfig({ r2AccountId: ACCOUNT, bucket: BUCKET, googleAuthDomain: 'pocketqa-optijara.firebaseapp.com' });
+    const app = g.routes[0].headers;
+    const api = g.routes[1].headers;
+    assert.match(app['content-security-policy'], /script-src 'self' https:\/\/apis\.google\.com;/);
+    assert.match(app['content-security-policy'], /frame-src https:\/\/pocketqa-optijara\.firebaseapp\.com;/);
+    assert.equal(app['cross-origin-opener-policy'], 'same-origin-allow-popups');
+    // Nothing else widened: dropping the two Google additions gives the Google-off policy exactly.
+    const off = hostedAppCsp(ACCOUNT, BUCKET);
+    assert.equal(app['content-security-policy'].replace(' https://apis.google.com', '').replace(' frame-src https://pocketqa-optijara.firebaseapp.com;', ''), off);
+    assert.equal(api['cross-origin-opener-policy'], 'same-origin');
+    assert.equal(api['content-security-policy'], API_CSP);
+    assert.deepEqual(vercelConfig({ r2AccountId: ACCOUNT, bucket: BUCKET }).routes[0].headers['cross-origin-opener-policy'], 'same-origin');
+    assert.throws(() => vercelConfig({ r2AccountId: ACCOUNT, bucket: BUCKET, googleAuthDomain: 'evil.example/*' }), /exact hostname/);
+  });
 });
+
