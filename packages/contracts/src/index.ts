@@ -66,6 +66,8 @@ export const ErrorCode = z.enum([
   'PROVIDER_UNSUPPORTED',
   /** Not offered on this deployment (e.g. test credits in production); never a fake success. */
   'FEATURE_UNAVAILABLE',
+  /** The same Idempotency-Key was sent with a different request (plan R10). */
+  'IDEMPOTENCY_KEY_REUSED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;

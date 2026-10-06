@@ -151,7 +151,30 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
           body = parsed.data;
         }
         const ctx: Ctx = { deps, user, identity, params: req.params as Record<string, string>, body, req, reply };
-        const result = await handler(ctx);
+        // Idempotency (plan R10): a retried mutation with the same Idempotency-Key replays the first
+        // response instead of running again. The invariants themselves are guarded in the data layer.
+        const idemKey = req.headers['idempotency-key'];
+        const idem =
+          typeof idemKey === 'string' && def.method !== 'GET' && (def.response as unknown) !== 'binary' && user
+            ? { scope: `${user.id}:${name}:${idemKey}`, fingerprint: sha256(canonicalJson({ params: req.params ?? {}, body: body ?? null })) }
+            : null;
+        if (idem) {
+          if (!/^[A-Za-z0-9_-]{8,128}$/.test(idemKey as string)) throw fail('VALIDATION', 'Idempotency-Key must be 8–128 letters, digits, _ or -.');
+          const hit = await deps.repo.core.beginIdempotency(idem.scope, idem.fingerprint, deps.now());
+          if (hit.kind === 'mismatch') throw fail('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request.');
+          if (hit.kind === 'in_progress') throw fail('CONFLICT_STATE', 'The first request with this Idempotency-Key is still running.');
+          if (hit.kind === 'replay') {
+            reply.code(hit.status);
+            return hit.body;
+          }
+        }
+        let result: unknown;
+        try {
+          result = await handler(ctx);
+        } catch (e) {
+          if (idem) await deps.repo.core.abandonIdempotency(idem.scope).catch(() => undefined);
+          throw e;
+        }
         if (def.response === 'binary') return reply;
         // Responses are parsed through the contract schema: unknown fields are stripped,
         // so internal columns can never leak, and drift fails loudly in tests.
@@ -160,12 +183,25 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
           req.log.error({ route: name, issues: out.error.issues.slice(0, 3) }, 'response violated contract');
           throw fail('INTERNAL', 'Response did not match the API contract.');
         }
+        if (idem) await deps.repo.core.completeIdempotency(idem.scope, reply.statusCode, out.data);
         return out.data;
       },
     });
   }
 
   return app;
+}
+
+/** JSON with object keys sorted, so equal requests always hash the same (idempotency fingerprint). */
+function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as Record<string, unknown>)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
 }
 
 /** Logger options for the real server; tests pass their own stream with these serializers. */
