@@ -1,0 +1,285 @@
+[
+ {
+  "id": "L-01",
+  "area": "freeze",
+  "title": "Freeze candidate, deployment identity and enabled features",
+  "status": "PASS",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "vercel inspect; curl /, /api/config",
+  "fixtures": {},
+  "observed": "vercel inspect pocketqa.vercel.app: dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz Ready; serves entry-0e22ecce65b4080a0dad7d009c5007c3.js (byte-identical to pqa-qa rebuild of 7beaad5); /api/config authMode firebase, storage r2, walletLogin false, testCredits true, devnetTransfers false, settlement simulated, googleSignIn true (2026-10-06T18:31:57Z)",
+  "evidence": [
+   "docs/reviews/full-e2e/README.md",
+   "docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "L-02",
+  "area": "freeze",
+  "title": "Inventory every exposed route",
+  "status": "PASS",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "a9d0e7e",
+  "steps": "",
+  "fixtures": {},
+  "observed": "23 app screens (expo-router) and 72 API routes (packages/contracts routes) listed; plus cron routes (404 without the secret: H-28). Unauthenticated: 25 private API routes 401 (H-28), 12 private UI routes redirect to /sign-in (H-29).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "L-03",
+  "area": "auth",
+  "title": "Google sign-in/sign-up UI and popup (branded button, official G)",
+  "status": "NOT RUN",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "a9d0e7e",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Candidate a9d0e7e (not yet deployed). Local build, exact hosted headers: official G light/dark sha-pinned, Google-approved colours, aligned with the primary, busy state, popup opens on click only; Google-off build makes 0 Google requests. pqa-qa r2: CHANGES_REQUIRED (P2-G1 gapi preload, P2-G2 busy), fixed in a9d0e7e and awaiting re-review. Live re-run follows the reviewed deploy.",
+  "evidence": [
+   "docs/reviews/firebase-vercel/google-button/local/",
+   "docs/verification.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "L-04",
+  "area": "auth",
+  "title": "Actual Google sign-in completion",
+  "status": "BLOCKED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "The provider is enabled (parent readback); the popup reaches pocketqa-optijara.firebaseapp.com/__/auth/handler. Completing a Google login needs an authorized human with a Google account; it is never mocked as live proof.",
+  "evidence": [],
+  "notes": "Blocked: human Google login."
+ },
+ {
+  "id": "L-05",
+  "area": "economics",
+  "title": "Credits vs USDC vs reputation: issuance, precision, fees, conversion, labels",
+  "status": "PASS",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Traced in source: credits = faucet-minted double-entry ledger, whole credits, MAX_TOPUP 10000, no fee, no purchase/redemption/withdrawal; USDC = separate escrow ledger, 6-decimal integer units, fee ceil(reward*bps/10000), default 1000 bps, only on approved tests, unused rewards+fees refunded on close; settlement modes off|simulated|squads_devnet, production config refuses all but off; hosted runs env staging + simulated; reputation = append-only points for accepted work only, no cash value, quality-ranked opt-in leaderboard. No exchange rate exists.",
+  "evidence": [
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "L-06",
+  "area": "economics",
+  "title": "UI money/credit copy is accurate on hosted",
+  "status": "FAIL",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Hosted /sign-up builder note \"fund them with local test credits\" and Credits \"Add local test credits\" / \"Fund studies in this local build\" are wrong on the hosted site (found by pqa-ios). All money labels otherwise carry \"simulation\" or \"devnet pilot, no value\".",
+  "evidence": [
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": "Fixed in a0f201d (test first); FAIL until the reviewed deploy re-run."
+ },
+ {
+  "id": "C-01",
+  "area": "deck-claim",
+  "title": "Slide 01: record with consent; watch what happened; approved work paid from a USDC escrow on Solana",
+  "status": "NOT OFFERED",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-01.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-02",
+  "area": "deck-claim",
+  "title": "Slide 02: problem framing (phones differ; bug report vs recording; testers carry the risk)",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Framing, not a feature claim; nothing to execute. The product answer to \"testers carry the risk\" is reward-if-approved with simulated/devnet settlement only.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-02.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-03",
+  "area": "deck-claim",
+  "title": "Slide 03: builders fund a study; testers record with consent; builders watch; approved work is paid, rejection with reason",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Hosted lifecycle rows H-09..H-27 (pqa-be1) and emulator rows E-* (pqa-be2) decide this; updated on merge.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-03.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-04",
+  "area": "deck-claim",
+  "title": "Slide 04: tester device profile, pick a study, notes per task, get paid from escrow once approved",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Hosted H-10..H-18 (pqa-be1); payment simulated only.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-04.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-05",
+  "area": "deck-claim",
+  "title": "Slide 05: consent every session; keep/remove each clip before upload; secure screens record black",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Desktop consent/review B-01..B-07 PASS; hosted consent + review rows (pqa-be1); FLAG_SECURE black capture is native, BLOCKED (physical, P-01..P-03).",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-05.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-06",
+  "area": "deck-claim",
+  "title": "Slide 06: desktop screen + mic with live timer; native Android/Seeker recording (Android 10+); replay before keeping",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Desktop B-01..B-07 PASS (fake media, local Chromium). Native Android: historic emulator evidence only; physical Seeker BLOCKED (USB debugging unauthorized, human).",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-06.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-07",
+  "area": "deck-claim",
+  "title": "Slide 07: tasks + device criteria; watch recordings with notes; approve or reject with reason; tester can dispute",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Hosted H-11..H-23 (pqa-be1); E-08 dispute/close race is a confirmed FAIL (pqa-be2) with a fix in progress.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-08",
+  "area": "deck-claim",
+  "title": "Slide 08: per-study 2-of-3 Squads v4 USDC vault; paid where agreed; fee only on approved work; wallet login via MWA; devnet pilot 26 finalized tx with refusals",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Devnet historic re-read PASS (D-02: 29/29 finalized, 27 ok + 2 expected refusals; D-03 amounts reconcile; D-04 refusals; D-05 test mint != mainnet USDC). Deck says 26 finalized; readback finds 29 signatures (27 ok + 2 refused): copy needs checking. Fresh devnet run BLOCKED (pilot keys outside repo need approval). Wallet login: hosted NOT OFFERED (W-01), local PASS (W-02..W-06).",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-08.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-09",
+  "area": "deck-claim",
+  "title": "Slide 09: points for accepted work only; quality score; disputes never lower it; four badges; opt-in leaderboard, aliases, no cash value",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Hosted reputation rows (pqa-be1) + emulator rows (pqa-be2).",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-09.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-10",
+  "area": "deck-claim",
+  "title": "Slide 10: three apps (tester/builder/admin) on Android + web, light/dark; recording; escrow simulated + devnet pilot; reputation; test counts 1,285/575/222",
+  "status": "FAIL",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Test counts are stale: at a9d0e7e app 1390, API 680 (+2 skipped), domain 222 (contracts 17, scripts 83). Admin exists but cannot be granted on hosted prod (operator step), so admin flows are NOT OFFERED there. Counts are not acceptance evidence.",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-10.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "C-11",
+  "area": "deck-claim",
+  "title": "Slide 11: Seeker device run, dApp Store listing, mainnet escrow after an audit",
+  "status": "NOT OFFERED",
+  "environment": "static",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "",
+  "fixtures": {},
+  "observed": "Future roadmap; mainnet is not authorized and not built (production config refuses settlement other than off).",
+  "evidence": [
+   "docs/reviews/full-e2e/deck/pocketqa-deck-page-11.png",
+   "docs/reviews/full-e2e/economics.md"
+  ],
+  "notes": ""
+ }
+]

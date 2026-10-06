@@ -1,0 +1,1262 @@
+{
+ "generated_from": "parts/*.json",
+ "rows": [
+  {
+   "id": "L-01",
+   "area": "freeze",
+   "title": "Freeze candidate, deployment identity and enabled features",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "vercel inspect; curl /, /api/config",
+   "fixtures": {},
+   "observed": "vercel inspect pocketqa.vercel.app: dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz Ready; serves entry-0e22ecce65b4080a0dad7d009c5007c3.js (byte-identical to pqa-qa rebuild of 7beaad5); /api/config authMode firebase, storage r2, walletLogin false, testCredits true, devnetTransfers false, settlement simulated, googleSignIn true (2026-10-06T18:31:57Z)",
+   "evidence": [
+    "docs/reviews/full-e2e/README.md",
+    "docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-02",
+   "area": "freeze",
+   "title": "Inventory every exposed route",
+   "status": "PASS",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "a9d0e7e",
+   "steps": "",
+   "fixtures": {},
+   "observed": "23 app screens (expo-router) and 72 API routes (packages/contracts routes) listed; plus cron routes (404 without the secret: H-28). Unauthenticated: 25 private API routes 401 (H-28), 12 private UI routes redirect to /sign-in (H-29).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pocketqa-lead/inventory.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-03",
+   "area": "auth",
+   "title": "Google sign-in/sign-up UI and popup (branded button, official G)",
+   "status": "NOT RUN",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "a9d0e7e",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Candidate a9d0e7e (not yet deployed). Local build, exact hosted headers: official G light/dark sha-pinned, Google-approved colours, aligned with the primary, busy state, popup opens on click only; Google-off build makes 0 Google requests. pqa-qa r2: CHANGES_REQUIRED (P2-G1 gapi preload, P2-G2 busy), fixed in a9d0e7e and awaiting re-review. Live re-run follows the reviewed deploy.",
+   "evidence": [
+    "docs/reviews/firebase-vercel/google-button/local/",
+    "docs/verification.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-04",
+   "area": "auth",
+   "title": "Actual Google sign-in completion",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "The provider is enabled (parent readback); the popup reaches pocketqa-optijara.firebaseapp.com/__/auth/handler. Completing a Google login needs an authorized human with a Google account; it is never mocked as live proof.",
+   "evidence": [],
+   "notes": "Blocked: human Google login.",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-05",
+   "area": "economics",
+   "title": "Credits vs USDC vs reputation: issuance, precision, fees, conversion, labels",
+   "status": "PASS",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Traced in source: credits = faucet-minted double-entry ledger, whole credits, MAX_TOPUP 10000, no fee, no purchase/redemption/withdrawal; USDC = separate escrow ledger, 6-decimal integer units, fee ceil(reward*bps/10000), default 1000 bps, only on approved tests, unused rewards+fees refunded on close; settlement modes off|simulated|squads_devnet, production config refuses all but off; hosted runs env staging + simulated; reputation = append-only points for accepted work only, no cash value, quality-ranked opt-in leaderboard. No exchange rate exists.",
+   "evidence": [
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-06",
+   "area": "economics",
+   "title": "UI money/credit copy is accurate on hosted",
+   "status": "FAIL",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Hosted /sign-up builder note \"fund them with local test credits\" and Credits \"Add local test credits\" / \"Fund studies in this local build\" are wrong on the hosted site (found by pqa-ios). All money labels otherwise carry \"simulation\" or \"devnet pilot, no value\".",
+   "evidence": [
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "Fixed in a0f201d (test first); FAIL until the reviewed deploy re-run.",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-01",
+   "area": "deck-claim",
+   "title": "Slide 01: record with consent; watch what happened; approved work paid from a USDC escrow on Solana",
+   "status": "NOT OFFERED",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-01.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-02",
+   "area": "deck-claim",
+   "title": "Slide 02: problem framing (phones differ; bug report vs recording; testers carry the risk)",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Framing, not a feature claim; nothing to execute. The product answer to \"testers carry the risk\" is reward-if-approved with simulated/devnet settlement only.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-02.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-03",
+   "area": "deck-claim",
+   "title": "Slide 03: builders fund a study; testers record with consent; builders watch; approved work is paid, rejection with reason",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Hosted lifecycle rows H-09..H-27 (pqa-be1) and emulator rows E-* (pqa-be2) decide this; updated on merge.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-03.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-04",
+   "area": "deck-claim",
+   "title": "Slide 04: tester device profile, pick a study, notes per task, get paid from escrow once approved",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Hosted H-10..H-18 (pqa-be1); payment simulated only.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-04.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-05",
+   "area": "deck-claim",
+   "title": "Slide 05: consent every session; keep/remove each clip before upload; secure screens record black",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Desktop consent/review B-01..B-07 PASS; hosted consent + review rows (pqa-be1); FLAG_SECURE black capture is native, BLOCKED (physical, P-01..P-03).",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-05.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-06",
+   "area": "deck-claim",
+   "title": "Slide 06: desktop screen + mic with live timer; native Android/Seeker recording (Android 10+); replay before keeping",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Desktop B-01..B-07 PASS (fake media, local Chromium). Native Android: historic emulator evidence only; physical Seeker BLOCKED (USB debugging unauthorized, human).",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-06.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-07",
+   "area": "deck-claim",
+   "title": "Slide 07: tasks + device criteria; watch recordings with notes; approve or reject with reason; tester can dispute",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Hosted H-11..H-23 (pqa-be1); E-08 dispute/close race is a confirmed FAIL (pqa-be2) with a fix in progress.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-08",
+   "area": "deck-claim",
+   "title": "Slide 08: per-study 2-of-3 Squads v4 USDC vault; paid where agreed; fee only on approved work; wallet login via MWA; devnet pilot 26 finalized tx with refusals",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Devnet historic re-read PASS (D-02: 29/29 finalized, 27 ok + 2 expected refusals; D-03 amounts reconcile; D-04 refusals; D-05 test mint != mainnet USDC). Deck says 26 finalized; readback finds 29 signatures (27 ok + 2 refused): copy needs checking. Fresh devnet run BLOCKED (pilot keys outside repo need approval). Wallet login: hosted NOT OFFERED (W-01), local PASS (W-02..W-06).",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-08.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-09",
+   "area": "deck-claim",
+   "title": "Slide 09: points for accepted work only; quality score; disputes never lower it; four badges; opt-in leaderboard, aliases, no cash value",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Hosted reputation rows (pqa-be1) + emulator rows (pqa-be2).",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-09.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-10",
+   "area": "deck-claim",
+   "title": "Slide 10: three apps (tester/builder/admin) on Android + web, light/dark; recording; escrow simulated + devnet pilot; reputation; test counts 1,285/575/222",
+   "status": "FAIL",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Test counts are stale: at a9d0e7e app 1390, API 680 (+2 skipped), domain 222 (contracts 17, scripts 83). Admin exists but cannot be granted on hosted prod (operator step), so admin flows are NOT OFFERED there. Counts are not acceptance evidence.",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-10.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "C-11",
+   "area": "deck-claim",
+   "title": "Slide 11: Seeker device run, dApp Store listing, mainnet escrow after an audit",
+   "status": "NOT OFFERED",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "",
+   "fixtures": {},
+   "observed": "Future roadmap; mainnet is not authorized and not built (production config refuses settlement other than off).",
+   "evidence": [
+    "docs/reviews/full-e2e/deck/pocketqa-deck-page-11.png",
+    "docs/reviews/full-e2e/economics.md"
+   ],
+   "notes": "",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "H-01",
+   "area": "baseline",
+   "title": "Live deployment identity and enabled features",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "curl https://pocketqa.vercel.app/api/config (2026-10-06T18:34:54Z); GET / and extract the entry bundle name; GET /api/health",
+   "fixtures": {},
+   "observed": "/api/config: authMode=firebase, storage=r2, walletLogin=false, features {testCredits:true, devnetTransfers:false, settlement:'simulated'}, firebase {projectId:'pocketqa-optijara', authDomain:'pocketqa-optijara.firebaseapp.com', authEmulatorUrl:null, googleSignIn:true}; served bundle entry-0e22ecce65b4080a0dad7d009c5007c3.js (= frozen baseline); /api/health 200 {ok:true, contractVersion:'0.6.1'}; x-vercel-id cdg1::fra1::…",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/config.json",
+    "docs/reviews/full-e2e/evidence/pqa-be1/config.headers.txt"
+   ],
+   "notes": "apiKey in config.json redacted (public web key).",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-02",
+   "area": "auth",
+   "title": "Tester email registration through the real UI, up to the verify-email gate",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "Playwright Chromium 1280x900 → /sign-up → 'I test apps' → display name 'QA synthetic tester be1-1', email pqa-e2e-tester-be1-1@example.test, 18+ char random password → Create account",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "Notice 'Check your email: We sent a verification link to <email>. Open it, then sign in to finish creating your account.' No /api call is made at sign-up (the Pocket QA account is created only after verification, by design).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/02-signup-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-03",
+   "area": "auth",
+   "title": "Builder email registration through the real UI, up to the verify-email gate",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "Same as H-02 with 'I build apps', 'QA synthetic builder be1-1', pqa-e2e-builder-be1-1@example.test",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "Notice 'Check your email: We sent a verification link …'; no /api call at sign-up.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/02-signup-builder.png"
+   ],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-04",
+   "area": "auth",
+   "title": "Sign-in before email verification is refused with a clear message and a resend path",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "/sign-in with the H-02 tester's email + correct password → Sign in",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "POST /api/auth/identity/session → 403; stays on /sign-in; message 'Couldn’t sign in · Verify your email first: open the link we sent you, then sign in again.'; a resend control is shown (1 match for /send.*again|resend/).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/03-signin-unverified-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-05",
+   "area": "auth",
+   "title": "Wrong password",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "/sign-in with the tester email and a wrong password",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "Stays on /sign-in; 'Couldn’t sign in · Email or password is incorrect.' (no account enumeration).",
+   "evidence": [],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-06",
+   "area": "auth",
+   "title": "Password recovery: reset-link request",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "/sign-in → enter the builder email → 'Forgot password?' → 'Send password reset link'",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "Firebase POST identitytoolkit /v1/accounts:sendOobCode → 200; notice 'Check your inbox · If an account uses this email, a reset link is on its way.' (non-enumerating).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/04-forgot-password.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/04-forgot-password-sent.png"
+   ],
+   "notes": "Completing the reset is H-08 (BLOCKED: no inbox).",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-07",
+   "area": "auth",
+   "title": "Email verification completion",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED: apply the oobCode of the verification email (inbox) or, if Hamza approves, admin.generateEmailVerificationLink(email) in memory → open the link → sign in again.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "Answer to lead (3): the public flow offers NO other legitimate route: the API requires email_verified for both accepted providers (RECOVERABLE_PROVIDERS = password, google.com; account.ts:84); there is no allow-listed test domain, bypass or test inbox in apps/api/src or apps/mobile/src (grep: none). Legitimate options: (a) a real mailbox controlled by the team for synthetic accounts; (b) Google sign-in with a dedicated synthetic Google account, done by an authorized human (Google accounts are verified); (c) the admin step, pending Hamza.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-08",
+   "area": "auth",
+   "title": "Password reset completion and sign-in with the new password",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED: open the reset link (oobCode) → set a new 18+ char password → sign in with it → old password refused.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: the reset link goes to an @example.test address (no inbox); same blocker as H-07.",
+   "evidence": [],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-09",
+   "area": "auth",
+   "title": "Login after verification, role persistence and home routing (tester and builder)",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): verify (H-07) → /sign-in tester → POST /api/auth/identity/session {newAccount:{role:'tester',displayName}} → expect 200 and landing on the tester home (/discover); GET /api/me role=tester; reload → still /discover; sign out; same for builder → expect /studies, role=builder; sign out/in again: role unchanged; tester visiting /studies and builder visiting /discover are redirected.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-10",
+   "area": "tester",
+   "title": "Tester profile, device and language persistence",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /settings: set device web 'Chrome', androidApiLevel null, languages ['en-US'] → PUT /api/me/device 200 → reload → GET /api/me device equals the saved profile; change language to ['fr'] → persists across sign-out/in.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-11",
+   "area": "tester",
+   "title": "Positive and negative eligibility",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder publishes study A (platforms ['web'], languages ['en']) and study B (platforms ['android'], minAndroidApi 34) → tester GET /api/studies/eligible lists A and not B; /discover shows A only; GET /api/tester/studies/B → 404; consent to B → 409 'Not eligible: Needs android.'",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-12",
+   "area": "builder",
+   "title": "Study draft, edit, tasks, criteria, reward, slots",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /builder/new-study (test credits): title 'QA synthetic study be1-1', 2 tasks, criteria web/en, reward 50, slots 2 → POST /api/studies 200 status draft; PATCH title, tasks (3), slots 3 → GET /api/studies/:id reflects it and consentVersion bumps only when the consent text changes; non-draft edit → 409.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-13",
+   "area": "builder",
+   "title": "Fee quote (wallet-escrow mode, simulated)",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): new-study 'Wallet escrow' (offered because settlement=simulated): rewardUnits 1000000 (1 USDC simulated), slots 2 → expect payment.quote: perTestFee = ceil(1000000×1000/10000)=100000, rewardPool 2000000, platformFee 200000, total 2200000 (POCKETQA_ESCROW_FEE_BPS default 1000 = 10%, config.ts:266); compare UI quote with GET /api/studies/:id payment.quote as integers.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "Fee source traced: packages/domain/src/escrow.ts quoteEscrow (integer ceil per test). Test-credit studies carry no platform fee. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-14",
+   "area": "builder",
+   "title": "Insufficient budget refusal",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder with 0 credits publishes a test-credit draft needing reward×slots → POST /api/studies/:id/publish 402/409 BUDGET_INSUFFICIENT 'Publishing needs N test credits; you have 0.'; the study stays draft; ledger unchanged.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-15",
+   "area": "economics",
+   "title": "How hosted builders get credits (trace)",
+   "status": "PASS",
+   "environment": "static",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "Source and live-config trace: packages/contracts CREDITS_DISCLAIMER; packages/domain/src/ledger.ts planTopUp/MAX_TOPUP; apps/api handlers/account.ts topUp (feature gate); apps/mobile/src/screens/CreditsScreen.tsx topUp mutation; live /api/config testCredits=true",
+   "fixtures": {},
+   "observed": "Hosted builders mint TEST CREDITS themselves: POST /api/me/credits/test-topup {amount} (builder only), whole number 1..10000 per top-up (MAX_TOPUP), posted faucet 'system:test-faucet' → 'user:<id>' as an append-only double-entry pair; available because testCredits=true on the live config (production would refuse: 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.'). UI: the Budget/Credits screen top-up card. Labelled 'Test credits · no cash value'. No purchase, redemption or withdrawal exists. Wallet-escrow studies (simulated) are funded through POST /api/studies/:id/escrow/fundings + /api/escrow/fundings/:id/simulated-wallet-payment (no wallet charged).",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money. Live execution of a top-up is H-16 (BLOCKED).",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-16",
+   "area": "builder",
+   "title": "Funding (test-credit top-up) and publish, with integer reconciliation",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder GET /api/me/credits (balance B0, expect 0) → top-up 1000 via the UI (Idempotency-Key) → balance B0+1000, one test_topup entry → publish the H-12 study (reward 50 × slots 2) → balance B0+900, study budget {reserved:100, awarded:0, committed:0, available:100}; repeat the same top-up request with the same key → no second credit.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-17",
+   "area": "tester",
+   "title": "Join, consent, task notes, withdraw and rejoin rules",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester opens the H-16 study → consent (current version) → status consented → start → in_progress → PUT a note on task 1 → reload shows it → withdraw (reason) → status withdrawn, slot freed (slotsFilled −1) → rejoin refused 409 'already joined' (UNIQUE study/tester); consent with a stale consentVersion → 409.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "There is no 'resume after withdraw' in the product: withdrawal is final for that study (by design); report as NOT OFFERED when run. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-18",
+   "area": "evidence",
+   "title": "Browser upload over 4.5 MB to private R2, finalize, retry, hash",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester in progress → upload a 30 MB synthetic MP4 from the browser → POST upload-intents (presigned PUT, signed content-type/length) → PUT goes directly to R2 (not via Vercel) → complete → evidence row with sizeBytes 31457280; retry 'complete' with the same Idempotency-Key → same evidence id; GET the object via playback → sha256 equals the local file.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-19",
+   "area": "evidence",
+   "title": "R2 CORS: allowed vs foreign-origin preflight",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "OPTIONS https://<account>.r2.cloudflarestorage.com/pocketqa-evidence/evidence/preflight-probe-0001 with Access-Control-Request-Method PUT, -Headers content-type; Origin https://pocketqa.vercel.app, then https://evil.example (host taken from the live CSP connect-src; account id redacted)",
+   "fixtures": {},
+   "observed": "App origin: 204, Access-Control-Allow-Origin https://pocketqa.vercel.app, Allow-Methods PUT, Allow-Headers content-type, Max-Age 3600. Foreign origin: 403 (no CORS headers).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/r2-cors-preflight.txt"
+   ],
+   "notes": "Unauthenticated preflight only; no object written.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-20",
+   "area": "evidence",
+   "title": "Playback and signed-URL expiry",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder POST /api/evidence/:id/playback-token → presigned S3-endpoint GET url (expires ≤ 300 s) → GET 200 with the sniffed type inline, no-store → after expiry the same URL → 403 from R2.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-21",
+   "area": "evidence",
+   "title": "Submit; builder sees only own-study evidence; findings; cross-account denial",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester submits → builder A GET /api/participations/:id/evidence lists it and creates a finding (title, severity, evidenceId, timestampMs) → builder B (second synthetic builder) GET the same participation/evidence/playback-token → 404 each; tester B → 404.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-22",
+   "area": "review",
+   "title": "Approve, duplicate approve, reject with reason",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder approves P1 → 200 approved, tester credit +50 (one reward_credit), study awarded 50 → approve again → 409, no second credit → reject P2 with reason ≥10 chars → 200 rejected with decisionReason; reject with 'no' → 400.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-23",
+   "area": "review",
+   "title": "Tester dispute and admin resolution",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester of P2 POST /api/disputes within 7 days → participation disputed; close refused while open. Admin resolution: NOT OFFERED on production for this run: no admin may be granted on prod and no existing synthetic admin is known; if one is provided: POST /api/admin/disputes/:id/resolve overturned → one dispute_credit, audit dispute.overturned.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "Even after verification, the admin half stays BLOCKED/NOT OFFERED unless an existing synthetic admin is provided. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-24",
+   "area": "economics",
+   "title": "Settlement, refund and platform fee: before/after integer reconciliation",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Read via API before and after each step (top-up, publish, approve, reject, dispute, close): builder GET /api/me/credits balance, GET /api/studies/:id budget {reserved, awarded, committed, available}, tester GET /api/me/credits balance; for an escrow (simulated) study also payment.balances and quote.platformFee; assert Σ deltas = 0 per step and every value an integer.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-25",
+   "area": "reputation",
+   "title": "Reputation awarded once, badges, helpful, leaderboard opt-in/privacy",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): After H-22 approval with helpful=true: tester GET /api/me/reputation accepted=1, helpful=1, points per rule; re-approval impossible so no second award; leaderboard GET /api/leaderboard does not list the tester until PUT /api/me/leaderboard {optIn:true, alias:'QA synthetic be1'}; opt-out removes the alias; no email/display name exposed.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-26",
+   "area": "builder",
+   "title": "Close study and unused-budget refund",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder closes the H-16 study after all submissions decided and dispute windows passed (or with only in-flight testers) → in-flight participations withdrawn 'Study closed by the builder.' → study budget released: builder balance += reserved − awarded; study account 0; ledger sum 0.",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-27",
+   "area": "settings",
+   "title": "Settings, connected-wallet state and export (no erasure)",
+   "status": "BLOCKED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder /settings: theme and profile persist; wallet section shows 'not connected' (walletLogin=false; linking needs a wallet signature, report state only); POST /api/me/export → JSON with own studies/participations/evidence/findings/ledger/disputes only; DELETE /api/me is NOT run on production (erasure is emulator-only per the checklist).",
+   "fixtures": {
+    "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
+    "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   },
+   "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+   "evidence": [],
+   "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-28",
+   "area": "auth",
+   "title": "Unauthenticated API denial on every non-public route",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "27 requests without Authorization (GET/POST/PUT/DELETE across me, credits, top-up, export, delete, studies, eligible, tester study, consent, participations, approve, upload intents, playback token, disputes, admin disputes/audit/moderation, reputation, leaderboard, wallet nonce, payouts, and the cron routes)",
+   "fixtures": {},
+   "observed": "25 contract routes → 401 {code:'UNAUTHENTICATED', message:'Sign in to continue.'}; GET /api/jobs/settle and /api/jobs/sweep without the cron secret → 404 'Route not found.' (not advertised).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/unauth-api-denial.txt"
+   ],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-29",
+   "area": "auth",
+   "title": "Private UI routes redirect without a session",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "Fresh browser context per route: /discover, /work, /credits, /settings, /studies, /budget, /builder/new-study, /disputes, /audit, /moderation, /leaderboard, /reputation",
+   "fixtures": {},
+   "observed": "All 12 end on /sign-in.",
+   "evidence": [],
+   "notes": "",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "D-01",
+   "area": "devnet",
+   "title": "Devnet escrow runner and receipts inventoried",
+   "status": "PASS",
+   "environment": "static",
+   "deployment": null,
+   "sha": null,
+   "steps": "Inspected apps/api/test-live/squads-devnet.pilot.live.test.ts (runner), test-live/squads-devnet.pilot-run1-complete.live.test.ts + run1Completion.ts (double-execute check), scripts/squads-pilot-readback.ts (read-only), src/settlement/squads/pins.ts, docs/reviews/wallet-rewards/devnet-pilot-* receipts and docs/verification.md (2026-10-05 sections) at firebase-vercel 6324e01.",
+   "fixtures": {
+    "multisig": "AHj8EXYGdzEvzCugchaUprdsjGaxs951weZLvd8g5KNE",
+    "vaultAuthority": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c"
+   },
+   "observed": "Run 1 receipt: commit 18962e3, 2026-10-05T10:39:44Z to 10:41:31Z, outcome \"failed\" (partial run: proposal 4 is still Active; docs/verification.md \"live devnet pilot run 1 (partial) and the harness fix\"), 26 steps, books ok (funded 3300000, settled 2000000, fees 200000, refunded 1100000 units). Completion run at 0b66267 (2026-10-05T10:58:34Z): outcome refused-as-expected. Pins: devnet genesis EtWTRABZ…, Squads program SQDS4ep6…, mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU, threshold 2. Disclosure in receipt: test keys simulate all roles, not independent custody, no physical wallet.",
+   "evidence": [
+    "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json",
+    "docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json"
+   ],
+   "notes": "Receipts are historic artefacts; they are not a new E2E pass.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-02",
+   "area": "devnet",
+   "title": "Finalized pilot transactions re-read fresh from devnet RPC (HISTORIC)",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": null,
+   "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). cd apps/api && tsx scripts/squads-pilot-readback.ts docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json <threshold-refusal sig> <completion sig> <R8 wrong-mint sig> at 2026-10-06T18:36:01Z against https://api.devnet.solana.com (no key loaded, nothing signed or sent); output converted by d-redact-signatures.py (signature prefix + sha256, bound to the pinned receipts).",
+   "fixtures": {
+    "roles": {
+     "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+     "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+     "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+     "testerA": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+     "testerB": "8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH"
+    }
+   },
+   "observed": "genesis EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG (devnet). 29 signatures read (26 receipt steps + 3 extra): 29/29 confirmation \"finalized\"; 27 err null; 2 err {\"InstructionError\":[0,{\"Custom\":6008}]} = 4KNLFE1egjon… slot 507704742 (threshold refusal) and 3zNWsdDxaSwM… slot 507709054 (double execute). Key slots: funding 5dp18gzHJoXy… 507704351; execute 1/2/3 at 507704452/507704560/507704660. Multisig: threshold 2, timeLock 0, configAuthority 1111…1 (autonomous), transactionIndex 4; proposals 1-3 Executed, 4 Active. Squads program data: lastDeploySlot 446638068, upgrade authority HM5y4mz3…, account sha256 5c866bde…0d37 (unchanged). Compared with the historic readback: genesis, mint, multisig, proposals, all 28 shared slots/errors identical; only change pocketqa lamports 4960000240 -> 4959995240 (-5000 = the completion tx fee), total spend 40004760 lamports devnet SOL.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/d02-devnet-readback.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d02-readback-at.txt",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d-redact-signatures.py"
+   ],
+   "notes": "Public RPC answered several 429s; the script retried (stderr kept). Devnet SOL and test USDC have no value.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-03",
+   "area": "devnet",
+   "title": "Escrow token movements and balances reconcile on chain (HISTORIC)",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": null,
+   "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). node evidence/pqa-ios/d03-read-amounts.mjs (getParsedTransaction pre/post token balances, getParsedAccountInfo; read-only) at 2026-10-06T18:37Z.",
+   "fixtures": {},
+   "observed": "Mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU on every USDC movement (units, 6 decimals): funding builder -> vault -3300000/+3300000; execute 1 vault -> testerA 1000000; execute 2 vault -> testerB 1000000 (arbiter-approved); execute 3 vault -> builder refund 1100000; unmatched deposit builder -> vault 10000. Balances now: vault 210000 (= 200000 fee + 10000 unmatched, alerted, not credited), testerA 1000000, testerB 1000000, builder 17790000. Matches receipt books: funded 3300000 = settled 2000000 + fees 200000 + refunded 1100000.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d03-read-amounts.mjs"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-04",
+   "area": "devnet",
+   "title": "Refusals hold on chain: wrong mint, 2-of-3 threshold, double execute (HISTORIC)",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": null,
+   "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). Same reads as D-02/D-03.",
+   "fixtures": {},
+   "observed": "R8 wrong-mint funding 4CCcmmDeNDWB… slot 507704321: finalized, err null on chain (it moved 3300000 wSOL base units, mint So111…), and the API refused it as funding (\"The transfer is a different token.\", receipt refusal R8). Threshold refusal 4KNLFE1egjon… and second execute of index 1 3zNWsdDxaSwM…: both finalized with Custom 6008, zero token deltas.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/d02-devnet-readback.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-05",
+   "area": "devnet",
+   "title": "Devnet mint is not mainnet USDC",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": null,
+   "steps": "Compared pins.ts PILOT_MINT (= DEVNET_USDC_MINT) with mainnet USDC; read the mint account fresh from devnet RPC (getParsedAccountInfo) at 2026-10-06T18:37Z.",
+   "fixtures": {},
+   "observed": "Pilot mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU != mainnet USDC EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (equalsMainnetUsdc false). On devnet the pilot mint is owned by TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, decimals 6, mintAuthority GrNg1XM2ctzeE2mXxXCfhcTUbejM8Z4z4wNVTy2FjMEz, freezeAuthority set; on devnet the EPjF… address is only a system-program-owned account (not a mint). RPC genesis EtWTRABZ… (devnet), never mainnet 5eykt4Us….",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-06",
+   "area": "devnet",
+   "title": "Fresh bounded devnet E2E (new operations, new receipts)",
+   "status": "BLOCKED",
+   "environment": "devnet",
+   "deployment": null,
+   "sha": null,
+   "steps": "Checked whether an isolated valueless fixture exists that needs no private-key handling. Listed (names/sizes only, contents not read) ~/.config/pocketqa-devnet-pilot.",
+   "fixtures": {},
+   "observed": "The only devnet fixture is the pilot key dir ~/.config/pocketqa-devnet-pilot (arbiter.json, builder.json, outsider.json, pocketqa.json, tester.json, create-seed.bin; mode 600, outside the repo). Every fresh run (squads-devnet.pilot.live.test.ts) loads those secret keys and signs ~26 transactions; earlier runs each needed explicit approval (docs/verification.md: \"No further sends\", parent hold). Read-only balances: pocketqa test key 4959995240 lamports, builder 17790000 test-USDC units, so funds are not the blocker. Not run.",
+   "evidence": [],
+   "notes": "BLOCKED: needs explicit authorization to load and sign with the existing pilot keys. If granted, the bounded run is: cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts (new multisig + new operation ids; originals preserved). Historic receipts are NOT substituted for this row.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "D-07",
+   "area": "devnet",
+   "title": "Hosted product devnet transfers / on-chain settlement",
+   "status": "NOT OFFERED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "curl https://pocketqa.vercel.app/api/config at 2026-10-06T18:39:03Z (HTTP 200, x-vercel-id cdg1::fra1::2xwzt-1791311943999-5fb58f81e318); bundle on / = entry-0e22ecce65b4080a0dad7d009c5007c3.js (frozen).",
+   "fixtures": {},
+   "observed": "features {\"testCredits\":true,\"devnetTransfers\":false,\"settlement\":\"simulated\"}, walletLogin false. The hosted product moves no devnet or mainnet tokens; settlement is simulated bookkeeping.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-config.txt"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-01",
+   "area": "physical",
+   "title": "Physical Android attached and reachable over adb",
+   "status": "BLOCKED",
+   "environment": "physical-android",
+   "deployment": null,
+   "sha": null,
+   "steps": "adb devices -l (read-only).",
+   "fixtures": {},
+   "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+   ],
+   "notes": "BLOCKED (human): someone at the device must accept the USB-debugging prompt. Serial only; whether it is the Seeker is unknown while unauthorized. Nothing was sent to the device.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-02",
+   "area": "physical",
+   "title": "Seeker: installed Pocket QA build and app launch (non-destructive read)",
+   "status": "BLOCKED",
+   "environment": "physical-android",
+   "deployment": null,
+   "sha": null,
+   "steps": "Planned: adb shell dumpsys package com.reshareai.pocketqa (versionName/versionCode), am start with launcher intent, screenshot.",
+   "fixtures": {},
+   "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+   ],
+   "notes": "BLOCKED (human): adb unauthorized (see P-01). Hamza's Seeker submission and recording were not touched.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-03",
+   "area": "physical",
+   "title": "Seeker: screen/mic consent, deny, stop, interruption, review, retain/discard",
+   "status": "BLOCKED",
+   "environment": "physical-android",
+   "deployment": null,
+   "sha": null,
+   "steps": "Not run.",
+   "fixtures": {},
+   "observed": "Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+   ],
+   "notes": "BLOCKED (human). No emulator result is substituted for the physical row.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-04",
+   "area": "physical",
+   "title": "iPhone: broadcast screen + voice recording of other apps",
+   "status": "BLOCKED",
+   "environment": "static",
+   "deployment": null,
+   "sha": null,
+   "steps": "Build-only evidence on the native branch: simulator xcodebuild of the app + PocketQaBroadcast extension at fe89787 (docs/reviews/native-recording/ios-build.txt section 14, commit cf7073a).",
+   "fixtures": {},
+   "observed": "BUILD SUCCEEDED, appex com.reshareai.pocketqa.Broadcast (com.apple.broadcast-services-upload, RPBroadcastProcessModeSampleBuffer) embedded; 0 warnings in our sources. System broadcast cannot run in the iOS Simulator.",
+   "evidence": [],
+   "notes": "BLOCKED: needs a physical iPhone plus an Apple team whose provisioning profiles include group.com.reshareai.pocketqa for the app and .Broadcast. Not part of the frozen web deployment.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-01",
+   "area": "recording",
+   "title": "Desktop browser: consent copy, then screen + mic requested only on the click",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "web-rec-privacy shows \"Everything visible in what you share is recorded\"; getDisplayMedia calls before the click: 0; after: [{\"active\":true}] (inside user activation); getUserMedia (mic) calls: 1.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-consent-light.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-02",
+   "area": "recording",
+   "title": "Desktop browser: record, stop, review and replay a real file with video and voice",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "Status \"Recording · 00:0x / 15:00\"; after Stop: \"Recording ready\", tracks [video:ended, audio:ended]. Downloaded pocketqa-recording-20261006-203818.webm 116813 bytes: stream0 opus audio 48000 Hz 1 ch, stream1 vp9 video 1280x720, matroska/webm; ffmpeg decode exit 0, problems []; volumedetect mean -21.2 dB, max 0 dB (synthetic tone, not silence). In-page replay: duration 3.852 s, played 0.364 s, error null, src blob:, 1280x720. Requests carrying data during record/stop/replay/download: [] (local only).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/ffprobe.txt",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-light.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-light.png"
+   ],
+   "notes": "The web recorder is local-only (download, never uploaded); upload of evidence files is covered by other rows.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-03",
+   "area": "recording",
+   "title": "Desktop browser: discard deletes the draft",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "After Discard: Start visible again; fetch(old blob URL) -> \"revoked\".",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-04",
+   "area": "recording",
+   "title": "Desktop browser: microphone denied",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "web-rec-error: \"Microphone access was blocked … nothing was recorded\"; tracks [video:ended] (screen released); no review panel; Start enabled (retry possible).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-denied-light.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-05",
+   "area": "recording",
+   "title": "Desktop browser: interruption by the browser's \"Stop sharing\"",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "web-rec-ended: \"You stopped sharing from the browser\"; draft kept: \"Recording ready\"; tracks [video:ended, audio:ended].",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-dark.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-dark.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-06",
+   "area": "recording",
+   "title": "Desktop browser: pending mic prompt cancelled / sharing stopped before start",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "While \"Allow the microphone\" pending, tracks [video:live]; Cancel -> \"Cancelled. Nothing was recorded.\", tracks [video:ended]. Stop sharing while pending -> \"You stopped sharing before recording started\", tracks [video:ended]. Start enabled in both.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-pending-light.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "B-07",
+   "area": "recording",
+   "title": "Desktop browser: leaving the session mid-recording releases devices and keeps nothing",
+   "status": "PASS",
+   "environment": "desktop-browser",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+   "fixtures": {},
+   "observed": "Recorder unmounted in the same document (performance.timeOrigin unchanged, not a reload); screen and microphone released; nothing kept.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-01",
+   "area": "wallet",
+   "title": "Hosted: wallet sign-in / connect",
+   "status": "NOT OFFERED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+   "sha": "7beaad5",
+   "steps": "/api/config read (see D-07); headless Chromium 412x915 loaded https://pocketqa.vercel.app/welcome, /sign-in, /sign-up at 2026-10-06T18:39:31Z and scanned the rendered text for wallet/phantom/solflare/connect.",
+   "fixtures": {},
+   "observed": "walletLogin false. /sign-in: email, password, \"Forgot password?\", \"Continue with Google\", \"Create an account\"; no wallet option (0 matches). /sign-up: role choice + email form, 0 matches. /welcome: one match \"connects\" in marketing copy only.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-config.txt",
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-auth-ui.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-sign-in.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-sign-up.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-welcome.png"
+   ],
+   "notes": "Copy observation for the economics owner (not a defect claim here): hosted /sign-up builder text says \"fund them with local test credits\" on a hosted build.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-02",
+   "area": "wallet",
+   "title": "Local: wallet sign-in (SIWS), first time creates account, then signs straight in",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+   "fixtures": {},
+   "observed": "First visit: \"Create an account with this wallet\", 2 signIn signatures with fresh nonces, input {domain localhost:8090, uri http://localhost:8090, chainId solana:devnet, version 1}, statement \"Only sign this on localhost:8090\", signMessage 0; second visit: same address, 1 signIn, lands on discover.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-03",
+   "area": "wallet",
+   "title": "Local: wallet without Sign In With Solana is refused (no signMessage fallback)",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+   "fixtures": {},
+   "observed": "sign-in-error \"doesn’t support Sign In With Solana\"; signMessage 0, signIn 0.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-04",
+   "area": "wallet",
+   "title": "Local: link a wallet to an email account (origin-bound message)",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+   "fixtures": {},
+   "observed": "register 200; wallet-address shows the linked address; signMessage 1, signIn 0.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-05",
+   "area": "wallet",
+   "title": "Local: wallet chooser and disconnect",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+   "fixtures": {},
+   "observed": "\"Continue with Alpha Wallet\" chooser; only the chosen wallet signed (2 signIn, other wallet 0); chosen wallet disconnect 2, other 0.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-06",
+   "area": "wallet",
+   "title": "Local: wallet escrow study, simulated settlement settles once",
+   "status": "PASS",
+   "environment": "local-api",
+   "deployment": null,
+   "sha": null,
+   "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+   "fixtures": {},
+   "observed": "Builder: escrow-sim-notice \"no funds move\", pool \"3.00 simulated USDC\", total \"3.30 simulated USDC\", \"Funded (simulated)\", PUBLISHED. Tester: reward-disclaimer \"Simulation in this build: no funds move\"; AWAITING REVIEW -> Approved; payment-state \"Settled · simulation, no funds moved\" (never \"paid\"); tester rewards \"1.50 simulated USDC\", reputation 15, badge first_accepted Earned; builder escrow settled \"1.50\", available \"1.65 simulated USDC\"; export payments.received [{amountUnits 1500000, settlement simulated, status confirmed}].",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log",
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/builder-review-settled-light.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/tester-session-settled-dark.png"
+   ],
+   "notes": "Simulated settlement on loopback; no devnet transaction. Not offered on hosted (W-01).",
+   "owner": "pqa-ios"
+  }
+ ]
+}
