@@ -147,104 +147,179 @@
  {
   "id": "H-09",
   "area": "auth",
-  "title": "Login after verification, role persistence and home routing (tester and builder)",
-  "status": "BLOCKED",
+  "title": "Login, role persistence and home routing (verified synthetic tester and builder)",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): verify (H-07) → /sign-in tester → POST /api/auth/identity/session {newAccount:{role:'tester',displayName}} → expect 200 and landing on the tester home (/discover); GET /api/me role=tester; reload → still /discover; sign out; same for builder → expect /studies, role=builder; sign out/in again: role unchanged; tester visiting /studies and builder visiting /discover are redirected.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Sign in via /sign-in for each account; read the landing route; reload; visit the other role's home; GET /api/me.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Tester: identity/session 200, landed /discover, after reload /discover, /studies → /discover, /me role=tester 'QA synthetic tester (hosted)'. Builder: landed /studies, after reload /studies, /discover → /studies, /me role=builder 'QA synthetic builder (hosted)'.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/10-home-tester.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/10-home-builder.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/hosted-run-results.json"
+  ],
+  "notes": "Brand-new-account login (after verification) stays covered by H-07 (BLOCKED). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-10",
   "area": "tester",
   "title": "Tester profile, device and language persistence",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /settings: set device web 'Chrome', androidApiLevel null, languages ['en-US'] → PUT /api/me/device 200 → reload → GET /api/me device equals the saved profile; change language to ['fr'] → persists across sign-out/in.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Tester /settings: edit device OS and languages → Save → reload → GET /api/me; then restore the original values the same way.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Before os='Chromium (QA synthetic)' langs='en-US'; PUT /api/me/device 200; 'saved' shown; after reload os='Chromium (QA synthetic be1 edit)' langs='en-US, fr'; API languages ['en-US', 'fr']; restored to ['en-US'] / 'Chromium (QA synthetic)'.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/11-tester-settings-device.png"
+  ],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-11",
   "area": "tester",
   "title": "Positive and negative eligibility",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder publishes study A (platforms ['web'], languages ['en']) and study B (platforms ['android'], minAndroidApi 34) → tester GET /api/studies/eligible lists A and not B; /discover shows A only; GET /api/tester/studies/B → 404; consent to B → 409 'Not eligible: Needs android.'",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Builder publishes A (web, en) and B (android, min API 29, en); tester (web, en-US) reads /api/studies/eligible and /discover; consent to B via API.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "/eligible: 37 studies, A listed=True, B listed=False; /discover shows A=True, B=False; consent B → 409 'Not eligible: Needs android.'. GET /api/tester/studies/B → 200 (by design: a published study is viewable, joining needs eligibility).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/20-discover-eligibility.png"
+  ],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-12",
   "area": "builder",
   "title": "Study draft, edit, tasks, criteria, reward, slots",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): /builder/new-study (test credits): title 'QA synthetic study be1-1', 2 tasks, criteria web/en, reward 50, slots 2 → POST /api/studies 200 status draft; PATCH title, tasks (3), slots 3 → GET /api/studies/:id reflects it and consentVersion bumps only when the consent text changes; non-draft edit → 409.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Create drafts in /builder/new-study (title, objective, tasks, criteria toggles, reward, slots); edit draft C by PATCH /api/studies/:id (the app has no draft-edit form; the API is the edit path); PATCH a published study.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "A created in the UI: tasks 2, criteria web/en, reward 50, slots 2, consentVersion 1, payment test_credits. C edits: PATCH title/tasks(3)/slots(3) → 200, consentVersion stays 1; PATCH consentText → 200, consentVersion → 2. PATCH published A → 409 'Only draft studies can be edited.', title unchanged.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/12-new-study-empty.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/13-study-A-draft.png"
+  ],
+  "notes": "Form defaults observed: android on, min API 29, languages 'en', reward 50, slots 5. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-13",
   "area": "builder",
   "title": "Fee quote (wallet-escrow mode, simulated)",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): new-study 'Wallet escrow' (offered because settlement=simulated): rewardUnits 1000000 (1 USDC simulated), slots 2 → expect payment.quote: perTestFee = ceil(1000000×1000/10000)=100000, rewardPool 2000000, platformFee 200000, total 2200000 (POCKETQA_ESCROW_FEE_BPS default 1000 = 10%, config.ts:266); compare UI quote with GET /api/studies/:id payment.quote as integers.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. /builder/new-study → 'Wallet escrow' (offered because settlement=simulated) → reward 1 (USDC, simulated) × 2 slots → Save draft E (never funded or published); GET /api/studies/E.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "Fee source traced: packages/domain/src/escrow.ts quoteEscrow (integer ceil per test). Test-credit studies carry no platform fee. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "UI pool '2.00 simulated USDC'; API quote rewardUnits 1000000, slots 2, feeBps 1000, perTestFeeUnits 100000, perTestTotalUnits 1100000, rewardPoolUnits 2000000, platformFeeUnits 200000, totalUnits 2200000 = 1000000×2 + ceil(1000000×1000/10000)×2 (integers, 6 decimals); payment.settlement 'simulated', funded False; builder test credits unchanged 1000.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/17-study-E-escrow-quote.png"
+  ],
+  "notes": "Test-credit studies carry no platform fee. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-14",
   "area": "builder",
   "title": "Insufficient budget refusal",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder with 0 credits publishes a test-credit draft needing reward×slots → POST /api/studies/:id/publish 402/409 BUDGET_INSUFFICIENT 'Publishing needs N test credits; you have 0.'; the study stays draft; ledger unchanged.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Draft C (reward 1000 × slots 3) → Publish → confirm sheet → Publish.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "POST /publish → 409; UI 'Action failed · Publishing needs 3000 test credits; you have 890.'; C stays draft; builder balance 890 unchanged.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/14-publish-insufficient.png"
+  ],
+  "notes": "An earlier unconfirmed click at balance 0 made no request (the confirm sheet was not confirmed); the refusal recorded here is the confirmed one. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-15",
@@ -264,52 +339,89 @@
   "id": "H-16",
   "area": "builder",
   "title": "Funding (test-credit top-up) and publish, with integer reconciliation",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder GET /api/me/credits (balance B0, expect 0) → top-up 1000 via the UI (Idempotency-Key) → balance B0+1000, one test_topup entry → publish the H-12 study (reward 50 × slots 2) → balance B0+900, study budget {reserved:100, awarded:0, committed:0, available:100}; repeat the same top-up request with the same key → no second credit.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Builder /budget → preset 1,000 → 'Add test credits'; then publish A (50×2) and B (10×1) through the confirm sheet; readbacks after each.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Before: balance 0, 0 entries. Top-up POST → 200: balance 1000 [test_topup +1000]; screen 'BALANCE 1,000 test credits · Test credits · no cash value'. Publish A → 200: A reserved 100/awarded 0/committed 0/available 100, builder 900. Publish B → 200: B reserved 10, builder 890.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/15-topup-1000.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/16-study-A-published.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/18-study-B-published.png"
+  ],
+  "notes": "Same-key top-up retry is covered by the idempotency regression suite, not re-run here. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-17",
   "area": "tester",
-  "title": "Join, consent, task notes, withdraw and rejoin rules",
-  "status": "BLOCKED",
+  "title": "Join, consent, task notes, withdraw (resume after withdraw NOT OFFERED)",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester opens the H-16 study → consent (current version) → status consented → start → in_progress → PUT a note on task 1 → reload shows it → withdraw (reason) → status withdrawn, slot freed (slotsFilled −1) → rejoin refused 409 'already joined' (UNIQUE study/tester); consent with a stale consentVersion → 409.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Tester: open A → consent checkbox → Join; Start; task-1 note → Save → reload. Withdraw: new study W (30×1, API-created) joined via API, withdrawn in the UI (confirm sheet), then rejoin via API.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "observed": "Consent POST 200 → /participation/44d0e05e-7787-43b0-b440-883b961d4c89; start 200 → in_progress; note PUT 200, after reload identical, API taskNotes 1. Withdraw POST 200 → withdrawn, W slotsFilled 0; rejoin → 409 'You already joined this study.'.",
   "evidence": [],
-  "notes": "There is no 'resume after withdraw' in the product: withdrawal is final for that study (by design); report as NOT OFFERED when run. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "notes": "Resume after withdrawal is NOT OFFERED by the product (withdrawal is final for that study). The withdraw step ran ~19:08:40–19:09:00Z, inside the dpl_GAmo→dpl_TRefQGTd switch window (API and config identical in both). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-18",
   "area": "evidence",
   "title": "Browser upload over 4.5 MB to private R2, finalize, retry, hash",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester in progress → upload a 30 MB synthetic MP4 from the browser → POST upload-intents (presigned PUT, signed content-type/length) → PUT goes directly to R2 (not via Vercel) → complete → evidence row with sizeBytes 31457280; retry 'complete' with the same Idempotency-Key → same evidence id; GET the object via playback → sha256 equals the local file.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Participation A → 'Attach screenshot or clip' (real file chooser) → a 31,457,280-byte synthetic MP4 (ftyp + filler, sha256 da127864…) → Keep → 'Upload 1 kept item'; then re-POST the same intent's complete via API.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Before upload, Submit is gated: 'Evidence not uploaded yet'. POST upload-intents 200 → browser PUT to the R2 S3 endpoint /pocketqa-evidence/quarantine/… (signed) → 200 → POST …/complete 200; evidence sizeBytes 31457280, video/mp4. Re-complete → 200, same evidence id True, evidence count 1. The 30 MiB body never passed through Vercel (4.5 MB limit).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/21-evidence-attached.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/22-evidence-uploaded.png"
+  ],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-19",
@@ -331,137 +443,236 @@
   "id": "H-20",
   "area": "evidence",
   "title": "Playback and signed-URL expiry",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder POST /api/evidence/:id/playback-token → presigned S3-endpoint GET url (expires ≤ 300 s) → GET 200 with the sniffed type inline, no-store → after expiry the same URL → 403 from R2.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. POST /api/evidence/:id/playback-token as the tester; GET the URL fully and sha256 it; wait X-Amz-Expires + 20 s; GET again.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
+  "observed": "Playback 200: presigned GET on <account>.r2.cloudflarestorage.com/pocketqa-evidence/evidence/…, X-Amz-Expires 300, response type video/mp4, inline, no-store. Download 200: 31457280 bytes, sha256 da1278640092f9c8… = local file. After expiry: 403 <?xml version=\"1.0\" encoding=\"UTF-8\"?><Error><Code>ExpiredRequest</Code><Message>Request h.",
   "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "notes": "The URL (a bearer token) was never written to disk or evidence. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-21",
   "area": "evidence",
   "title": "Submit; builder sees only own-study evidence; findings; cross-account denial",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester submits → builder A GET /api/participations/:id/evidence lists it and creates a finding (title, severity, evidenceId, timestampMs) → builder B (second synthetic builder) GET the same participation/evidence/playback-token → 404 each; tester B → 404.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Tester submits in the UI; builder opens /builder/review/:pid, writes a finding linked to the evidence; cross-account reads/writes via API.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Submit POST 200 → submitted. Review shows the note=True and the evidence=True; finding POST 200: 'QA synthetic finding: cart below the fold', severity major, evidenceId linked. Builder playback of own-study evidence 200. Denials: builder on another builder's participation 404, its evidence list 404, its findings 404; tester GET builder study 403, tester approve 403, tester create finding 403.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/23-submitted.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/24-review-finding.png"
+  ],
+  "notes": "Cross-account target: the tester's earlier participation in a different synthetic builder's study (no second synthetic builder account was available). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-22",
   "area": "review",
   "title": "Approve, duplicate approve, reject with reason",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder approves P1 → 200 approved, tester credit +50 (one reward_credit), study awarded 50 → approve again → 409, no second credit → reject P2 with reason ≥10 chars → 200 rejected with decisionReason; reject with 'no' → 400.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Builder approves A's participation in the UI (helpful ticked, confirm sheet); duplicate approve via API; D's participation (API join/submit) rejected in the UI: reason 'no' first, then a ≥10-char reason.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Approve POST 200 → approved; tester 0→50 (one reward_credit +50); A budget reserved 100, awarded 50, committed 0, available 50; builder 890 unchanged. Duplicate approve → 409 'Cannot approve a participation that is approved.', balances unchanged. Reject with 'no': confirm button disabled=True; with a proper reason POST 200 → rejected, decisionReason stored; D budget committed 20 (held during the 7-day dispute window).",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/25-approved.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/31-rejected.png"
+  ],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-23",
   "area": "review",
-  "title": "Tester dispute and admin resolution",
-  "status": "BLOCKED",
+  "title": "Tester dispute (admin resolution: see H-30)",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester of P2 POST /api/disputes within 7 days → participation disputed; close refused while open. Admin resolution: NOT OFFERED on production for this run: no admin may be granted on prod and no existing synthetic admin is known; if one is provided: POST /api/admin/disputes/:id/resolve overturned → one dispute_credit, audit dispute.overturned.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Tester opens participation D → 'Dispute this decision' → reason → confirm; builder tries to close D.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "Even after verification, the admin half stays BLOCKED/NOT OFFERED unless an existing synthetic admin is provided. All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "POST /api/disputes 200 → participation disputed; GET /api/disputes: open=1 for this participation. Close D → 409 'Resolve open disputes before closing the study.'",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/32-disputed.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/40-close-D-refused.png"
+  ],
+  "notes": "Admin resolution is H-30 (NOT OFFERED on production). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-24",
   "area": "economics",
-  "title": "Settlement, refund and platform fee: before/after integer reconciliation",
-  "status": "BLOCKED",
+  "title": "Test-credit lifecycle: before/after integer reconciliation",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Read via API before and after each step (top-up, publish, approve, reject, dispute, close): builder GET /api/me/credits balance, GET /api/studies/:id budget {reserved, awarded, committed, available}, tester GET /api/me/credits balance; for an escrow (simulated) study also payment.balances and quote.platformFee; assert Σ deltas = 0 per step and every value an integer.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Integer readbacks via the API before/after every step: builder and tester GET /api/me/credits, each study's budget {reserved, awarded, committed, available}.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Builder: 0 → +1000 top-up = 1000 → publish A −100 = 900 → publish B −10 = 890 → publish D −20, W −30 = 840 → close W +30 = 870 → close A +50 (unawarded) = 920; ledger entries [test_topup 1000, study_reserve −100, −10, −20, −30, study_release +30, +50] sum 920. Tester: 0 → approve +50 = 50 (exactly one reward_credit). Studies at the end: A reserved 100 = awarded 50 + released 50; W reserved 30 = released 30; D reserved 20 = committed 20 (open dispute); B reserved 10 available 10. Conservation: 920 + 50 + 20 + 10 = 1000 = faucet top-up. Every value an integer; invariant available = reserved − awarded − committed held at every readback.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/hosted-run-results.json"
+  ],
+  "notes": "Wallet-escrow (simulated) settlement, refund and platform-fee movement: see H-31 (NOT RUN). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-25",
   "area": "reputation",
   "title": "Reputation awarded once, badges, helpful, leaderboard opt-in/privacy",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
   "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): After H-22 approval with helpful=true: tester GET /api/me/reputation accepted=1, helpful=1, points per rule; re-approval impossible so no second award; leaderboard GET /api/leaderboard does not list the tester until PUT /api/me/leaderboard {optIn:true, alias:'QA synthetic be1'}; opt-out removes the alias; no email/display name exposed.",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. After the helpful approval: GET /api/me/reputation; /reputation → opt in with alias 'QA synthetic be1' → Save → GET /api/leaderboard → opt out again.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "points 15 = accepted 10 + helpful 5 (one event each: [['accepted', 10, False], ['helpful', 5, False]]); stats accepted 1, decided 1, qualityScore 20; badges ['first_accepted']. Opt-in PUT 200 → optedIn True, rank None (minDecided 3: 1 decided test is below the threshold, so not listed). /leaderboard rows 0, email leaked False, display name leaked False. Opted out again: optedIn False.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/30-reputation.png"
+  ],
+  "notes": "A rejected-then-disputed decision does not reduce points (rejected 0 counted while disputed). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-26",
   "area": "builder",
   "title": "Close study and unused-budget refund",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
-  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
-  "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Builder closes the H-16 study after all submissions decided and dispute windows passed (or with only in-flight testers) → in-flight participations withdrawn 'Study closed by the builder.' → study budget released: builder balance += reserved − awarded; study account 0; ledger sum 0.",
+  "deployment": "dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
+  "sha": "a9d0e7e",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Builder closes W (only a withdrawn tester) and A (one approved, one empty slot) in the UI (confirm sheet).",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Close W 200 → closed, builder +30 (870); close A 200 → closed, builder +50 (920); study_release entries +30, +50; A after close reserved 100/awarded 50/available 0; W reserved 30/available 0.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/41-close-W.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/42-close-A.png"
+  ],
+  "notes": "Bound to the new deployment: bundle entry-d9b5472d9fac233b3df280ddb47bf7fa.js read at 2026-10-06T19:09:30.869Z, config unchanged. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-27",
   "area": "settings",
   "title": "Settings, connected-wallet state and export (no erasure)",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "hosted-simulated",
-  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
-  "sha": "7beaad5",
-  "steps": "PLANNED (run as soon as a verified synthetic tester+builder exist): Tester/builder /settings: theme and profile persist; wallet section shows 'not connected' (walletLogin=false; linking needs a wallet signature, report state only); POST /api/me/export → JSON with own studies/participations/evidence/findings/ledger/disputes only; DELETE /api/me is NOT run on production (erasure is emulator-only per the checklist).",
+  "deployment": "dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
+  "sha": "a9d0e7e",
+  "steps": "Run by pqa-be1 with the lead-provided VERIFIED synthetic accounts (option B), real Chromium through the real UI unless a step says API; API readbacks with each account's own Firebase ID token. Builder /builder-settings and tester /settings: read the Wallet section; 'Export my data'; export content via POST /api/me/export. Delete account is present but NOT run on production.",
   "fixtures": {
-   "tester": "pqa-e2e-tester-be1-1@example.test (Firebase identity only; no Pocket QA account yet)",
-   "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
   },
-  "observed": "not run: Verification of a synthetic @example.test identity needs a real inbox or an approved admin step (admin.generateEmailVerificationLink/updateUser emailVerified on the synthetic uid). The admin step is NOT approved (lead 2026-10-06, pending Hamza). The API creates no Pocket QA account for an unverified identity (apps/api/src/handlers/account.ts:84 EMAIL_UNVERIFIED), so this row cannot run.",
-  "evidence": [],
-  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money."
+  "observed": "Wallet: 'Wallet Devnet wallet Status: NOT LINKED Optional' (both; walletLogin=false). Export POST 200 both. Builder notice: 'Export ready 0 participations, 6 studies, 0 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 0 reputation events.'; studies 6, own only True, findings 1, ledger 7. Tester notice: 'Export ready 4 participations, 0 studies, 2 evidence items, 1 ledger entries, 0 wallet escrow records (each labelled with its settlement), 2 reputation events.'; keys ['exportedAt', 'user', 'studies', 'participations', 'evidence', 'findings', 'ledger', 'disputes', 'payments', 'reputation']; own participations only True; no credential fields True.",
+  "evidence": [
+   "docs/reviews/full-e2e/evidence/pqa-be1/43-settings-export-builder.png",
+   "docs/reviews/full-e2e/evidence/pqa-be1/43-settings-export-tester.png"
+  ],
+  "notes": "Bound to the new deployment (entry-d9b5472d9fac233b3df280ddb47bf7fa.js). Erasure is emulator-only per the checklist. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  },
  {
   "id": "H-28",
@@ -492,5 +703,59 @@
   "observed": "All 12 end on /sign-in.",
   "evidence": [],
   "notes": ""
+ },
+ {
+  "id": "H-30",
+  "area": "review",
+  "title": "Admin dispute resolution on production",
+  "status": "NOT OFFERED",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+  "sha": "7beaad5",
+  "steps": "Not run.",
+  "fixtures": {
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
+  },
+  "observed": "No admin may be granted on production and no existing synthetic admin was provided, so D's dispute stays open (participation disputed, D cannot be closed). Covered on the emulator/local suites (lifecycle 'dispute overturned credits once').",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
+ },
+ {
+  "id": "H-31",
+  "area": "economics",
+  "title": "Wallet-escrow (simulated) funding, payout settlement, refund and platform fee: before/after reconciliation",
+  "status": "NOT RUN",
+  "environment": "hosted-simulated",
+  "deployment": "dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
+  "sha": "a9d0e7e",
+  "steps": "PLANNED: link a devnet wallet (valueless, a key generated in memory, never printed) to the synthetic builder and tester via the SIWS flow; fund E through /escrow/fundings + simulated-wallet-payment; publish; tester joins (payout wallet frozen); approve; run settlement; close → refund; read quote/balances/platformFee before/after each step.",
+  "fixtures": {
+   "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+   "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+   "studies": {
+    "A": "i91e7158f895626c7d28e9cb62e72846",
+    "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "C": "if8979a6f75321ddf9e296310ed3f104",
+    "D": "iea4563e5011440024de18ba05a4b4a0",
+    "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+    "W": "i7bb1cc08b5bfaaa19f33f541e7487d4"
+   },
+   "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+   "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
+  },
+  "observed": "Not run: it links wallets to the shared synthetic accounts (a lasting state change). Awaiting the lead's go-ahead. The quote half is H-13 (PASS).",
+  "evidence": [],
+  "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money."
  }
 ]
