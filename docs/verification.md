@@ -990,3 +990,38 @@ $ shasum -a 256 post-run-manifest.json → 4b8207efd60dbc89fc8c2719dbe0245922cef
 $ report: postMatchesApproved true, objects.failed null; both archived 0600 in ~/.local/share/pocketqa/migration/ (post-run-*-20261006T071831.json)
 snapshot copy re-hashed 3501bc9e… (no -wal/-shm); copies deleted; backup still 3501bc9e…; USB local API health ok
 ```
+
+### 2026-10-06: hosted wiring + synthetic-tester e2e (parent authorization: Firebase auth domain, R2 CORS add-only, one labelled synthetic QA tester)
+```
+$ (Identity Toolkit admin v2, SA) authorizedDomains before: [pocketqa-optijara.firebaseapp.com, pocketqa-optijara.web.app, pocketqa.optijara.ai]
+  PATCH ?updateMask=authorizedDomains → after: [... , pocketqa.vercel.app]   kept all previous: true | added: true | count 3 -> 4
+$ r2-cors --origin https://pocketqa.vercel.app --add (dry run), then --add --apply
+  readback: [{PUT, https://pocketqa.optijara.ai, content-type, 3600}, {PUT, https://pocketqa.vercel.app, content-type, 3600}] → every previous rule kept, new origin present
+$ synthetic tester: Firebase uid NaALbDGFuMhg6aAjqNP3x5E8AQk2 (qa-hosted-synthetic-tester-20261006@example.test, emailVerified set for this synthetic address only), Pocket QA tester 30c92665-773f-4da7-84c3-a8336ab2720b "QA synthetic tester (hosted)"; credentials 0600 in ~/.config/pocketqa/qa-synthetic-tester.env; retained (not deleted)
+sign-in (synthetic tester, Firebase password provider): 200
+GET /me: 200 role=tester displayName="QA synthetic tester (hosted)"
+PUT /me/device (web): 200
+GET /studies/eligible: 200, 37 studies; chosen: a study with a synthetic (example.test) builder: yes
+GET /tester/studies/:id: 200 consentVersion=1
+POST consent: 200 participation status=consented
+POST start: 200
+POST upload-intent (6914699 bytes > 4.5 MB function limit): 200 PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/714cf5c0-7da6-4172-b7ee-ceaf873af802?<signed query redacted>
+browser PUT from https://pocketqa.vercel.app to R2: status 200
+POST complete: 200 evidence kind=screen_recording sizeBytes=6914699
+POST playback-token (own evidence): 200 url=https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/evidence/8c6db250-00f0-44d4-a365-0b82bcbda7b1?<signed query redacted> token=absent
+GET presigned playback: 6914699 bytes, sha256 a5e20d7bdf52bc55… == uploaded file
+cross-user: synthetic tester -> Seeker evidence playback-token: 404 NOT_FOUND (no url: true)
+no token -> own new evidence playback-token: 401
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in; Discover rendered 36 study cards
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+```
