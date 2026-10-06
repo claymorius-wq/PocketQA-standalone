@@ -1055,3 +1055,33 @@ BUILDER: CSP 0, console errors []
 SWITCH: builder home shown; tester-only API calls after switching: []; discover visible=false
 SWITCH: api calls ["GET /api/config","POST /api/auth/identity/session","GET /api/studies"]
 ```
+
+### 2026-10-06: branded Google buttons (532a435), local candidate before deploy
+```
+$ curl -sL https://developers.google.com/static/identity/images/signin-assets.zip | shasum -a 256 → ba884069e12093b06bcfd776915081254a7c95094b80d50be2c5dc6bac1c1da1
+$ shasum -a 256 "Android + Web/SVG/Light/Theme=Light, Show text=No, Shape=Square, Platform=Android+Web.svg" → 6587b180203a99da15c0a041018e15c94ffd9556c4b9855bdc69806081a93791 (= GOOGLE_G_SVG_SHA256, pinned in __tests__/google-button.test.tsx)
+$ npx jest __tests__/google-button.test.tsx → Tests: 11 passed, 11 total (first run: Cannot find module ../src/ui/patterns/GoogleButton)
+$ pnpm verify @532a435 → exit 0 (secrets 1134/0, scripts 83, contracts 17, domain 222, api 680+2 skipped, mobile 1385)
+$ build.mjs --env staging (POCKETQA_FIREBASE_GOOGLE=1 + auth domain from vercel-production.env) → app COOP same-origin-allow-popups; serve-local :8497, /api/config stubbed with the live config (googleSignIn true)
+$ playwright: sign-in + sign-up × light/dark × 390x844/1280x900 (chromium; webkit phone)
+live /api/config googleSignIn = true
+sign-in-light-phone-chromium: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-phone-chromium: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light phone): []
+sign-in-light-desktop-chromium: 680x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-desktop-chromium: 720x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light desktop): []
+sign-in-dark-phone-chromium: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-phone-chromium: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark phone): []
+sign-in-dark-desktop-chromium: 680x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-desktop-chromium: 720x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark desktop): []
+sign-in-light-phone-webkit: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-phone-webkit: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light phone): []
+sign-in-dark-phone-webkit: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-phone-webkit: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark phone): []
+```
+Screenshots: docs/reviews/firebase-vercel/google-button/local/ (full screens, keyboard focus crops, WebKit phone).
