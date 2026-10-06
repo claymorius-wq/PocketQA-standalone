@@ -10,6 +10,7 @@ import {
   type EscrowQuote,
 } from '@pocket-qa/domain';
 import type { DB } from './db';
+import type { Repos } from './repo';
 import type { EscrowRepo, EscrowRow, FundingRow, SettlementRow } from './repo/escrow/types';
 import type { SettlementProvider } from './settlement/types';
 import { fail, iso, newId } from './util';
@@ -211,3 +212,10 @@ export async function verifyFunding(repo: EscrowRepo, provider: SettlementProvid
 /** How audit copy names the settlement a provider performs. */
 export const settlementLabel = (provider: Pick<SettlementProvider, 'mode'>) =>
   provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value';
+
+/** The study's whole quote in token units (reward pool plus disclosed fee), through the repository. */
+export async function escrowQuoteOf(repo: Repos, s: StudyRow): Promise<number> {
+  const esc = await repo.escrow.escrowOf(s.id);
+  if (!esc) throw fail('CONFLICT_STATE', 'This study is paid with test credits, not a wallet.');
+  return studyQuote(s, esc).totalUnits;
+}

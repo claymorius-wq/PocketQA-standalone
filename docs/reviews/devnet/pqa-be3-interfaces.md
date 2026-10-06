@@ -195,3 +195,28 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
   - Due settlements include `awaiting_approval`. The repo gains `setInFlightStatus`.
   - The pilot (SQLite) never raises either error, so its behaviour is unchanged.
 - **What's not wired yet:** the RPC `DevnetChain`, the hosted devnet wiring (the platform-signer-backed chain plus the `startupCheck` at boot), the arbiter CLI and the fee sweep (`kind: 'fee'`, a domain change).
+
+## 10. Hosted entry points, the test-only connectors, and the funding reference
+- **Every hosted entry point uses one set of backends (item 1).** `hostedApp()` builds one `HostedDeps` through `hostedDeps(env)` → `hostedBackends()`, and these share its single `repo`, which is namespaced, and its single `store`, which is prefixed:
+  - the API routes;
+  - Firebase identity sign-in (the uid → user mapping goes through `repo.core`);
+  - the `/jobs/settle` and `/jobs/sweep` cron routes and the inline slices (`runJob` → `runSettlement`, `sweepStorage`);
+  - the deletion worker.
+
+  No other place in `src/` opens Firestore or builds an R2 store; the namespace static test pins that. `test/emulator/devnet.hosted-app.test.ts` runs sign-in, the routes and both cron jobs in devnet, then finds nothing outside `pocketqaNamespaces/devnet` and no R2 object outside `devnet/`.
+- **The test-only seam (item 2):** `hostedDeps(env, connectors?)` and `hostedBackends(config, env, connectors?)`.
+  - **The connectors:** `HostedConnectors = { firestore(config, env), identity(config), r2(config), devnetChain(config, env), now }`.
+  - **In production:** the Vercel entry passes none, so `productionConnectors` are used; a test asserts `vercel.ts` and `hostedApp` never pass connectors.
+  - **No refusal is weakened:** the env is still the **real** devnet env and is validated by `loadConfig` exactly as in production. A `demo-` project or an emulator variable in the env is still refused, and a test pins that too. Only where the connections go is redirected: the emulators, a fake S3, `FakeDevnetChain`, a clock.
+  - **Example:** `devnet.hosted-app.test.ts`.
+- **The 403 on `createStudy` (item 3) was not the allow-list.** `hostedDeps` wired no settlement provider in devnet, so escrow studies got `FEATURE_UNAVAILABLE`, which maps to 403. Fixed:
+  - the devnet adapter is wired;
+  - `startupCheck()` runs at boot, proving the pins on chain before serving;
+  - `createEscrowFunding` reserves the test USDC (CH-D1) and continues a vault that's still being created;
+  - an off-list builder now gets a clean 403 before any signature.
+- **The funding reference (item 4, for pqa-be1):** it's the **fifth account of the `TransferChecked` instruction**: read-only, not a signer, appended after `[source, mint, destination, owner]`. That's the Solana Pay convention, and `observeTokenTransfer` finds it among the transaction's account keys. There's no memo and no separate instruction. The server builds this transaction (CH-D3), so the client doesn't need to build it. It should decode and check it before asking the wallet to sign:
+  - the pinned mint;
+  - the destination equals `destination`, the vault's token account;
+  - the amount equals `amountUnits`;
+  - the fifth account equals `reference`;
+  - `network` is `devnet`.

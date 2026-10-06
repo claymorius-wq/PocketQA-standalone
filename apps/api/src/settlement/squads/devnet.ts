@@ -444,7 +444,10 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   /** CH-D1: test USDC entering the system, reserved once per study's funding (before the request exists). */
   async reserveFunding(input: { studyId: string; userId: string; amountUnits: number }) {
-    await this.allowed(input.userId);
+    // A route: the refusal is the API's 403 (the worker path keeps SettlementFailure).
+    await this.allowed(input.userId).catch((e: unknown) => {
+      throw e instanceof SettlementFailure ? fail('FEATURE_UNAVAILABLE', e.message) : e;
+    });
     if (!(await this.store.reserveUsdc(`funding:${input.studyId}`, input.userId, input.amountUnits, this.d.limits))) {
       throw fail('DEVNET_SPEND_CAP', 'Funding this study would exceed the devnet test-USDC cap; nothing was created.');
     }
