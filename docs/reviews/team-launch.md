@@ -107,3 +107,35 @@ pqa-ios  wX:p3  claude  status=working  cwd=/Users/hamzadiaz/Projects/pocket-qa/
 pqa-qa  wX:p2  claude  status=done  cwd=/Users/hamzadiaz/Projects/pocket-qa
 ```
 Pane `wX:p3` scrollback (read with `herdr pane read`) shows the launch line `claude --model claude-opus-5-5` and the banner `Opus 5.5 · Claude Max`; no fallback model.
+
+## 2026-10-06: Firebase/Firestore + Vercel refactor backend panes (lead, from wX:p1, HERDR_ENV=1)
+Commands (herdr CLI, inside workspace wX only):
+```
+herdr tab create --workspace wX                      -> tab wX:t2, root pane wX:p4
+herdr pane split wX:p4 --direction right --no-focus  -> wX:p5
+herdr pane split wX:p5 --direction down  --no-focus  -> wX:p6
+herdr agent start pqa-be1 --kind claude --pane wX:p4 -- --model claude-opus-5-5   -> agent_started
+herdr agent start pqa-be2 --kind claude --pane wX:p5 -- --model claude-opus-5-5   -> agent_started
+herdr agent start pqa-be3 --kind claude --pane wX:p6 -- --model claude-opus-5-5   -> agent_started
+```
+Live `herdr agent list` (workspace wX, 2026-10-06):
+```
+  pocketqa-lead  wX:p1  claude   working
+  pqa-ios        wX:p3  claude   done
+  pqa-qa         wX:p2  claude   done
+  pqa-be1        wX:p4  claude   working
+  pqa-be2        wX:p5  claude   working
+  pqa-be3        wX:p6  claude   working
+```
+Pane banners (`herdr agent read <name> --source recent`):
+```
+  pqa-be1 banner: Opus 5.5 · Claude Max
+  pqa-be2 banner: Opus 5.5 · Claude Max
+  pqa-be3 banner: Opus 5.5 · Claude Max
+```
+Processes (`ps` args, cwd = the firebase-vercel worktree):
+```
+pid 69667 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+pid 69739 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+pid 69886 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+```

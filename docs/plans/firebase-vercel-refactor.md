@@ -244,7 +244,7 @@ Partial semantics are kept exactly: a guard document is created **only when the 
 | 12 | wallet_links.user_id PK | — | doc id `walletLinks/{userId}` | 20 links, one user |
 | 13 | wallet_links.address UNIQUE | — | `walletAddresses/{address}` | 20 users, one address |
 | 14 | devnet_transfers.signature UNIQUE | signature not null | `transferSignatures/{sig}` | 20 confirms, same signature |
-| 15 | one_open_transfer (participation_id) | (index has no WHERE: one row per participation) | doc id `devnetTransfers/{pid}` … same semantics as SQLite | 20 creates |
+| 15 | one_open_transfer (participation_id) | status IN ('awaiting_signature','pending','confirmed') | `openTransfers/{pid}`: created when a transfer enters an open status, **deleted in the same tx** when it leaves them (failed or expired), so a new transfer can open | 20 creates while one is open; create after failure succeeds |
 | 16 | study_escrows.vault UNIQUE | — | `escrowVaults/{vault}` | 20 studies, one vault |
 | 17 | study_escrows_v7.vault UNIQUE | — | `escrowVaults/{vault}` (shared with #16: one vault across both versions, which is stricter than today; noted) | as #16 |
 | 18 | escrow_fundings.reference UNIQUE | — | `fundingRefs/{reference}` | 20 creates, same reference |
@@ -261,7 +261,7 @@ Partial semantics are kept exactly: a guard document is created **only when the 
 | 29 | sim_chain_transfers.idempotency_key UNIQUE | key not null | `simIdempotency/{key}` | 20 |
 | 30 | points_one_award (participation_id, kind) | kind IN ('accepted','helpful') | `pointsAwards/{pid}:{kind}` (only for those kinds) | 20 |
 | 31 | points_events.reverses_id UNIQUE | not null | `pointsReversals/{reversedId}` | 20 |
-| 32 | leaderboard_alias (lower(alias)) | — | `leaderboardAliases/{lower(alias)}`, released in the same tx on a rename or opt-out | 20 claims of one alias |
+| 32 | leaderboard_alias (lower(alias)) | alias IS NOT NULL | `leaderboardAliases/{lower(alias)}`: created only when an alias is set; released in the same tx on a rename, clear or opt-out | 20 claims of one alias |
 | 33 | squads_attempts UNIQUE(multisig, tx_index) | — | `squadsTx/{multisig}:{txIndex}` | 20 |
 
 A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this table, so a new constraint can't slip through.
