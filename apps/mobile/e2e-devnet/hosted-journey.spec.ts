@@ -25,6 +25,12 @@ const MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
 const REWARD = process.env.PQA_REWARD_USDC ?? '0.50';
 const SLOTS = '2';
 const EVIDENCE_ROOT = process.env.PQA_EVIDENCE_DIR ?? join(process.cwd(), 'test-results', 'hosted-devnet');
+/**
+ * The address an account is ALREADY linked to when that isn't its fixture (lead decision: record
+ * "already linked", never unlink). The tester only signs messages, so its reward then goes to this
+ * address and its balances are read there; the run records which address it was.
+ */
+const TESTER_LINKED = process.env.PQA_TESTER_LINKED_ADDRESS ?? '';
 const SETTLE_WAIT_MS = Number(process.env.PQA_SETTLE_WAIT_MS ?? 15 * 60_000);
 
 test.skip(process.env.PQA_HOSTED_GO !== '1', 'HOSTED devnet journey: only on the lead’s GO (PQA_HOSTED_GO=1)');
@@ -149,13 +155,14 @@ async function signIn(p: Page, role: 'builder' | 'tester') {
   await p.waitForURL((u) => !u.pathname.startsWith('/sign-in'), { timeout: 60_000 });
 }
 /** Links the fixture wallet in Settings; with cancelFirst, the wallet refuses once and the app must say so. */
-async function linkWallet(pt: Party, settingsTab: string, cancelFirst: boolean) {
+async function linkWallet(pt: Party, settingsTab: string, cancelFirst: boolean, alreadyLinkedTo?: string) {
   const p = pt.page;
   await p.getByTestId(settingsTab).click();
   await expect(p.getByTestId('wallet-section')).toBeVisible();
   if (await p.getByTestId('wallet-address').isVisible()) {
-    await expect(p.getByTestId('wallet-address')).toContainText(pt.wallet.address);
-    await shotOf(p, 'wallet-section', `${settingsTab}-wallet-already-linked`, 'already linked to the fixture address before this run');
+    const expected = alreadyLinkedTo || pt.wallet.address;
+    await expect(p.getByTestId('wallet-address')).toContainText(expected);
+    await shotOf(p, 'wallet-section', `${settingsTab}-wallet-already-linked`, alreadyLinkedTo ? `already linked before this run to ${alreadyLinkedTo} (not the fixture; lead decision: no unlink)` : 'already linked to the fixture address before this run');
     return;
   }
   if (cancelFirst) {
@@ -175,7 +182,7 @@ test.beforeAll(async ({}, info) => {
   run.dir = join(EVIDENCE_ROOT, `${run.label}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
   run.title = `Web devnet journey ${run.label} ${Date.now().toString(36)}`;
   mkdirSync(run.dir, { recursive: true });
-  run.chain.before = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(loadFixtureSeed('tester').address) };
+  run.chain.before = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(TESTER_LINKED || loadFixtureSeed('tester').address) };
 });
 test.afterAll(async () => {
   for (const r of ['builder', 'tester'] as const) {
@@ -185,7 +192,7 @@ test.afterAll(async () => {
     writeFileSync(join(run.dir, `${r}-wallet-log.json`), JSON.stringify(pt.wallet.log, null, 1));
     await pt.ctx.close();
   }
-  run.chain.after = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(loadFixtureSeed('tester').address) };
+  run.chain.after = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(TESTER_LINKED || loadFixtureSeed('tester').address) };
   writeFileSync(join(run.dir, 'run.json'), JSON.stringify({ label: run.label, viewportNote: run.label === 'pixel7' ? 'mobile viewport, NOT a physical-device wallet deep-link (MWA) test' : 'desktop 1280x900', wallet: TEST_WALLET_NAME, title: run.title, steps: run.steps, chain: run.chain, mainnetBlocked: run.blocked }, null, 1));
 });
 
@@ -222,7 +229,7 @@ test('1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not
 
 test('2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first)', async () => {
   await linkWallet(run.builder!, 'tab-builder-settings', true);
-  await linkWallet(run.tester!, 'tab-settings', false);
+  await linkWallet(run.tester!, 'tab-settings', false, TESTER_LINKED || undefined);
   const t = run.tester!.page;
   await t.getByTestId('device-platform-web').click();
   await t.getByTestId('device-save').click();
