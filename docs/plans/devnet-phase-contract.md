@@ -59,3 +59,27 @@ Authorized by Hamza: an integrated devnet user journey, with bounded fresh **dev
 
 ## External gates (stated flat)
 Human Google login; Seeker USB-debugging and OS prompts (needs Hamza at the device); independent custody (all fixture keys are ours); mainnet (not authorized); Vercel preview protection if it is on.
+
+## Amendments r1 (pqa-qa contract review r1, CHANGES_REQUIRED → adopted; lead decisions on pqa-be3's design note)
+- **CH-D1 (P1) spend control.**
+  - In devnet mode, only a server-side **allow-list of labelled synthetic accounts** may start any server-signed operation.
+  - **Per-user and global devnet spend caps** (lamports and test-USDC units) are checked durably before every server-signed send.
+  - The shared rate limiter covers every send route.
+  - All of it is covered by tests (pqa-be2 E-25/E-26).
+  - Per-payment rent (multisig ≈1.82M lamports, ≈5.14M lamports per payment, non-reclaimable) counts against the cap. Per-run bound: **0.05 SOL in fees + rent** (fewer than 10 payments) and 3 test USDC.
+- **CH-D2 (P1) isolation.**
+  - A separate **named Firestore database** is a billing/infrastructure change: Hamza's decision.
+  - Until he decides: **one** namespace function (every devnet collection goes through it), a **static test** that no collection literal bypasses it, an **emulator test** that a full devnet journey writes **0 documents outside** the namespace, and the pqa-qa read-only integrity check on production **before and after every live run** with unchanged production counts.
+  - R2: a separate devnet prefix; the deletion worker cannot touch `evidence/` or `retained-local-submissions/` (test).
+- **CH-D3 server-built transactions.**
+  - The server builds the builder-signed funding/approval transactions from its own state: pinned mint + classic Token, builder ATA → **this study's** vault, the quoted amount.
+  - A tampered request is refused before any signing; an approval is bound to the exact vault transaction index + op id. (This is also the lead's decision on be3's question 3.)
+- **CH-D4 signer placement.** The platform signer lives only in the Vercel **Preview** env (`vercel env ls` per environment recorded). It is in the deploy scan list, and the count shows it; production config refuses it (test).
+- **CH-D5 receipts.** The receipt holds the **serialised message + signature before broadcast**. A retry queries that signature first, then memo/op id, and adopts.
+- **CH-D6 disclosure.** Copy adds "test keys · not independent custody". The Squads devnet program is single-key upgradeable: its program-data is re-read before and after each live run.
+- **CH-D7.** The D-08 pilot run is labelled "not the integrated journey".
+- **Lead decisions on be3's note:**
+  - Fee: option **(a)**, a fee sweep on close to a platform fee wallet (new posting kind; the domain change is reviewed by pqa-qa) so every booked movement has an on-chain receipt.
+  - Existing refusals are **wrapped, not removed**: messages and behaviour byte-identical for every existing env (tests).
+  - be1's client consumes the server-built transactions.
+- **Preview protection.** Evidence so far: immutable production deployment URLs 302 to Vercel SSO (Standard Protection), so preview aliases are expected to be protected. Browser access to the preview needs Hamza: Vercel login for testers, a shareable link, or an automation bypass. We never disable protection. Firebase authorized domains must include the preview alias (console: Hamza/parent). Vercel Cron does not run on previews, so settlement there is driven by bounded request slices.
