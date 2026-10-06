@@ -759,5 +759,519 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
     ],
     "notes": "Personal notifications seen in the dump were not recorded or relayed."
+  },
+  {
+    "id": "W-10",
+    "area": "web",
+    "title": "Sign-in (builder) with the Google button visible (not used)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | mobile viewport: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-10-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-10-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-11",
+    "area": "web",
+    "title": "Builder test-credit balance before",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"builderBalance\": \"780 test credits\", \"budgetCard\": null} | mobile viewport: {\"builderBalance\": \"730 test credits\", \"budgetCard\": null} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-11-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-11-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-12",
+    "area": "web",
+    "title": "Builder creates a small test-credit study (1 slot) and publishes it",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"title\": \"QA synthetic web regression desktop-muxa0p92\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i5b95f5fc9bf4f57fa53d65471f156c4\"} | mobile viewport: {\"title\": \"QA synthetic web regression mobile-muxa6n9k\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i15bd4c262534189dc7b3d6053d9d3aa\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-12-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-12-builder.png"
+    ],
+    "notes": "Default reward 50 test credits; reserved 50 at publish."
+  },
+  {
+    "id": "W-13",
+    "area": "web",
+    "title": "Tester sign-in; tester balance before",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"testerBalance\": \"150 test credits\"} | mobile viewport: {\"testerBalance\": \"200 test credits\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-13-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-13-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-14",
+    "area": "web",
+    "title": "Eligibility: web-only study hidden for an Android profile, shown after a web profile",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"chipBefore\": \"MATCHED TO Android · Android 16 Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | mobile viewport: {\"chipBefore\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-14-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-14-tester.png"
+    ],
+    "notes": "Mobile run: the profile was already web (the desktop run had saved it), and the \"before\" count was taken before the Discover list had loaded, so it is not an eligibility signal. The negative eligibility proof is the desktop run: Android 16 profile -> 0 cards for the web-only study; after saving the web profile -> 1 card."
+  },
+  {
+    "id": "W-15",
+    "area": "web",
+    "title": "Study detail, consent checkbox gate, join",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | mobile viewport: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-15-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-15-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-16",
+    "area": "web",
+    "title": "Session start; task note saved and persisted after reload",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | mobile viewport: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-16-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-16-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-17",
+    "area": "web",
+    "title": "Web evidence upload: synthetic PNG -> keep -> upload to private R2",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:55 AM\"} | mobile viewport: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:59 AM\"} | console/network issues: tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/b666f9dc-427b-463d-9123-b4e8886dd52b net::ERR_; tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/ed18cb42-af60-4702-b097-12157ce3f817 net::ERR_",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-17-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-17-tester.png"
+    ],
+    "notes": "The single failed request in each upload (PUT …/quarantine/<id> net::ERR_ABORTED) is explained in W-24: one PUT, completion 200, no retry; Chromium logs the unread response as aborted."
+  },
+  {
+    "id": "W-18",
+    "area": "web",
+    "title": "Submit the participation",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | mobile viewport: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-18-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-18-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-19",
+    "area": "web",
+    "title": "Builder review: note, AI unavailable, private evidence image, finding, approve",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 12:55 AM\"} | mobile viewport: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 1:00 AM\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-19-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-19-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-21",
+    "area": "web",
+    "title": "Tester reputation page",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"points\": \"65\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 65 points Earned only when a builder accepts your work. Points are reputation, no\"} | mobile viewport: {\"points\": \"75\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 75 points Earned only when a builder accepts your work. Points are reputation, no\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-21-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-21-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-22",
+    "area": "web",
+    "title": "Tester data export",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"exportDone\": \"Export ready 11 participations, 0 studies, 4 evidence items, 6 ledger entries, 0 wallet escrow records (each labelled with its settlement), 7 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 16253}} | mobile viewport: {\"exportDone\": \"Export ready 12 participations, 0 studies, 5 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 8 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 18386}} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-22-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+    ],
+    "notes": "The export file was saved, its top-level keys recorded, and its content NOT kept in evidence."
+  },
+  {
+    "id": "W-20",
+    "area": "web",
+    "title": "Test-credit ledger after approval: tester credited once, builder debited once; tester sees approval and the finding",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop (completed by finish.mjs on the same approved participation): tester 150 -> 200 (\"Approved 50 test credits added to your balance\", top ledger row \"Approved work Oct 7, 12:55 AM +50\"); builder 780 -> 730; finding visible to the tester. | mobile viewport: tester 200 -> 250, builder 730 -> 680, approval notice same text. | desktop trace run: tester 250 -> 300, builder 680 -> 630. Each journey = exactly one +50 for the tester and one -50 for the builder (reserved 50 at publish). Console/network issues: none.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-approved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-credits.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-builder-budget.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-builder.png"
+    ],
+    "notes": "The first desktop attempt FAILED in MY runner (it looked for a budget tab on the study screen; the builder budget is the /budget route), recorded in desktop/results.json; the runner was fixed and the step completed read-only. Not a product defect. Ledger values can also move if another agent uses the same synthetic pair concurrently; none of the deltas here deviated from +50/-50."
+  },
+  {
+    "id": "W-23",
+    "area": "web",
+    "title": "Sign-out (both roles) and private-route denial after sign-out",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"tester\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}} | mobile viewport: {\"tester\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}} (tester /credits and builder /budget redirect to /sign-in, no balance rendered). Console/network issues: none.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-builder.png"
+    ],
+    "notes": "First desktop attempt failed in MY runner (it opened /settings for the builder, whose route is /builder-settings); completed by finish.mjs. Not a product defect."
+  },
+  {
+    "id": "W-24",
+    "area": "web",
+    "title": "Upload request trace: one PUT to private R2, completion verified server-side (explains the logged ERR_ABORTED)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop trace run: t=0 POST /api/participations/700a3313…/evidence/upload-intents -> 200 (613 ms); t=613 PUT /pocketqa-evidence/quarantine/1ba50da7… (one PUT only); t=942 POST /api/evidence/upload-intents/1ba50da7…/complete issued (the client only completes when the PUT returned ok, apps/mobile/src/api/client.ts:151-163) and at t=942 Chromium logs the PUT as net::ERR_ABORTED; t=2270 complete -> 200; builder GET /pocketqa-evidence/evidence/4f59c370… -> 200. No retry, no lost upload; the abort is the unread response body being torn down.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/r2-trace.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/results.json"
+    ],
+    "notes": "Benign log artefact (could be silenced by reading/cancelling the PUT response body)."
+  },
+  {
+    "id": "W-25",
+    "area": "web",
+    "title": "Tester sees builder findings on the approved participation (both viewports)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "findcheck.mjs on participations 125d94e6 (mobile run) and fa5abae9 (desktop run), at Pixel 7 and 1280x900: \"Findings from the builder\" > \"QA synthetic finding: main button label\" + \"Synthetic web regression finding; no real issue.\" visible (1 match each).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-mobile-125d94e6.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-desktop-fa5abae9.png"
+    ],
+    "notes": "The mobile W-20 check reported findingVisible false because it ran right after reload before the section rendered (runner timing); confirmed visible after the page settled."
+  },
+  {
+    "id": "W-26",
+    "area": "web",
+    "title": "Copy observation: hosted Settings mentions linking a devnet wallet",
+    "status": "NOT OFFERED",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "Production Settings (tester, mobile viewport): \"Unavailable on this device · No Solana wallet extension found. Install one to link a devnet wallet.\" while hosted walletLogin=false and devnetTransfers=false.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+    ],
+    "notes": "Not a functional defect; flagged for the copy/economics owner (devnet wording on the production site)."
   }
 ]

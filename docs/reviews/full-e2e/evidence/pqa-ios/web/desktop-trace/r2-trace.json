@@ -1,0 +1,62 @@
+[
+  {
+    "t": 1791327793643,
+    "ev": "request",
+    "role": "tester",
+    "method": "POST",
+    "url": "/api/participations/700a3313-7aaf-49df-adef-40e141721833/evidence/upload-intents"
+  },
+  {
+    "t": 1791327794256,
+    "ev": "finished",
+    "role": "tester",
+    "method": "POST",
+    "status": 200,
+    "url": "/api/participations/700a3313-7aaf-49df-adef-40e141721833/evidence/upload-intents"
+  },
+  {
+    "t": 1791327794256,
+    "ev": "request",
+    "role": "tester",
+    "method": "PUT",
+    "url": "/pocketqa-evidence/quarantine/1ba50da7-58ea-4b65-8764-a62fea218e8e"
+  },
+  {
+    "t": 1791327794585,
+    "ev": "request",
+    "role": "tester",
+    "method": "POST",
+    "url": "/api/evidence/upload-intents/1ba50da7-58ea-4b65-8764-a62fea218e8e/complete"
+  },
+  {
+    "t": 1791327794585,
+    "ev": "failed",
+    "role": "tester",
+    "method": "PUT",
+    "err": "net::ERR_ABORTED",
+    "url": "/pocketqa-evidence/quarantine/1ba50da7-58ea-4b65-8764-a62fea218e8e"
+  },
+  {
+    "t": 1791327795913,
+    "ev": "finished",
+    "role": "tester",
+    "method": "POST",
+    "status": 200,
+    "url": "/api/evidence/upload-intents/1ba50da7-58ea-4b65-8764-a62fea218e8e/complete"
+  },
+  {
+    "t": 1791327804066,
+    "ev": "request",
+    "role": "builder",
+    "method": "GET",
+    "url": "/pocketqa-evidence/evidence/4f59c370-adb6-4d7e-826c-644425285829"
+  },
+  {
+    "t": 1791327804614,
+    "ev": "finished",
+    "role": "builder",
+    "method": "GET",
+    "status": 200,
+    "url": "/pocketqa-evidence/evidence/4f59c370-adb6-4d7e-826c-644425285829"
+  }
+]
