@@ -1,4 +1,4 @@
-import { FieldValue, type Firestore } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { runTxCtx, type TxCtx } from '../../firestore/tx';
 import { sha256 } from '../../util';
 import type { UserRow } from '../../views/core';
@@ -15,6 +15,22 @@ import type { AuditRow, CoreRepo } from './types';
  */
 const emailKey = (email: string) => sha256(email);
 export const IDEMPOTENCY_TTL_MS = 24 * 3600 * 1000;
+/**
+ * How long a pending reservation blocks retries (pqa-qa early r1 P2-E): longer than any request can
+ * run (function maxDuration plus margin), after which a request that died without completing or
+ * abandoning is taken over instead of answering 409 for 24 h.
+ */
+export const IDEMPOTENCY_PENDING_MS = 5 * 60 * 1000;
+
+/**
+ * Inside an item's transaction: the job lease must still carry this fence (pqa-qa early r1 P2-G).
+ * Reading it IN the transaction means a takeover between the check and the commit aborts the stale
+ * holder's write (the commit conflicts, the rerun sees the new fence and throws).
+ */
+export async function fenceInTx(t: TxCtx, fs: Firestore, job: string, fence: number, nowMs: number): Promise<void> {
+  const d = (await t.get(fs.collection('jobLeases').doc(job))).data();
+  if (!d || d.fence !== fence || (d.expiresAt as number) <= nowMs) throw new Error(`job lease fence ${fence} for ${job} is no longer valid`);
+}
 
 /** In-transaction user read for other domains' composite operations. */
 export async function userInTx(t: TxCtx, fs: Firestore, id: string): Promise<UserRow | null> {
@@ -134,7 +150,8 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
       await audit.doc(row.id).create({ ...row, writtenAt: FieldValue.serverTimestamp() });
     },
     async listAudit() {
-      const q = await audit.orderBy('created_at', 'desc').orderBy('writtenAt', 'desc').get();
+      // Bounded (pqa-qa early r1 P3): the newest 500 entries.
+      const q = await audit.orderBy('created_at', 'desc').orderBy('writtenAt', 'desc').limit(500).get();
       return q.docs.map((d) => {
         const { writtenAt: _w, ...row } = d.data();
         return row as AuditRow;
@@ -179,9 +196,18 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
         if (snap.exists && (d!.expiresAt as number) > nowMs) {
           if (d!.fingerprint !== fingerprint) return { kind: 'mismatch' as const };
           if (d!.state === 'done') return { kind: 'replay' as const, status: d!.status as number, body: JSON.parse(d!.body as string) as unknown };
-          return { kind: 'in_progress' as const };
+          if ((d!.pendingUntil as number) > nowMs) return { kind: 'in_progress' as const };
+          // The first request died without completing: take it over (its effects are guarded).
         }
-        t.set(ref, { scope, fingerprint, state: 'pending', expiresAt: nowMs + IDEMPOTENCY_TTL_MS });
+        t.set(ref, {
+          scope,
+          fingerprint,
+          state: 'pending',
+          pendingUntil: nowMs + IDEMPOTENCY_PENDING_MS,
+          expiresAt: nowMs + IDEMPOTENCY_TTL_MS,
+          // A Timestamp copy so a Firestore TTL policy can remove expired records (numbers can't).
+          expireAt: Timestamp.fromMillis(nowMs + IDEMPOTENCY_TTL_MS),
+        });
         return { kind: 'new' as const };
       });
     },
@@ -202,7 +228,7 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
         const snap = await t.get(ref);
         const count = snap.exists ? (snap.data()!.count as number) : 0;
         if (count >= max) return false;
-        t.set(ref, { count: count + 1, expiresAt: (window + 1) * windowMs });
+        t.set(ref, { count: count + 1, expiresAt: (window + 1) * windowMs, expireAt: Timestamp.fromMillis((window + 1) * windowMs) });
         return true;
       });
     },

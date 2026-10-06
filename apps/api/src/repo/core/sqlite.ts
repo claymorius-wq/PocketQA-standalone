@@ -9,7 +9,7 @@ import type { AuditRow, CoreRepo } from './types';
  */
 export function sqliteCoreRepo(db: DB): CoreRepo {
   const mem = {
-    idem: new Map<string, { fingerprint: string; state: 'pending' | 'done'; expiresAt: number; status?: number; body?: unknown }>(),
+    idem: new Map<string, { fingerprint: string; state: 'pending' | 'done'; pendingUntil: number; expiresAt: number; status?: number; body?: unknown }>(),
     rate: new Map<string, number>(),
     lease: new Map<string, { holder: string; fence: number; expiresAt: number }>(),
   };
@@ -131,7 +131,7 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
       return Promise.resolve();
     },
     async listAudit() {
-      return db.prepare('SELECT * FROM audit ORDER BY created_at DESC, rowid DESC').all() as AuditRow[];
+      return db.prepare('SELECT * FROM audit ORDER BY created_at DESC, rowid DESC LIMIT 500').all() as AuditRow[];
     },
     redactAudit(targets) {
       const stmt = db.prepare(`UPDATE audit SET reason = '[redacted on account deletion]' WHERE target_type = ? AND target_id = ?`);
@@ -153,9 +153,9 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
       if (d && d.expiresAt > nowMs) {
         if (d.fingerprint !== fingerprint) return { kind: 'mismatch' as const };
         if (d.state === 'done') return { kind: 'replay' as const, status: d.status!, body: d.body };
-        return { kind: 'in_progress' as const };
+        if (d.pendingUntil > nowMs) return { kind: 'in_progress' as const };
       }
-      mem.idem.set(scope, { fingerprint, state: 'pending', expiresAt: nowMs + 24 * 3600 * 1000 });
+      mem.idem.set(scope, { fingerprint, state: 'pending', pendingUntil: nowMs + 5 * 60 * 1000, expiresAt: nowMs + 24 * 3600 * 1000 });
       return { kind: 'new' as const };
     },
     async completeIdempotency(scope, status, body) {

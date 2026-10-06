@@ -55,7 +55,7 @@ export interface CoreRepo {
   deleteSession(tokenHash: string): Promise<void>;
 
   appendAudit(row: AuditRow): Promise<void>;
-  /** Newest first. */
+  /** Newest first, at most 500. */
   listAudit(): Promise<AuditRow[]>;
 
   /** Account deletion: audit reasons about these targets become '[redacted on account deletion]'. */

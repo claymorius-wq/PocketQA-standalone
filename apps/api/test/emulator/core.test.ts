@@ -157,3 +157,54 @@ describe('admin moderation is atomic with its audit (plan T6)', () => {
     expect((await repo.listAudit()).map((r) => r.id)).toEqual(['au1']);
   });
 });
+
+describe('pqa-qa early review r1', () => {
+  it('P2-E: a pending reservation whose request died is taken over after its short lease, not stuck for 24 h', async () => {
+    expect((await repo.beginIdempotency('u:topUp:k', 'fp', 0)).kind).toBe('new');
+    // The first request crashed (no complete, no abandon): within the pending lease it is in progress...
+    expect((await repo.beginIdempotency('u:topUp:k', 'fp', 60_000)).kind).toBe('in_progress');
+    // ...after it, a retry may run (its effects are guarded or deterministic: P2-F).
+    expect((await repo.beginIdempotency('u:topUp:k', 'fp', 10 * 60_000)).kind).toBe('new');
+  });
+
+  it('P2-G: a stale holder that checks its fence inside its item transaction after a takeover writes nothing', async () => {
+    const { runTxCtx } = await import('../../src/firestore/tx');
+    const { fenceInTx } = await import('../../src/repo/core/firestore');
+    expect(await repo.acquireLease('settle', 'a', 1000, 0)).toBe(1);
+    expect(await repo.acquireLease('settle', 'b', 1000, 1500)).toBe(2); // the lease expired, b took over
+    const stale = runTxCtx(fs, async (t) => {
+      await fenceInTx(t, fs, 'settle', 1, 1600);
+      t.set(fs.collection('settlements').doc('x'), { by: 'stale' });
+    });
+    await expect(stale).rejects.toThrow(/fence/);
+    expect((await fs.collection('settlements').doc('x').get()).exists).toBe(false);
+  });
+
+  it('P2-G: concurrent stale item transactions and a takeover serialise: every committed item committed before the takeover', async () => {
+    const { FieldValue } = await import('firebase-admin/firestore');
+    const { runTxCtx } = await import('../../src/firestore/tx');
+    const { fenceInTx } = await import('../../src/repo/core/firestore');
+    expect(await repo.acquireLease('sweep2', 'a', 1000, 0)).toBe(1);
+    const items = Array.from({ length: 10 }, (_, i) =>
+      runTxCtx(fs, async (t) => {
+        await fenceInTx(t, fs, 'sweep2', 1, 900);
+        t.set(fs.collection('items').doc(`i${i}`), { fence: 1, at: FieldValue.serverTimestamp() });
+      }).then(
+        () => 'committed',
+        () => 'refused',
+      ),
+    );
+    // The takeover (the clock has moved past the lease) records its own commit time.
+    const takeover = runTxCtx(fs, async (t) => {
+      const ref = fs.collection('jobLeases').doc('sweep2');
+      const d = (await t.get(ref)).data()!;
+      t.set(ref, { holder: 'b', fence: (d.fence as number) + 1, expiresAt: 999_999, takenAt: FieldValue.serverTimestamp() });
+    });
+    const outcomes = await Promise.all(items);
+    await takeover;
+    const takenAt = (await fs.collection('jobLeases').doc('sweep2').get()).data()!.takenAt.toMillis() as number;
+    const committed = await fs.collection('items').get();
+    expect(committed.size).toBe(outcomes.filter((o) => o === 'committed').length);
+    for (const d of committed.docs) expect(d.data().at.toMillis()).toBeLessThanOrEqual(takenAt);
+  });
+});
