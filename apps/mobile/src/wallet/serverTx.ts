@@ -21,6 +21,12 @@ export type SignContext = {
   linkedWallet: string | null;
   /** Funding: the vault token account from the funding request (POST /escrow/fundings), compared too. */
   expectedDestination?: string;
+  /**
+   * A vote: the payment this screen is approving (the study's refund, the participation's payout).
+   * The plan must be that settlement and kind, and its described amount and recipient must agree
+   * with what the app already shows; they stay "described" (a vote's bytes can't prove them).
+   */
+  expectedApproval?: { settlementId: string; kind: SettlementApproval['kind']; amountUnits: number; destination: string | null };
 };
 export type PlanRow = { label: string; value: string };
 export type CheckedPlan = {
@@ -54,6 +60,10 @@ export function checkServerTxPlan(plan: ServerTxPlan, ctx: SignContext): Checked
   if (!Number.isSafeInteger(plan.amountUnits) || plan.amountUnits <= 0) throw refuse('The amount isn’t a whole number of test-USDC units');
   if (!isAddress(plan.destination) || !isAddress(plan.mint)) throw refuse('The plan’s addresses aren’t Solana addresses');
   try {
+    const want = ctx.expectedApproval;
+    if (want && ('fundingId' in plan || plan.settlementId !== want.settlementId || plan.kind !== want.kind)) throw refuse('This is not the payment you are approving');
+    if (want && plan.amountUnits !== want.amountUnits) throw refuse('The payment’s amount differs from what this screen shows');
+    if (want && want.destination !== null && plan.destination !== want.destination) throw refuse('The payment’s recipient differs from what this screen shows');
     const tx = decodeServerTx(plan.transactionB64);
     if ('fundingId' in plan) {
       const v = verifyFundingTx(tx, { owner: linked, amountUnits: plan.amountUnits, destination: plan.destination, reference: plan.reference, mint: plan.mint });

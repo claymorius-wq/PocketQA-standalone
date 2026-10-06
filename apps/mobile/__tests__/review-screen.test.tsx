@@ -382,7 +382,7 @@ describe('review screen', () => {
   });
   it('devnet pilot: a payout awaiting approval → review the vote → sign in the wallet → submitted with its index and op id', async () => {
     mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
-    const plan = approvalPlan();
+    const plan = approvalPlan({ amountUnits: 1_000_000 });
     mockApi.mockImplementation(async (name: string) => (name === 'settlementApproval' ? plan : { settlementId: 'set-1', kind: 'payout', status: 'submitted', signature: '5igVote', network: 'devnet' }));
     mockSign.mockImplementation(async (_p: unknown, _c: unknown, send: (s: string) => Promise<unknown>) => {
       await send('5igVote');
@@ -402,6 +402,19 @@ describe('review screen', () => {
     await settle();
     await settle();
     expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-1' }, body: { signature: '5igVote', txIndex: 4, opId: plan.opId } });
+  });
+
+  it('devnet pilot: a vote for another payment than this tester’s is refused before the wallet opens', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
+    mockSign.mockClear();
+    mockApi.mockImplementation(async () => approvalPlan({ amountUnits: 1_000_000, settlementId: 'set-other' }));
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('reward-approval-review'));
+    await settle();
+    await settle();
+    expect(screen.getByTestId('reward-approval-error')).toHaveTextContent(/not the payment you are approving.*Nothing was signed/);
+    expect(screen.queryByTestId('reward-approval-sign')).toBeNull();
+    expect(mockSign).not.toHaveBeenCalled();
   });
 
   it('the wallet vote is offered only for a devnet payout awaiting approval', async () => {

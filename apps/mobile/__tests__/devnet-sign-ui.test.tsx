@@ -185,4 +185,43 @@ describe('EscrowPanel · devnet funding with the wallet', () => {
     await settle();
     expect(mockApi).toHaveBeenCalledWith('submitFundingSignature', { params: { id: 'f1' }, body: { signature: '5igFund' } });
   });
+
+  it('devnet refund awaiting the builder’s vote: review the vote (refund) → sign → submitted with its index and op id', async () => {
+    const study = escrowStudy();
+    study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: { settlementId: 'set-r', status: 'awaiting_approval', amountUnits: 1_500_000 } } as typeof study.payment;
+    const plan = approvalPlan({ settlementId: 'set-r', kind: 'refund' });
+    mockApi.mockImplementation(async (name: string) => (name === 'settlementApproval' ? plan : { settlementId: 'set-r', kind: 'refund', status: 'submitted', signature: '5igRefund', network: 'devnet' }));
+    mockSign.mockImplementation(async (_p: unknown, _c: unknown, send: (s: string) => Promise<unknown>) => {
+      await send('5igRefund');
+      return { signature: '5igRefund' };
+    });
+    await render(tree(<EscrowPanel study={study} />));
+    expect(screen.queryByTestId('escrow-refund-approval-sign')).toBeNull();
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-refund-approval-review')));
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-r' } });
+    expect(screen.getByText(/Refund to the funding wallet · checked in this transaction/)).toBeTruthy();
+    expect(screen.getByTestId('escrow-refund-approval-described')).toHaveTextContent(has(ATTACKER));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-refund-approval-sign')));
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-r' }, body: { signature: '5igRefund', txIndex: 4, opId: OP } });
+  });
+
+  it('a refund vote is refused when the server offers a different payment than the study’s refund', async () => {
+    const study = escrowStudy();
+    study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: { settlementId: 'set-r', status: 'awaiting_approval', amountUnits: 1_500_000 } } as typeof study.payment;
+    mockApi.mockImplementation(async () => approvalPlan({ settlementId: 'set-r', kind: 'refund', destination: linked }));
+    await render(tree(<EscrowPanel study={study} />));
+    await act(async () => fireEvent.press(screen.getByTestId('escrow-refund-approval-review')));
+    await settle();
+    expect(screen.getByTestId('escrow-refund-approval-error')).toHaveTextContent(/recipient differs.*Nothing was signed/);
+    expect(screen.queryByTestId('escrow-refund-approval-sign')).toBeNull();
+  });
+
+  it.each(['pending', 'submitted', 'confirmed', 'failed'])('no refund vote is offered when the refund is %s', async (status) => {
+    const study = escrowStudy();
+    study.payment = { ...study.payment, funded: true, fundingWallet: ATTACKER, refund: { settlementId: 'set-r', status, amountUnits: 1_500_000 } } as typeof study.payment;
+    await render(tree(<EscrowPanel study={study} />));
+    expect(screen.queryByTestId('escrow-refund-approval-review')).toBeNull();
+  });
 });

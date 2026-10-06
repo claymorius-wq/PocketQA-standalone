@@ -159,6 +159,19 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
                 : `Refund of ${amount(p.refund.amountUnits)} to the funding wallet: ${p.refund.status} · ${tag}.`}
             </Text>
           ) : null}
+          {pilot && p.refund?.status === 'awaiting_approval' ? (
+            // Devnet pilot: the refund waits for the builder's vote (2 of 3) in their wallet.
+            <ServerTxSign
+              testID="escrow-refund-approval"
+              settlement={p.settlement}
+              expectedApproval={{ settlementId: p.refund.settlementId, kind: 'refund', amountUnits: p.refund.amountUnits, destination: p.fundingWallet }}
+              reviewLabel="Review the refund vote to sign in your wallet"
+              signLabel="Approve in your wallet"
+              load={() => api('settlementApproval', { params: { id: p.refund!.settlementId } })}
+              submit={(signature, plan) => api('submitSettlementApproval', { params: { id: plan.settlementId }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+              onDone={() => void refresh()}
+            />
+          ) : null}
         </Card>
       )}
     </View>

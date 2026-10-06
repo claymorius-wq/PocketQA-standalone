@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import type { Evidence } from '@pocket-qa/contracts';
+import { SettlementApproval, type Evidence } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../../src/api/client';
 import { useIntentKey } from '../../../src/api/intentKey';
 import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
@@ -210,6 +210,7 @@ function ReviewInner() {
                   <ServerTxSign
                     testID="reward-approval"
                     settlement="squads_devnet"
+                    expectedApproval={{ settlementId: p.payout.id, kind: SettlementApproval.shape.kind.enum.payout, amountUnits: p.payout.amountUnits, destination: p.payout.destination }}
                     reviewLabel="Review this payment to approve in your wallet"
                     signLabel="Approve in your wallet"
                     load={() => api('settlementApproval', { params: { id: p.payout!.id } })}

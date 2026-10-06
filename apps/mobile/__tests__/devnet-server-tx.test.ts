@@ -78,6 +78,30 @@ describe('checkServerTxPlan (the bytes must match the template; pqa-qa P2-CS1)',
   });
 });
 
+describe('checkServerTxPlan: the approval is the one this screen asked for', () => {
+  const expectRefund = { settlementId: 'set-1', kind: 'refund' as const, amountUnits: 1_500_000, destination: someone };
+  const refund = (over: Record<string, unknown> = {}) => plan({ kind: 'refund', ...over });
+
+  it('a refund vote that matches the study’s refund (id, kind, amount, funding wallet)', () => {
+    const c = checkServerTxPlan(refund(), { ...ctx, expectedApproval: expectRefund });
+    expect(c.kind).toBe('refund');
+  });
+
+  it.each([
+    ['another settlement', refund({ settlementId: 'set-2' }), /not the payment you are approving/],
+    ['another kind (a payout offered as the refund)', refund({ kind: 'payout' }), /not the payment you are approving/],
+    ['another amount than the study’s refund', refund({ amountUnits: 2_000_000 }), /amount differs/],
+    ['another recipient than the funding wallet', refund({ destination: LINKED }), /recipient differs/],
+  ])('refuses: %s', (_n, p, msg) => {
+    expect(() => checkServerTxPlan(p, { ...ctx, expectedApproval: expectRefund })).toThrow(msg);
+    expect(() => checkServerTxPlan(p, { ...ctx, expectedApproval: expectRefund })).toThrow(/Nothing was signed\./);
+  });
+
+  it('a funding plan is never accepted where an approval is expected', () => {
+    expect(() => checkServerTxPlan(funding(), { ...ctx, expectedApproval: expectRefund })).toThrow(/not the payment you are approving/);
+  });
+});
+
 describe('Android (Mobile Wallet Adapter)', () => {
   const submit = jest.fn(async () => ({}));
   beforeEach(() => {

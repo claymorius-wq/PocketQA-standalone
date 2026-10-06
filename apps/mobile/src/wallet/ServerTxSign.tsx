@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSession } from '../auth/SessionProvider';
 import { Button, Card, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList } from '../ui/patterns';
-import { checkServerTxPlan, type CheckedPlan, type ServerTxPlan } from './serverTx';
+import { checkServerTxPlan, type CheckedPlan, type ServerTxPlan, type SignContext } from './serverTx';
 import { signServerTransaction } from './signServerTransaction';
 
 const KIND: Record<CheckedPlan['kind'], string> = {
@@ -25,6 +25,8 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
   settlement: string;
   /** Funding: the vault token account from the funding request; the transfer must go there. */
   expectedDestination?: string;
+  /** A vote: the payment this screen approves (serverTx.ts SignContext). */
+  expectedApproval?: SignContext['expectedApproval'];
   reviewLabel: string;
   signLabel: string;
   load: () => Promise<P>;
@@ -32,7 +34,12 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
   onDone?: () => void;
 }) {
   const { user } = useSession();
-  const ctx = { settlement: props.settlement, linkedWallet: user?.wallet?.address ?? null, ...(props.expectedDestination ? { expectedDestination: props.expectedDestination } : {}) };
+  const ctx: SignContext = {
+    settlement: props.settlement,
+    linkedWallet: user?.wallet?.address ?? null,
+    ...(props.expectedDestination ? { expectedDestination: props.expectedDestination } : {}),
+    ...(props.expectedApproval ? { expectedApproval: props.expectedApproval } : {}),
+  };
   const [loaded, setLoaded] = useState<{ plan: P; checked: CheckedPlan } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'review' | 'sign' | null>(null);
