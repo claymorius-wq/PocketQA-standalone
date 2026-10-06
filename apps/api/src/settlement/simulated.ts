@@ -64,6 +64,11 @@ export class SimulatedSettlement implements SettlementProvider {
     return signature;
   }
 
+  /** The signature of the simulated funding transfer already sent for this reference, if any. */
+  fundingSignatureFor(reference: string): string | null {
+    return (this.db.prepare(`SELECT signature FROM sim_chain_transfers WHERE reference = ? AND kind = 'funding'`).get(reference) as { signature: string } | undefined)?.signature ?? null;
+  }
+
   /** Processing transfers finalize once the hold is lifted (a late confirmation). */
   private settleProcessing(signature: string) {
     if (!this.holdProcessing) this.db.prepare(`UPDATE sim_chain_transfers SET status = 'finalized' WHERE signature = ? AND status = 'processing'`).run(signature);
