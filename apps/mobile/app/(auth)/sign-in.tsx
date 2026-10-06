@@ -14,6 +14,7 @@ import { layout, radius } from '../../src/theme/tokens';
 import type { StandardWallet } from '../../src/wallet/standard';
 import { useWallets } from '../../src/wallet/useWallets';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text, useKeyboardShown } from '../../src/ui';
+import { GoogleButton } from '../../src/ui/patterns';
 import { Enter } from '../../src/ui/screen';
 
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
@@ -404,7 +405,7 @@ export default function SignIn() {
                     Enter your email above, then send the link.
                   </Text>
                 ) : null}
-                {canGoogle ? <Button label="Continue with Google" variant="secondary" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
+                {canGoogle ? <GoogleButton intent="continue" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
                 {canWallet
                   ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
                     (android ? [undefined] : wallets).map((w, i) => (
