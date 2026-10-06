@@ -209,6 +209,8 @@ export interface EscrowRepo {
   simSignatureForKey(key: string): Promise<string | null>;
   /** A held (`processing`) transfer finalizes: a late confirmation. */
   simFinalizeProcessing(signature: string): Promise<void>;
+  /** Every simulated transfer of a kind (tests and evidence: counts and sums). */
+  simTransfersOfKind(kind: SimTransferRow['kind']): Promise<SimTransferRow[]>;
   /** The simulated funding transfer already sent for this funding reference, if any. */
   simFundingSignature(reference: string): Promise<string | null>;
 

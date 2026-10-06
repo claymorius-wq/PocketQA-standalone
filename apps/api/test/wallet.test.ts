@@ -154,7 +154,7 @@ describe('devnet demo transfer', () => {
     t.rpc.fail = true;
     const down = await t.req('GET', `/devnet/transfers/${intent.id}`, s.builder.token);
     expect(down.status).toBe(503);
-    const stored = t.db.prepare('SELECT status FROM devnet_transfers WHERE id = ?').get(intent.id) as { status: string };
+    const stored = (await t.deps.repo.escrow.transferById(intent.id))!;
     expect(stored.status).toBe('pending');
     t.rpc.fail = false;
     t.clock.now += 4 * 60 * 1000;

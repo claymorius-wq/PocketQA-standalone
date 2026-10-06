@@ -46,12 +46,12 @@ describe('runSettlement slices', () => {
     const testers = await approvedPayouts(3);
     const first = await runSettlement(t.deps, { maxItems: 1 });
     expect(first.complete).toBe(false);
-    expect(t.sim.payoutCount()).toBe(1);
+    expect(await t.sim.payoutCount()).toBe(1);
     let last = first;
     for (let i = 0; i < 10 && !last.complete; i++) last = await runSettlement(t.deps, { maxItems: 2 });
     expect(last.complete).toBe(true);
     for (const u of testers) expect(await statuses(u)).toEqual(['confirmed']);
-    expect(t.sim.payoutCount()).toBe(3); // resumed slices never send twice
+    expect(await t.sim.payoutCount()).toBe(3); // resumed slices never send twice
   });
 
   it('a deadline already passed starts no item', async () => {
@@ -59,7 +59,7 @@ describe('runSettlement slices', () => {
     await approvedPayouts(1);
     const r = await runSettlement(t.deps, { deadlineMs: t.clock.now });
     expect(r.complete).toBe(false);
-    expect(t.sim.payoutCount()).toBe(0);
+    expect(await t.sim.payoutCount()).toBe(0);
   });
 
   it('a fenced-out holder stops before its next item; the live holder finishes', async () => {
@@ -71,7 +71,7 @@ describe('runSettlement slices', () => {
     expect(live).toBeGreaterThan(stale);
     const r = await runSettlement(t.deps, { lease: { job: 'settle', fence: stale } });
     expect(r.complete).toBe(false);
-    expect(t.sim.payoutCount()).toBe(0);
+    expect(await t.sim.payoutCount()).toBe(0);
     await runSettlement(t.deps, { lease: { job: 'settle', fence: live } });
     await runSettlement(t.deps, { lease: { job: 'settle', fence: live } });
     expect(await statuses(u!)).toEqual(['confirmed']);
@@ -88,6 +88,6 @@ describe('SimulatedSettlement over the repository (hosted path)', () => {
     expect(b.signature).toBe(a.signature);
     expect(await sim.status(a.signature)).toBe('finalized');
     expect(await sim.getTransfer(a.signature)).toMatchObject({ destination: 'w1', amountUnits: 5, source: 'sim-vault:s1' });
-    expect(() => sim.payoutCount()).toThrow(/SQLite/);
+    expect(await sim.payoutCount()).toBe(1);
   });
 });

@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { EscrowFunding, Participation, Payout, Study } from '@pocket-qa/contracts';
 import { MAINNET_USDC_MINT } from '@pocket-qa/domain';
 import { loadConfig, REPO_ROOT } from '../src/config';
-import { studyEscrowBooks } from '../src/escrow';
 import { runSettlement } from '../src/settlement/worker';
 import { DEVICE, makeApp, STUDY, type TestApp } from './helpers';
 
@@ -56,8 +55,8 @@ async function submitted(studyId: string) {
   await t.req('POST', `/participations/${p.id}/submit`, u.token);
   return { u, pid: p.id as string };
 }
-const books = (studyId: string) => studyEscrowBooks(t.db, studyId, t.clock.now);
-const testCreditRows = () => (t.db.prepare('SELECT COUNT(*) AS n FROM ledger').get() as { n: number }).n;
+const books = (studyId: string) => t.deps.repo.escrow.studyBooks(studyId, t.clock.now);
+const testCreditRows = async () => (t.db ? (t.db.prepare('SELECT COUNT(*) AS n FROM ledger').get() as { n: number }).n : (await t.fs!.collection('ledger').get()).size);
 
 describe('A: scope, honesty and fail-closed', () => {
   const base = { POCKETQA_DATA_DIR: '/tmp/pqa-escrow-cfg' };
@@ -147,12 +146,12 @@ describe('A: scope, honesty and fail-closed', () => {
 
   it('A7: the escrow ledger is separate: escrow studies never touch test credits', async () => {
     t = await makeApp({ settlement: 'simulated' });
-    const before = testCreditRows();
+    const before = await testCreditRows();
     const { b, study } = await fundedStudy();
     const { pid } = await submitted(study.id);
     await t.req('POST', `/participations/${pid}/approve`, b.token, {});
     await runSettlement(t.deps);
-    expect(testCreditRows()).toBe(before);
+    expect(await testCreditRows()).toBe(before);
     expect((await t.req('GET', '/me/credits', b.token)).body.balance).toBe(0);
   });
 });
@@ -178,7 +177,7 @@ describe('B: funding (simulated) and verification', () => {
     const after = (await t.req('GET', `/escrow/fundings/${f.id}`, b.token)).body;
     expect(after).toMatchObject({ status: 'confirmed', source: b.wallet });
     expect((await t.req('POST', `/studies/${study.id}/publish`, b.token)).status).toBe(200);
-    expect(books(study.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 3_300_000, ok: true });
+    expect(await books(study.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 3_300_000, ok: true });
   });
 
   it.each([
@@ -194,23 +193,23 @@ describe('B: funding (simulated) and verification', () => {
     const b = await builderWithWallet();
     const study = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY())).body);
     const f = EscrowFunding.parse((await t.req('POST', `/studies/${study.id}/escrow/fundings`, b.token)).body);
-    const sig = t.sim.recordTransfer({ network: 'simulated', mint: 'SIM-USDC', source: b.wallet, destination: f.vault, amountUnits: f.amountUnits, reference: f.reference, status: 'finalized' as const, ...(patch as object) });
+    const sig = await t.sim.recordTransfer({ network: 'simulated', mint: 'SIM-USDC', source: b.wallet, destination: f.vault, amountUnits: f.amountUnits, reference: f.reference, status: 'finalized' as const, ...(patch as object) });
     const r = await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: sig });
     expect(r.body.status).toBe('failed');
     expect(r.body.failureReason).toBeTruthy();
-    expect(books(study.id).fundedUnits).toBe(0);
+    expect((await books(study.id)).fundedUnits).toBe(0);
   });
 
   it('B4: one transfer signature funds one request only (resubmitted, or for another study)', async () => {
     t = await makeApp({ settlement: 'simulated' });
     const { b, study, funding } = await fundedStudy();
-    const sig = (t.db.prepare('SELECT signature FROM escrow_fundings WHERE id = ?').get(funding.id) as { signature: string }).signature;
+    const sig = (await t.deps.repo.escrow.fundingById(funding.id))!.signature!;
     expect((await t.req('POST', `/escrow/fundings/${funding.id}/signature`, b.token, { signature: sig })).status).toBe(409);
     const other = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY({ title: 'Second escrow study' }))).body);
     const f2 = EscrowFunding.parse((await t.req('POST', `/studies/${other.id}/escrow/fundings`, b.token)).body);
     expect((await t.req('POST', `/escrow/fundings/${f2.id}/signature`, b.token, { signature: sig })).status).toBe(409);
-    expect(books(study.id).fundedUnits).toBe(3_300_000);
-    expect(books(other.id).fundedUnits).toBe(0);
+    expect((await books(study.id)).fundedUnits).toBe(3_300_000);
+    expect((await books(other.id)).fundedUnits).toBe(0);
   });
 
   it('only the owning builder can see or fund a study’s escrow (404 for others)', async () => {
@@ -237,7 +236,7 @@ describe('C: reservation and concurrency', () => {
     const results = await Promise.all(testers.map((u) => consent(u, study.id)));
     expect(results.filter((r) => r.status === 200)).toHaveLength(3);
     expect(results.filter((r) => r.status !== 200).every((r) => r.body.code === 'CONFLICT_STATE')).toBe(true);
-    expect(books(study.id)).toMatchObject({ heldUnits: 3_300_000, availableUnits: 0, ok: true });
+    expect(await books(study.id)).toMatchObject({ heldUnits: 3_300_000, availableUnits: 0, ok: true });
   });
 
   it('C3: consent freezes the payout wallet; it must be the tester’s linked wallet, confirmed explicitly', async () => {
@@ -268,8 +267,8 @@ describe('D: payout and replay', () => {
     const payouts = (await t.req('GET', '/me/payouts', u.token)).body.items.map((x: unknown) => Payout.parse(x));
     expect(payouts).toHaveLength(1);
     expect(payouts[0]).toMatchObject({ status: 'confirmed', settlement: 'simulated', amountUnits: USDC, destination: u.wallet });
-    expect(t.sim.payoutCount()).toBe(1);
-    expect(books(study.id)).toMatchObject({ settledUnits: USDC, payableUnits: 0, feesUnits: 100_000, ok: true });
+    expect(await t.sim.payoutCount()).toBe(1);
+    expect(await books(study.id)).toMatchObject({ settledUnits: USDC, payableUnits: 0, feesUnits: 100_000, ok: true });
   });
 
   it('D2: a crash after the provider accepted a payout but before it was recorded never pays twice', async () => {
@@ -282,8 +281,8 @@ describe('D: payout and replay', () => {
     t.sim.crashAfterSubmit = false;
     await runSettlement(t.deps);
     await runSettlement(t.deps);
-    expect(t.sim.payoutCount()).toBe(1);
-    expect(books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
+    expect(await t.sim.payoutCount()).toBe(1);
+    expect(await books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
   });
 
   it('D3/D5: a payout still processing is never settled early, and its late confirmation is counted once', async () => {
@@ -294,12 +293,12 @@ describe('D: payout and replay', () => {
     t.sim.holdProcessing = true;
     for (let i = 0; i < 4; i++) await runSettlement(t.deps);
     expect((await t.req('GET', '/me/payouts', u.token)).body.items[0].status).toBe('submitted');
-    expect(books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
+    expect(await books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
     t.sim.holdProcessing = false;
     for (let i = 0; i < 3; i++) await runSettlement(t.deps); // replayed polls after finality change nothing
     expect((await t.req('GET', '/me/payouts', u.token)).body.items[0].status).toBe('confirmed');
-    expect(books(study.id)).toMatchObject({ payableUnits: 0, settledUnits: USDC, ok: true });
-    expect(t.sim.payoutCount()).toBe(1);
+    expect(await books(study.id)).toMatchObject({ payableUnits: 0, settledUnits: USDC, ok: true });
+    expect(await t.sim.payoutCount()).toBe(1);
   });
 
   it.each(['missing_token_account', 'frozen_account', 'relayer_underfunded'] as const)('D4: a %s failure is failed with a reason, never settled, and a retry settles once', async (fault) => {
@@ -313,14 +312,14 @@ describe('D: payout and replay', () => {
     const failed = Payout.parse((await t.req('GET', '/me/payouts', u.token)).body.items[0]);
     expect(failed.status).toBe('failed');
     expect(failed.failureReason).toMatch(/.{10,}/);
-    expect(books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
+    expect(await books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
     t.sim.payoutFault = null;
     t.clock.now += 10 * 60_000;
     await runSettlement(t.deps);
     await runSettlement(t.deps);
     expect((await t.req('GET', '/me/payouts', u.token)).body.items[0].status).toBe('confirmed');
-    expect(t.sim.payoutCount({ landed: true })).toBe(1);
-    expect(books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
+    expect(await t.sim.payoutCount({ landed: true })).toBe(1);
+    expect(await books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
   });
 
   it('D6: uploading or submitting never authorizes a payout; only approval does', async () => {
@@ -366,19 +365,19 @@ describe('F: disputes, refunds and closure', () => {
     const { u, pid } = await submitted(study.id);
     await t.req('POST', `/participations/${pid}/reject`, b.token, { reason: 'The recording does not show the tasks.' });
     const d = (await t.req('POST', '/disputes', u.token, { participationId: pid, reason: 'I recorded every task as asked.' })).body;
-    expect(books(study.id)).toMatchObject({ heldUnits: 1_100_000, availableUnits: 2_200_000, ok: true });
+    expect(await books(study.id)).toMatchObject({ heldUnits: 1_100_000, availableUnits: 2_200_000, ok: true });
     expect((await t.req('POST', `/studies/${study.id}/close`, b.token)).status).toBe(409); // dispute open
     const a = await t.admin();
     await t.req('POST', `/admin/disputes/${d.id}/resolve`, a.token, { outcome: 'overturned', note: 'Evidence shows the tasks.' });
     const closed = await Promise.all([1, 2].map(() => t.req('POST', `/studies/${study.id}/close`, b.token)));
     expect(closed.filter((r) => r.status === 200)).toHaveLength(1);
-    expect(books(study.id)).toMatchObject({ payableUnits: USDC, pendingRefundUnits: 2_200_000, ok: true });
+    expect(await books(study.id)).toMatchObject({ payableUnits: USDC, pendingRefundUnits: 2_200_000, ok: true });
     await runSettlement(t.deps);
     await runSettlement(t.deps);
-    expect(books(study.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 0, settledUnits: USDC, feesUnits: 100_000, pendingRefundUnits: 0, refundedUnits: 2_200_000, ok: true });
+    expect(await books(study.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, heldUnits: 0, payableUnits: 0, settledUnits: USDC, feesUnits: 100_000, pendingRefundUnits: 0, refundedUnits: 2_200_000, ok: true });
     const s = Study.parse((await t.req('GET', `/studies/${study.id}`, b.token)).body);
     expect(s.payment).toMatchObject({ refund: { status: 'confirmed', amountUnits: 2_200_000 }, fundingWallet: b.wallet });
-    expect(t.sim.refundsTo(b.wallet)).toBe(2_200_000);
+    expect(await t.sim.refundsTo(b.wallet)).toBe(2_200_000);
   });
 
   it('F3: withdrawing releases the hold', async () => {
@@ -386,9 +385,9 @@ describe('F: disputes, refunds and closure', () => {
     const { study } = await fundedStudy();
     const u = await testerWithWallet();
     const p = (await consent(u, study.id)).body;
-    expect(books(study.id).heldUnits).toBe(1_100_000);
+    expect((await books(study.id)).heldUnits).toBe(1_100_000);
     await t.req('POST', `/participations/${p.id}/withdraw`, u.token, {});
-    expect(books(study.id)).toMatchObject({ heldUnits: 0, availableUnits: 3_300_000, ok: true });
+    expect(await books(study.id)).toMatchObject({ heldUnits: 0, availableUnits: 3_300_000, ok: true });
   });
 
   it('F4: review inactivity never auto-pays (settlement runs only approved payouts)', async () => {
@@ -398,8 +397,9 @@ describe('F: disputes, refunds and closure', () => {
     t.clock.now += 30 * 24 * 3600_000;
     await runSettlement(t.deps);
     void u;
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM settlements').get()).toEqual({ n: 0 });
-    expect(books(study.id)).toMatchObject({ heldUnits: 1_100_000, ok: true });
+    expect(await t.deps.repo.escrow.allPayouts()).toEqual([]);
+    expect(await t.deps.repo.escrow.refundOf(study.id)).toBeNull();
+    expect(await books(study.id)).toMatchObject({ heldUnits: 1_100_000, ok: true });
   });
 
   it('F5: account deletion follows the existing rules; an authorized payout still settles to the frozen wallet', async () => {
@@ -409,14 +409,14 @@ describe('F: disputes, refunds and closure', () => {
     await t.req('POST', `/participations/${pid}/approve`, b.token, {});
     expect((await t.req('DELETE', '/me', u.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
     await runSettlement(t.deps);
-    expect(books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
-    expect(t.sim.payoutsTo(u.wallet)).toBe(USDC);
+    expect(await books(study.id)).toMatchObject({ settledUnits: USDC, ok: true });
+    expect(await t.sim.payoutsTo(u.wallet)).toBe(USDC);
     // An in-progress tester who deletes their account releases their hold.
     const v = await testerWithWallet();
     const p = (await consent(v, study.id)).body;
     await t.req('POST', `/participations/${p.id}/start`, v.token);
     expect((await t.req('DELETE', '/me', v.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
-    expect(books(study.id)).toMatchObject({ heldUnits: 0, ok: true });
+    expect(await books(study.id)).toMatchObject({ heldUnits: 0, ok: true });
   });
 });
 
@@ -431,11 +431,11 @@ describe('F5b: a builder deleting their account never strands escrowed funds (pq
     const unpaid = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY({ title: 'Unpaid escrow study' }))).body);
     const open = EscrowFunding.parse((await t.req('POST', `/studies/${unpaid.id}/escrow/fundings`, b.token)).body);
     expect((await t.req('DELETE', '/me', b.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
-    expect(t.db.prepare('SELECT status FROM studies WHERE id = ?').get(funded.id)).toEqual({ status: 'closed' });
-    expect(t.db.prepare('SELECT status FROM escrow_fundings WHERE id = ?').get(open.id)).toEqual({ status: 'expired' });
+    expect((await t.deps.repo.studies.getStudy(funded.id))!.status).toBe('closed');
+    expect((await t.deps.repo.escrow.fundingById(open.id))!.status).toBe('expired');
     await runSettlement(t.deps);
-    expect(books(funded.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, pendingRefundUnits: 0, refundedUnits: 3_300_000, ok: true });
-    expect(t.sim.refundsTo(b.wallet)).toBe(3_300_000);
+    expect(await books(funded.id)).toMatchObject({ fundedUnits: 3_300_000, availableUnits: 0, pendingRefundUnits: 0, refundedUnits: 3_300_000, ok: true });
+    expect(await t.sim.refundsTo(b.wallet)).toBe(3_300_000);
   });
 
   it('a funding still in flight at deletion is credited and refunded once it confirms', async () => {
@@ -450,8 +450,8 @@ describe('F5b: a builder deleting their account never strands escrowed funds (pq
     t.sim.holdProcessing = false;
     await runSettlement(t.deps); // confirms the funding, refunds it (study closed)
     await runSettlement(t.deps); // settles the refund
-    expect(books(s.id)).toMatchObject({ fundedUnits: 3_300_000, refundedUnits: 3_300_000, availableUnits: 0, ok: true });
-    expect(t.sim.refundsTo(b.wallet)).toBe(3_300_000);
+    expect(await books(s.id)).toMatchObject({ fundedUnits: 3_300_000, refundedUnits: 3_300_000, availableUnits: 0, ok: true });
+    expect(await t.sim.refundsTo(b.wallet)).toBe(3_300_000);
   });
 });
 
@@ -468,7 +468,7 @@ describe('P3: repeated payment failures escalate; a funding without a source wal
       t.clock.now += 2 * 3600_000;
     }
     expect(alerts.join('\n')).toMatch(/5\+ failed attempts/);
-    expect(books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
+    expect(await books(study.id)).toMatchObject({ payableUnits: USDC, settledUnits: 0, ok: true });
   });
 
   it('a transfer with no identifiable source wallet fails (refunds would have nowhere to go)', async () => {
@@ -476,10 +476,10 @@ describe('P3: repeated payment failures escalate; a funding without a source wal
     const b = await builderWithWallet();
     const s = Study.parse((await t.req('POST', '/studies', b.token, ESCROW_STUDY())).body);
     const f = EscrowFunding.parse((await t.req('POST', `/studies/${s.id}/escrow/fundings`, b.token)).body);
-    const sig = t.sim.recordTransfer({ source: '', destination: f.vault, amountUnits: f.amountUnits, reference: f.reference });
+    const sig = await t.sim.recordTransfer({ source: '', destination: f.vault, amountUnits: f.amountUnits, reference: f.reference });
     const r = await t.req('POST', `/escrow/fundings/${f.id}/signature`, b.token, { signature: sig });
     expect(r.body).toMatchObject({ status: 'failed', failureReason: expect.stringMatching(/funding wallet/) });
-    expect(books(s.id).fundedUnits).toBe(0);
+    expect((await books(s.id)).fundedUnits).toBe(0);
   });
 });
 
@@ -492,7 +492,7 @@ describe('G: admin powers and audit', () => {
     await runSettlement(t.deps);
     const a = await t.admin();
     expect((await t.req('GET', '/admin/payouts', a.token)).body.items).toHaveLength(1);
-    const actions = (t.db.prepare(`SELECT action FROM audit WHERE action LIKE 'escrow.%' ORDER BY created_at, rowid`).all() as { action: string }[]).map((r) => r.action);
+    const actions = (await t.deps.repo.core.listAudit()).map((r) => r.action).filter((x) => x.startsWith('escrow.'));
     expect(actions).toEqual(expect.arrayContaining(['escrow.funding_confirmed', 'escrow.payout_authorized', 'escrow.payout_settled']));
   });
 });
@@ -529,7 +529,7 @@ describe('I: ledger invariant under random operation sequences', () => {
         t.clock.now += 6 * 60_000;
         await runSettlement(t.deps);
       }
-      const bk = books(study.id);
+      const bk = await books(study.id);
       expect(bk.ok, `step ${step}: ${JSON.stringify(bk)}`).toBe(true);
     }
     t.sim.payoutFault = null;
@@ -541,7 +541,7 @@ describe('I: ledger invariant under random operation sequences', () => {
       t.clock.now += 6 * 60_000;
       await runSettlement(t.deps);
     }
-    const end = books(study.id);
+    const end = await books(study.id);
     expect(end).toMatchObject({ availableUnits: 0, heldUnits: 0, payableUnits: 0, pendingRefundUnits: 0, ok: true });
     expect(end.settledUnits + end.feesUnits + end.refundedUnits).toBe(end.fundedUnits);
   });
@@ -555,6 +555,6 @@ describe('I: ledger invariant under random operation sequences', () => {
     const { pid } = await submitted(big.study.id);
     await t.req('POST', `/participations/${pid}/approve`, big.b.token, {});
     await runSettlement(t.deps);
-    expect(books(big.study.id)).toMatchObject({ settledUnits: 100_000 * USDC, ok: true });
+    expect(await books(big.study.id)).toMatchObject({ settledUnits: 100_000 * USDC, ok: true });
   });
 });

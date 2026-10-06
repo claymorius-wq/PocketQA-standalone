@@ -37,7 +37,9 @@ describe('crash-after-commit retries, escrow domain (P2-F)', () => {
     expect((await t.req('POST', `/studies/${study.id}/escrow/fundings`, b.token, undefined, key('fund-key-0001'))).status).toBe(500);
     const retry = await t.req('POST', `/studies/${study.id}/escrow/fundings`, b.token, undefined, key('fund-key-0001'));
     expect(retry.status).toBe(200);
-    const rows = t.db.prepare('SELECT id FROM escrow_fundings WHERE study_id = ?').all(study.id) as { id: string }[];
+    const rows = t.db
+      ? (t.db.prepare('SELECT id FROM escrow_fundings WHERE study_id = ?').all(study.id) as { id: string }[])
+      : (await t.fs!.collection('escrowFundings').where('study_id', '==', study.id).get()).docs.map((d) => ({ id: d.id }));
     expect(rows.map((r) => r.id)).toEqual([retry.body.id]);
   });
 
@@ -52,7 +54,7 @@ describe('crash-after-commit retries, escrow domain (P2-F)', () => {
     expect((await t.req('POST', '/devnet/transfers', s.builder.token, { participationId: s.participationId }, key('xfer-key-0001'))).status).toBe(500);
     const retry = await t.req('POST', '/devnet/transfers', s.builder.token, { participationId: s.participationId }, key('xfer-key-0001'));
     expect(retry.status).toBe(200);
-    const rows = t.db.prepare('SELECT id FROM devnet_transfers WHERE participation_id = ?').all(s.participationId) as { id: string }[];
+    const rows = await t.deps.repo.escrow.transfersOf(s.participationId);
     expect(rows.map((r) => r.id)).toEqual([retry.body.id]);
     // Without the key, a second request is a new request: refused while one is open.
     expect((await t.req('POST', '/devnet/transfers', s.builder.token, { participationId: s.participationId })).status).toBe(409);
@@ -75,8 +77,8 @@ describe('crash-after-commit retries, escrow domain (P2-F)', () => {
     const body = { reason: 'Duplicate clip from another tester.' };
     expect((await t.req('POST', `/admin/participations/${p}/fraud`, a.token, body, key('fraud-key-001'))).status).toBe(500);
     expect((await t.req('POST', `/admin/participations/${p}/fraud`, a.token, body, key('fraud-key-001'))).status).toBe(409);
-    const kinds = (t.db.prepare('SELECT kind FROM points_events WHERE participation_id = ?').all(p) as { kind: string }[]).map((r) => r.kind).sort();
+    const kinds = (await t.deps.repo.escrow.exportUser(u.id, t.clock.now)).reputation.events.filter((e) => e.participationId === p).map((e) => e.kind).sort();
     expect(kinds).toEqual(['accepted', 'helpful', 'reversal', 'reversal']);
-    expect((t.db.prepare(`SELECT COUNT(*) AS n FROM audit WHERE action = 'reputation.fraud_upheld'`).get() as { n: number }).n).toBe(1);
+    expect((await t.deps.repo.core.listAudit()).filter((x) => x.action === 'reputation.fraud_upheld')).toHaveLength(1);
   });
 });

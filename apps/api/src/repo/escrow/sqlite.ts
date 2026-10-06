@@ -382,6 +382,10 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       db.prepare(`UPDATE sim_chain_transfers SET status = 'finalized' WHERE signature = ? AND status = 'processing'`).run(signature);
     },
 
+    async simTransfersOfKind(kind) {
+      return db.prepare('SELECT * FROM sim_chain_transfers WHERE kind = ?').all(kind) as SimTransferRow[];
+    },
+
     async simFundingSignature(reference) {
       return (db.prepare(`SELECT signature FROM sim_chain_transfers WHERE reference = ? AND kind = 'funding'`).get(reference) as { signature: string } | undefined)?.signature ?? null;
     },

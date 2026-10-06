@@ -15,8 +15,7 @@ import { SettlementFailure, type SettlementProvider } from './types';
  * `crashAfterSubmit`) exercise the worker's retry and reconciliation paths.
  *
  * Storage goes through the escrow repository (sim chain transfers, plus the `simIdempotency`
- * guard on Firestore), so hosted deployments can run it. Built over a SQLite `db` it also offers
- * the synchronous test helpers (`recordTransfer`, `payoutCount`, `payoutsTo`, `refundsTo`).
+ * guard on Firestore), so hosted deployments can run it; a SQLite `db` is accepted too.
  */
 export const SIM_NETWORK = 'simulated';
 export const SIM_MINT = 'SIM-USDC';
@@ -49,20 +48,12 @@ export class SimulatedSettlement implements SettlementProvider {
   crashAfterSubmit = false;
 
   private readonly chain: EscrowRepo;
-  /** Only when built over SQLite: backs the synchronous test helpers. */
-  private readonly db: DB | null;
 
   constructor(
     source: DB | Pick<Repos, 'escrow'>,
     private readonly now: () => number,
   ) {
-    if ('prepare' in source) {
-      this.db = source;
-      this.chain = sqliteEscrowRepo(source);
-    } else {
-      this.db = null;
-      this.chain = source.escrow;
-    }
+    this.chain = 'prepare' in source ? sqliteEscrowRepo(source) : source.escrow;
   }
 
   vaultFor(studyId: string) {
@@ -127,32 +118,24 @@ export class SimulatedSettlement implements SettlementProvider {
     return r ? r.status : 'not_found';
   }
 
-  // ── Synchronous test and evidence helpers (SQLite only) ──────────────────────────────────
+  // ── Test and evidence helpers (either backend) ─────────────────────────────────────────
 
-  private sqlite(): DB {
-    if (!this.db) throw new Error('SimulatedSettlement: synchronous test helpers need the SQLite backend.');
-    return this.db;
+  /** Records a simulated transfer as a wallet would have sent it (tests); returns its signature. */
+  recordTransfer(t: SimInput, kind: SimTransferRow['kind'] = 'other', key: string | null = null): Promise<string> {
+    return this.sendTransfer(t, kind, key);
   }
 
-  /** Records a simulated transfer synchronously (tests); returns its signature. */
-  recordTransfer(t: SimInput, kind: SimTransferRow['kind'] = 'other', key: string | null = null): string {
-    const r = this.row(t, kind, key);
-    this.sqlite()
-      .prepare(
-        `INSERT INTO sim_chain_transfers (signature, network, mint, source, destination, amount_units, reference, kind, status, idempotency_key, block_time_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      )
-      .run(r.signature, r.network, r.mint, r.source, r.destination, r.amount_units, r.reference, r.kind, r.status, r.idempotency_key, r.block_time_ms);
-    return r.signature;
+  /** Payout transfers sent (`landed`: finalized only). */
+  async payoutCount(opts: { landed?: boolean } = {}) {
+    return (await this.chain.simTransfersOfKind('payout')).filter((x) => !opts.landed || x.status === 'finalized').length;
   }
-
-  /** Landed transfers by kind and destination. */
-  payoutCount(opts: { landed?: boolean } = {}) {
-    return (this.sqlite().prepare(`SELECT COUNT(*) AS n FROM sim_chain_transfers WHERE kind = 'payout'${opts.landed ? ` AND status = 'finalized'` : ''}`).get() as { n: number }).n;
+  private async landedTo(kind: 'payout' | 'refund', destination: string) {
+    return (await this.chain.simTransfersOfKind(kind)).filter((x) => x.status === 'finalized' && x.destination === destination).reduce((s, x) => s + x.amount_units, 0);
   }
   payoutsTo(destination: string) {
-    return (this.sqlite().prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM sim_chain_transfers WHERE kind = 'payout' AND status = 'finalized' AND destination = ?`).get(destination) as { s: number }).s;
+    return this.landedTo('payout', destination);
   }
   refundsTo(destination: string) {
-    return (this.sqlite().prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM sim_chain_transfers WHERE kind = 'refund' AND status = 'finalized' AND destination = ?`).get(destination) as { s: number }).s;
+    return this.landedTo('refund', destination);
   }
 }

@@ -842,6 +842,10 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
       });
     },
 
+    async simTransfersOfKind(kind) {
+      return all<SimTransferRow>((await fs.collection(C.simChainTransfers).where('kind', '==', kind).get()).docs);
+    },
+
     async simFundingSignature(reference) {
       return all<SimTransferRow>((await fs.collection(C.simChainTransfers).where('reference', '==', reference).get()).docs).find((x) => x.kind === 'funding')?.signature ?? null;
     },
