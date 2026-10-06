@@ -61,6 +61,8 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
     },
     async setStatusAudited(userId, status, row) {
       db.transaction(() => {
+        // Retried with the same (deterministic) audit id: already applied, nothing to do.
+        if (db.prepare('SELECT 1 FROM audit WHERE id = ?').get(row.id)) return;
         db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, userId);
         db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
           row.id,

@@ -1,6 +1,6 @@
 import { assertCleanCopy, stuckReason } from '@pocket-qa/domain';
 import { me, type Handler } from '../context';
-import { fail, iso, newId, notFound } from '../util';
+import { fail, iso, notFound } from '../util';
 import { auditView, disputeView, participationViewOf, studyViewOf } from '../views';
 
 // Admin routes, through the repositories (docs/plans/firebase-vercel-refactor.md §2): the study,
@@ -34,7 +34,8 @@ export const adminHandlers = {
     if (!target || target.status === 'deleted') throw notFound('User');
     if (target.id === me(ctx).id) throw fail('CONFLICT_STATE', 'Admins cannot moderate themselves.');
     await core.setStatusAudited(target.id, ctx.body.action === 'suspend' ? 'suspended' : 'active', {
-      id: newId(),
+      // Deterministic under an Idempotency-Key, so a retried moderation can't add a second audit row.
+      id: ctx.idemId('audit'),
       actor_id: me(ctx).id,
       action: `user.${ctx.body.action}`,
       target_type: 'user',

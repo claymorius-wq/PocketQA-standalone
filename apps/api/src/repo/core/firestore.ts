@@ -98,6 +98,8 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
     },
     async setStatusAudited(userId, status, row) {
       await runTxCtx(fs, async (t) => {
+        // Retried with the same (deterministic) audit id: already applied, nothing to do.
+        if ((await t.get(audit.doc(row.id))).exists) return;
         t.update(users.doc(userId), { status });
         auditInTx(t, fs, row);
       });

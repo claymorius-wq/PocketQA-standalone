@@ -33,7 +33,7 @@ export interface CoreRepo {
   createUserWithIdentity(row: UserRow, uid: string, createdAt: string): Promise<'created' | 'email_taken' | 'identity_taken'>;
   setDevice(userId: string, deviceJson: string): Promise<void>;
   setStatus(userId: string, status: 'active' | 'suspended'): Promise<void>;
-  /** An admin moderation: the status change and its audit row commit together (plan T6). */
+  /** An admin moderation: the status change and its audit row commit together (plan T6); idempotent by audit id. */
   setStatusAudited(userId: string, status: 'active' | 'suspended', audit: AuditRow): Promise<void>;
   setRole(userId: string, role: 'admin'): Promise<void>;
 

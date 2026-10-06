@@ -208,3 +208,13 @@ describe('pqa-qa early review r1', () => {
     for (const d of committed.docs) expect(d.data().at.toMillis()).toBeLessThanOrEqual(takenAt);
   });
 });
+
+describe('P2-F: a retried moderation with the same audit id applies once', () => {
+  it('second call with the same audit id is a no-op', async () => {
+    await repo.createUser(user('q', 'q@example.test'));
+    const row = { id: 'i-fixed-audit', actor_id: 'admin', action: 'user.suspend', target_type: 'user' as const, target_id: 'q', reason: 'spam', created_at: '2026-10-06T00:00:00.000Z' };
+    await repo.setStatusAudited('q', 'suspended', row);
+    await repo.setStatusAudited('q', 'suspended', row);
+    expect((await repo.listAudit()).filter((r) => r.id === 'i-fixed-audit')).toHaveLength(1);
+  });
+});
