@@ -22,6 +22,19 @@ async function ownFunding(ctx: Ctx): Promise<FundingRow> {
   return f;
 }
 
+/**
+ * CH-D1 (pqa-be2 E-25): the shared (Firestore) rate limiter on every devnet send route, per user and
+ * route, checked FIRST: before any chain read or signature. Devnet only: other deployments keep
+ * their behaviour.
+ */
+export const DEVNET_ROUTE_LIMIT = { windowMs: 60_000, max: 20 };
+async function devnetLimit(ctx: Ctx, route: string) {
+  if (!isDevnetSettlement(ctx.deps.settlement)) return;
+  if (!(await ctx.deps.repo.core.rateLimitHit(`devnet:${route}:${me(ctx).id}`, DEVNET_ROUTE_LIMIT.windowMs, DEVNET_ROUTE_LIMIT.max, ctx.deps.now()))) {
+    throw fail('RATE_LIMITED', 'Too many devnet requests. Try again in a minute.');
+  }
+}
+
 /** The devnet provider (POCKETQA_ENV=devnet), else the honest refusal. Checked after ownership. */
 function devnet(ctx: Ctx) {
   const p = ctx.deps.settlement;
@@ -57,6 +70,7 @@ export const escrowHandlers = {
    * the client. An open request is reused rather than duplicated.
    */
   createEscrowFunding: async (ctx) => {
+    await devnetLimit(ctx, 'createEscrowFunding');
     const p = provider(ctx);
     const repo = ctx.deps.repo.escrow;
     // The escrow must exist on the network before anyone can fund it (Squads pilot: the study's
@@ -109,6 +123,7 @@ export const escrowHandlers = {
   },
 
   submitFundingSignature: async (ctx) => {
+    await devnetLimit(ctx, 'submitFundingSignature');
     const p = provider(ctx);
     const f = await ownFunding(ctx);
     if (f.status === 'confirmed') throw fail('CONFLICT_STATE', 'This study is already funded.');
@@ -121,18 +136,21 @@ export const escrowHandlers = {
 
   /** CH-D3: the server builds the builder-signed funding transfer from its own state. */
   escrowFundingTransaction: async (ctx) => {
+    await devnetLimit(ctx, 'escrowFundingTransaction');
     const f = await ownFunding(ctx);
     return devnet(ctx).fundingTransaction(f, await builderWallet(ctx));
   },
 
   /** The cosigner vote for one payment, bound to its Squads index and op id (CH-D3). */
   settlementApproval: async (ctx) => {
+    await devnetLimit(ctx, 'settlementApproval');
     const s = await ownSettlement(ctx);
     return devnet(ctx).approval(s, await builderWallet(ctx));
   },
 
   /** The wallet broadcast the vote: the server checks it ON CHAIN before the platform signer completes the 2-of-3. */
   submitSettlementApproval: async (ctx) => {
+    await devnetLimit(ctx, 'submitSettlementApproval');
     const s = await ownSettlement(ctx);
     return devnet(ctx).submitApproval(s, ctx.body, await builderWallet(ctx));
   },
