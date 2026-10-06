@@ -142,9 +142,12 @@ Each SQLite transaction becomes **one Firestore transaction**:
 - Local password hashes are **not** migrated to the cloud.
 
 ## 8. Migration (non-destructive, rehearsed)
-1. **Snapshot:** SQLite **online backup** of the source (read-only on the source; the live local API keeps running) into a new file outside the repo.
-   - Source: `scratchpad/nv-api-data/pocketqa.sqlite`, the WAL-mode database used by the USB test API.
-   - The migration reads **only the snapshot**.
+1. **Durable snapshot (done 2026-10-06, pqa-qa plan r1 P1-1):** a SQLite **online backup** from a read-only connection; the live local API kept running.
+   - Location: `~/.local/share/pocketqa/backups/20261006T000054Z/` (0700; outside the repo and every session scratchpad; files 0600).
+   - `pocketqa.sqlite` sha256 `3501bc9e96436b10b58ba843509ff670dff08354ca61bfdf698429fbede610e3`; `integrity_check` = ok; 31 tables (`manifest.json` holds the per-table counts: 77 users, 39 studies, 30 participations, 11 evidence, 154 ledger rows).
+   - The Seeker evidence row `4aef8a84…` is present (screen_recording, video/mp4, 27,178,114 bytes).
+   - `media/` copied (not moved; 11 files, `media.sha256`). The Seeker file's sha256 equals the R2 receipt (`3ee5d78c…a73`).
+   - The migration reads **only copies of this snapshot**: never the live database (`scratchpad/nv-api-data`, WAL, still serving USB testing), and never this backup in place.
 2. **Dry run** against the **emulator**:
    - deterministic doc ids, so it's idempotent;
    - writes a manifest with per-table counts, per-collection counts, relation checks (every reference resolves), ledger reconciliation (sum per account = account total), and checksums of the migrated fields.
@@ -164,7 +167,7 @@ Each SQLite transaction becomes **one Firestore transaction**:
 ## 9. Environments and secrets
 | Where | Variables (names only) |
 |---|---|
-| Vercel **server-only** (Production) | `POCKETQA_ENV=production`, `POCKETQA_AUTH_MODE=firebase`, `POCKETQA_FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON` (secret), `POCKETQA_STORAGE=r2`, `POCKETQA_R2_ACCOUNT_ID`, `POCKETQA_R2_BUCKET`, `POCKETQA_R2_ACCESS_KEY_ID` (secret), `POCKETQA_R2_SECRET_ACCESS_KEY` (secret), `POCKETQA_R2_ALLOW_DELETE=0`, `POCKETQA_PUBLIC_ORIGIN`, `CRON_SECRET` (secret), `POCKETQA_DATA_BACKEND=firestore` |
+| Vercel **server-only** (Production) | `POCKETQA_ENV=production`, `POCKETQA_AUTH_MODE=firebase`, `POCKETQA_FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON` (secret), `POCKETQA_STORAGE=r2`, `POCKETQA_R2_ACCOUNT_ID`, `POCKETQA_R2_BUCKET`, `POCKETQA_R2_ACCESS_KEY_ID` (secret), `POCKETQA_R2_SECRET_ACCESS_KEY` (secret), `POCKETQA_R2_ALLOW_DELETE=1` (literal A5, already approved; see r2 §R4), `POCKETQA_PUBLIC_ORIGIN`, `CRON_SECRET` (secret), `POCKETQA_DATA_BACKEND=firestore` |
 | Vercel **build-time public** | `EXPO_PUBLIC_POCKETQA_ENV=production`, `EXPO_PUBLIC_API_URL=/api` (web), `EXPO_PUBLIC_FIREBASE_*` web config (public by design: API key, auth domain, project id). **No secrets.** A bundle scan in CI and before deploy fails on any server variable name or key pattern. |
 | Emulator (tests) | `FIRESTORE_EMULATOR_HOST`, `FIREBASE_AUTH_EMULATOR_HOST`, project `demo-pocketqa` |
 | Local / USB | unchanged: SQLite, local auth, local storage |
@@ -214,3 +217,94 @@ Each SQLite transaction becomes **one Firestore transaction**:
 1. **Firebase CLI login expired.** Hamza runs `firebase login --reauth`, or creates the Firestore database in the console (Native mode, Standard edition, location of his choice; `eur3` proposed).
 2. **The open P1 on `pocketqa-optijara`:** the Identity Platform subtype and unverified billing. Hamza must confirm in the console that billing is unchanged, or accept it. No billing upgrade will be made.
 3. **Vercel plan:** Hobby is non-commercial and has daily cron. Hamza decides whether a Pro plan is needed (billing, so it needs approval). Until then, deploy to Hobby with daily cron plus the lazy job slices.
+
+
+---
+## Revision r2: pqa-qa plan review r1 (`qa-plan-review-r1.md`, CHANGES_REQUIRED)
+
+### R1 (P1-1): durable migration source
+Done. See §8.1. The R2 media was already safe; the rows are now durable too.
+
+### R2 (P2-1): every SQLite UNIQUE → guard → race test
+Partial semantics are kept exactly: a guard document is created **only when the SQLite WHERE clause would hold**. For example, an escrow ledger row with `amount > 0`, or a points award of kind `accepted` or `helpful`. The 31 UNIQUE constraints in the current `db.ts`:
+
+| # | SQLite constraint | Partial condition | Firestore guard doc (created with `tx.create`) | Race test (≥ 20-way on the emulator) |
+|---|---|---|---|---|
+| 1 | users.email UNIQUE | — | `userEmails/{sha256(lower(email))}` | 20 sign-ups, same email |
+| 2 | participations UNIQUE(study_id, tester_id) | — | doc id `participations/{study}_{tester}` | 20 joins, same tester |
+| 3 | (slots) | `slotsUsed < slots` | counter on `studies/{id}` in the join tx | 20 testers for the last slot |
+| 4 | evidence UNIQUE(participation_id, client_segment_id) | — | `evidenceSegments/{pid}:{seg}` | 20 completes, same segment |
+| 5 | upload_intents.object_key UNIQUE | — | doc id derived from the object key (`uploadIntents/{sha256(key)}`) | key collision test |
+| 6 | upload_intents_one_open_segment (pid, client_segment_id) | — | `openSegments/{pid}:{seg}` | 20 intents, same segment |
+| 7 | disputes.participation_id UNIQUE | — | doc id `disputes/{pid}` | 20 opens |
+| 8 | ledger_one_reward (participation_id, kind) | — | `ledgerRewards/{pid}:{kind}` | 20 approves |
+| 9 | identities PK(provider, subject) | — | doc id `identities/{provider}:{subject}` | 20 first sign-ins, same uid |
+| 10 | identities_user_provider (user_id, provider) | — | `userProviders/{userId}:{provider}` | 20 links of different uids to one user |
+| 11 | task_notes PK(participation_id, task_id) | — | doc id `participations/{pid}/notes/{taskId}` | last write wins (same as SQLite upsert) |
+| 12 | wallet_links.user_id PK | — | doc id `walletLinks/{userId}` | 20 links, one user |
+| 13 | wallet_links.address UNIQUE | — | `walletAddresses/{address}` | 20 users, one address |
+| 14 | devnet_transfers.signature UNIQUE | signature not null | `transferSignatures/{sig}` | 20 confirms, same signature |
+| 15 | one_open_transfer (participation_id) | (index has no WHERE: one row per participation) | doc id `devnetTransfers/{pid}` … same semantics as SQLite | 20 creates |
+| 16 | study_escrows.vault UNIQUE | — | `escrowVaults/{vault}` | 20 studies, one vault |
+| 17 | study_escrows_v7.vault UNIQUE | — | `escrowVaults/{vault}` (shared with #16: one vault across both versions, which is stricter than today; noted) | as #16 |
+| 18 | escrow_fundings.reference UNIQUE | — | `fundingRefs/{reference}` | 20 creates, same reference |
+| 19 | escrow_fundings.signature UNIQUE | signature not null | `fundingSignatures/{sig}` | 20 confirms, same signature |
+| 20 | escrow_one_confirmed_funding (study_id) | status = 'confirmed' | `escrowGuards/confirmedFunding:{study}` (created only on confirm) | 20 confirms of different fundings |
+| 21 | escrow_one_funding (ref) | kind = 'funding' AND amount > 0 | `escrowGuards/funding:{ref}` | 20 |
+| 22 | escrow_one_authorization (participation_id) | kind = 'payout_authorized' AND amount > 0 | `escrowGuards/payoutAuthorized:{pid}` | 20 |
+| 23 | escrow_one_settlement (participation_id) | kind = 'payout_settled' AND amount > 0 | `escrowGuards/payoutSettled:{pid}` | 20 |
+| 24 | escrow_one_refund (study_id) | kind = 'refund_authorized' AND amount > 0 | `escrowGuards/refundAuthorized:{study}` | 20 |
+| 25 | escrow_one_refund_settled (study_id) | kind = 'refund_settled' AND amount > 0 | `escrowGuards/refundSettled:{study}` | 20 |
+| 26 | settlements_one_payout (participation_id) | kind = 'payout' | `settlementGuards/payout:{pid}` | 20 |
+| 27 | settlements_one_refund (study_id) | kind = 'refund' | `settlementGuards/refund:{study}` | 20 |
+| 28 | settlements.signature UNIQUE | signature not null | `settlementSignatures/{sig}` | 20 |
+| 29 | sim_chain_transfers.idempotency_key UNIQUE | key not null | `simIdempotency/{key}` | 20 |
+| 30 | points_one_award (participation_id, kind) | kind IN ('accepted','helpful') | `pointsAwards/{pid}:{kind}` (only for those kinds) | 20 |
+| 31 | points_events.reverses_id UNIQUE | not null | `pointsReversals/{reversedId}` | 20 |
+| 32 | leaderboard_alias (lower(alias)) | — | `leaderboardAliases/{lower(alias)}`, released in the same tx on a rename or opt-out | 20 claims of one alias |
+| 33 | squads_attempts UNIQUE(multisig, tx_index) | — | `squadsTx/{multisig}:{txIndex}` | 20 |
+
+A static test parses `db.ts` and fails if a UNIQUE constraint has no row in this table, so a new constraint can't slip through.
+
+### R3 (P2-2): idempotency
+- **Scope:** `idempotency/{uid}:{routeId}:{key}`.
+- **Fingerprint:** the request body is canonicalised (sorted keys) and hashed with sha256. The same key with a different fingerprint returns **422 `IDEMPOTENCY_KEY_REUSED`**.
+- **TTL:** 24 h. Expired records are swept; the TTL is checked on read, so expiry never relies on the sweep.
+- **Semantics:**
+  - The record is written in the same transaction as the effect.
+  - A retry within the TTL returns the stored status and body.
+  - Routes whose effect is partly outside a tx (upload intent: presign after the tx; complete: HEAD before the tx; settlement: chain or sim send after the tx) store the **tx outcome**. Their outside step must itself be idempotent:
+    - presign is pure;
+    - HEAD is read-only;
+    - sim sends are keyed by `simIdempotency`.
+- **Tests:** same key and body gives one effect; same key with a different body gives 422; another user with the same key gives a separate scope; a retry after expiry creates a new effect.
+
+### R4 (P2-4): R2 deletes
+- Production sets `POCKETQA_R2_ALLOW_DELETE=1` (literal A5, approved), as `config.ts` requires (it refuses r2 without ALLOW_DELETE=1 or RETAIN_NONPROD=1). The T7 deletion worker is otherwise inert.
+- **Protection:** the deletion worker deletes **only** keys under the app-created prefix `evidence/` that are recorded in `storageObjects`. Anything else, in particular `retained-local-submissions/**` (the Seeker archive), is refused and audited.
+- **Tests:** a refusal outside the prefix; the Seeker key refused.
+
+### R5 (P2-3): jobs on Hobby
+- Vercel cuts post-response work, so lazy slices run either **inline** (before responding; bounded to ≤ 10 items or 300 ms) or through `waitUntil` from `@vercel/functions` (bounded by `maxDuration`).
+- **Worst case under daily Hobby cron:**
+  - upload-intent expiry is **enforced on read**: an expired intent can't complete, whatever the sweep;
+  - the deletion outbox: ≤ 24 h + 59 min if no request triggers a slice, otherwise the next relevant request;
+  - simulated settlement: the next relevant request (approve or status poll) or the daily run.
+- **Test:** with no cron, a request performs the bounded slice. An expired intent is refused before any sweep.
+
+### R6 (P2-5): rate limiting
+- `rateLimit.ts`'s per-instance Map is replaced in firestore mode by a **Firestore fixed-window counter** `rateLimits/{bucket}:{window}`, incremented in a tx, with a TTL field.
+- Hot keys (wallet-login challenge per IP or address) are low-volume.
+- **Test:** two app instances on the same emulator share the limit.
+
+### R7 (P2-6): indexes
+- `firestore.indexes.json` is committed.
+- A **static query-to-index coverage test** enumerates every repository query (collection, filters, orderBy) and checks a matching composite index exists, because the emulator doesn't enforce them.
+- A hosted smoke calls every list endpoint after `firebase deploy --only firestore:indexes`.
+
+### R8 (P3)
+- **Hot spots:** account totals are only per user, plus one platform escrow account; volume is test-scale. If needed later, the platform account gets sharded counters (noted, not built).
+- **Identity link:** `email_verified` must be true **and** the sign-in provider must be password or Google (not anonymous or custom). Every link is audited.
+- **Backup/PITR:** hosted Firestore has no backup configured (PITR or scheduled backups may need billing): an accepted risk until Hamza decides. The migration manifest plus the local snapshot are the recovery basis.
+- **CRON_SECRET:** compared in constant time (`timingSafeEqual`). The manual job route is admin-only and is in the authorisation matrix.
+- **Hobby:** non-commercial use; this is Hamza's decision (§12.3).
