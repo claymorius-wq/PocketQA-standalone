@@ -75,7 +75,8 @@
       "/e2e/",
       "/e2e-firebase/",
       "/e2e-live/",
-      "/e2e-hosted/"
+      "/e2e-hosted/",
+      "/e2e-devnet/"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|lucide-react-native|@noble/.*|@scure/.*|@pocket-qa/.*))"
