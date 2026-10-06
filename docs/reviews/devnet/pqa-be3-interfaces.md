@@ -234,3 +234,22 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
 
   A vote's bytes prove nothing about the amount or recipient, so the server never relies on them. Tests in `devnet.adapter.test.ts` tamper the amount, the recipient or the mint, both before the proposal and after the builder's vote. Each time the payment is refused and the platform signs nothing more: no proposal, no vote, no execute.
 - **(C) A non-devnet cluster fails closed at startup:** `buildHostedApp` runs `startupCheck()`. A mainnet genesis (for example from a mainnet RPC URL, which config accepts) or a wrong mint account means the app is never built and nothing is signed. Tested.
+
+## 12. The RPC devnet chain (pqa-qa N-1)
+- **The class:** `src/settlement/squads/rpcDevnetChain.ts`, `RpcDevnetChain implements DevnetChain`.
+- **One key:**
+  - `roles.platform` is the loaded signer's public key, and only that key ever signs, plus each study's derived create key for its one `multisig_create`.
+  - There is no builder or arbiter key; their votes are wallet-signed transactions this class only builds, unsigned.
+- **One `Connection`** to the configured devnet RPC, for the genesis, blockhashes, reads and sends. Reads are at `finalized`.
+- **Signing:** `prepare` re-checks the genesis, then signs **without sending**.
+- **Sending:** `broadcast` sends the exact bytes without waiting. A rejected send becomes `SettlementPending`, and the next run reads the signature's status.
+- **Production wiring:** `productionConnectors.devnetChain` loads the signer and runs `assertPlatformSigner` against the pin and every role, then builds `RpcDevnetChain.connect(config.rpcUrl, signer, arbiter)`.
+- **Tests, `test/devnet-rpc-chain.test.ts`** (a stub `Connection`, no network):
+  - the platform is the fee payer, the only required signature, and ed25519-verified as the checked key;
+  - the platform vote names the platform as member;
+  - a mainnet genesis means nothing is built;
+  - `broadcast` sends the exact bytes;
+  - the funding transfer's fifth account is the read-only, non-signer reference;
+  - the cosigner vote is unsigned, with the member as fee payer;
+  - create keys are per study and never the platform key;
+  - the production connector's chain uses the pinned key, and a mismatched key yields no chain.

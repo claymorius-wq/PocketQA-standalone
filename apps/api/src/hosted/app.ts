@@ -16,6 +16,7 @@ import type { IdentityProvider } from '../identity/types';
 import { devnetSettlement, DevnetSquadsSettlement } from '../settlement/squads/devnet';
 import { assertPlatformSigner, loadPlatformSigner } from '../settlement/squads/devnetSigner';
 import { DEFAULT_DEVNET_LIMITS, type DevnetChain } from '../settlement/squads/devnetTypes';
+import { RpcDevnetChain } from '../settlement/squads/rpcDevnetChain';
 import { sweepStorage } from '../storage/sweep';
 
 /**
@@ -85,10 +86,11 @@ export const productionConnectors: HostedConnectors = {
   identity: (config) => firebaseIdentity(config.firebase!),
   r2: (config) => config.r2!,
   devnetChain: (config, env) => {
-    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1).
+    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1); the
+    // chain signs with exactly this key (its roles.platform is this key's public key).
     const signer = loadPlatformSigner(env);
     assertPlatformSigner(signer, config.devnet!);
-    throw new ConfigError('The devnet RPC chain is not wired yet (next commit): refusing to start POCKETQA_ENV=devnet.');
+    return RpcDevnetChain.connect(config.rpcUrl, signer, config.devnet!.arbiter);
   },
   now: Date.now,
 };
