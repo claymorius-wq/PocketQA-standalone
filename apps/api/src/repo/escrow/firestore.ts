@@ -895,7 +895,9 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
     async exportUser(userId, nowMs) {
       // Payments: the user's received payouts, and the fundings, refunds and payouts of their studies.
       const ownEscrows = all<StudyEscrowDoc>((await fs.collection(C.studyEscrows).where('builder_id', '==', userId).get()).docs);
-      const received = (await this.payoutsOfTester(userId)).sort(byCreatedAsc);
+      const received = all<SettlementRow>((await fs.collection(C.settlements).where('tester_id', '==', userId).get()).docs)
+        .filter((x) => x.kind === 'payout')
+        .sort(byCreatedAsc);
       const escrows = new Map<string, StudyEscrowDoc>(ownEscrows.map((e) => [e.study_id, e]));
       for (const sid of new Set(received.map((x) => x.study_id))) if (!escrows.has(sid)) { const e = await escrowDoc(sid); if (e) escrows.set(sid, e); }
       const studyRows = new Map<string, StudyRow>();
