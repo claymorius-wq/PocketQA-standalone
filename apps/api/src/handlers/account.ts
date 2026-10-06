@@ -66,8 +66,9 @@ export const accountHandlers = {
   },
 
   /**
-   * First sign-in with a managed identity. Returns the mapped account, or creates one only
-   * when asked with a self-serve role. Never merges with an existing account by email.
+   * First sign-in with a managed identity. Returns the mapped account, claims a migrated account
+   * by its verified email (plan §7a), or creates one only when asked with a self-serve role. Never
+   * merges with any other existing account by email.
    */
   identitySession: async (ctx) => {
     const id = ctx.identity!;
@@ -81,8 +82,14 @@ export const accountHandlers = {
     // Every provider must prove the email, so nobody can claim someone else's address.
     if (!id.emailVerified) throw fail('EMAIL_UNVERIFIED', 'Verify your email address, then sign in again.');
     if (!RECOVERABLE_PROVIDERS.has(id.signInProvider)) throw fail('PROVIDER_UNSUPPORTED', 'This sign-in method is not supported. Use email or Google.');
-    if (!ctx.body.newAccount) throw fail('NOT_FOUND', 'No Pocket QA account uses this sign-in yet.');
     const email = Email.safeParse(id.email ?? '');
+    // Plan §7(a): an account migrated from the local build is claimed once by its own verified
+    // email. Every other existing account is still never merged by email (below).
+    if (email.success) {
+      const linked = await core.linkMigratedIdentity(email.data, id.uid, { id: newId(), createdAt: iso(ctx.deps.now()) });
+      if (linked) return { user: await userViewOf(ctx.deps.repo, linked) };
+    }
+    if (!ctx.body.newAccount) throw fail('NOT_FOUND', 'No Pocket QA account uses this sign-in yet.');
     if (!email.success) throw fail('VALIDATION', 'This sign-in has no usable email address.');
     const existsMsg = 'An account with this email already exists. Accounts are never merged automatically.';
     if (await core.emailTaken(email.data)) throw fail('CONFLICT_STATE', existsMsg);

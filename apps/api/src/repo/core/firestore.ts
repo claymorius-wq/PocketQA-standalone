@@ -90,6 +90,31 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
         return 'created' as const;
       });
     },
+    async linkMigratedIdentity(email, uid, audit) {
+      return runTxCtx(fs, async (t) => {
+        if ((await t.get(identityRef(uid))).exists) return null;
+        const g = await t.get(emails.doc(emailKey(email)));
+        if (!g.exists) return null;
+        const userId = g.data()!.userId as string;
+        const [uSnap, pSnap] = await t.getAll(users.doc(userId), providers.doc(`${userId}:firebase`));
+        const u = uSnap?.exists ? (uSnap.data() as UserRow & { migrated_link?: string }) : null;
+        if (!u || u.email !== email || u.status === 'deleted' || u.migrated_link !== 'verified_email' || pSnap?.exists) return null;
+        t.create(providers.doc(`${userId}:firebase`), { uid });
+        t.create(identityRef(uid), { provider: 'firebase', subject: uid, user_id: userId, has_recovery: 1, valid_after_ms: 0, created_at: audit.createdAt });
+        t.update(users.doc(userId), { migrated_link: FieldValue.delete() });
+        auditInTx(t, fs, {
+          id: audit.id,
+          actor_id: userId,
+          action: 'user.identity_linked',
+          target_type: 'user',
+          target_id: userId,
+          reason: '[migrated account claimed by its verified email]',
+          created_at: audit.createdAt,
+        });
+        const { migrated_link: _marker, ...user } = u;
+        return user as UserRow;
+      });
+    },
     async setDevice(userId, deviceJson) {
       await users.doc(userId).update({ device_json: deviceJson });
     },

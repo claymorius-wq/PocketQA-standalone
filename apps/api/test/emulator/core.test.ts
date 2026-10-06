@@ -221,3 +221,29 @@ describe('P2-F: a retried moderation with the same audit id applies once', () =>
     expect((await repo.listAudit()).filter((r) => r.id === 'i-fixed-audit')).toHaveLength(1);
   });
 });
+
+describe('plan §7(a): linkMigratedIdentity', () => {
+  it('20 concurrent claims by different uids: exactly one links, and the rest get null', async () => {
+    await repo.createUser(user('m', 'm@example.test'));
+    await fs.collection('users').doc('m').update({ migrated_link: 'verified_email' });
+    const results = await Promise.all(Array.from({ length: 20 }, (_, i) => repo.linkMigratedIdentity('m@example.test', `uid-${i}`, { id: `link-audit-${i}`, createdAt: '2026-10-06T00:00:00.000Z' }).catch(() => 'conflict' as const)));
+    const linked = results.filter((r) => r && r !== 'conflict');
+    expect(linked).toHaveLength(1);
+    expect(results.every((r) => r === null || r === 'conflict' || (r as { id: string }).id === 'm')).toBe(true);
+    const ids = await fs.collection('identities').where('user_id', '==', 'm').get();
+    expect(ids.size).toBe(1);
+  });
+
+  it('never links an unmarked, deleted or already-linked account', async () => {
+    await repo.createUser(user('n', 'n@example.test'));
+    expect(await repo.linkMigratedIdentity('n@example.test', 'uid-n', { id: 'a-n', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
+    await repo.createUser(user('d', 'd@example.test', { status: 'deleted' }));
+    await fs.collection('users').doc('d').update({ migrated_link: 'verified_email' });
+    expect(await repo.linkMigratedIdentity('d@example.test', 'uid-d', { id: 'a-d', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
+    await repo.createUser(user('l', 'l@example.test'));
+    await fs.collection('users').doc('l').update({ migrated_link: 'verified_email' });
+    expect(await repo.linkMigratedIdentity('l@example.test', 'uid-l1', { id: 'a-l1', createdAt: '2026-10-06T00:00:00.000Z' })).not.toBeNull();
+    expect(await repo.linkMigratedIdentity('l@example.test', 'uid-l2', { id: 'a-l2', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
+  });
+});
+

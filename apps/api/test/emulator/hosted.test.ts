@@ -124,4 +124,53 @@ describe('hosted app on the emulators', () => {
     const { emulatorFirestore } = await import('./fs');
     expect((await emulatorFirestore().collection('idempotency').get()).size).toBe(0);
   });
+
+  it('plan §7(a): a migrated account is claimed once by its verified email; other accounts are never merged', async () => {
+    const { emulatorFirestore } = await import('./fs');
+    const fs = emulatorFirestore();
+    const created = '2026-10-01T00:00:00.000Z';
+    const migrated = { id: 'migrated-tester-1', email: `mig-${Date.now()}@example.test`, password_hash: null, display_name: 'Migrated', role: 'tester' as const, status: 'active' as const, device_json: null, created_at: created };
+    const plain = { ...migrated, id: 'plain-tester-1', email: `plain-${Date.now()}@example.test` };
+    expect(await deps.repo.core.createUser(migrated)).toBe('created');
+    expect(await deps.repo.core.createUser(plain)).toBe('created');
+    await fs.collection('users').doc(migrated.id).update({ migrated_link: 'verified_email' });
+
+    const { getAuth } = await import('firebase-admin/auth');
+    const { getApps } = await import('firebase-admin/app');
+    const auth = getAuth(getApps().find((a) => a.name === `pocketqa-${PROJECT}`)!);
+    const tokenFor = async (email: string, verify: boolean) => {
+      const up = await rest('accounts:signUp', { email, password: 'correct horse battery staple', returnSecureToken: true });
+      if (!verify) return up.idToken!;
+      await auth.updateUser(up.localId!, { emailVerified: true });
+      return (await rest('accounts:signInWithPassword', { email, password: 'correct horse battery staple', returnSecureToken: true })).idToken!;
+    };
+
+    // The plain account: the old rule stands (409, no merge), even with a verified email.
+    const plainToken = await tokenFor(plain.email, true);
+    expect((await call('POST', '/auth/identity/session', plainToken, {})).status).toBe(404);
+    expect((await call('POST', '/auth/identity/session', plainToken, { newAccount: { role: 'tester', displayName: 'X' } })).body.code).toBe('CONFLICT_STATE');
+
+    // The migrated account: claimed with no newAccount; the marker is cleared; audited once.
+    const token = await tokenFor(migrated.email, true);
+    const linked = await call('POST', '/auth/identity/session', token, {});
+    expect(linked.status).toBe(200);
+    expect(linked.body.user.id).toBe(migrated.id);
+    expect((await call('GET', '/me', token)).body.id).toBe(migrated.id);
+    expect((await fs.collection('users').doc(migrated.id).get()).data()!.migrated_link).toBeUndefined();
+    const audit = await fs.collection('audit').where('target_id', '==', migrated.id).get();
+    expect(audit.docs.filter((d) => d.data().action === 'user.identity_linked')).toHaveLength(1);
+  });
+
+  it('plan §7(a): an unverified email never claims a migrated account', async () => {
+    const { emulatorFirestore } = await import('./fs');
+    const fs = emulatorFirestore();
+    const migrated = { id: 'migrated-tester-2', email: `mig2-${Date.now()}@example.test`, password_hash: null, display_name: 'Migrated', role: 'tester' as const, status: 'active' as const, device_json: null, created_at: '2026-10-01T00:00:00.000Z' };
+    await deps.repo.core.createUser(migrated);
+    await fs.collection('users').doc(migrated.id).update({ migrated_link: 'verified_email' });
+    const up = await rest('accounts:signUp', { email: migrated.email, password: 'correct horse battery staple', returnSecureToken: true });
+    const res = await call('POST', '/auth/identity/session', up.idToken!, {});
+    expect(res.body.code).toBe('EMAIL_UNVERIFIED');
+    expect((await fs.collection('users').doc(migrated.id).get()).data()!.migrated_link).toBe('verified_email');
+  });
 });
+

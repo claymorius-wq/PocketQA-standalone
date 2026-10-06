@@ -37,6 +37,14 @@ export interface CoreRepo {
   setStatusAudited(userId: string, status: 'active' | 'suspended', audit: AuditRow): Promise<void>;
   setRole(userId: string, role: 'admin'): Promise<void>;
 
+  /**
+   * Plan §7(a): the first sign-in with a verified email claims a MIGRATED account with that email
+   * (`migrated_link: 'verified_email'`, set only by the migration) that has no sign-in yet. The
+   * identity, the provider guard, clearing the marker and the audit row commit together, so it
+   * happens at most once. Returns the account, or null when nothing is eligible: then the
+   * normal rule applies, and accounts are never merged by email.
+   */
+  linkMigratedIdentity(email: string, uid: string, audit: { id: string; createdAt: string }): Promise<UserRow | null>;
   /** True if any account (even deleted) is mapped to this firebase uid. */
   identityMapped(uid: string): Promise<boolean>;
   /** The live account mapped to this firebase uid, with its server-side revocation time. */

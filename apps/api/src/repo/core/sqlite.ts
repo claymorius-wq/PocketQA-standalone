@@ -78,6 +78,10 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
     async setRole(userId, role) {
       db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
     },
+    // Only the Firestore migration marks accounts for linking (plan §7a); a SQLite deployment has none.
+    async linkMigratedIdentity() {
+      return null;
+    },
     async identityMapped(uid) {
       return !!db.prepare(`SELECT 1 FROM identities WHERE provider = 'firebase' AND subject = ?`).get(uid);
     },
