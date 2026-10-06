@@ -26,7 +26,7 @@
 //    target holds no user the plan doesn't migrate, and no planned document exists with
 //    different content (identical content = an idempotent rerun). The real project is
 //    pocketqa-optijara; `--project demo-…` exists only so tests can run it on the emulator.
-//  - Objects first, documents after: each evidence object is uploaded (upload-copy) or
+//  - Evidence objects before their documents: each evidence object is uploaded (upload-copy) or
 //    server-side copied from the Seeker archive (server-copy), verified by HEAD size and a full
 //    GET sha256 equal to the expected one, and only then registered in storageObjects. A failed
 //    verify stops the run with that object unregistered. The object helper has NO delete, never
@@ -34,8 +34,10 @@
 //  - Migrated non-admin users carry `migrated_link: 'verified_email'`: the first sign-in with a
 //    verified password or Google email equal to the stored one may claim the account (plan §7(a)).
 //    Admins never do: they are linked by the audited admin-link script (§7(b)).
-//  - Deterministic doc ids and contents (no server timestamps, no random ids), written with
-//    `set`, so a rerun rewrites identical documents and yields an identical manifest.
+//  - Deterministic doc ids and contents (no server timestamps, no random ids). The dry run writes
+//    them with `set` (emulator). The real run NEVER overwrites: `create()`, and an existing doc
+//    must be identical (rerun) or the run aborts with it untouched (a live sign-up may have
+//    claimed an email guard since the pre-check). Users and guards go before the object copies.
 //  - Output is counts only; the manifest files hold ids, keys and hashes, never user content.
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
@@ -577,15 +579,59 @@ export type RealRunReport = {
   plannedManifest: string;
   preCheck: { plannedDocs: number; existingIdentical: number; existingConflicting: number; unplannedUsers: number };
   objects: { alreadyPresent: number; uploaded: number; serverCopied: number; registered: number; failed: { evidenceId: string; reason: string } | null };
-  docsWritten: number;
+  /** Create-or-compare (never an overwrite): created now, already identical, or conflicting (aborts). */
+  docs: { created: number; identical: number; conflicting: number; conflictCollections: string[] };
   postManifest: string | null;
   postMatchesApproved: boolean;
 };
 
+/** Collections written after their objects are verified (they point at those objects). */
+const OBJECT_DOCS = new Set(['evidence', 'evidenceSegments', 'evidenceUsage', 'storageObjects']);
+
+/**
+ * Writes documents with `create()`, never `set()`: the site is live with sign-up open, so a doc
+ * (above all a guard such as userEmails/{sha(email)}) may have been created by someone else since
+ * the pre-check. An existing doc is compared: identical = no-op (idempotent rerun); different =
+ * the run aborts with that doc untouched. Stops at the first chunk with a conflict.
+ */
+async function createOrCompare(fs: Firestore, writes: DocWrite[], report: RealRunReport): Promise<void> {
+  for (let i = 0; i < writes.length; i += 50) {
+    const part = writes.slice(i, i + 50);
+    const outcomes = await Promise.all(
+      part.map(async (w) => {
+        try {
+          await fs.doc(w.path).create(w.data);
+          return 'created' as const;
+        } catch (e) {
+          const err = e as { code?: unknown; message?: string };
+          if (err.code !== 6 && !/ALREADY_EXISTS/.test(err.message ?? '')) throw e;
+          const cur = await fs.doc(w.path).get();
+          return canonical(cur.data()) === canonical(w.data) ? ('identical' as const) : ('conflict' as const);
+        }
+      }),
+    );
+    outcomes.forEach((o, j) => {
+      if (o === 'created') report.docs.created += 1;
+      else if (o === 'identical') report.docs.identical += 1;
+      else {
+        report.docs.conflicting += 1;
+        const g = groupOf(part[j]!.path);
+        if (!report.docs.conflictCollections.includes(g)) report.docs.conflictCollections.push(g);
+      }
+    });
+    if (report.docs.conflicting > 0) {
+      report.docs.conflictCollections.sort();
+      throw Object.assign(new Refused(`aborted: ${report.docs.conflicting} document(s) appeared with different content since the pre-check (${report.docs.conflictCollections.join(', ')}); they were left untouched`), { report });
+    }
+  }
+}
+
 /**
  * The real migration (plan §8.3–8.5): refuse unless the plan reproduces the approved manifest and
- * the target holds nothing that conflicts; then objects (verify, then register), then documents,
- * then the post-run manifest read back from the target.
+ * the target holds nothing that conflicts (read-only pre-check); then users, guards and every
+ * other document not tied to an object (create-or-compare, before the slow object copies, to
+ * shrink the window for a live sign-up); then each object (verify, then register); then the
+ * evidence documents; then the post-run manifest read back from the target.
  */
 export async function realRun(o: {
   fs: Firestore;
@@ -595,6 +641,8 @@ export async function realRun(o: {
   seeker: SeekerReceipt;
   approvedSha256: string;
   mediaDir: string;
+  /** Tests only: runs between the pre-check and the first write (to model a live sign-up). */
+  afterPreCheck?: () => Promise<void>;
 }): Promise<{ report: RealRunReport; manifest: Manifest | null }> {
   const { fs, store, plan, seeker } = o;
   const planned = plannedManifest(plan, o.snapshotSha256, seeker);
@@ -605,7 +653,7 @@ export async function realRun(o: {
     plannedManifest: planned.manifestSha256!,
     preCheck: { plannedDocs: plan.writes.length, existingIdentical: 0, existingConflicting: 0, unplannedUsers: 0 },
     objects: { alreadyPresent: 0, uploaded: 0, serverCopied: 0, registered: 0, failed: null },
-    docsWritten: 0,
+    docs: { created: 0, identical: 0, conflicting: 0, conflictCollections: [] },
     postManifest: null,
     postMatchesApproved: false,
   };
@@ -628,6 +676,11 @@ export async function realRun(o: {
   }
   if (report.preCheck.unplannedUsers > 0) throw Object.assign(new Refused(`refusing: the target holds ${report.preCheck.unplannedUsers} user(s) this migration doesn't plan`), { report });
   if (conflicts.size > 0) throw Object.assign(new Refused(`refusing: ${report.preCheck.existingConflicting} planned document(s) exist with different content (${[...conflicts].sort().join(', ')})`), { report });
+
+  await o.afterPreCheck?.();
+
+  // Users, guards and every document not tied to an object: before the slow object copies.
+  await createOrCompare(fs, plan.writes.filter((w) => !OBJECT_DOCS.has(groupOf(w.path))), report);
 
   // Objects, then their registration. The archive key is only ever a copy source.
   const docByPath = new Map(plan.writes.map((w) => [w.path, w.data]));
@@ -659,13 +712,12 @@ export async function realRun(o: {
     if (!after || after.size !== e.bytes) throw fail('size verification failed');
     if ((await store.sha256(e.targetKey)) !== e.expectedSha256) throw fail('sha256 verification failed');
     const path = `storageObjects/${sha(e.targetKey)}`;
-    await fs.doc(path).set(docByPath.get(path)!);
+    await createOrCompare(fs, [{ path, data: docByPath.get(path)! }], report);
     report.objects.registered += 1;
   }
 
-  // Documents (deterministic, so a rerun rewrites identical content), then the read-back manifest.
-  await applyPlan(fs, plan);
-  report.docsWritten = plan.writes.length;
+  // The evidence documents (their objects are verified and registered), then the read-back manifest.
+  await createOrCompare(fs, plan.writes.filter((w) => OBJECT_DOCS.has(groupOf(w.path)) && !w.path.startsWith('storageObjects/')), report);
   const manifest = await buildManifest(fs, plan, o.snapshotSha256, seeker);
   report.postManifest = manifest.manifestSha256!;
   report.postMatchesApproved = manifest.manifestSha256 === o.approvedSha256;
@@ -721,7 +773,7 @@ async function main() {
       const r = run.report;
       console.log(`real run ${project}: pre-check ${r.preCheck.plannedDocs} planned, ${r.preCheck.existingIdentical} already identical, 0 conflicting, 0 unplanned users`);
       console.log(`objects: ${r.objects.uploaded} uploaded, ${r.objects.serverCopied} server-copied, ${r.objects.alreadyPresent} already present, ${r.objects.registered} verified and registered`);
-      console.log(`documents written: ${r.docsWritten}`);
+      console.log(`documents: ${r.docs.created} created, ${r.docs.identical} already identical, ${r.docs.conflicting} conflicting`);
       console.log(`post-run manifest ${r.postManifest} ${r.postMatchesApproved ? 'MATCHES' : 'DOES NOT MATCH'} the approved ${approved}`);
       if (!r.postMatchesApproved) process.exitCode = 1;
     } catch (e) {

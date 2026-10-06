@@ -16,6 +16,7 @@ import {
   type Plan,
   type SeekerReceipt,
 } from '../../scripts/migrate-to-firestore';
+import { firestoreCoreRepo } from '../../src/repo/core/firestore';
 import { FakeS3 } from '../fakeS3';
 import { clearEmulator, emulatorFirestore } from './fs';
 import { buildSyntheticSnapshot } from './studies.migration-fixture';
@@ -82,6 +83,7 @@ describe('real run (plan §8.3–8.5) on the emulator + FakeS3', () => {
     const { report, manifest } = await realRun(realOpts());
     expect(report.preCheck).toEqual({ plannedDocs: plan.writes.length, existingIdentical: 0, existingConflicting: 0, unplannedUsers: 0 });
     expect(report.objects).toEqual({ alreadyPresent: 0, uploaded: 1, serverCopied: 1, registered: 2, failed: null });
+    expect(report.docs).toEqual({ created: plan.writes.length, identical: 0, conflicting: 0, conflictCollections: [] });
     expect(report.postMatchesApproved).toBe(true);
     expect(manifest?.manifestSha256).toBe(approved);
     // Objects at the app keys, byte for byte; the upload went through a presigned PUT.
@@ -99,6 +101,7 @@ describe('real run (plan §8.3–8.5) on the emulator + FakeS3', () => {
     const { report } = await realRun(realOpts());
     expect(report.preCheck.existingIdentical).toBe(plan.writes.length);
     expect(report.objects).toEqual({ alreadyPresent: 2, uploaded: 0, serverCopied: 0, registered: 2, failed: null });
+    expect(report.docs).toEqual({ created: 0, identical: plan.writes.length, conflicting: 0, conflictCollections: [] });
     expect(s3.puts.length).toBe(puts);
     expect(report.postManifest).toBe(approved);
     await expectArchiveUntouched();
@@ -121,7 +124,7 @@ describe('real run (plan §8.3–8.5) on the emulator + FakeS3', () => {
     expect(s3.keys()).toEqual([`${BUCKET}/${fx.seeker.key}`]);
   });
 
-  it('a failed sha256 verify stops the run with that object unregistered and no documents written', async () => {
+  it('a failed sha256 verify stops the run with that object unregistered and no evidence documents written', async () => {
     // The archive differs from its receipt (same size): the copy cannot verify.
     const tampered = Buffer.from(archiveBytes.map((b) => b ^ 1));
     s3.objects.set(`${BUCKET}/${fx.seeker.key}`, { body: tampered, contentType: 'video/mp4' });
@@ -129,10 +132,37 @@ describe('real run (plan §8.3–8.5) on the emulator + FakeS3', () => {
     expect(String(err)).toMatch(/evidence ev-000002: sha256 verification failed \(left unregistered\)/);
     expect((err as { report: { objects: { failed: unknown; registered: number } } }).report.objects).toMatchObject({ failed: { evidenceId: 'ev-000002', reason: 'sha256 verification failed' }, registered: 1 });
     expect((await fs.doc(`storageObjects/${sha('evidence/ev-000002')}`).get()).exists).toBe(false);
-    expect((await fs.collection('users').get()).size).toBe(0);
+    // Users and guards went first (they don't point at objects); no evidence doc points at a missing object.
+    expect((await fs.collection('evidence').get()).size).toBe(0);
     // Still never written to, registered or removed.
     expect(obj(fx.seeker.key)?.body.equals(tampered)).toBe(true);
     expect((await fs.doc(`storageObjects/${sha(fx.seeker.key)}`).get()).exists).toBe(false);
+  });
+
+  it('a live sign-up with a planned email after the pre-check: the run aborts, that account and its guard untouched; a rerun after removing it succeeds', async () => {
+    const core = firestoreCoreRepo(fs);
+    const live = { id: 'live-signup-1', email: 'b1@example.test', password_hash: null, display_name: 'Signed up on the live site', role: 'builder' as const, status: 'active' as const, device_json: null, created_at: '2026-10-07T09:00:00.000Z' };
+    const guard = fs.doc(`userEmails/${sha('b1@example.test')}`);
+    const err = await realRun(realOpts({ afterPreCheck: async () => void expect(await core.createUser(live)).toBe('created') })).catch((e: Error) => e);
+    expect(err).toBeInstanceOf(Refused);
+    expect(String(err)).toMatch(/aborted: 1 document\(s\) appeared with different content since the pre-check \(userEmails\); they were left untouched/);
+    expect((err as unknown as { report: { docs: { conflictCollections: string[] } } }).report.docs.conflictCollections).toEqual(['userEmails']);
+    // The live account and its email guard are exactly as the sign-up left them.
+    expect((await guard.get()).data()?.userId).toBe('live-signup-1');
+    expect((await fs.doc('users/live-signup-1').get()).data()).toMatchObject({ email: 'b1@example.test', display_name: 'Signed up on the live site' });
+    // Nothing that points at an object was written, and no object was touched.
+    expect((await fs.collection('evidence').get()).size).toBe(0);
+    expect(s3.keys()).toEqual([`${BUCKET}/${fx.seeker.key}`]);
+
+    // Once the conflicting account is resolved (removed here), a rerun completes and matches.
+    await fs.doc('users/live-signup-1').delete();
+    await guard.delete();
+    const { report } = await realRun(realOpts());
+    expect(report.docs.conflicting).toBe(0);
+    expect(report.docs.identical).toBeGreaterThan(0); // what the aborted run had already created
+    expect(report.postManifest).toBe(approved);
+    expect((await guard.get()).data()?.userId).toBe('b1');
+    await expectArchiveUntouched();
   });
 
   it('refuses when the target already holds different content at an evidence key', async () => {
