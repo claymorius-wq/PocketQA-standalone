@@ -172,6 +172,17 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     throw new SettlementPending(`${input.step} sent`);
   }
 
+  /**
+   * The chain shows `step`'s effect: resolve its recorded transaction from its signature, so the
+   * receipt (and the spend true-up, which counts finalized steps) reflects what landed (pqa-be2 E-25:
+   * a step whose effect a run merely observes would otherwise stay `sent` and cost nothing).
+   */
+  private async observed(kind: ReceiptKind, id: string, fence: number, step: DevnetStep, rec: ReceiptStep | undefined) {
+    if (!rec || rec.status === 'finalized' || rec.status === 'failed') return;
+    const st = await this.d.chain.signatureStatus(rec.signature);
+    if (st === 'finalized' || st === 'failed') await this.patchOrPend(kind, id, fence, { steps: { [step]: { ...rec, status: st } } });
+  }
+
   private async patchOrPend(kind: ReceiptKind, id: string, fence: number, p: Parameters<DevnetStore['patch']>[3]) {
     if (!(await this.store.patch(kind, id, fence, p, this.d.now()))) throw new SettlementPending('fenced out');
   }
@@ -213,14 +224,15 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
         await this.step('vault', input.studyId, fence, cur.steps.multisig_create, { step: 'multisig_create', studyId: input.studyId, multisig: a.multisig, members: this.members(input.builderWallet), threshold: THRESHOLD }, input.builderWallet);
         ms = await this.d.chain.getMultisig(a.multisig);
         if (!ms) throw new SettlementPending('the multisig is not visible yet');
-      }
+      } else await this.observed('vault', input.studyId, fence, 'multisig_create', cur.steps.multisig_create);
       this.assertConfig(ms, input.builderWallet);
       if ((await this.d.chain.tokenBalance(a.vaultAta)) === null) {
         await this.step('vault', input.studyId, fence, cur.steps.vault_ata_create, { step: 'vault_ata_create', owner: a.vaultAuthority }, input.builderWallet);
         if ((await this.d.chain.tokenBalance(a.vaultAta)) === null) throw new SettlementPending('the vault token account is not visible yet');
-      }
+      } else await this.observed('vault', input.studyId, fence, 'vault_ata_create', cur.steps.vault_ata_create);
       await this.patchOrPend('vault', input.studyId, fence, { state: 'ready' });
-      await this.store.trueUp(`vault:${input.studyId}`, spent(cur.steps));
+      // The cumulative spend keeps what the landed transactions cost (re-read: steps were just resolved).
+      await this.store.trueUp(`vault:${input.studyId}`, spent((await this.store.vault(input.studyId))!.steps));
       return { multisig: a.multisig, vaultAuthority: a.vaultAuthority };
     });
   }
@@ -316,7 +328,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     // 1. The destination's token account (the platform pays its rent); a no-op once it exists.
     if ((await chain.tokenBalance(r.destination_ata)) === null) {
       await this.step('payment', id, fence, r.steps.dest_ata_create, { step: 'dest_ata_create', owner: r.destination }, builderWallet);
-    }
+    } else await this.observed('payment', id, fence, 'dest_ata_create', r.steps.dest_ata_create);
     // 2. The vault transaction [TransferChecked(plan), Memo(op id)], created by the platform.
     let vt = await chain.getVaultTransfer(r.multisig, index);
     if (!vt) {
@@ -327,7 +339,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       await this.step('payment', id, fence, r.steps.vault_tx_create, { step: 'vault_tx_create', multisig: r.multisig, index, vaultAuthority: r.vault_authority, source: r.vault_ata, destination: r.destination_ata, amount: plan.amount, operation: r.op_id }, builderWallet);
       vt = await chain.getVaultTransfer(r.multisig, index);
       if (!vt) throw new SettlementPending('the vault transaction is not visible yet');
-    }
+    } else await this.observed('payment', id, fence, 'vault_tx_create', r.steps.vault_tx_create);
     if (!sameTransfer(vt, plan)) throw new SettlementFailure(`Refused: Squads transaction ${index} of this study is not exactly this payment; it is never approved.`);
     // 3. The proposal (Initiate only: the platform does NOT vote here).
     let p = await chain.getProposal(r.multisig, index);
@@ -335,7 +347,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
       await this.step('payment', id, fence, r.steps.proposal_create, { step: 'proposal_create', multisig: r.multisig, index }, builderWallet);
       p = await chain.getProposal(r.multisig, index);
       if (!p) throw new SettlementPending('the proposal is not visible yet');
-    }
+    } else await this.observed('payment', id, fence, 'proposal_create', r.steps.proposal_create);
     if (['Rejected', 'Cancelled', 'Draft'].includes(p.status)) throw new SettlementFailure(`Refused: the proposal for Squads transaction ${index} is ${p.status.toLowerCase()}; an operator must resolve it.`);
     if (p.status === 'Executed' || p.status === 'Executing') return this.finish(r, fence);
     // 4. The cosigner votes first, in their own wallet (or the arbiter's CLI). Until then, nothing more is signed.
@@ -347,7 +359,7 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (!p.approved.includes(this.d.roles.platform)) {
       await this.step('payment', id, fence, r.steps.approve_platform, { step: 'approve_platform', multisig: r.multisig, index }, builderWallet);
       p = await chain.getProposal(r.multisig, index);
-    }
+    } else await this.observed('payment', id, fence, 'approve_platform', r.steps.approve_platform);
     if (p?.status === 'Approved') {
       await this.step('payment', id, fence, r.steps.execute, { step: 'execute', multisig: r.multisig, index }, builderWallet);
     }
@@ -358,6 +370,10 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
 
   /** Executed: adopt the execute signature (recorded, or found on chain), true up the spend. */
   private async finish(r: DevnetReceipt, fence: number) {
+    // Every step's effect is on chain now: resolve each recorded transaction before counting.
+    for (const step of ['dest_ata_create', 'vault_tx_create', 'proposal_create', 'approve_platform', 'execute'] as const) {
+      await this.observed('payment', r.settlement_id, fence, step, (await this.store.receipt(r.settlement_id))!.steps[step]);
+    }
     const fresh = (await this.store.receipt(r.settlement_id))!;
     const recorded = fresh.steps.execute?.status === 'finalized' ? fresh.steps.execute.signature : null;
     const signature = recorded ?? (await this.d.chain.findExecuteSignature(r.multisig, BigInt(r.tx_index)));

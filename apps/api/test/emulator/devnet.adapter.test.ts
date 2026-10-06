@@ -7,7 +7,7 @@ import { makeRepos } from '../../src/repo';
 import { authorizePayoutInTx, createEscrowInTx } from '../../src/repo/escrow/firestore';
 import { ataOf } from '../../src/settlement/squads/adapter';
 import { devnetSettlement, type DevnetSquadsSettlement } from '../../src/settlement/squads/devnet';
-import { DEFAULT_DEVNET_LIMITS, paymentLamports, type DevnetLimits } from '../../src/settlement/squads/devnetTypes';
+import { DEFAULT_DEVNET_LIMITS, paymentLamports, STEP_LAMPORTS, VAULT_LAMPORTS, type DevnetLimits } from '../../src/settlement/squads/devnetTypes';
 import { MAINNET_GENESIS, PILOT_DECIMALS, PILOT_MINT, PILOT_TOKEN_PROGRAM } from '../../src/settlement/squads/pins';
 import { SettlementFailure, SettlementPending } from '../../src/settlement/types';
 import { runSettlement } from '../../src/settlement/worker';
@@ -318,4 +318,43 @@ describe('the server verifies the on-chain vault transaction before every furthe
       expect(await statusOf(p!.id)).toBe('failed');
     });
   }
+});
+
+describe('cumulative spend (pqa-be2 E-25): the caps bound TOTAL spend, not just in-flight work', () => {
+  /** What the platform signer paid on chain: every landed platform-signed step's fee + rent. */
+  const paidOnChain = () => chain.landed.filter((l) => l.step !== 'cosigner_approve' && l.step !== 'funding').reduce((sum, l) => sum + STEP_LAMPORTS[l.step as keyof typeof STEP_LAMPORTS], 0);
+  const spend = async (id: string) => ((await fs.collection('devnetSpend').doc(id).get()).data() ?? { lamports: 0 }).lamports as number;
+  async function complete(pid: string) {
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(pid);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(pid)).toBe('confirmed');
+  }
+
+  it('after a vault and two payouts finish, user and global spend equal what the platform paid', async () => {
+    await readyVault();
+    const ps = await payouts(2);
+    for (const p of ps) await complete(p.id);
+    const paid = paidOnChain();
+    expect(paid).toBeGreaterThan(0);
+    expect(await spend('user:b1')).toBe(paid);
+    expect(await spend('global')).toBe(paid);
+    for (const r of (await fs.collection('squadsAttempts').get()).docs.map((d) => d.data())) {
+      expect(Object.values(r.steps as Record<string, { status: string }>).every((x) => x.status === 'finalized')).toBe(true);
+    }
+  });
+
+  it('sequential payments are capped: a cap that fits the vault and ONE payment refuses the second, after the first finished', async () => {
+    adapter = make({ global: { lamports: 1e12, usdcUnits: 1e12 }, perUser: { lamports: VAULT_LAMPORTS + paymentLamports(true), usdcUnits: 1e12 } });
+    await readyVault();
+    const [p1, p2] = await payouts(2);
+    // Finish p1 alone first (p2's claim would otherwise race it).
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).update({ status: 'confirmed' });
+    await complete(p1!.id);
+    await fs.collection('settlements').doc((await repos.escrow.payoutSettlementOf(p2!.id))!.id).update({ status: 'pending' });
+    const signed = chain.prepared.length;
+    for (let i = 0; i < 3; i++) await settle();
+    expect((await repos.escrow.payoutSettlementOf(p2!.id))!).toMatchObject({ status: 'failed', failure_reason: expect.stringMatching(/DEVNET_SPEND_CAP/) });
+    expect(chain.prepared.length).toBe(signed);
+  });
 });
