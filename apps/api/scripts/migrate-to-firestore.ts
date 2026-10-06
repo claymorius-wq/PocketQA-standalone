@@ -11,8 +11,11 @@
 //  - Writes go only to the emulator (FIRESTORE_EMULATOR_HOST, loopback, `demo-` project, enforced
 //    by openFirestore). The real mode refuses unless `--real --approved-manifest <sha256>` are
 //    given, and then still refuses: hosted writes are not enabled in this build (plan §8.4).
-//  - No R2 calls: evidence objects are only PLANNED (target key + local sha256). The Seeker
-//    recording maps to its already archived key from the receipt, never a re-upload.
+//  - No R2 calls: evidence objects are only PLANNED (target key + expected sha256). The Seeker
+//    recording is planned as a server-side copy from its archived key (receipt) to evidence/{id},
+//    never a re-upload; the archived original is never registered, deletable or touched.
+//  - Migrated users carry `migrated_link: 'verified_email'`: the first sign-in with a verified
+//    password or Google email equal to the stored one may claim the account (plan §7(a)).
 //  - Deterministic doc ids and contents (no server timestamps, no random ids), written with
 //    `set`, so a rerun rewrites identical documents and yields an identical manifest.
 //  - Output is counts only; the manifest file holds ids, keys and hashes, never user content.
@@ -31,14 +34,21 @@ const FAUCET = 'system:test-faucet';
 type Row = Record<string, string | number | null>;
 type Data = Record<string, unknown>;
 export type DocWrite = { path: string; data: Data };
+/**
+ * How an evidence object reaches its target key at real-run time (nothing is copied in the dry run):
+ *  - 'upload-copy': the local media file (`sourceKey`, relative to the media dir) is uploaded;
+ *  - 'server-copy': an R2 CopyObject from the archived `sourceKey`. Then verify by size plus a
+ *    full-GET sha256 equal to `expectedSha256`, register `targetKey` in storageObjects, and point the
+ *    evidence doc at it. The archived original stays unregistered and untouched.
+ */
 export type EvidencePlan = {
   evidenceId: string;
   participationId: string;
+  action: 'upload-copy' | 'server-copy';
   sourceKey: string;
   targetKey: string;
   bytes: number;
-  localSha256: string;
-  action: 'upload-copy' | 'reference-archived-object';
+  expectedSha256: string;
 };
 export type SeekerReceipt = { evidenceId: string; key: string; sha256: string; bytes: number };
 export type Plan = {
@@ -47,6 +57,7 @@ export type Plan = {
   skipped: Record<string, { rows: number; reason: string }>;
   evidence: EvidencePlan[];
   passwordHashesDropped: number;
+  migratedLinkUsers: number;
   sourceLedger: Record<string, number>;
 };
 
@@ -124,7 +135,8 @@ export function planMigration(db: DatabaseSync, opts: { mediaSha256: (sourceKey:
   for (const u of users) {
     // Local password hashes are never migrated to the cloud (plan §7).
     if (u.password_hash !== null) passwordHashesDropped += 1;
-    put(`users/${u.id}`, { ...u, password_hash: null });
+    // Plan §7(a): claimable once by a verified sign-in with this exact email (field cleared then).
+    put(`users/${u.id}`, { ...u, password_hash: null, migrated_link: 'verified_email' });
     // UNIQUE(users.email): exact email, as the core repo keys it (deleted users hold a placeholder).
     put(`userEmails/${sha(String(u.email))}`, { userId: u.id, createdAt: ts(u.created_at) });
   }
@@ -183,17 +195,26 @@ export function planMigration(db: DatabaseSync, opts: { mediaSha256: (sourceKey:
     if (isSeeker && (opts.seeker!.sha256 !== local || opts.seeker!.bytes !== Number(e.size_bytes))) {
       throw new Error(`evidence ${e.id}: the archive receipt does not match the local media (sha256 or size)`);
     }
-    // App objects live under evidence/ (handlers/evidence.ts finalKey); the Seeker recording keeps
-    // its retained archive key (r2 §R4: outside the deletable prefix, so never registered below).
-    const targetKey = isSeeker ? opts.seeker!.key : `evidence/${e.id}`;
-    evidence.push({ evidenceId: String(e.id), participationId: String(e.participation_id), sourceKey: String(e.storage_key), targetKey, bytes: Number(e.size_bytes), localSha256: local, action: isSeeker ? 'reference-archived-object' : 'upload-copy' });
+    // Every object lands at the app key evidence/{id} (handlers/evidence.ts finalKey). The Seeker
+    // recording gets there by a server-side copy of its archive (r2 §R4: the archive is outside
+    // the deletable prefix and is never registered).
+    const targetKey = `evidence/${e.id}`;
+    evidence.push({
+      evidenceId: String(e.id),
+      participationId: String(e.participation_id),
+      action: isSeeker ? 'server-copy' : 'upload-copy',
+      sourceKey: isSeeker ? opts.seeker!.key : String(e.storage_key),
+      targetKey,
+      bytes: Number(e.size_bytes),
+      expectedSha256: local,
+    });
     put(`evidence/${e.id}`, { ...e, storage_key: targetKey });
     put(`evidenceSegments/${e.participation_id}:${sha(String(e.client_segment_id))}`, { evidence_id: e.id });
     const u = usage.get(String(e.participation_id)) ?? { evidence_count: 0, evidence_bytes: 0, open: {} };
     u.evidence_count += 1;
     u.evidence_bytes += Number(e.size_bytes);
     usage.set(String(e.participation_id), u);
-    if (!isSeeker) put(`storageObjects/${sha(targetKey)}`, { object_key: targetKey, created_at: Date.parse(String(e.created_at)) });
+    put(`storageObjects/${sha(targetKey)}`, { object_key: targetKey, created_at: Date.parse(String(e.created_at)) });
   }
   if (opts.seeker && !evidence.some((e) => e.evidenceId === opts.seeker!.evidenceId)) throw new Error('the Seeker evidence is not in this snapshot');
   for (const [pid, u] of [...usage].sort(([a], [b]) => a.localeCompare(b))) put(`evidenceUsage/${pid}`, u);
@@ -209,7 +230,7 @@ export function planMigration(db: DatabaseSync, opts: { mediaSha256: (sourceKey:
     if (paths.has(w.path)) throw new Error(`two source rows map to one document (${w.path.split('/')[0]}): a uniqueness rule is violated in the source`);
     paths.add(w.path);
   }
-  return { writes, sourceCounts, skipped, evidence, passwordHashesDropped, sourceLedger };
+  return { writes, sourceCounts, skipped, evidence, passwordHashesDropped, migratedLinkUsers: users.length, sourceLedger };
 }
 
 /** Writes the plan with `set` (deterministic contents), so a rerun is a no-op in effect. */
@@ -237,11 +258,24 @@ export type Manifest = {
   tool: string;
   snapshotSha256: string;
   source: { tables: Record<string, number>; skipped: Plan['skipped']; passwordHashesDropped: number };
+  users: { migratedLinkPlanned: number; migratedLinkFound: number };
   target: { collections: Record<string, { planned: number; found: number; checksum: string; matchesPlan: boolean }> };
   relations: { check: string; total: number; unresolved: number }[];
   ledger: { accounts: number; mismatches: number; totalSum: number; faucet: number; matchesSource: boolean };
-  evidence: { objects: EvidencePlan[]; uploads: number; archivedReferences: number; totalBytes: number };
-  seeker: { evidenceId: string; targetKey: string; sha256: string; participationFound: boolean; testerFound: boolean; registeredForDeletion: boolean; playbackPrefixAllowed: boolean } | null;
+  evidence: { objects: EvidencePlan[]; uploads: number; serverCopies: number; totalBytes: number };
+  seeker: {
+    evidenceId: string;
+    action: EvidencePlan['action'];
+    sourceKey: string;
+    targetKey: string;
+    expectedSha256: string;
+    participationFound: boolean;
+    testerFound: boolean;
+    evidenceDocPointsAtTarget: boolean;
+    targetRegistered: boolean;
+    archiveRegistered: boolean;
+    playbackPrefixAllowed: boolean;
+  } | null;
   ok: boolean;
   manifestSha256?: string;
 };
@@ -279,6 +313,7 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
   const check = (name: string, items: unknown[], ok: (x: Data) => boolean) => relations.push({ check: name, total: items.length, unresolved: (items as Data[]).filter((x) => !ok(x)).length });
   check('users have an email guard', rows('users'), (u) => docs.get('userEmails')?.get(`userEmails/${sha(String(u.email))}`)?.userId === u.id);
   check('no password hash in Firestore', rows('users'), (u) => u.password_hash === null);
+  check('users carry migrated_link', rows('users'), (u) => u.migrated_link === 'verified_email');
   check('studies.builder_id -> users', rows('studies'), (s) => users.has(String(s.builder_id)));
   check('tasks -> parent study', rows('studies/*/tasks'), (t) => studies.has(String(t.study_id)));
   check('participations.study_id -> studies', rows('participations'), (p) => studies.has(String(p.study_id)));
@@ -329,13 +364,16 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
   const seekerOut = seekerPlan
     ? {
         evidenceId: seekerPlan.evidenceId,
+        action: seekerPlan.action,
+        sourceKey: seekerPlan.sourceKey,
         targetKey: seekerPlan.targetKey,
-        sha256: seekerPlan.localSha256,
+        expectedSha256: seekerPlan.expectedSha256,
         participationFound: participations.has(seekerPlan.participationId),
         testerFound: users.has(String(docs.get('participations')?.get(`participations/${seekerPlan.participationId}`)?.tester_id)),
-        registeredForDeletion: !!docs.get('storageObjects')?.get(`storageObjects/${sha(seekerPlan.targetKey)}`),
-        // storage/r2.ts presignGet signs only evidence/ and quarantine/ keys: an archived key is
-        // not playable through the app until that policy is decided (reported, not changed here).
+        evidenceDocPointsAtTarget: docs.get('evidence')?.get(`evidence/${seekerPlan.evidenceId}`)?.storage_key === seekerPlan.targetKey,
+        targetRegistered: !!docs.get('storageObjects')?.get(`storageObjects/${sha(seekerPlan.targetKey)}`),
+        archiveRegistered: !!docs.get('storageObjects')?.get(`storageObjects/${sha(seekerPlan.sourceKey)}`),
+        // storage/r2.ts presignGet signs only evidence/ and quarantine/ keys.
         playbackPrefixAllowed: /^(evidence|quarantine)\//.test(seekerPlan.targetKey),
       }
     : null;
@@ -344,13 +382,14 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
     tool: TOOL_VERSION,
     snapshotSha256,
     source: { tables: plan.sourceCounts, skipped: plan.skipped, passwordHashesDropped: plan.passwordHashesDropped },
+    users: { migratedLinkPlanned: plan.migratedLinkUsers, migratedLinkFound: rows('users').filter((u) => u.migrated_link === 'verified_email').length },
     target: { collections },
     relations,
     ledger,
     evidence: {
       objects: plan.evidence,
       uploads: plan.evidence.filter((e) => e.action === 'upload-copy').length,
-      archivedReferences: plan.evidence.filter((e) => e.action === 'reference-archived-object').length,
+      serverCopies: plan.evidence.filter((e) => e.action === 'server-copy').length,
       totalBytes: plan.evidence.reduce((s, e) => s + e.bytes, 0),
     },
     seeker: seekerOut,
@@ -360,7 +399,15 @@ export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: s
       ledger.mismatches === 0 &&
       ledger.totalSum === 0 &&
       ledger.matchesSource &&
-      (!seekerOut || (seekerOut.participationFound && seekerOut.testerFound && !seekerOut.registeredForDeletion)),
+      plan.migratedLinkUsers === rows('users').filter((u) => u.migrated_link === 'verified_email').length &&
+      (!seekerOut ||
+        (seekerOut.action === 'server-copy' &&
+          seekerOut.participationFound &&
+          seekerOut.testerFound &&
+          seekerOut.evidenceDocPointsAtTarget &&
+          seekerOut.targetRegistered &&
+          !seekerOut.archiveRegistered &&
+          seekerOut.playbackPrefixAllowed)),
   };
   return { ...manifest, manifestSha256: sha(canonical(manifest)) };
 }
@@ -424,8 +471,12 @@ async function main() {
   for (const [g, v] of Object.entries(c)) console.log(`  ${g.padEnd(26)} planned ${String(v.planned).padStart(4)} found ${String(v.found).padStart(4)} ${v.matchesPlan ? 'checksum ok' : 'CHECKSUM MISMATCH'}`);
   console.log(`relations: ${manifest.relations.length} checks, ${manifest.relations.reduce((s, r) => s + r.unresolved, 0)} unresolved`);
   console.log(`ledger: ${manifest.ledger.accounts} accounts, ${manifest.ledger.mismatches} mismatches, sum ${manifest.ledger.totalSum}, matches source ${manifest.ledger.matchesSource}`);
-  console.log(`evidence: ${manifest.evidence.uploads} uploads planned, ${manifest.evidence.archivedReferences} archived reference(s), ${manifest.evidence.totalBytes} bytes`);
-  if (manifest.seeker) console.log(`seeker: participation ${manifest.seeker.participationFound}, tester ${manifest.seeker.testerFound}, deletable ${manifest.seeker.registeredForDeletion}, playback prefix allowed ${manifest.seeker.playbackPrefixAllowed}`);
+  console.log(`users: ${manifest.users.migratedLinkFound}/${manifest.users.migratedLinkPlanned} carry migrated_link`);
+  console.log(`evidence: ${manifest.evidence.uploads} uploads planned, ${manifest.evidence.serverCopies} server copy(ies), ${manifest.evidence.totalBytes} bytes`);
+  if (manifest.seeker) {
+    const k = manifest.seeker;
+    console.log(`seeker: ${k.action}, participation ${k.participationFound}, tester ${k.testerFound}, doc->target ${k.evidenceDocPointsAtTarget}, target registered ${k.targetRegistered}, archive registered ${k.archiveRegistered}, playback ${k.playbackPrefixAllowed}`);
+  }
   console.log(`ok ${manifest.ok}  manifest ${manifest.manifestSha256}`);
   if (!manifest.ok) process.exitCode = 1;
 }

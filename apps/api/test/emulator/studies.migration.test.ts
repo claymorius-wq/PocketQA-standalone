@@ -93,7 +93,7 @@ describe('migration dry run (plan §8)', () => {
       participationPairs: 2,
       participations: 2,
       'participations/*/notes': 1,
-      storageObjects: 1, // the app recording only: the archived key is never deletable
+      storageObjects: 2, // both evidence/{id} targets; never the archived key
       studies: 1,
       'studies/*/tasks': 2,
       userEmails: 5,
@@ -107,8 +107,23 @@ describe('migration dry run (plan §8)', () => {
     expect(manifest.ledger).toEqual({ accounts: 3, mismatches: 0, totalSum: 0, faucet: -30, matchesSource: true });
     expect(manifest.source.passwordHashesDropped).toBe(5);
     expect(manifest.source.skipped.sessions?.rows).toBe(1);
-    expect(manifest.evidence.objects.find((e) => e.evidenceId === 'e1')).toMatchObject({ targetKey: 'evidence/e1', action: 'upload-copy' });
-    expect(manifest.seeker).toMatchObject({ evidenceId: 'e2', targetKey: seeker.key, participationFound: true, testerFound: true, registeredForDeletion: false, playbackPrefixAllowed: false });
+    expect(manifest.users).toEqual({ migratedLinkPlanned: 5, migratedLinkFound: 5 });
+    expect(manifest.evidence.objects.find((e) => e.evidenceId === 'e1')).toMatchObject({ action: 'upload-copy', sourceKey: 'm1', targetKey: 'evidence/e1' });
+    // The archived recording: a planned server-side copy to the app key, verified against the receipt.
+    expect(manifest.seeker).toEqual({
+      evidenceId: 'e2',
+      action: 'server-copy',
+      sourceKey: seeker.key,
+      targetKey: 'evidence/e2',
+      expectedSha256: seeker.sha256,
+      participationFound: true,
+      testerFound: true,
+      evidenceDocPointsAtTarget: true,
+      targetRegistered: true,
+      archiveRegistered: false,
+      playbackPrefixAllowed: true,
+    });
+    expect((await fs.doc('users/t1').get()).data()).toMatchObject({ migrated_link: 'verified_email', password_hash: null });
   });
 
   it('the migrated documents are what the studies repository reads (same shapes)', async () => {
