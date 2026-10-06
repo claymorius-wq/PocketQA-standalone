@@ -55,7 +55,7 @@ beforeAll(async () => {
     POCKETQA_SETTLEMENT: 'simulated',
     CRON_SECRET: CRON,
   });
-  app = await buildHostedApp(deps);
+  app = await buildHostedApp(deps, { cronLeaseWaitMs: 2_000 });
   await app.ready();
 });
 afterAll(async () => {
@@ -80,12 +80,18 @@ describe('hosted app on the emulators', () => {
     expect((await call('GET', '/jobs/sweep', CRON)).body).toMatchObject({ job: 'sweep', ran: true });
   });
 
-  it('jobs: a run finding the lease held does nothing; after release the next run works', async () => {
+  it('jobs: a run finding the lease held past the wait does nothing; after release the next run works', async () => {
     const fence = await deps.repo.core.acquireLease('sweep', 'someone-else', 60_000, Date.now());
     expect(fence).not.toBeNull();
     expect((await call('GET', '/jobs/sweep', CRON)).body).toMatchObject({ ran: false });
     await deps.repo.core.releaseLease('sweep', fence!);
     expect((await call('GET', '/jobs/sweep', CRON)).body).toMatchObject({ ran: true });
+  });
+
+  it('jobs: a cron run waits out a short holder (an inline slice) instead of skipping the day (r4 P3)', async () => {
+    const fence = await deps.repo.core.acquireLease('settle', 'inline-slice', 60_000, Date.now());
+    setTimeout(() => void deps.repo.core.releaseLease('settle', fence!), 700);
+    expect((await call('GET', '/jobs/settle', CRON)).body).toMatchObject({ job: 'settle', ran: true });
   });
 
   it('a top-up whose completion write failed is retried with its key: one credit (R12 D, P2-H)', async () => {

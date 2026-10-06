@@ -4,13 +4,15 @@
 //     TS workspace packages. Native modules (better-sqlite3, argon2) are excluded: the hosted path
 //     never loads them (test/hosted.test.ts).
 //   - static: the Expo web export, calling the API same-origin at /api.
-//   - config.json: /api/* goes to the function, other paths to static files then the SPA, and two daily crons.
+//   - config.json (scripts/vercel/config.mjs): /api/* goes to the function, other paths to static files
+//     then the SPA, the shared security headers, and two daily crons.
 // Then it scans the output for server-only secret values (counts only, never a value).
 //   node scripts/vercel/build.mjs [--env staging|production] [--skip-web]
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
+import { vercelConfig } from './config.mjs';
 
 const REPO = join(import.meta.dirname, '../..');
 const OUT = join(REPO, '.vercel/output');
@@ -24,6 +26,13 @@ const maxDuration = Number(/export const MAX_DURATION_S = (\d+);/.exec(hostedSrc
 if (!maxDuration) throw new Error('MAX_DURATION_S not found in apps/api/src/hosted/app.ts');
 // Next to the Firestore location (eur3, Europe): Frankfurt.
 const REGION = 'fra1';
+
+// The bucket the CSP allows (not secrets: the account id and bucket name appear in every presigned URL).
+const r2AccountId = process.env.POCKETQA_R2_ACCOUNT_ID;
+const bucket = process.env.POCKETQA_R2_BUCKET;
+if (!r2AccountId || !bucket) throw new Error('POCKETQA_R2_ACCOUNT_ID and POCKETQA_R2_BUCKET are needed for the CSP.');
+// Built (and validated) before anything is written.
+const config = vercelConfig({ r2AccountId, bucket });
 
 rmSync(OUT, { recursive: true, force: true });
 const fn = join(OUT, 'functions/api.func');
@@ -67,28 +76,6 @@ if (!args.includes('--skip-web')) {
   mkdirSync(staticDir, { recursive: true });
 }
 
-const SECURITY_HEADERS = {
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer',
-  'x-frame-options': 'DENY',
-  'strict-transport-security': 'max-age=31536000',
-};
-const config = {
-  version: 3,
-  routes: [
-    { src: '/(.*)', headers: SECURITY_HEADERS, continue: true },
-    { src: '^/api(?:/.*)?$', headers: { 'cache-control': 'no-store' }, continue: true },
-    { src: '^/api(?:/.*)?$', dest: '/api' },
-    { handle: 'filesystem' },
-    // Single-page web app (expo web.output "single").
-    { src: '/(.*)', dest: '/index.html' },
-  ],
-  // Hobby allows two daily crons. Settlement also runs as a bounded slice after relevant mutations (R5).
-  crons: [
-    { path: '/api/jobs/sweep', schedule: '15 3 * * *' },
-    { path: '/api/jobs/settle', schedule: '45 3 * * *' },
-  ],
-};
 writeFileSync(join(OUT, 'config.json'), `${JSON.stringify(config, null, 2)}\n`);
 
 // Secret scan: the values of every server-only variable present in this environment, plus key markers.

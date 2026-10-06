@@ -28,6 +28,13 @@ const JOB_LEASE_MS = (MAX_DURATION_S + 30) * 1000;
 const LAZY_ITEMS = 10;
 const LAZY_BUDGET_MS = 300;
 const LAZY_LEASE_MS = 10_000;
+/**
+ * A cron run that finds the lease held (usually by an inline slice, which holds it for well under a
+ * second) retries for this long before giving up, so a slice running at cron time doesn't make the
+ * day's only run skip (pqa-qa r4 P3). Well inside the job budget.
+ */
+const CRON_LEASE_WAIT_MS = 12_000;
+const CRON_LEASE_RETRY_MS = 500;
 
 /** Mutations after which settlement has work (a payout, a refund, a funding to verify). */
 const SETTLE_AFTER = new Set(['approve', 'reject', 'adminDecide', 'resolveDispute', 'adminFraud', 'closeStudy', 'simulatedWalletPayment', 'submitFundingSignature']);
@@ -96,12 +103,14 @@ export async function runJob(deps: HostedDeps, job: 'settle' | 'sweep', budget: 
   }
 }
 
-export async function buildHostedApp(deps: HostedDeps): Promise<FastifyInstance> {
-  const app = await buildApp(deps, { logger: { level: 'info' }, setup: (a) => hostedSetup(a, deps) });
+export type HostedOptions = { cronLeaseWaitMs?: number };
+
+export async function buildHostedApp(deps: HostedDeps, opts: HostedOptions = {}): Promise<FastifyInstance> {
+  const app = await buildApp(deps, { logger: { level: 'info' }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
   return app;
 }
 
-function hostedSetup(app: FastifyInstance, deps: HostedDeps) {
+function hostedSetup(app: FastifyInstance, deps: HostedDeps, cronLeaseWaitMs: number) {
 
   // Vercel Cron: GET with `Authorization: Bearer $CRON_SECRET`. Not in the public contract, so
   // the client route table never sees it. Anything else gets 404, so the route isn't advertised.
@@ -110,7 +119,12 @@ function hostedSetup(app: FastifyInstance, deps: HostedDeps) {
     if ((job !== 'settle' && job !== 'sweep') || !secretMatches(req.headers.authorization, deps.cronSecret)) {
       return reply.code(404).send({ code: 'NOT_FOUND', message: 'Route not found.' });
     }
-    return runJob(deps, job, { budgetMs: JOB_BUDGET_MS, leaseMs: JOB_LEASE_MS }, (a) => req.log.error({ alert: 'escrow' }, a));
+    const giveUpAt = Date.now() + cronLeaseWaitMs;
+    for (;;) {
+      const result = await runJob(deps, job, { budgetMs: JOB_BUDGET_MS, leaseMs: JOB_LEASE_MS }, (a) => req.log.error({ alert: 'escrow' }, a));
+      if (result.ran || Date.now() >= giveUpAt) return result;
+      await new Promise((r) => setTimeout(r, CRON_LEASE_RETRY_MS));
+    }
   });
 
   // R5 (Hobby has a daily cron): a bounded slice runs BEFORE the response is sent, as Vercel may
