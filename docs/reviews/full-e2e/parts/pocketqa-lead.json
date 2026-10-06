@@ -214,20 +214,21 @@
   "id": "C-07",
   "area": "deck-claim",
   "title": "Slide 07: tasks + device criteria; watch recordings with notes; approve or reject with reason; tester can dispute",
-  "status": "FAIL",
+  "status": "PASS",
   "environment": "hosted-simulated",
-  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz / dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
-  "sha": "7beaad5",
+  "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+  "sha": "31c2141",
   "steps": "",
   "fixtures": {},
-  "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. But E-08 (pqa-be2, emulator + SQLite): a dispute timed before a close could open on the closed study and an overturn minted credits from it. Fixed in 31c2141 (tests red→green), FAIL until reviewed + deployed + re-run. Admin resolution on prod NOT OFFERED (H-30).",
+  "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe).",
   "evidence": [
+   "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md",
    "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
    "docs/reviews/full-e2e/economics.md",
+   "docs/reviews/full-e2e/evidence/pocketqa-lead/integrity-check-prod.json",
    "docs/reviews/full-e2e/parts/pqa-be1.json",
    "docs/reviews/full-e2e/parts/pqa-be2.json",
-   "docs/reviews/full-e2e/parts/pqa-ios.json",
-   "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
+   "docs/reviews/full-e2e/parts/pqa-ios.json"
   ],
   "notes": ""
  },

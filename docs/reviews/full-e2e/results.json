@@ -228,20 +228,21 @@
    "id": "C-07",
    "area": "deck-claim",
    "title": "Slide 07: tasks + device criteria; watch recordings with notes; approve or reject with reason; tester can dispute",
-   "status": "FAIL",
+   "status": "PASS",
    "environment": "hosted-simulated",
-   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz / dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
-   "sha": "7beaad5",
+   "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+   "sha": "31c2141",
    "steps": "",
    "fixtures": {},
-   "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. But E-08 (pqa-be2, emulator + SQLite): a dispute timed before a close could open on the closed study and an overturn minted credits from it. Fixed in 31c2141 (tests red→green), FAIL until reviewed + deployed + re-run. Admin resolution on prod NOT OFFERED (H-30).",
+   "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe).",
    "evidence": [
+    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md",
     "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
     "docs/reviews/full-e2e/economics.md",
+    "docs/reviews/full-e2e/evidence/pocketqa-lead/integrity-check-prod.json",
     "docs/reviews/full-e2e/parts/pqa-be1.json",
     "docs/reviews/full-e2e/parts/pqa-be2.json",
-    "docs/reviews/full-e2e/parts/pqa-ios.json",
-    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
+    "docs/reviews/full-e2e/parts/pqa-ios.json"
    ],
    "notes": "",
    "owner": "pocketqa-lead"
@@ -433,7 +434,9 @@
     "builder": "pqa-e2e-builder-be1-1@example.test (Firebase identity only; no Pocket QA account yet)"
    },
    "observed": "Stays on /sign-in; 'Couldn’t sign in · Email or password is incorrect.' (no account enumeration).",
-   "evidence": [],
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/h05-wrong-password.json"
+   ],
    "notes": "",
    "owner": "pqa-be1"
   },
@@ -688,7 +691,10 @@
    "steps": "Source and live-config trace: packages/contracts CREDITS_DISCLAIMER; packages/domain/src/ledger.ts planTopUp/MAX_TOPUP; apps/api handlers/account.ts topUp (feature gate); apps/mobile/src/screens/CreditsScreen.tsx topUp mutation; live /api/config testCredits=true",
    "fixtures": {},
    "observed": "Hosted builders mint TEST CREDITS themselves: POST /api/me/credits/test-topup {amount} (builder only), whole number 1..10000 per top-up (MAX_TOPUP), posted faucet 'system:test-faucet' → 'user:<id>' as an append-only double-entry pair; available because testCredits=true on the live config (production would refuse: 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.'). UI: the Budget/Credits screen top-up card. Labelled 'Test credits · no cash value'. No purchase, redemption or withdrawal exists. Wallet-escrow studies (simulated) are funded through POST /api/studies/:id/escrow/fundings + /api/escrow/fundings/:id/simulated-wallet-payment (no wallet charged).",
-   "evidence": [],
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/config.json",
+    "docs/reviews/full-e2e/evidence/pqa-be1/h15-funding-trace.txt"
+   ],
    "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; hosted settlement=simulated), never money. Live execution of a top-up is H-16 (BLOCKED).",
    "owner": "pqa-be1"
   },
@@ -747,8 +753,10 @@
     "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
     "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
    },
-   "observed": "Consent POST 200 → /participation/44d0e05e-7787-43b0-b440-883b961d4c89; start 200 → in_progress; note PUT 200, after reload identical, API taskNotes 1. Withdraw POST 200 → withdrawn, W slotsFilled 0; rejoin → 409 'You already joined this study.'.",
-   "evidence": [],
+   "observed": "Consent POST 200 → /participation/44d0e05e-7787-43b0-b440-883b961d4c89; start 200 → in_progress; note PUT 200, after reload identical, API taskNotes 1. Withdraw POST 200 → withdrawn, W slotsFilled 0; rejoin → 409 'You already joined this study.'. Fresh readback (h17-participation-readback.json): A approved with 1 task note; W withdrawn; rejoining W now → 404, because W has since been closed (no longer open for new work).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/h17-participation-readback.json"
+   ],
    "notes": "Resume after withdrawal is NOT OFFERED by the product (withdrawal is final for that study). The withdraw step ran ~19:08:40–19:09:00Z, inside the dpl_GAmo→dpl_TRefQGTd switch window (API and config identical in both). All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money.",
    "owner": "pqa-be1"
   },
@@ -824,7 +832,9 @@
     "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90"
    },
    "observed": "Playback 200: presigned GET on <account>.r2.cloudflarestorage.com/pocketqa-evidence/evidence/…, X-Amz-Expires 300, response type video/mp4, inline, no-store. Download 200: 31457280 bytes, sha256 da1278640092f9c8… = local file. After expiry: 403 <?xml version=\"1.0\" encoding=\"UTF-8\"?><Error><Code>ExpiredRequest</Code><Message>Request h.",
-   "evidence": [],
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/h20-upload-playback-expiry.json"
+   ],
    "notes": "The URL (a bearer token) was never written to disk or evidence. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money.",
    "owner": "pqa-be1"
   },
@@ -1071,7 +1081,9 @@
    "steps": "Fresh browser context per route: /discover, /work, /credits, /settings, /studies, /budget, /builder/new-study, /disputes, /audit, /moderation, /leaderboard, /reputation",
    "fixtures": {},
    "observed": "All 12 end on /sign-in.",
-   "evidence": [],
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/h29-private-route-redirects.json"
+   ],
    "notes": "",
    "owner": "pqa-be1"
   },
@@ -1129,6 +1141,87 @@
    "observed": "Not run: it links wallets to the shared synthetic accounts (a lasting state change). Awaiting the lead's go-ahead. The quote half is H-13 (PASS).",
    "evidence": [],
    "notes": "All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-32",
+   "area": "review",
+   "title": "CH-5 regression on the E-08 fix: approve, reject with reason, dispute, close refused while the dispute is open, integer reconciliation",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+   "sha": "31c2141",
+   "steps": "Verified synthetic builder/tester, real UI for decisions, dispute and closes (API for study creation, join and submit, which are UI-proven in H-12..H-17). New studies G, H (40×1 each), and H2 (40×1, created by an interrupted attempt and reused, not duplicated). H approved (tab 1 of H-33's first attempt); H2 approved (H-33). G: tester submits → builder rejects with a ≥10-char reason → tester disputes → builder closes G; also re-close D (its dispute is still open); close H and H2. Builder POST /api/admin/disputes/:id/resolve. Readbacks before/after each step.",
+   "fixtures": {
+    "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+    "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+    "studies": {
+     "A": "i91e7158f895626c7d28e9cb62e72846",
+     "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+     "C": "if8979a6f75321ddf9e296310ed3f104",
+     "D": "iea4563e5011440024de18ba05a4b4a0",
+     "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+     "W": "i7bb1cc08b5bfaaa19f33f541e7487d4",
+     "G": "i173c4532ea07153679185a4358711ff",
+     "H": "i16338b9686082d6e75f7f6cad89e9fc",
+     "H2": "if2b79146b2c024056c63629d2b30f96"
+    },
+    "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+    "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90",
+    "participations_e08": {
+     "G": "193cd7d9-801b-49e4-aaa1-dacf160734ee",
+     "H": "67b339dd-8caf-405a-bd16-2906c5958f53",
+     "H2": "a1f82747-d0ce-4d8c-bf90-25f5faca63f4"
+    }
+   },
+   "observed": "Reject G POST 200 → rejected; dispute POST 200 → disputed; close G → 409 'Resolve open disputes before closing the study.' (G stays published); close D → 409 (same message); close H → 200 closed; close H2 → 200 closed. Builder admin-resolve → 403 FORBIDDEN_ROLE. No dispute-withdrawal route exists and resolution is admin-only (none on prod), so G and D stay open. Ledger: builder 920 (end of H-26) → −40 G −40 H −40 H2 = 800 → closes of fully-awarded H and H2 release 0 → 800; tester 50 → +40 (H) +40 (H2) = 130 (one reward_credit each); G reserved 40 = committed 40 (dispute hold). Conservation: 800 + 130 + D 20 + G 40 + B 10 = 1000 = faucet top-up.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/52-e08-close-G-refused.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/53-e08-close-H.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/hosted-run-results.json"
+   ],
+   "notes": "The exact E-08 boundary race (a dispute opened at the instant the study closes, or an overturn after close) cannot be timed on hosted: closing is refused while a rejection is inside its 7-day dispute window, and the race needs an interleaving the UI can't produce. It is covered by E-08 (31c2141): test/lifecycle.test.ts red then green on SQLite and on Firestore via regression.lifecycle; evidence docs/reviews/full-e2e/evidence/pqa-be2/E-08-*. Deployment dpl_GPVC… is lead-reported (an API-only deploy); the client bundle read at 2026-10-06T19:22:14.800Z was entry-d9b5472d9fac233b3df280ddb47bf7fa.js and /api/config was unchanged. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money.",
+   "owner": "pqa-be1"
+  },
+  {
+   "id": "H-33",
+   "area": "review",
+   "title": "QA CH-3: a stale review screen whose approve already committed elsewhere: 409 shown as an error, screen not refreshed",
+   "status": "FAIL",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX",
+   "sha": "31c2141",
+   "steps": "Builder signed in separately in two tabs (web sessions are tab-scoped by design). Both tabs on /builder/review/<H2 participation>; tab 2 opens the approve sheet; tab 1 approves; then tab 2 confirms; wait 4 s; reload tab 2.",
+   "fixtures": {
+    "tester": "QA synthetic tester (hosted) 30c92665-773f-4da7-84c3-a8336ab2720b (Firebase uid NaALbDGF…)",
+    "builder": "QA synthetic builder (hosted) 5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+    "studies": {
+     "A": "i91e7158f895626c7d28e9cb62e72846",
+     "B": "i4bbaf30706c493edcacc8c3ec61a5af",
+     "C": "if8979a6f75321ddf9e296310ed3f104",
+     "D": "iea4563e5011440024de18ba05a4b4a0",
+     "E": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+     "W": "i7bb1cc08b5bfaaa19f33f541e7487d4",
+     "G": "i173c4532ea07153679185a4358711ff",
+     "H": "i16338b9686082d6e75f7f6cad89e9fc",
+     "H2": "if2b79146b2c024056c63629d2b30f96"
+    },
+    "participationA": "44d0e05e-7787-43b0-b440-883b961d4c89",
+    "participationD": "c98f6f50-9d14-4c14-8694-92f0f8644e90",
+    "participations_e08": {
+     "G": "193cd7d9-801b-49e4-aaa1-dacf160734ee",
+     "H": "67b339dd-8caf-405a-bd16-2906c5958f53",
+     "H2": "a1f82747-d0ce-4d8c-bf90-25f5faca63f4"
+    }
+   },
+   "observed": "Tab 1 POST /approve 200; tab 2 POST /approve 409 then GETs of the participation, evidence and findings 200. The tab 2 sheet stays open: 'Decision not saved Cannot approve a participation that is approved.', Approve still enabled; the page still shows 'Status: AWAITING REVIEW QA' 4 s later. After a manual reload: 'Status: APPROVED QA', 'Decision: Approved Decided Oct 6, 9:22 PM', no Approve button. Money-safe: tester 90 → 130, one +40 for H2, nothing more.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-be1/50-ch3-tab2-after-retry.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/51-ch3-tab2-after-reload.png",
+    "docs/reviews/full-e2e/evidence/pqa-be1/hosted-run-results.json",
+    "docs/reviews/full-e2e/bugs/H-33-stale-approve-retry.md"
+   ],
+   "notes": "P3 UX bug (bugs/H-33-stale-approve-retry.md): on CONFLICT_STATE the review screen should close the sheet, refetch, and show the decided state. The first attempt (H, 19:18Z) used a new tab in the same browser, which landed on /sign-in (tab-scoped session), so it is not counted as a stale-screen observation. All amounts are simulated bookkeeping (test credits 'no cash value'; settlement=simulated), never money.",
    "owner": "pqa-be1"
   },
   {
