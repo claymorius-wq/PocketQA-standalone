@@ -17,6 +17,8 @@ export type DecodedServerTx = {
   programIds: string[];
   recentBlockhash: string;
   lookupTables: number;
+  /** Every instruction: its program, its accounts (static keys; anything else is refused) and data. */
+  instructions: { programId: string; accounts: string[]; data: Uint8Array }[];
 };
 
 const bad = (why: string) => new DomainError('VALIDATION', `Not a valid devnet transaction: ${why}.`);
@@ -73,12 +75,15 @@ export function decodeServerTx(transactionB64: string): DecodedServerTx {
   const recentBlockhash = base58.encode(take(32));
   const ixCount = shortvec();
   const programIds: string[] = [];
+  const instructions: DecodedServerTx['instructions'] = [];
   for (let i = 0; i < ixCount; i++) {
     const p = u8();
     if (p >= keys.length) throw bad('a program is not a static account (lookup-table programs are refused)');
     programIds.push(keys[p]!);
-    take(shortvec()); // account indices
-    take(shortvec()); // data
+    const accountIdx = Array.from(take(shortvec()));
+    // Accounts from lookup tables can't be checked offline: every account must be a static key.
+    if (accountIdx.some((a) => a >= keys.length)) throw bad('an instruction uses an account from a lookup table');
+    instructions.push({ programId: keys[p]!, accounts: accountIdx.map((a) => keys[a]!), data: take(shortvec()).slice() });
   }
   let lookupTables = 0;
   if (version === 0) {
@@ -91,5 +96,5 @@ export function decodeServerTx(transactionB64: string): DecodedServerTx {
   }
   if (at !== bytes.length) throw bad('trailing bytes');
   if (requiredSignatures < 1 || requiredSignatures !== sigCount || keys.length < requiredSignatures) throw bad('signature count does not match the message');
-  return { version, requiredSignatures, signed, feePayer: keys[0]!, programIds, recentBlockhash, lookupTables };
+  return { version, requiredSignatures, signed, feePayer: keys[0]!, programIds, recentBlockhash, lookupTables, instructions };
 }

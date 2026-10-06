@@ -37,7 +37,16 @@ const b64 = (t: ReturnType<typeof compileTransaction>) => base64.encode(new Uint
 describe('decodeServerTx', () => {
   it('decodes an unsigned v0 transaction: version, fee payer, signer count, unsigned slots, programs, blockhash', () => {
     const d = decodeServerTx(b64(tx(0)));
-    expect(d).toEqual({ version: 0, requiredSignatures: 1, signed: [false], feePayer: wallet, programIds: [squads], recentBlockhash: blockhash, lookupTables: 0 });
+    expect(d).toEqual({
+      version: 0,
+      requiredSignatures: 1,
+      signed: [false],
+      feePayer: wallet,
+      programIds: [squads],
+      recentBlockhash: blockhash,
+      lookupTables: 0,
+      instructions: [{ programId: squads, accounts: [other], data: Uint8Array.of(1, 2, 3) }],
+    });
   });
 
   it('decodes a legacy transaction too', () => {
@@ -64,7 +73,8 @@ describe('decodeServerTx', () => {
     );
     const compressed = compressTransactionMessageUsingAddressLookupTables(m, { [lookup]: [other] });
     const bytes = b64(compileTransaction(compressed));
-    expect(decodeServerTx(bytes).lookupTables).toBe(1);
+    // An instruction account from a lookup table can't be checked offline: refused.
+    expect(() => decodeServerTx(bytes)).toThrow(/lookup table/);
     // A lookup-table account as a PROGRAM is never allowed (the static keys must name every program).
     const t = compileTransaction(m);
     const raw = new Uint8Array(getTransactionEncoder().encode(t));
