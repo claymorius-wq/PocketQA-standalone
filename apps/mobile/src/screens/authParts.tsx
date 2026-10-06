@@ -225,6 +225,23 @@ const NOTE_IN_DELAY = 80;
 const NOTE_RISE = 4;
 
 /** The glass divider inside the sign-in card, between the demo role switch and the fields. */
+/** "or" between a form and the other ways in (Google, wallets): the card's rule either side of a muted word. Decorative. */
+export function OrRule({ testID }: { testID?: string }) {
+  return (
+    <View style={styles.or} testID={testID} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.orLine}>
+        <CardRule />
+      </View>
+      <Text variant="small" tone="muted">
+        or
+      </Text>
+      <View style={styles.orLine}>
+        <CardRule />
+      </View>
+    </View>
+  );
+}
+
 export function CardRule() {
   const { glass } = useTheme();
   return <GradientRule stops={glass.divider.stops} style={styles.cardRule} />;
@@ -276,6 +293,8 @@ const styles = StyleSheet.create({
   note: { paddingHorizontal: 4 },
   noteOverlay: { position: 'absolute', top: 0, left: 4, right: 4 },
   cardRule: { marginTop: 14, marginBottom: 13 },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  orLine: { flex: 1 },
   linkBox: { justifyContent: 'center' },
   linkRule: { position: 'absolute', left: 4, right: 4 },
   linkFlat: { height: StyleSheet.hairlineWidth },

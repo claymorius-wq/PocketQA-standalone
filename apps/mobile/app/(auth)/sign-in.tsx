@@ -7,7 +7,7 @@ import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
 import { useSession } from '../../src/auth/SessionProvider';
 import { GlassSurface, useUplight } from '../../src/glass';
 import { loadDemoAccounts, PREVIEW_BUILD, type DemoAccount, type DemoRole } from '../../src/preview/demoAccounts';
-import { armU1, BrandHero, CardRule, disarmU1, SignInDock, signInMoment, u1PassAt, UnderlinedLink, UplitPrimary } from '../../src/screens/authParts';
+import { armU1, BrandHero, CardRule, disarmU1, OrRule, SignInDock, signInMoment, u1PassAt, UnderlinedLink, UplitPrimary } from '../../src/screens/authParts';
 import { UPLIGHT } from '../../src/theme/motion';
 import type { GlyphName } from '../../src/icons';
 import { layout, radius } from '../../src/theme/tokens';
@@ -127,6 +127,8 @@ export default function SignIn() {
       live = false;
     };
   }, []); // load once on mount
+
+  const [googlePending, setGooglePending] = useState(false);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -413,8 +415,26 @@ export default function SignIn() {
           // The other ways in, out of the form card and under an "or" rule: full width on the
           // screen's edges, like Sign in in the dock (QA google-button r1 B3/B4). Never lit.
           <View style={styles.others} testID="sign-in-others">
-            <OrRule />
-          {canGoogle ? <GoogleButton intent="continue" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
+            <OrRule testID="sign-in-or" />
+          {canGoogle ? (
+              <GoogleButton
+                intent="continue"
+                onPress={() =>
+                  runPlain(async () => {
+                    // Busy (spinner, aria-busy) while the Google popup is open, until it answers.
+                    setGooglePending(true);
+                    try {
+                      await signInWithGoogle();
+                    } finally {
+                      setGooglePending(false);
+                    }
+                  })
+                }
+                loading={googlePending}
+                disabled={busy && !googlePending}
+                testID="sign-in-google"
+              />
+            ) : null}
           {canWallet
             ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
               (android ? [undefined] : wallets).map((w, i) => (
@@ -446,23 +466,6 @@ export default function SignIn() {
   );
 }
 
-/** "or" between the form card and the other ways in: the card's rule either side of a muted word. */
-function OrRule() {
-  return (
-    <View style={styles.or} testID="sign-in-or" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={styles.orLine}>
-        <CardRule />
-      </View>
-      <Text variant="small" tone="muted">
-        or
-      </Text>
-      <View style={styles.orLine}>
-        <CardRule />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.card,
@@ -478,8 +481,6 @@ const styles = StyleSheet.create({
   fields: { gap: 14 },
   // The other ways in: full-width secondaries, 12 apart (the sheets' action gap).
   others: { gap: 12 },
-  or: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  orLine: { flex: 1 },
   // "Finish your account": the heading block, then the role switch, the name and Create account, 12 apart (A-SignUp's form rhythm).
   finish: { gap: 12 },
   finishHead: { gap: 4 },

@@ -3,7 +3,7 @@ import { UserPlus } from 'lucide-react-native';
 import { useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSession } from '../../src/auth/SessionProvider';
-import { disarmU1, RoleNote, UnderlinedLink } from '../../src/screens/authParts';
+import { disarmU1, OrRule, RoleNote, UnderlinedLink } from '../../src/screens/authParts';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text } from '../../src/ui';
 import { GoogleButton } from '../../src/ui/patterns';
 
@@ -26,6 +26,7 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   // Managed sign-in: the account is created after the email address is verified.
   const [verification, setVerification] = useState<'sent' | 'unsent' | 'none'>('none');
   const pwError = password && password.length < 12 ? 'Use at least 12 characters.' : null;
@@ -58,6 +59,7 @@ export default function SignUp() {
     setBusy(true);
     setError(null);
     setVerification('none');
+    setGoogleBusy(true);
     disarmU1();
     try {
       await signInWithGoogle();
@@ -66,6 +68,7 @@ export default function SignUp() {
       setError(e instanceof Error && e.message ? e.message : 'Google sign-in didn’t complete.');
     } finally {
       setBusy(false);
+      setGoogleBusy(false);
     }
   }
 
@@ -104,8 +107,13 @@ export default function SignUp() {
       </Card>
       {/* The primary in flow, 24 under the form card, never lit; the way back to Sign in under it. */}
       <View style={styles.actions}>
-        <Button label="Create account" icon={UserPlus} onPress={submit} loading={busy} disabled={busy || !displayName || !email || password.length < 12} testID="sign-up-submit" />
-        {canGoogle ? <GoogleButton intent="signUp" onPress={() => void google()} disabled={busy} testID="sign-up-google" style={styles.google} /> : null}
+        <Button label="Create account" icon={UserPlus} onPress={submit} loading={busy && !googleBusy} disabled={busy || !displayName || !email || password.length < 12} testID="sign-up-submit" />
+        {canGoogle ? (
+          <View style={styles.google}>
+            <OrRule testID="sign-up-or" />
+            <GoogleButton intent="signUp" onPress={() => void google()} loading={googleBusy} disabled={busy && !googleBusy} testID="sign-up-google" />
+          </View>
+        ) : null}
         <Row gap={6} style={styles.center}>
           <Text tone="muted">Already have an account?</Text>
           <UnderlinedLink>
@@ -125,8 +133,8 @@ const styles = StyleSheet.create({
   form: { gap: 12, paddingRight: 16, paddingLeft: 16 },
   // 24 under the form: the screen's 14 gap plus 10.
   actions: { marginTop: 10, gap: 5 },
-  // 10 under Create account (the actions' 5 gap plus 5), the gap between two stacked buttons.
-  google: { marginTop: 5 },
+  // Under Create account: the "or" rule, then Google, 12 apart (Sign in's "others" rhythm).
+  google: { marginTop: 5, gap: 12 },
   center: { justifyContent: 'center' },
   linkHit: { paddingVertical: 11, paddingHorizontal: 4 },
 });

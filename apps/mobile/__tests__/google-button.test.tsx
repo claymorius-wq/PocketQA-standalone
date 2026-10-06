@@ -218,3 +218,33 @@ describe('Sign up', () => {
     expect(screen.getByText('Google sign-in was closed before it finished.')).toBeTruthy();
   });
 });
+
+describe('busy while the Google popup is open (QA r2 P2-G2)', () => {
+  for (const [name, Screen, id] of [
+    ['Sign in', SignIn, 'sign-in-google'],
+    ['Sign up', SignUp, 'sign-up-google'],
+  ] as const) {
+    test(`${name}: spinner + aria-busy until Google answers, then idle again`, async () => {
+      let answer: () => void = () => {};
+      mockGoogle.mockReturnValueOnce(new Promise<void>((r) => (answer = r)));
+      await render(wrap(<Screen />));
+      await act(async () => {});
+      await act(async () => {
+        fireEvent.press(screen.getByTestId(id));
+      });
+      expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({ busy: true });
+      expect(screen.queryByTestId(`${id}-logo`, HIDDEN)).toBeNull();
+      // A second press while it is open opens nothing more.
+      fireEvent.press(screen.getByTestId(id));
+      expect(mockGoogle).toHaveBeenCalledTimes(1);
+      await act(async () => answer());
+      expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({ busy: false });
+    });
+  }
+
+  test('Sign up has the "or" rule above its Google button', async () => {
+    await render(wrap(<SignUp />));
+    await act(async () => {});
+    expect(screen.getByTestId('sign-up-or', HIDDEN)).toBeTruthy();
+  });
+});
