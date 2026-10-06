@@ -16,3 +16,4 @@ export * from './reputation';
 export * from './serverTx';
 export * from './pda';
 export * from './devnetTemplates';
+export * from './vaultTransfer';
