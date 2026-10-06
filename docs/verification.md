@@ -972,3 +972,21 @@ $ bundle-check --expect https://pocketqa.vercel.app/api assets/index.android.bun
 APK secret scan (5 server-only values incl. SA private key id and key line): 1455 files, 0 hits
 $ adb -s emulator-5556 install -r … && pm clear && launch   → Success; the intro screen renders (our own emulator; the connected Seeker was NOT touched)
 ```
+
+## 2026-10-06: REAL MIGRATION to pocketqa-optijara (lead, at b8018ae; QA real-run review r2 APPROVE; manifest 686c435d approved r6)
+```
+$ shasum -a 256 ~/.local/share/pocketqa/backups/20261006T000054Z/pocketqa.sqlite   → 3501bc9e96436b10b58ba843509ff670dff08354ca61bfdf698429fbede610e3
+$ (read-only, just before) production collections: jobLeases 2   (0 users)
+$ npx tsx scripts/migrate-to-firestore.ts --real --approved-manifest 686c435d… --snapshot <0700 copy, 0400> --expect-sha256 3501bc9e… --media-dir <copy> --out <copy dir>/post-run-manifest.json
+  (env, scoped subshell, never printed: FIREBASE_SERVICE_ACCOUNT_JSON, POCKETQA_R2_ACCOUNT_ID/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY; FIRESTORE_EMULATOR_HOST and POCKETQA_R2_ENDPOINT unset)
+real run pocketqa-optijara: pre-check 573 planned, 0 already identical, 0 conflicting, 0 unplanned users
+objects: 10 uploaded, 1 server-copied, 0 already present, 11 verified and registered
+documents: 573 created, 0 already identical, 0 conflicting
+post-run manifest 686c435dd8015e214315389e00db4e6c46f4825e43726f376124674d3c1639a7 MATCHES the approved 686c435dd8015e214315389e00db4e6c46f4825e43726f376124674d3c1639a7
+  accounts 77 · evidence 11 · evidenceSegments 11 · evidenceUsage 11 · ledger 154 · participationPairs 30 · participations 30 · storageObjects 11 · studies 39 · studies/*/tasks 43 · userEmails 77 · users 77 · walletAddresses 1 · walletLinks 1   (each: planned = found, checksum ok)
+relations: 19 checks, 0 unresolved · ledger: 77 accounts, 0 mismatches, sum 0, matches source true · users: 77/77 carry migrated_link, 0 admin(s) excluded
+seeker: server-copy, participation true, tester true, doc->target true, target registered true, archive registered false, playback true · ok true
+$ shasum -a 256 post-run-manifest.json → 4b8207efd60dbc89fc8c2719dbe0245922cefbad6c769ded1f0668c2e0b4178e ; cmp with the approved manifest file → IDENTICAL
+$ report: postMatchesApproved true, objects.failed null; both archived 0600 in ~/.local/share/pocketqa/migration/ (post-run-*-20261006T071831.json)
+snapshot copy re-hashed 3501bc9e… (no -wal/-shm); copies deleted; backup still 3501bc9e…; USB local API health ok
+```
