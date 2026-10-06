@@ -3,7 +3,8 @@ import { me, type Ctx, type Handler } from '../context';
 import { FUNDING_TTL_MS, verifyFunding, type FundingRow } from '../escrow';
 import type { SimulatedSettlement } from '../settlement/simulated';
 import { isDevnetSettlement } from '../settlement/squads/devnetTypes';
-import { SettlementFailure } from '../settlement/types';
+import { escrowQuoteOf } from '../escrow';
+import { SettlementFailure, SettlementPending } from '../settlement/types';
 import { fail, notFound } from '../util';
 import { fundingViewOf, payoutViewOf } from '../views';
 
@@ -64,12 +65,18 @@ export const escrowHandlers = {
       const s = await ownStudyOf(ctx.deps.repo, ctx.params.id!, me(ctx));
       const wallet = await linkedWallet(ctx);
       if (s.payment_mode === 'escrow' && s.status === 'draft' && wallet) {
+        // Devnet (CH-D1): the test USDC this request brings in is reserved against the caps first.
+        if (isDevnetSettlement(p)) await p.reserveFunding({ studyId: s.id, userId: me(ctx).id, amountUnits: await escrowQuoteOf(ctx.deps.repo, s) });
         try {
-          const acc = await p.prepareVault({ studyId: s.id, builderWallet: wallet });
+          const acc = await p.prepareVault({ studyId: s.id, builderWallet: wallet, userId: me(ctx).id });
           await repo.setEscrowAccounts(s.id, acc.multisig, acc.vaultAuthority);
         } catch (e) {
-          if (e instanceof SettlementFailure) throw fail('FEATURE_UNAVAILABLE', e.message);
-          throw e;
+          // Devnet: the vault is created over several requests (one transaction each); the funding
+          // transaction route continues it and answers VAULT_NOT_READY until it is ready.
+          if (!(e instanceof SettlementPending)) {
+            if (e instanceof SettlementFailure) throw fail('FEATURE_UNAVAILABLE', e.message);
+            throw e;
+          }
         }
       }
     }

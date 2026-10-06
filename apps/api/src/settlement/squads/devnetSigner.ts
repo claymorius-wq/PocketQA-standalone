@@ -50,8 +50,8 @@ export function loadPlatformSigner(env: Record<string, string | undefined>): Key
  * startup, and again by the adapter at multisig creation and before every signature (with the
  * study's builder wallet, which only exists per study).
  */
-export function assertPlatformSigner(signer: Keypair, roles: { platform: string; arbiter: string; feeWallet: string; builderWallet?: string }) {
-  const key = signer.publicKey.toBase58();
+export function assertPlatformSigner(signer: Keypair | string, roles: { platform: string; arbiter: string; feeWallet: string; builderWallet?: string }) {
+  const key = typeof signer === 'string' ? signer : signer.publicKey.toBase58();
   if (key !== roles.platform) throw new SignerError('The loaded platform signer is not POCKETQA_DEVNET_PLATFORM_PUBKEY: refusing to sign.');
   if (key === roles.arbiter || key === roles.feeWallet || key === roles.builderWallet) {
     throw new SignerError('The platform signer is also another role (arbiter, fee wallet or builder): refusing to sign (no server-held second vote).');

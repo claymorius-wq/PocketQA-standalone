@@ -1,5 +1,6 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import type { DB } from '../db';
+import { devnetFirestore } from '../firestore/namespace';
 import { firestoreCoreRepo } from './core/firestore';
 import { sqliteCoreRepo } from './core/sqlite';
 import type { CoreRepo } from './core/types';
@@ -25,15 +26,16 @@ import type { StudiesRepo } from './studies/types';
  *  - evidence (pqa-be2): evidence, upload intents, storage objects and deletions
  *  - escrow   (pqa-be3): wallet, wallet login, escrow, settlements, sim chain, devnet transfers, reputation
  */
-export type Backend = { kind: 'sqlite'; db: DB } | { kind: 'firestore'; fs: Firestore };
+/** `namespace: 'devnet'`: POCKETQA_ENV=devnet's isolated data (CH-D2), through devnetFirestore only. */
+export type Backend = { kind: 'sqlite'; db: DB } | { kind: 'firestore'; fs: Firestore; namespace?: 'devnet' };
 
-export type Repos = { kind: Backend['kind']; core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
+export type Repos = { kind: Backend['kind']; namespace?: 'devnet'; core: CoreRepo; studies: StudiesRepo; evidence: EvidenceRepo; escrow: EscrowRepo };
 
 export function makeRepos(backend: Backend): Repos {
   if (backend.kind === 'sqlite') {
     const { db } = backend;
     return { kind: 'sqlite', core: sqliteCoreRepo(db), studies: sqliteStudiesRepo(db), evidence: sqliteEvidenceRepo(db), escrow: sqliteEscrowRepo(db) };
   }
-  const { fs } = backend;
-  return { kind: 'firestore', core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
+  const fs = backend.namespace === 'devnet' ? devnetFirestore(backend.fs) : backend.fs;
+  return { kind: 'firestore', ...(backend.namespace === 'devnet' ? { namespace: 'devnet' as const } : {}), core: firestoreCoreRepo(fs), studies: firestoreStudiesRepo(fs), evidence: firestoreEvidenceRepo(fs), escrow: firestoreEscrowRepo(fs) };
 }

@@ -143,3 +143,94 @@ pqa-be1's points 1–4, confirmed or amended:
    - **Response:** `SettlementApprovalResult = { settlementId, kind, status, signature | null, network: 'devnet' }`. It's not `Payout`, because refunds and fees have no participation.
 
 The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET_PLATFORM_PUBKEY` is required, and the loaded key must equal it and differ from the arbiter, the fee wallet and the study's builder wallet. That's checked at startup, at multisig creation, and before every signature.
+
+## 7. Landed for pqa-be2's stage 2 (types in `devnetTypes.ts`)
+- **(b) The receipt** is `DevnetReceipt` (the `squadsAttempts/{settlementId}` doc), with `ReceiptStep` and `ReceiptState`, and the lease life is `DEVNET_OP_LEASE_MS = 30_000`. The receipt adds:
+  - `uid`, the builder whose cap the payment counts against;
+  - `reserved_lamports`;
+  - `refusal`, which holds operator copy grounded in a fresh chain read.
+- **(c) The namespace:** `devnetFirestore(fs)` in `src/firestore/namespace.ts`, with root `DEVNET_ROOT = 'pocketqaNamespaces/devnet'`.
+  - `makeRepos({ kind: 'firestore', fs, namespace: 'devnet' })` applies it.
+  - `r2Store(r2, { keyPrefix: 'devnet/' })` puts R2 objects under `devnet/`.
+  - Tests: setting `PQA_TEST_NAMESPACE=devnet` with `PQA_TEST_BACKEND=firestore` runs any suite under both, and `t.fs` is namespaced too.
+- **pqa-be2's P2 (liveness), adopted:** lamports are reserved for a **whole operation** when it starts, never per step.
+  - **A payment** reserves `paymentLamports(destinationAtaMissing)` atomically when it claims its Squads index: vault tx, proposal, approve and execute, plus the destination token account's rent if it's missing, plus `RETRY_MARGIN_LAMPORTS`. If that doesn't fit, it's refused up front with `409 DEVNET_SPEND_CAP` and nothing signed.
+  - **A study vault** reserves `VAULT_LAMPORTS` when its multisig is prepared.
+  - **On finalize,** the reservation is trued up to what the landed transactions actually cost, and the remainder is released.
+  - **Per-step estimates:** `STEP_LAMPORTS`.
+  - **Replaces §4's per-transaction rule.** The idempotency key is now the operation, `devnetSpendReservations/{opKey}`, not the transaction signature. Re-broadcasts and rebuilds don't reserve again.
+- **Still to land:** (a) the `devnetSettlement()` factory with the step machine.
+
+## 8. Hosted wiring and the limits of the namespace (pqa-qa P1-NS1, P3)
+- **The wiring:** `hostedBackends(config, env)` (in `src/hosted/app.ts`), used by `hostedDeps`, builds the repositories with `namespace: 'devnet'` and the R2 store with `keyPrefix: 'devnet/'` whenever `config.devnet` is set.
+- **Refuses to start without both:** it checks `repo.namespace === 'devnet'` and `store.keyPrefix === 'devnet/'`.
+- **Tested:** `test/emulator/devnet.hosted.test.ts`.
+  - In devnet, every write is under `pocketqaNamespaces/devnet` and every R2 key starts with `devnet/`.
+  - Staging and production are unchanged.
+- **Firebase Auth isn't namespaced (P3).** Its users are **project-global**: a devnet preview signs in against the same Firebase Auth user pool as production. So:
+  - devnet uses **only labelled synthetic `@example.test` identities**, the same list that gates server-signed operations (`POCKETQA_DEVNET_ALLOWED_EMAILS`);
+  - the devnet namespace's `users` and `identities` documents are separate from production's, so a production account has no devnet profile, studies or wallet link;
+  - nobody should sign in to the devnet preview with a real account.
+- **Scope (Hamza):** devnet only. Mainnet stays disabled and unsupported. The mainnet genesis and the mainnet USDC mint are refused before any signature.
+
+## 9. The step machine (`src/settlement/squads/devnet.ts`) and seam changes
+- **The factory, (a):** `devnetSettlement({ repo, chain, now, limits, roles: { platform, arbiter, feeWallet }, allowedEmails })` returns a `DevnetSquadsSettlement`. It implements both `SettlementProvider` and `DevnetSettlementOps`, the latter adding `reserveFunding`.
+- **Seam changes (please update your fake):**
+  - `DevnetChain.mintInfo` returns `{ address, owner, decimals }`, and all three are checked.
+  - `DevnetChain.createKeyFor(studyId)` is new; the seed derives from the platform secret.
+  - `DevnetStepInput` for `multisig_create` takes `studyId` (no seed).
+  - `ReceiptStep` gains `wire_b64`, so a rebroadcast resends the exact signed bytes, both signatures included.
+  - `DevnetStore` (exported) is the Firestore store, at `repo.escrow.devnet` (null on SQLite).
+  - `VaultReceipt` is the doc at `devnetVaults/{studyId}`.
+- **The checks before every signature (pqa-qa P2-DA1/DA2):** `guard(builderWallet)` runs before every `prepare`, and also in `startupCheck()` and in `prepareVault`, which creates the multisig. It checks:
+  - `assertPlatformSigner` against the pinned key, never another role, and never the study's builder wallet;
+  - the arbiter key equals its pin;
+  - the genesis;
+  - the mint account's address, classic owner and 6 decimals;
+  - the Squads and Memo programs.
+- **Error codes:** `ErrorCode` gains `DEVNET_SPEND_CAP`, `APPROVAL_MISMATCH`, `COSIGNER_NOT_SEEN` and `VAULT_NOT_READY`, all 409.
+- **Worker:**
+  - `SettlementPending` means one step was sent or is confirming, or another run holds the lease. The item is skipped and the status kept.
+  - `AwaitingCosigner` moves the settlement to `awaiting_approval`: no failure, no backoff, no attempt count.
+  - Due settlements include `awaiting_approval`. The repo gains `setInFlightStatus`.
+  - The pilot (SQLite) never raises either error, so its behaviour is unchanged.
+- **What's not wired yet:** the RPC `DevnetChain`, the hosted devnet wiring (the platform-signer-backed chain plus the `startupCheck` at boot), the arbiter CLI and the fee sweep (`kind: 'fee'`, a domain change).
+
+## 10. Hosted entry points, the test-only connectors, and the funding reference
+- **Every hosted entry point uses one set of backends (item 1).** `hostedApp()` builds one `HostedDeps` through `hostedDeps(env)` → `hostedBackends()`, and these share its single `repo`, which is namespaced, and its single `store`, which is prefixed:
+  - the API routes;
+  - Firebase identity sign-in (the uid → user mapping goes through `repo.core`);
+  - the `/jobs/settle` and `/jobs/sweep` cron routes and the inline slices (`runJob` → `runSettlement`, `sweepStorage`);
+  - the deletion worker.
+
+  No other place in `src/` opens Firestore or builds an R2 store; the namespace static test pins that. `test/emulator/devnet.hosted-app.test.ts` runs sign-in, the routes and both cron jobs in devnet, then finds nothing outside `pocketqaNamespaces/devnet` and no R2 object outside `devnet/`.
+- **The test-only seam (item 2):** `hostedDeps(env, connectors?)` and `hostedBackends(config, env, connectors?)`.
+  - **The connectors:** `HostedConnectors = { firestore(config, env), identity(config), r2(config), devnetChain(config, env), now }`.
+  - **In production:** the Vercel entry passes none, so `productionConnectors` are used; a test asserts `vercel.ts` and `hostedApp` never pass connectors.
+  - **No refusal is weakened:** the env is still the **real** devnet env and is validated by `loadConfig` exactly as in production. A `demo-` project or an emulator variable in the env is still refused, and a test pins that too. Only where the connections go is redirected: the emulators, a fake S3, `FakeDevnetChain`, a clock.
+  - **Example:** `devnet.hosted-app.test.ts`.
+- **The 403 on `createStudy` (item 3) was not the allow-list.** `hostedDeps` wired no settlement provider in devnet, so escrow studies got `FEATURE_UNAVAILABLE`, which maps to 403. Fixed:
+  - the devnet adapter is wired;
+  - `startupCheck()` runs at boot, proving the pins on chain before serving;
+  - `createEscrowFunding` reserves the test USDC (CH-D1) and continues a vault that's still being created;
+  - an off-list builder now gets a clean 403 before any signature.
+- **The funding reference (item 4, for pqa-be1):** it's the **fifth account of the `TransferChecked` instruction**: read-only, not a signer, appended after `[source, mint, destination, owner]`. That's the Solana Pay convention, and `observeTokenTransfer` finds it among the transaction's account keys. There's no memo and no separate instruction. The server builds this transaction (CH-D3), so the client doesn't need to build it. It should decode and check it before asking the wallet to sign:
+  - the pinned mint;
+  - the destination equals `destination`, the vault's token account;
+  - the amount equals `amountUnits`;
+  - the fifth account equals `reference`;
+  - `network` is `devnet`.
+
+## 11. Journey blockers A–C
+- **(A) Escrow studies in devnet:** the gate was the hosted wiring. `hostedDeps` gave devnet no settlement provider, and `createStudy` refuses escrow when `deps.settlement` is null. Fixed in `6bbc258`: devnet wires `DevnetSquadsSettlement`. Tests:
+  - devnet: the allow-listed builder creates an escrow study and funds it through the routes (`devnet.hosted-app.test.ts`);
+  - production (settlement `off`): escrow `createStudy` is still `403 FEATURE_UNAVAILABLE`;
+  - staging is unchanged: it keeps its labelled **simulated** escrow (R11), which existed before this phase.
+- **(B1)** Confirmed: the funding reference is the **fifth read-only account of `TransferChecked`**, the Solana Pay convention (see §10).
+- **(B2)** `StudyPayment.refund` now carries `settlementId`, so the client can call `GET /settlements/:id/approval` for the refund. The fee sweep's settlement id will appear the same way when the fee sweep lands.
+- **(B3) The server checks the on-chain vault transaction against the receipt** on every run, **before** creating the proposal and **before** its own vote and execute:
+  - it re-reads the immutable vault transaction;
+  - `sameTransfer` compares the creator, the op id, the program, `TransferChecked`, the source vault, the **mint**, the **destination token account**, the authority, the **amount** and the decimals.
+
+  A vote's bytes prove nothing about the amount or recipient, so the server never relies on them. Tests in `devnet.adapter.test.ts` tamper the amount, the recipient or the mint, both before the proposal and after the builder's vote. Each time the payment is refused and the platform signs nothing more: no proposal, no vote, no execute.
+- **(C) A non-devnet cluster fails closed at startup:** `buildHostedApp` runs `startupCheck()`. A mainnet genesis (for example from a mainnet RPC URL, which config accepts) or a wrong mint account means the app is never built and nothing is signed. Tested.

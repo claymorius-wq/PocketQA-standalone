@@ -6,6 +6,8 @@ import type { Readable } from 'node:stream';
  */
 export interface EvidenceStore {
   readonly kind: 'local' | 'r2';
+  /** R2 only: the physical key prefix ('devnet/' in POCKETQA_ENV=devnet, CH-D2); '' otherwise. */
+  readonly keyPrefix?: string;
   /** Size and entity tag of an object, or null if it does not exist. */
   head(key: string): Promise<{ size: number; etag: string } | null>;
   /** Inclusive byte range of an object, as a stream. `ifMatch` pins the exact version (else StorageChanged). */

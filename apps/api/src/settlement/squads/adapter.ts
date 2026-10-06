@@ -334,7 +334,7 @@ export class SquadsDevnetSettlement implements SettlementProvider {
 type DriveContext = { multisig: string | null; operation: string | null };
 
 /** The payment's durable operation id: bound to its kind, study and participation, never to a local row id. */
-export function operationId(kind: 'payout' | 'refund', studyId: string, participationId: string | null) {
+export function operationId(kind: 'payout' | 'refund' | 'fee', studyId: string, participationId: string | null) {
   return OPERATION_PREFIX + createHash('sha256').update(`${kind}|${studyId}|${participationId ?? '-'}`).digest('hex');
 }
 
@@ -342,7 +342,7 @@ export function ataOf(owner: string) {
   return getAssociatedTokenAddressSync(new PublicKey(PILOT_MINT), new PublicKey(owner), true).toBase58();
 }
 
-function isWallet(address: string) {
+export function isWallet(address: string) {
   try {
     return PublicKey.isOnCurve(new PublicKey(address).toBytes());
   } catch {
@@ -350,9 +350,9 @@ function isWallet(address: string) {
   }
 }
 
-const sortMembers = (m: MemberState[]) => [...m].sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
+export const sortMembers = (m: MemberState[]) => [...m].sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
 
-function sameTransfer(a: VaultTransfer, b: VaultTransfer) {
+export function sameTransfer(a: VaultTransfer, b: VaultTransfer) {
   return (
     a.creator === b.creator &&
     a.operation === b.operation &&

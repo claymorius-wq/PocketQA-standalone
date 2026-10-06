@@ -10,6 +10,12 @@ import { httpDevnetRpc } from '../rpc';
 import { SimulatedSettlement } from '../settlement/simulated';
 import { runSettlement } from '../settlement/worker';
 import { r2Store } from '../storage/r2';
+import type { EvidenceStore } from '../storage/types';
+import type { Firestore } from 'firebase-admin/firestore';
+import type { IdentityProvider } from '../identity/types';
+import { devnetSettlement, DevnetSquadsSettlement } from '../settlement/squads/devnet';
+import { assertPlatformSigner, loadPlatformSigner } from '../settlement/squads/devnetSigner';
+import { DEFAULT_DEVNET_LIMITS, type DevnetChain } from '../settlement/squads/devnetTypes';
 import { sweepStorage } from '../storage/sweep';
 
 /**
@@ -56,20 +62,70 @@ export function hostedConfig(env: NodeJS.ProcessEnv): { config: Config; cronSecr
   return { config, cronSecret };
 }
 
-export function hostedDeps(env: NodeJS.ProcessEnv): HostedDeps {
+/**
+ * Where the hosted API's connections go. Production (vercel.ts) always uses `productionConnectors`.
+ * TESTS may pass their own (the Firestore and Auth emulators, a fake S3, a fake devnet chain, a
+ * clock): the env is still loaded and validated by loadConfig exactly as in production, so no runtime
+ * refusal is weakened (POCKETQA_ENV=devnet still refuses demo- projects and emulator variables in the
+ * env); only the connections are redirected. A static test checks that src never passes connectors.
+ */
+export type HostedConnectors = {
+  firestore(config: Config, env: NodeJS.ProcessEnv): Firestore;
+  identity(config: Config): IdentityProvider;
+  r2(config: Config): NonNullable<Config['r2']>;
+  /** POCKETQA_ENV=devnet only: the chain behind the platform signer. */
+  devnetChain(config: Config, env: NodeJS.ProcessEnv): DevnetChain;
+  now: () => number;
+};
+
+export const productionConnectors: HostedConnectors = {
+  firestore: (config, env) => openFirestore(env, config.firebase!.projectId),
+  identity: (config) => firebaseIdentity(config.firebase!),
+  r2: (config) => config.r2!,
+  devnetChain: (config, env) => {
+    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1).
+    const signer = loadPlatformSigner(env);
+    assertPlatformSigner(signer, config.devnet!);
+    throw new ConfigError('The devnet RPC chain is not wired yet (next commit): refusing to start POCKETQA_ENV=devnet.');
+  },
+  now: Date.now,
+};
+
+/**
+ * The data and evidence backends of the hosted API. POCKETQA_ENV=devnet (CH-D2) keeps its data in the
+ * Firestore devnet namespace and its R2 objects under devnet/, never in production's collections or
+ * keys; the deployment refuses to start unless both are in place (pqa-qa P1-NS1).
+ */
+export function hostedBackends(config: Config, env: NodeJS.ProcessEnv, connect: HostedConnectors = productionConnectors): { repo: Repos; store: EvidenceStore } {
+  const devnet = !!config.devnet;
+  const repo = makeRepos({ kind: 'firestore', fs: connect.firestore(config, env), ...(devnet ? { namespace: 'devnet' as const } : {}) });
+  const store = r2Store(connect.r2(config), devnet ? { keyPrefix: 'devnet/' } : {});
+  if (devnet && (repo.namespace !== 'devnet' || store.keyPrefix !== 'devnet/')) {
+    throw new ConfigError('POCKETQA_ENV=devnet must run on the Firestore devnet namespace and the devnet/ R2 prefix; refusing to start.');
+  }
+  return { repo, store };
+}
+
+export function hostedDeps(env: NodeJS.ProcessEnv, connect: HostedConnectors = productionConnectors): HostedDeps {
   const { config, cronSecret } = hostedConfig(env);
-  const repo = makeRepos({ kind: 'firestore', fs: openFirestore(env, config.firebase!.projectId) });
+  const { repo, store } = hostedBackends(config, env, connect);
+  const settlement = config.devnet
+    ? devnetSettlement({ repo, chain: connect.devnetChain(config, env), now: connect.now, limits: DEFAULT_DEVNET_LIMITS, roles: config.devnet, allowedEmails: config.devnet.allowedEmails })
+    : config.features.settlement === 'simulated'
+      ? new SimulatedSettlement(repo, connect.now)
+      : null;
   return {
     db: null,
     repo,
     config,
-    now: Date.now,
+    now: connect.now,
     rpc: httpDevnetRpc(config.rpcUrl),
     mediaDir: null,
-    identity: firebaseIdentity(config.firebase!),
-    store: r2Store(config.r2!),
-    // Staging (R11): SIMULATED settlement over Firestore, labelled, never real money.
-    settlement: config.features.settlement === 'simulated' ? new SimulatedSettlement(repo, Date.now) : null,
+    identity: connect.identity(config),
+    store,
+    // Staging (R11): SIMULATED settlement over Firestore, labelled, never real money. Devnet: the
+    // Squads devnet adapter (platform signer only, cosigned by the builder's wallet).
+    settlement,
     cronSecret,
   };
 }
@@ -108,6 +164,8 @@ export async function runJob(deps: HostedDeps, job: 'settle' | 'sweep', budget: 
 export type HostedOptions = { cronLeaseWaitMs?: number };
 
 export async function buildHostedApp(deps: HostedDeps, opts: HostedOptions = {}): Promise<FastifyInstance> {
+  // Devnet: the pins (genesis, mint, programs) and the platform key are proven on chain before serving.
+  if (deps.settlement instanceof DevnetSquadsSettlement) await deps.settlement.startupCheck();
   const app = await buildApp(deps, { logger: { level: 'info' }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
   return app;
 }

@@ -2,7 +2,7 @@ import { transitionPayout } from '@pocket-qa/domain';
 import type { Deps } from '../context';
 import { settlementLabel, verifyFunding } from '../escrow';
 import type { EscrowRepo } from '../repo/escrow/types';
-import { SettlementFailure, type SettlementProvider } from './types';
+import { AwaitingCosigner, SettlementFailure, SettlementPending, type SettlementProvider } from './types';
 
 const RETRY_MS = 5 * 60_000;
 const MAX_RETRY_MS = 3600_000;
@@ -68,7 +68,9 @@ export async function runSettlement(
     if (!(await next())) break;
     touched.add(s.study_id);
     let key = s.attempt_key;
-    if (s.status !== 'submitted') {
+    // An in-flight devnet payment (submitted without a signature yet, or waiting for its cosigner)
+    // continues its attempt: no new key, no attempt count.
+    if (s.status !== 'submitted' && s.status !== 'awaiting_approval') {
       // A new attempt: persist its key and the submitted state before sending anything.
       key = `${s.id}:${s.attempt + 1}`;
       transitionPayout(s.status, 'submit');
@@ -85,8 +87,19 @@ export async function runSettlement(
         amountUnits: s.amount_units,
         cosigner: s.cosigner,
       });
+      if (s.status === 'awaiting_approval') await repo.setInFlightStatus(s.id, 'submitted');
       await repo.recordSubmitSignature(s.id, signature);
     } catch (e) {
+      // Devnet: one step sent or confirming, or another run holds it: the next run continues (not a failure).
+      if (e instanceof SettlementPending) {
+        if (s.status === 'awaiting_approval') await repo.setInFlightStatus(s.id, 'submitted');
+        continue;
+      }
+      // Devnet: the proposal waits for the cosigner's own vote (the server signs nothing until then).
+      if (e instanceof AwaitingCosigner) {
+        await repo.setInFlightStatus(s.id, 'awaiting_approval');
+        continue;
+      }
       if (!(e instanceof SettlementFailure)) throw e;
       // The simulation can prove nothing was sent; a network provider reports the chain state it read.
       const reason = e.chainState ? `${e.message} ${e.chainState}` : e.message;
