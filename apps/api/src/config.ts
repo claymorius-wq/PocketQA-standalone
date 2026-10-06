@@ -356,3 +356,12 @@ function devnetSettings(env: Record<string, string | undefined>, dataBackend: Co
   if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
   return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! } };
 }
+
+/**
+ * The local server (src/server.ts: SQLite, timers, the pilot) never runs POCKETQA_ENV=devnet, whose
+ * data lives only in the Firestore devnet namespace and whose settlement is driven by request slices
+ * and cron on the hosted API (pqa-qa P3-F3). Refused explicitly, before anything is opened.
+ */
+export function assertLocalServer(config: Config): void {
+  if (config.devnet) throw new ConfigError('POCKETQA_ENV=devnet runs only as the hosted API (Vercel or the hosted entry), never the local server.');
+}
