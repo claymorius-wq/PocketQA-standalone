@@ -180,32 +180,35 @@ describe('pqa-qa early review r1', () => {
     expect((await fs.collection('settlements').doc('x').get()).exists).toBe(false);
   });
 
-  it('P2-G: concurrent stale item transactions and a takeover serialise: every committed item committed before the takeover', async () => {
-    const { FieldValue } = await import('firebase-admin/firestore');
+  it('P2-G: concurrent stale item transactions and a takeover serialise: no item commits after the takeover', async () => {
     const { runTxCtx } = await import('../../src/firestore/tx');
     const { fenceInTx } = await import('../../src/repo/core/firestore');
     expect(await repo.acquireLease('sweep2', 'a', 1000, 0)).toBe(1);
     const items = Array.from({ length: 10 }, (_, i) =>
       runTxCtx(fs, async (t) => {
         await fenceInTx(t, fs, 'sweep2', 1, 900);
-        t.set(fs.collection('items').doc(`i${i}`), { fence: 1, at: FieldValue.serverTimestamp() });
+        t.set(fs.collection('items').doc(`i${i}`), { fence: 1 });
       }).then(
         () => 'committed',
         () => 'refused',
       ),
     );
-    // The takeover (the clock has moved past the lease) records its own commit time.
+    // The takeover (the clock has moved past the lease) counts, inside its own transaction, the items
+    // committed before it. Serialisability, not timestamps (the emulator's serverTimestamp is only
+    // ms-granular and not commit-ordered): an item committing after the takeover would have read
+    // fence 2 and been refused, so the count it saw must equal the final count.
     const takeover = runTxCtx(fs, async (t) => {
       const ref = fs.collection('jobLeases').doc('sweep2');
       const d = (await t.get(ref)).data()!;
-      t.set(ref, { holder: 'b', fence: (d.fence as number) + 1, expiresAt: 999_999, takenAt: FieldValue.serverTimestamp() });
+      const before = (await t.query(fs.collection('items'))).size;
+      t.set(ref, { holder: 'b', fence: (d.fence as number) + 1, expiresAt: 999_999 });
+      return before;
     });
     const outcomes = await Promise.all(items);
-    await takeover;
-    const takenAt = (await fs.collection('jobLeases').doc('sweep2').get()).data()!.takenAt.toMillis() as number;
+    const seenByTakeover = await takeover;
     const committed = await fs.collection('items').get();
     expect(committed.size).toBe(outcomes.filter((o) => o === 'committed').length);
-    for (const d of committed.docs) expect(d.data().at.toMillis()).toBeLessThanOrEqual(takenAt);
+    expect(committed.size).toBe(seenByTakeover);
   });
 });
 

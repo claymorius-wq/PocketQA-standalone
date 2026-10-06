@@ -1,4 +1,5 @@
 import { FieldValue, type DocumentReference, type Firestore, type Query, type Transaction } from 'firebase-admin/firestore';
+import { fail } from '../util';
 
 /**
  * Transaction helpers (docs/plans/firebase-vercel-refactor.md §2.2, §3).
@@ -10,13 +11,36 @@ import { FieldValue, type DocumentReference, type Firestore, type Query, type Tr
  */
 export type TxHooks = { onAttempt?: (attempt: number) => void };
 
+/** Above the Admin SDK's default of 5: pqa-be1 saw 20-way contention on one doc exhaust 5. */
+export const TX_MAX_ATTEMPTS = 10;
+
+/**
+ * Contention that outlasted every attempt: ABORTED (gRPC 10). The emulator reports it as
+ * INVALID_ARGUMENT 'Transaction is invalid or closed'; that mapping applies only against the
+ * emulator, so in production the same message from a real bug stays a 500.
+ */
+function exhaustedContention(e: unknown): boolean {
+  const err = e as { code?: unknown; message?: unknown };
+  if (err?.code === 10) return true;
+  return !!process.env.FIRESTORE_EMULATOR_HOST && err?.code === 3 && /transaction is invalid or closed/i.test(String(err.message));
+}
+
 export async function runTx<T>(db: Firestore, fn: (tx: Transaction) => Promise<T>, hooks: TxHooks = {}): Promise<T> {
   let attempt = 0;
-  return db.runTransaction(async (tx) => {
-    attempt += 1;
-    hooks.onAttempt?.(attempt);
-    return fn(tx);
-  });
+  try {
+    return await db.runTransaction(
+      async (tx) => {
+        attempt += 1;
+        hooks.onAttempt?.(attempt);
+        return fn(tx);
+      },
+      { maxAttempts: TX_MAX_ATTEMPTS },
+    );
+  } catch (e) {
+    // Nothing was written, so a retry is safe, and the client resends the same Idempotency-Key.
+    if (exhaustedContention(e)) throw fail('CONFLICT_STATE', 'This is busy right now. Please try again.');
+    throw e;
+  }
 }
 
 /** Result of claiming a uniqueness guard inside a transaction. */

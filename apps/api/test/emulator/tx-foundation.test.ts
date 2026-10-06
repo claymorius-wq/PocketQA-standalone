@@ -93,3 +93,23 @@ describe('TxCtx: composable transactions (reads pass through, writes buffered, n
     expect((await db.collection('accounts').doc('b').get()).data()!.balance).toBe(950);
   });
 });
+
+describe('contention past every attempt is a clean, retryable conflict (pqa-be1 finding)', () => {
+  it('20 concurrent increments of one doc: each either commits or fails with CONFLICT_STATE, and the count matches the commits', async () => {
+    const ref = db.collection('contention').doc('hot');
+    await ref.set({ n: 0 });
+    const results = await Promise.allSettled(
+      Array.from({ length: 20 }, () =>
+        runTx(db, async (tx) => {
+          const n = ((await tx.get(ref)).data()!.n as number) + 1;
+          tx.update(ref, { n });
+          return n;
+        }),
+      ),
+    );
+    const ok = results.filter((r) => r.status === 'fulfilled').length;
+    for (const r of results) if (r.status === 'rejected') expect(r.reason).toMatchObject({ code: 'CONFLICT_STATE' });
+    expect((await ref.get()).data()!.n).toBe(ok);
+    expect(ok).toBeGreaterThan(0);
+  });
+});
