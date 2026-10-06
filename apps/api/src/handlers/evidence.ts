@@ -13,43 +13,13 @@ import { canUploadEvidence } from '@pocket-qa/domain';
 import { partyParticipation, testerParticipation } from '../access';
 import { me, type Ctx, type Handler } from '../context';
 import { fail, iso, newId, newToken, notFound, sha256 } from '../util';
-import { deleteOrQueue, registerObject } from '../storage/sweep';
+import type { IntentRow } from '../repo/evidence/types';
+import { deleteOrQueue } from '../storage/sweep';
 import { readHead as storeHead, StorageChanged } from '../storage/types';
 import { evidenceView, type EvidenceRow, type UserRow } from '../views';
 
 /** Longest life of a presigned PUT; always within the intent's own lifetime. */
 const PRESIGN_SECONDS = 10 * 60;
-
-type IntentRow = {
-  id: string;
-  participation_id: string;
-  tester_id: string;
-  kind: string;
-  mime_type: EvidenceRow['mime_type'];
-  declared_size: number;
-  duration_ms: number | null;
-  task_id: string | null;
-  captured_on: string;
-  client_segment_id: string;
-  object_key: string;
-  status: 'pending' | 'completing' | 'completed' | 'rejected' | 'expired';
-  evidence_id: string | null;
-  expires_at: number;
-};
-
-/** Evidence plus open (unexpired) intents: an intent reserves its declared bytes until it closes. */
-function usage(db: Ctx['deps']['db'], participationId: string, now: number, exceptIntent = '') {
-  const ev = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS bytes FROM evidence WHERE participation_id = ?').get(participationId) as { n: number; bytes: number };
-  const open = db
-    .prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(declared_size),0) AS bytes FROM upload_intents WHERE participation_id = ? AND status IN ('pending','completing') AND expires_at > ? AND id != ?`)
-    .get(participationId, now, exceptIntent) as { n: number; bytes: number };
-  return { n: ev.n + open.n, bytes: ev.bytes + open.bytes };
-}
-
-function assertQuota(u: { n: number; bytes: number }, addBytes: number) {
-  if (u.n + 1 > MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) throw fail('CONFLICT_STATE', `At most ${MAX_EVIDENCE_ITEMS_PER_PARTICIPATION} evidence items per participation.`);
-  if (u.bytes + addBytes > MAX_EVIDENCE_BYTES_PER_PARTICIPATION) throw fail('PAYLOAD_TOO_LARGE', 'Evidence storage limit for this participation reached.');
-}
 
 // ISO-BMFF major brands that are MP4 video. HEIC/AVIF/QuickTime share the `ftyp` box but aren't MP4.
 const MP4_BRANDS = new Set(['isom', 'iso2', 'iso3', 'iso4', 'iso5', 'iso6', 'mp41', 'mp42', 'avc1', 'dash', 'M4V ']);
@@ -103,18 +73,17 @@ export const evidenceHandlers = {
       throw fail('VALIDATION', 'Multipart field "meta" (sent before "file") must be valid evidence metadata.');
     }
 
-    const usage = db
-      .prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS bytes FROM evidence WHERE participation_id = ?')
-      .get(p.id) as { n: number; bytes: number };
+    const repo = ctx.deps.repo.evidence;
+    const usage = await repo.evidenceUsage(p.id);
     if (usage.n >= MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) {
       file.file.resume();
       throw fail('CONFLICT_STATE', `At most ${MAX_EVIDENCE_ITEMS_PER_PARTICIPATION} evidence items per participation.`);
     }
-    if (db.prepare('SELECT 1 FROM evidence WHERE participation_id = ? AND client_segment_id = ?').get(p.id, meta.data.clientSegmentId)) {
+    if (await repo.segmentUploaded(p.id, meta.data.clientSegmentId)) {
       file.file.resume();
       throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
     }
-    if (meta.data.taskId && !db.prepare('SELECT 1 FROM tasks WHERE id = ? AND study_id = ?').get(meta.data.taskId, p.study_id)) {
+    if (meta.data.taskId && !(await repo.taskInStudy(meta.data.taskId, p.study_id))) {
       file.file.resume();
       throw fail('VALIDATION', 'Unknown task for this study.');
     }
@@ -122,7 +91,7 @@ export const evidenceHandlers = {
     const key = newId();
     const path = join(ctx.deps.mediaDir, key);
     // Registered before the file exists, like every other key the app writes (migration 4).
-    registerObject(db, key, ctx.deps.now());
+    await repo.registerObject(key, ctx.deps.now());
     try {
       await pipeline(file.file, createWriteStream(path, { mode: 0o600 }));
       if (file.file.truncated) throw fail('PAYLOAD_TOO_LARGE', 'Evidence file is too large.');
@@ -135,41 +104,40 @@ export const evidenceHandlers = {
       if (isVideo !== (meta.data.kind === 'screen_recording')) throw fail('VALIDATION', 'File type does not match the evidence kind.');
 
       const id = newId();
-      db.transaction(() => {
-        // Re-check state inside the write transaction: submission may have raced the upload.
-        const cur = db.prepare('SELECT status FROM participations WHERE id = ?').get(p.id) as { status: typeof p.status };
-        if (!canUploadEvidence(cur.status)) throw fail('CONFLICT_STATE', 'The participation was submitted; evidence is frozen.');
-        // Caps and duplicates again inside the write transaction: parallel uploads may have raced.
-        const now = db
-          .prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS bytes FROM evidence WHERE participation_id = ?')
-          .get(p.id) as { n: number; bytes: number };
-        if (now.n >= MAX_EVIDENCE_ITEMS_PER_PARTICIPATION) throw fail('CONFLICT_STATE', `At most ${MAX_EVIDENCE_ITEMS_PER_PARTICIPATION} evidence items per participation.`);
-        if (now.bytes + size > MAX_EVIDENCE_BYTES_PER_PARTICIPATION) throw fail('PAYLOAD_TOO_LARGE', 'Evidence storage limit for this participation reached.');
-        if (db.prepare('SELECT 1 FROM evidence WHERE participation_id = ? AND client_segment_id = ?').get(p.id, meta.data.clientSegmentId)) {
-          throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
-        }
-        db.prepare(
-          `INSERT INTO evidence (id, participation_id, kind, mime_type, size_bytes, duration_ms, task_id, captured_on, client_segment_id, storage_key, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        ).run(id, p.id, meta.data.kind, mime, size, meta.data.durationMs ?? null, meta.data.taskId ?? null, meta.data.capturedOn, meta.data.clientSegmentId, key, iso(ctx.deps.now()));
-      })();
-      return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(id) as EvidenceRow);
+      return evidenceView(
+        await repo.addUploadedEvidence(
+          {
+            id,
+            participation_id: p.id,
+            kind: meta.data.kind,
+            mime_type: mime,
+            size_bytes: size,
+            duration_ms: meta.data.durationMs ?? null,
+            task_id: meta.data.taskId ?? null,
+            captured_on: meta.data.capturedOn,
+            client_segment_id: meta.data.clientSegmentId,
+            storage_key: key,
+          },
+          ctx.deps.now(),
+        ),
+      );
     } catch (e) {
       rmSync(path, { force: true });
       throw e;
     }
   },
 
-  listEvidence: (ctx) => {
+  listEvidence: async (ctx) => {
     const { p } = partyParticipation(ctx.deps.db, ctx.params.id!, me(ctx));
-    const rows = ctx.deps.db.prepare('SELECT * FROM evidence WHERE participation_id = ? ORDER BY created_at').all(p.id) as EvidenceRow[];
+    const rows = await ctx.deps.repo.evidence.listEvidence(p.id);
     return { items: rows.map(evidenceView) };
   },
 
-  playbackToken: (ctx) => {
+  playbackToken: async (ctx) => {
     const user = me(ctx);
     const db = ctx.deps.db;
-    const ev = db.prepare('SELECT * FROM evidence WHERE id = ?').get(ctx.params.id!) as EvidenceRow | undefined;
+    const repo = ctx.deps.repo.evidence;
+    const ev = await repo.getEvidence(ctx.params.id!);
     if (!ev) throw notFound('Evidence');
     try {
       partyParticipation(db, ev.participation_id, user);
@@ -178,17 +146,16 @@ export const evidenceHandlers = {
     }
     const token = newToken();
     const expires = ctx.deps.now() + PLAYBACK_TOKEN_TTL_SECONDS * 1000;
-    db.prepare('INSERT INTO playback_tokens (token_hash, evidence_id, user_id, expires_at) VALUES (?,?,?,?)').run(sha256(token), ev.id, user.id, expires);
+    await repo.issuePlaybackToken(sha256(token), ev.id, user.id, expires);
     return { token, expiresAt: iso(expires) };
   },
 
   media: async (ctx) => {
     const db = ctx.deps.db;
-    const t = db.prepare('SELECT * FROM playback_tokens WHERE token_hash = ?').get(sha256(ctx.params.token ?? '')) as
-      | { evidence_id: string; user_id: string; expires_at: number }
-      | undefined;
+    const repo = ctx.deps.repo.evidence;
+    const t = await repo.getPlaybackToken(sha256(ctx.params.token ?? ''));
     if (!t || t.expires_at <= ctx.deps.now()) throw notFound('Media');
-    const ev = db.prepare('SELECT * FROM evidence WHERE id = ?').get(t.evidence_id) as EvidenceRow | undefined;
+    const ev = await repo.getEvidence(t.evidence_id);
     const holder = db.prepare(`SELECT * FROM users WHERE id = ? AND status = 'active'`).get(t.user_id) as UserRow | undefined;
     if (!ev || !holder) throw notFound('Media');
     // Access is re-checked at use time, not only at issuance.
@@ -231,17 +198,16 @@ export const evidenceHandlers = {
   createUploadIntent: async (ctx: Ctx) => {
     const user = me(ctx);
     const db = ctx.deps.db;
+    const repo = ctx.deps.repo.evidence;
     // Ownership first, so non-owners always get 404 whatever the storage mode.
     const { p } = testerParticipation(db, ctx.params.id!, user);
     if (ctx.deps.store.kind === 'local') throw fail('CONFLICT_STATE', 'This deployment stores evidence locally: use the multipart upload.');
     if (!canUploadEvidence(p.status)) throw fail('CONFLICT_STATE', 'Evidence can only be added while the participation is in progress.');
     const b = ctx.body as { kind: string; mimeType: EvidenceRow['mime_type']; sizeBytes: number; durationMs?: number; taskId?: string; capturedOn: string; clientSegmentId: string };
     if (b.mimeType.startsWith('video/') !== (b.kind === 'screen_recording')) throw fail('VALIDATION', 'File type does not match the evidence kind.');
-    if (b.taskId && !db.prepare('SELECT 1 FROM tasks WHERE id = ? AND study_id = ?').get(b.taskId, p.study_id)) throw fail('VALIDATION', 'Unknown task for this study.');
+    if (b.taskId && !(await repo.taskInStudy(b.taskId, p.study_id))) throw fail('VALIDATION', 'Unknown task for this study.');
     const now = ctx.deps.now();
-    const existing = db
-      .prepare(`SELECT * FROM upload_intents WHERE participation_id = ? AND client_segment_id = ? AND status IN ('pending','completing') AND expires_at > ?`)
-      .get(p.id, b.clientSegmentId, now) as IntentRow | undefined;
+    const existing = await repo.findOpenIntent(p.id, b.clientSegmentId, now);
     let intent: IntentRow;
     if (existing) {
       if (existing.status !== 'pending' || existing.declared_size !== b.sizeBytes || existing.mime_type !== b.mimeType) {
@@ -266,20 +232,7 @@ export const evidenceHandlers = {
         evidence_id: null,
         expires_at: now + UPLOAD_INTENT_TTL_SECONDS * 1000,
       };
-      db.transaction(() => {
-        if (db.prepare('SELECT 1 FROM evidence WHERE participation_id = ? AND client_segment_id = ?').get(p.id, b.clientSegmentId)) {
-          throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
-        }
-        // Expired pending intents release their reservation (and their open-segment slot).
-        db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE participation_id = ? AND status = 'pending' AND expires_at <= ?`).run(p.id, now);
-        assertQuota(usage(db, p.id, now), b.sizeBytes);
-        db.prepare(
-          `INSERT INTO upload_intents (id, participation_id, tester_id, kind, mime_type, declared_size, duration_ms, task_id, captured_on, client_segment_id, object_key, status, expires_at, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?, 'pending', ?, ?)`,
-        ).run(intent.id, p.id, user.id, b.kind, b.mimeType, b.sizeBytes, intent.duration_ms, intent.task_id, b.capturedOn, b.clientSegmentId, intent.object_key, intent.expires_at, now);
-        // Registered before any URL that can create it is issued.
-        registerObject(db, intent.object_key, now);
-      })();
+      await repo.openUploadIntent(intent, now);
     }
     const seconds = Math.max(1, Math.min(PRESIGN_SECONDS, Math.floor((intent.expires_at - now) / 1000)));
     const signed = await ctx.deps.store.presignPut(intent.object_key, { contentType: intent.mime_type, contentLength: intent.declared_size, expiresInSeconds: seconds });
@@ -294,14 +247,14 @@ export const evidenceHandlers = {
    */
   completeUploadIntent: async (ctx: Ctx) => {
     const user = me(ctx);
-    const db = ctx.deps.db;
+    const repo = ctx.deps.repo.evidence;
     const store = ctx.deps.store;
     const now = ctx.deps.now();
-    const intent = db.prepare('SELECT * FROM upload_intents WHERE id = ?').get(ctx.params.id!) as IntentRow | undefined;
+    const intent = await repo.getIntent(ctx.params.id!);
     if (!intent || intent.tester_id !== user.id) throw notFound('Upload');
     if (intent.status !== 'pending') throw fail('CONFLICT_STATE', `This upload is ${intent.status}.`);
     if (intent.expires_at <= now) {
-      db.prepare(`UPDATE upload_intents SET status = 'expired' WHERE id = ? AND status = 'pending'`).run(intent.id);
+      await repo.expireIntent(intent.id);
       throw fail('CONFLICT_STATE', 'This upload expired. Start it again.');
     }
     const head = await store.head(intent.object_key);
@@ -311,17 +264,16 @@ export const evidenceHandlers = {
 
     // Claim the intent atomically: concurrent completions get 409.
     const evidenceId = newId();
-    const claimed = db.prepare(`UPDATE upload_intents SET status = 'completing', evidence_id = ? WHERE id = ? AND status = 'pending'`).run(evidenceId, intent.id);
-    if (claimed.changes !== 1) throw fail('CONFLICT_STATE', 'This upload is already being completed.');
+    if (!(await repo.claimIntent(intent.id, evidenceId))) throw fail('CONFLICT_STATE', 'This upload is already being completed.');
     // Conditional: never reopen or overwrite an intent that something else (account
     // deletion, the sweep) closed meanwhile.
-    const setStatus = (status: IntentRow['status']) => db.prepare(`UPDATE upload_intents SET status = ? WHERE id = ? AND status = 'completing'`).run(status, intent.id);
-    const changedMeanwhile = () => {
-      setStatus('pending');
+    const setStatus = (status: 'pending' | 'rejected') => repo.releaseIntent(intent.id, status);
+    const changedMeanwhile = async () => {
+      await setStatus('pending');
       return fail('CONFLICT_STATE', 'The upload changed while it was being checked. Complete it again.');
     };
     const reject = async (message: string) => {
-      setStatus('rejected');
+      await setStatus('rejected');
       await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
       return fail('VALIDATION', message);
     };
@@ -333,48 +285,48 @@ export const evidenceHandlers = {
     try {
       mime = sniffMime(await storeHead(store, intent.object_key, 16, { ifMatch: head.etag }));
     } catch (e) {
-      if (e instanceof StorageChanged) throw changedMeanwhile();
-      setStatus('pending'); // transient read failure: retryable
+      if (e instanceof StorageChanged) throw await changedMeanwhile();
+      await setStatus('pending'); // transient read failure: retryable
       throw e;
     }
     if (mime !== intent.mime_type) throw await reject('The uploaded file is not the declared type. Use MP4, WebM, PNG, JPEG or WebP.');
 
     const finalKey = `evidence/${evidenceId}`;
     // Registered before the copy exists, so even a crash right after it leaves a deletable key.
-    registerObject(db, finalKey, now);
+    await repo.registerObject(finalKey, now);
     try {
       await store.copy(intent.object_key, finalKey, { ifMatch: head.etag });
     } catch (e) {
-      if (e instanceof StorageChanged) throw changedMeanwhile();
-      setStatus('pending'); // transient storage failure: retryable
+      if (e instanceof StorageChanged) throw await changedMeanwhile();
+      await setStatus('pending'); // transient storage failure: retryable
       throw e;
     }
+    let row: EvidenceRow;
     try {
-      db.transaction(() => {
-        const cur = db.prepare('SELECT status FROM participations WHERE id = ?').get(intent.participation_id) as { status: Parameters<typeof canUploadEvidence>[0] };
-        if (!canUploadEvidence(cur.status)) throw fail('CONFLICT_STATE', 'The participation was submitted; evidence is frozen.');
-        if (db.prepare('SELECT 1 FROM evidence WHERE participation_id = ? AND client_segment_id = ?').get(intent.participation_id, intent.client_segment_id)) {
-          throw fail('CONFLICT_STATE', 'This segment was already uploaded.');
-        }
-        assertQuota(usage(db, intent.participation_id, now, intent.id), head.size);
-        db.prepare(
-          `INSERT INTO evidence (id, participation_id, kind, mime_type, size_bytes, duration_ms, task_id, captured_on, client_segment_id, storage_key, created_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-        ).run(evidenceId, intent.participation_id, intent.kind, mime, head.size, intent.duration_ms, intent.task_id, intent.captured_on, intent.client_segment_id, finalKey, iso(now));
-        // Only the claim holder completes; if the intent was closed meanwhile, roll back
-        // (the failure path below deletes the promoted copy).
-        if (db.prepare(`UPDATE upload_intents SET status = 'completed' WHERE id = ? AND status = 'completing'`).run(intent.id).changes !== 1) {
-          throw fail('CONFLICT_STATE', 'This upload was closed while it was being completed.');
-        }
-      })();
+      row = await repo.finalizeIntent(
+        intent,
+        {
+          id: evidenceId,
+          participation_id: intent.participation_id,
+          kind: intent.kind as EvidenceRow['kind'],
+          mime_type: mime,
+          size_bytes: head.size,
+          duration_ms: intent.duration_ms,
+          task_id: intent.task_id,
+          captured_on: intent.captured_on as EvidenceRow['captured_on'],
+          client_segment_id: intent.client_segment_id,
+          storage_key: finalKey,
+        },
+        now,
+      );
     } catch (e) {
-      setStatus('rejected');
+      await setStatus('rejected');
       await deleteOrQueue(ctx.deps, finalKey, 'failed_upload');
       await deleteOrQueue(ctx.deps, intent.object_key, 'failed_upload');
       throw e;
     }
     // The quarantine copy of a successful upload is kept (not a failed upload); it is deleted
     // with its owner's account (account.ts) under the ownership registry.
-    return evidenceView(db.prepare('SELECT * FROM evidence WHERE id = ?').get(evidenceId) as EvidenceRow);
+    return evidenceView(row);
   },
 } satisfies Record<string, Handler>;
