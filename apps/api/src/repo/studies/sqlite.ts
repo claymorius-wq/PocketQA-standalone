@@ -89,25 +89,24 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
     balanceOf(db.prepare('SELECT account, amount FROM ledger WHERE account = ?').all(account) as { account: Account; amount: number }[], account);
 
   /** Append-only double-entry posting (ledger.ts `post`). */
-  const post = (postings: Posting[], nowMs: number) => {
+  const post = (postings: Posting[], nowMs: number, txId: string = newId()) => {
     if (postings.length === 0) return;
     if (postings.reduce((s, p) => s + p.amount, 0) !== 0) throw new Error('unbalanced ledger transaction');
-    const txId = newId();
     const ins = db.prepare('INSERT INTO ledger (id, tx_id, account, amount, kind, study_id, participation_id, created_at) VALUES (?,?,?,?,?,?,?,?)');
-    for (const p of postings) ins.run(newId(), txId, p.account, p.amount, p.kind, p.studyId, p.participationId, iso(nowMs));
+    postings.forEach((p, i) => ins.run(`${txId}:${i}`, txId, p.account, p.amount, p.kind, p.studyId, p.participationId, iso(nowMs)));
   };
 
   const builderStatus = (builderId: string) => (db.prepare('SELECT status FROM users WHERE id = ?').get(builderId) as { status: UserRow['status'] } | undefined)?.status;
   const openForNewWork = (s: StudyRow) => s.status === 'published' && s.moderation === 'ok' && builderStatus(s.builder_id) === 'active';
 
-  const writeTasks = (studyId: string, tasks: TaskInput[]) => {
+  const writeTasks = (studyId: string, tasks: TaskInput[], ids: string[] = []) => {
     db.prepare('DELETE FROM tasks WHERE study_id = ?').run(studyId);
     const ins = db.prepare('INSERT INTO tasks (id, study_id, ord, instruction, success_criteria) VALUES (?,?,?,?,?)');
-    tasks.forEach((t, i) => ins.run(newId(), studyId, i, t.instruction, t.successCriteria ?? null));
+    tasks.forEach((t, i) => ins.run(ids[i] ?? newId(), studyId, i, t.instruction, t.successCriteria ?? null));
   };
 
-  const adminAudit = (actorId: string, action: string, targetType: 'study' | 'user' | 'dispute' | 'participation', targetId: string, reason: string, nowMs: number) =>
-    db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(newId(), actorId, action, targetType, targetId, reason, iso(nowMs));
+  const adminAudit = (actorId: string, action: string, targetType: 'study' | 'user' | 'dispute' | 'participation', targetId: string, reason: string, nowMs: number, id: string = newId()) =>
+    db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(id, actorId, action, targetType, targetId, reason, iso(nowMs));
 
   /** Tester's own participation, else 404 (access.ts rule, inside the transaction). */
   const testerOwned = (id: string, tester: UserRow) => {
@@ -154,6 +153,8 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
 
     async createStudy(n) {
       db.transaction(() => {
+        // Rule D (plan R12): a retry of a committed create (same id) writes nothing.
+        if (getStudy(n.id)) return;
         db.prepare(
           `INSERT INTO studies (id, builder_id, title, objective, build_under_test, device_criteria_json, reward_credits, payment_mode, slots, consent_text, consent_version, status, created_at)
            VALUES (?,?,?,?,?,?,?,?,?,?,1,'draft',?)`,
@@ -169,7 +170,7 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
             n.createdAt,
           );
         }
-        writeTasks(n.id, n.tasks);
+        writeTasks(n.id, n.tasks, n.taskIds);
       })();
     },
 
@@ -248,8 +249,10 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
       const s = getStudy(studyId);
       if (!s) throw notFound('Study');
       db.transaction(() => {
+        // Rule D (plan R12): this audit row exists, so the moderation was already applied.
+        if (a.id && db.prepare('SELECT 1 FROM audit WHERE id = ?').get(a.id)) return;
         db.prepare('UPDATE studies SET moderation = ? WHERE id = ?').run(state, s.id);
-        adminAudit(a.actorId, a.action, 'study', s.id, a.reason, a.nowMs);
+        adminAudit(a.actorId, a.action, 'study', s.id, a.reason, a.nowMs, a.id);
       })();
       return getStudy(s.id)!;
     },
@@ -412,6 +415,8 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
 
     async createFinding(participationId, user, b, id, nowMs) {
       db.transaction(() => {
+        // Rule D (plan R12): a retry of a committed create (same id) returns that finding.
+        if (db.prepare('SELECT 1 FROM findings WHERE id = ?').get(id)) return;
         const p = getParticipation(participationId);
         const s = p ? getStudy(p.study_id) : undefined;
         if (!p || !s || s.builder_id !== user.id) throw notFound('Participation');
@@ -500,8 +505,13 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
     async studyKindSums(studyId) {
       return kindSums(studyId);
     },
-    async topUp(userId, amount, nowMs) {
-      db.transaction(() => post(planTopUp(userId, amount), nowMs))();
+    async topUp(userId, amount, nowMs, txId = newId()) {
+      const postings = planTopUp(userId, amount);
+      db.transaction(() => {
+        // Rule D (plan R12): this ledger transaction was already posted.
+        if (db.prepare('SELECT 1 FROM ledger WHERE tx_id = ?').get(txId)) return;
+        post(postings, nowMs, txId);
+      })();
     },
 
     // ── Account export and deletion ──────────────────────────────────────────────────────

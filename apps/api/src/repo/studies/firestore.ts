@@ -292,8 +292,10 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
     },
 
     async createStudy(n) {
-      const taskIds = n.tasks.map(() => newId());
+      const taskIds = n.tasks.map((_, i) => n.taskIds[i] ?? newId());
       await tx(async (t) => {
+        // Rule D (plan R12): a retry of a committed create (same id) writes nothing.
+        if ((await t.get(ref.study(n.id))).exists) return;
         const row: StudyRow & { join_seq: number } = {
           id: n.id,
           builder_id: n.builderId,
@@ -403,10 +405,13 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
     },
 
     async moderateStudy(studyId, state, a) {
-      const auditId = newId();
+      const auditId = a.id ?? newId();
       return tx(async (t) => {
         const s = await getStudy(studyId, t);
         if (!s) throw notFound('Study');
+        // Rule D (plan R12): this audit row exists, so the moderation was already applied. (The
+        // audit doc path is core's documented audit/{id}; read only, never written here.)
+        if ((await t.get(fs.collection('audit').doc(auditId))).exists) return s;
         t.update(ref.study(s.id), { moderation: state });
         audit(t, { id: auditId, actor_id: a.actorId, action: a.action, target_type: 'study', target_id: s.id, reason: a.reason, nowMs: a.nowMs });
         return { ...s, moderation: state };
@@ -575,6 +580,9 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
 
     async createFinding(participationId, user, b, id, nowMs) {
       return tx(async (t) => {
+        // Rule D (plan R12): a retry of a committed create (same id) returns that finding.
+        const existing = await t.get(ref.finding(id));
+        if (existing.exists) return existing.data() as FindingRow;
         const p = await getParticipation(participationId, t);
         const s = p ? await getStudy(p.study_id, t) : undefined;
         if (!p || !s || s.builder_id !== user.id) throw notFound('Participation');
@@ -679,10 +687,13 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
     async studyKindSums(studyId) {
       return (await accountDoc(studyAccount(studyId))).by_kind;
     },
-    async topUp(userId, amount, nowMs) {
+    async topUp(userId, amount, nowMs, txId = newId()) {
       const postings = planTopUp(userId, amount);
-      const txId = newId();
-      await tx((t) => postInTx(t, postings, nowMs, txId));
+      await tx(async (t) => {
+        // Rule D (plan R12): this ledger transaction was already posted.
+        if ((await t.get(ref.entry(`${txId}:0`))).exists) return;
+        await postInTx(t, postings, nowMs, txId);
+      });
     },
 
     // ── Account export and deletion ──────────────────────────────────────────────────────

@@ -33,6 +33,7 @@ async function draft(builder: UserRow, opts: { slots: number; reward: number; cr
     slots: opts.slots,
     consentText: 'I agree to record my screen for this study.',
     tasks: [{ instruction: 'Open the app' }, { instruction: 'Buy an item', successCriteria: 'Order placed' }],
+    taskIds: [],
     createdAt: opts.createdAt ?? '2026-10-06T09:00:00.000Z',
     escrow: null,
   });
@@ -238,5 +239,49 @@ describe('account export and deletion', () => {
     // Ledger postings are never touched.
     expect((await fs.collection('ledger').get()).size).toBe(before);
     expect(await repo.accountBalance(FAUCET)).toBe(-40);
+  });
+});
+
+describe('rule D (plan R12): a retried create with the same id returns the existing row, no second effect', () => {
+  it('createStudy, topUp, createFinding and moderateStudy are no-ops on an existing id', async () => {
+    const builder = await user('b', 'builder');
+    const admin = await user('a', 'admin');
+    const tester = await user('t');
+    const input = {
+      id: 'study-fixed',
+      builderId: builder.id,
+      title: 'Checkout flow',
+      objective: 'Find friction in checkout',
+      buildUnderTest: null,
+      deviceCriteriaJson: JSON.stringify({ platforms: ['web'], minAndroidApi: null, languages: ['en'] }),
+      rewardCredits: 10,
+      slots: 1,
+      consentText: 'I agree to record my screen for this study.',
+      tasks: [{ instruction: 'Open the app' }],
+      taskIds: ['task-fixed-0'],
+      createdAt: '2026-10-06T09:00:00.000Z',
+      escrow: null,
+    };
+    await repo.createStudy(input);
+    await repo.createStudy({ ...input, title: 'A retry must not overwrite', taskIds: ['task-other-0'] });
+    expect((await repo.getStudy('study-fixed'))?.title).toBe('Checkout flow');
+    expect((await repo.tasksOf('study-fixed')).map((x) => x.id)).toEqual(['task-fixed-0']);
+
+    await repo.topUp(builder.id, 10, NOW, 'ledger-fixed');
+    await repo.topUp(builder.id, 10, NOW, 'ledger-fixed');
+    expect(await repo.accountBalance(userAccount(builder.id))).toBe(10);
+    expect((await fs.collection('ledger').where('tx_id', '==', 'ledger-fixed').get()).docs.map((d) => d.id).sort()).toEqual(['ledger-fixed:0', 'ledger-fixed:1']);
+
+    await repo.studyTransition('study-fixed', builder, 'publish', false, NOW);
+    const p = await submitted('study-fixed', tester);
+    const f1 = await repo.createFinding(p.id, builder, { title: 'Cart hidden', severity: 'major', description: 'Below the fold.' }, 'finding-fixed', NOW);
+    const f2 = await repo.createFinding(p.id, builder, { title: 'Different', severity: 'minor', description: 'Retry body.' }, 'finding-fixed', NOW + 5);
+    expect(f2).toEqual(f1);
+    expect(await repo.listFindings(p.id)).toHaveLength(1);
+
+    const audit = { id: 'audit-fixed', actorId: admin.id, action: 'study.suspend', reason: 'Spam', nowMs: NOW };
+    expect((await repo.moderateStudy('study-fixed', 'suspended', audit)).moderation).toBe('suspended');
+    expect((await repo.moderateStudy('study-fixed', 'suspended', audit)).moderation).toBe('suspended');
+    expect((await fs.collection('audit').where('action', '==', 'study.suspend').get()).size).toBe(1);
   });
 });

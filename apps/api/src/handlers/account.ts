@@ -181,7 +181,7 @@ export const accountHandlers = {
       throw fail('FEATURE_UNAVAILABLE', 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.');
     }
     const user = me(ctx);
-    await ctx.deps.repo.studies.topUp(user.id, ctx.body.amount, ctx.deps.now());
+    await ctx.deps.repo.studies.topUp(user.id, ctx.body.amount, ctx.deps.now(), ctx.idemId('ledger')); // rule D (plan R12)
     return creditsView(ctx, user.id);
   },
 

@@ -40,6 +40,7 @@ async function publishedStudy(builder: UserRow, opts: { slots: number; reward: n
     slots: opts.slots,
     consentText: 'I agree to record my screen for this study.',
     tasks: [{ instruction: 'Open the app' }, { instruction: 'Buy an item', successCriteria: 'Order placed' }],
+    taskIds: [],
     createdAt: '2026-10-06T09:00:00.000Z',
     escrow: null,
   });

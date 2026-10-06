@@ -45,6 +45,8 @@ export type NewStudy = {
   slots: number;
   consentText: string;
   tasks: TaskInput[];
+  /** One id per task, from the caller (deterministic under an Idempotency-Key, plan R12). */
+  taskIds: string[];
   createdAt: string;
   /** Wallet-funded study: its escrow row is created in the same transaction. */
   escrow: { settlement: string; network: string; mint: string; vault: string; feeBps: number } | null;
@@ -121,6 +123,7 @@ export interface StudiesRepo {
   slotsFilled(studyId: string): Promise<number>;
   participationStatuses(studyId: string): Promise<ParticipationStatus[]>;
 
+  /** Rule D (plan R12): if a study with this id already exists, nothing is written. */
   createStudy(input: NewStudy): Promise<void>;
   /**
    * A draft's edit, re-checked atomically: own draft, test-credit vs token terms, terms locked
@@ -133,8 +136,12 @@ export interface StudiesRepo {
    * (test credits) or refund authorisation (escrow).
    */
   studyTransition(studyId: string, builder: UserRow, action: StudyAction, settlementEnabled: boolean, nowMs: number): Promise<void>;
-  /** Admin moderation of a study, audited in the same transaction. Returns the updated row. */
-  moderateStudy(studyId: string, state: StudyRow['moderation'], audit: { actorId: string; action: string; reason: string; nowMs: number }): Promise<StudyRow>;
+  /**
+   * Admin moderation of a study, audited in the same transaction (audit row `audit.id`). Returns
+   * the updated row. Rule D (plan R12): if that audit row already exists, nothing is written.
+   * Callers pass `ctx.idemId('audit')`; without an id it is a fresh one (no retry protection).
+   */
+  moderateStudy(studyId: string, state: StudyRow['moderation'], audit: { id?: string; actorId: string; action: string; reason: string; nowMs: number }): Promise<StudyRow>;
 
   // ── Participations ─────────────────────────────────────────────────────────────────────
   getParticipation(id: string): Promise<ParticipationRow | undefined>;
@@ -168,6 +175,7 @@ export interface StudiesRepo {
   /** Oldest first. */
   listFindings(participationId: string): Promise<FindingRow[]>;
   /** The study's builder, once the tester has submitted; evidence must belong to the participation. */
+  /** Rule D (plan R12): if a finding with this id already exists, it is returned and nothing is written. */
   createFinding(participationId: string, builder: UserRow, input: FindingInput, id: string, nowMs: number): Promise<FindingRow>;
   getDispute(id: string): Promise<DisputeRow | undefined>;
   /** Disputes on a study's participations, newest first. */
@@ -187,8 +195,12 @@ export interface StudiesRepo {
   ledgerEntries(account: Account): Promise<LedgerEntry[]>;
   /** The study account's postings summed per kind (budget views). */
   studyKindSums(studyId: string): Promise<KindSums>;
-  /** A faucet top-up of test credits. */
-  topUp(userId: string, amount: number, nowMs: number): Promise<void>;
+  /**
+   * A faucet top-up of test credits, posted as ledger transaction `txId` (entries `${txId}:${i}`).
+   * Rule D (plan R12): if that transaction was already posted, nothing is written. Callers pass
+   * `ctx.idemId('ledger')`; without one it is a fresh id (no retry protection).
+   */
+  topUp(userId: string, amount: number, nowMs: number, txId?: string): Promise<void>;
 
   // ── Account export and deletion (called by handlers/account.ts) ────────────────────────
   /** Deletion precondition: the builder's published or paused studies. */

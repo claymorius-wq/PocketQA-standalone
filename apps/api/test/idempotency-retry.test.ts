@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { makeApp, type TestApp } from './helpers';
+import { makeApp, seeded, STUDY, type TestApp } from './helpers';
 
 // pqa-qa early r1 P2-F: a request whose effect committed but whose idempotency record was never
 // completed (crash, timeout, failed completion write) is retried with the same key. Unguarded creates
@@ -35,5 +35,59 @@ describe('crash-after-commit retries (P2-F)', () => {
     expect(retry.status).toBe(200);
     const audit = await t.req('GET', '/admin/audit', adm.token);
     expect(audit.body.items.filter((a: { targetId: string; action: string }) => a.targetId === target.id && a.action === 'user.suspend')).toHaveLength(1);
+  });
+});
+
+describe('crash-after-commit retries, studies domain (P2-F rule D, pqa-be1)', () => {
+  const key = (k: string) => ({ 'idempotency-key': k });
+
+  it('createStudy: retried with the same key, one study with the same id', async () => {
+    t = await makeApp();
+    const b = await t.register('builder');
+    failNextCompletion(t);
+    expect((await t.req('POST', '/studies', b.token, STUDY, key('study-key-0001'))).status).toBe(500);
+    const retry = await t.req('POST', '/studies', b.token, STUDY, key('study-key-0001'));
+    expect(retry.status).toBe(200);
+    const list = await t.req('GET', '/studies', b.token);
+    expect(list.body.items.map((s: { id: string }) => s.id)).toEqual([retry.body.id]);
+    expect(retry.body.tasks).toHaveLength(STUDY.tasks.length);
+  });
+
+  it('createFinding: retried with the same key, one finding', async () => {
+    t = await makeApp();
+    const { builder, tester, participationId } = await seeded(t);
+    await t.req('POST', `/participations/${participationId}/submit`, tester.token);
+    const body = { title: 'Theme toggle hidden', severity: 'minor', description: 'The dark theme switch is two levels deep.' };
+    failNextCompletion(t);
+    expect((await t.req('POST', `/participations/${participationId}/findings`, builder.token, body, key('finding-key-01'))).status).toBe(500);
+    const retry = await t.req('POST', `/participations/${participationId}/findings`, builder.token, body, key('finding-key-01'));
+    expect(retry.status).toBe(200);
+    const list = await t.req('GET', `/participations/${participationId}/findings`, builder.token);
+    expect(list.body.items.map((f: { id: string }) => f.id)).toEqual([retry.body.id]);
+  });
+
+  it('topUp: retried with the same key, credited once', async () => {
+    t = await makeApp();
+    const b = await t.register('builder');
+    failNextCompletion(t);
+    expect((await t.req('POST', '/me/credits/test-topup', b.token, { amount: 300 }, key('topup-key-0001'))).status).toBe(500);
+    const retry = await t.req('POST', '/me/credits/test-topup', b.token, { amount: 300 }, key('topup-key-0001'));
+    expect(retry.status).toBe(200);
+    expect(retry.body.balance).toBe(300);
+    expect(retry.body.entries).toHaveLength(1);
+  });
+
+  it('moderateStudy: retried with the same key, one audit row', async () => {
+    t = await makeApp();
+    const adm = await t.admin();
+    const { study } = await seeded(t);
+    const body = { action: 'suspend', reason: 'Testing the retry rule' };
+    failNextCompletion(t);
+    expect((await t.req('POST', `/admin/moderation/studies/${study.id}`, adm.token, body, key('modstudy-key-1'))).status).toBe(500);
+    const retry = await t.req('POST', `/admin/moderation/studies/${study.id}`, adm.token, body, key('modstudy-key-1'));
+    expect(retry.status).toBe(200);
+    expect(retry.body.moderation).toBe('suspended');
+    const audit = await t.req('GET', '/admin/audit', adm.token);
+    expect(audit.body.items.filter((a: { targetId: string; action: string }) => a.targetId === study.id && a.action === 'study.suspend')).toHaveLength(1);
   });
 });

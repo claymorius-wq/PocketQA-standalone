@@ -62,7 +62,7 @@ export const participationHandlers = {
       p.id,
       user,
       { title: b.title, severity: b.severity, description: b.description, evidenceId: b.evidenceId, timestampMs: b.timestampMs },
-      newId(),
+      ctx.idemId('finding'), // rule D (plan R12)
       ctx.deps.now(),
     );
     return findingView(row);

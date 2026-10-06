@@ -24,7 +24,7 @@ export const adminHandlers = {
   moderateStudy: async (ctx) => {
     const now = ctx.deps.now();
     const state = ctx.body.action === 'suspend' ? 'suspended' : 'ok';
-    const s = await ctx.deps.repo.studies.moderateStudy(ctx.params.id!, state, { actorId: me(ctx).id, action: `study.${ctx.body.action}`, reason: ctx.body.reason, nowMs: now });
+    const s = await ctx.deps.repo.studies.moderateStudy(ctx.params.id!, state, { id: ctx.idemId('audit'), actorId: me(ctx).id, action: `study.${ctx.body.action}`, reason: ctx.body.reason, nowMs: now });
     return studyViewOf(ctx.deps.repo, s, now);
   },
 

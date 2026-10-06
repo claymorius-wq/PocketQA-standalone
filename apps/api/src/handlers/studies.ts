@@ -53,7 +53,8 @@ export const studyHandlers = {
     const user = me(ctx);
     const b: StudyBody = ctx.body;
     lintStudy(b);
-    const id = newId();
+    // Rule D (plan R12): deterministic under an Idempotency-Key, so a retry can't duplicate it.
+    const id = ctx.idemId('study');
     const repo = ctx.deps.repo;
     const escrow = b.payment?.mode === 'escrow' ? b.payment : null;
     const settlement = ctx.deps.settlement;
@@ -71,6 +72,7 @@ export const studyHandlers = {
       slots: b.slots!,
       consentText: b.consentText!,
       tasks: b.tasks!,
+      taskIds: b.tasks!.map((_, i) => ctx.idemId(`task:${i}`)),
       createdAt: iso(ctx.deps.now()),
       escrow: escrow
         ? { settlement: settlement!.mode, network: settlement!.network, mint: settlement!.mint, vault: settlement!.vaultFor(id), feeBps: ctx.deps.config.escrowFeeBps }
