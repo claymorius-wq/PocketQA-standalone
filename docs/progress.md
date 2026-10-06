@@ -4,6 +4,25 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-06): HOSTED at https://pocketqa.vercel.app (Vercel `pocketqa`, Firestore `pocketqa-optijara` eur3, R2 `pocketqa-evidence`)
+- **Live:** dpl_DF68zX8zboPNNpfRYjVkDMFLPwSP, READY. Staging env: Firebase sign-in, private R2, labelled test credits, simulated settlement. Evidence is in `docs/verification.md`.
+- **Migration:** the local data was migrated (post-run manifest = the QA-approved 686c435d). The Seeker recording was server-copied to `evidence/4aef8a84…`; the archive is untouched.
+- **QA:**
+  - freeze APPROVE (code);
+  - hosted gate PASS (no-account scope, r2);
+  - migration accepted at the data level;
+  - unrelated-tester denial plus a browser upload >4.5 MB, playback and expiry PASSED (QA post-run r2).
+- **Labelled synthetic data in production (do not misread counts/exports):**
+  - Firebase user `NaALbDGFuMhg6aAjqNP3x5E8AQk2` / Pocket QA tester `30c92665-773f-4da7-84c3-a8336ab2720b` "QA synthetic tester (hosted)" (`qa-hosted-synthetic-tester-20261006@example.test`);
+  - one participation in a migrated synthetic-builder study;
+  - evidence `8c6db250-00f0-44d4-a365-0b82bcbda7b1` (6,914,699-byte ffmpeg test pattern) in R2 `evidence/`.
+  - Retained as authorized; any removal is Hamza's call.
+- **Pending Hamza:**
+  - a normal sign-in with his own email, which claims the migrated account; then owner playback of the Seeker recording (sha 3ee5d78c…a73);
+  - TTL (billing);
+  - installing the hosted APK on the Seeker;
+  - the merge.
+
 ## Current work (2026-10-06): Firebase Auth + Firestore + private R2 + Vercel refactor (`feat/firebase-vercel`, EMULATOR ONLY, nothing deployed)
 - **Team:** lead `wX:p1`; pqa-be1/be2/be3 (`wX:p4`–`p6`, proof in `docs/reviews/team-launch.md`); pqa-qa `wX:p2`. This supersedes the solo-lead note below for this refactor. Plan: `docs/plans/firebase-vercel-refactor.md` (QA approved through r2, plus R9–R12).
 - **Done (emulator-verified):**

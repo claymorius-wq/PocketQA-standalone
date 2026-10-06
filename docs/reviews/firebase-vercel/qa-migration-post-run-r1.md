@@ -26,3 +26,26 @@
 **The migration result is ACCEPTED at the data level:** the manifest is identical to the approved one, 0 conflicts, 0 failures, the source is untouched, and an unauthenticated request is denied.
 
 **The live owner-playback and unrelated-tester denial checks are PENDING** on Hamza's sign-in and an approved second account. Until those pass, don't claim that "migrated submissions are accessible to their owners on hosted".
+
+## r2: hosted wiring and synthetic-tester checks (the lead's transcript at `cb4844d`, plus my own independent run)
+**The lead's transcript** (`docs/verification.md`, last section) has been reviewed:
+- **Auth domains:** the authorized domains went from 3 to 4, with every previous one kept (read back).
+- **R2 CORS:** add-only. The `pocketqa.optijara.ai` PUT rule is kept verbatim, and the `pocketqa.vercel.app` PUT rule was appended (read back).
+- **The synthetic tester:** one labelled tester (an `@example.test` address, not Hamza's).
+- **The e2e run:** a real-Chromium PUT of a **6,914,699-byte** file (above 4.5 MB) from the Vercel origin returned 200; complete returned 200; own playback had a matching sha; cross-user access to the Seeker evidence gave 404; no token gave 401; UI sign-in persisted across a reload; 0 CSP violations.
+
+**My independent run** (as the synthetic tester; credentials loaded from `~/.config/pocketqa/qa-synthetic-tester.env` (0600) into the process, **never printed**; read-only plus a playback-token request):
+| Check | Result |
+|---|---|
+| `GET /me` | 200, tester, "QA synthetic tester (hosted)" |
+| **Cross-user, the Seeker submission:** `POST /evidence/4aef8a84…/playback-token`, plus `GET /participations/<seeker participation>` and its `/evidence`, `/findings` and `/devnet-transfers` | **404 NOT_FOUND** on all 5, with no URL in any body. That's **indistinguishable** from a nonexistent id (a random evidence id also gives 404 NOT_FOUND), so existence doesn't leak |
+| Own evidence `8c6db250…` playback-token | 200, a URL present, no token |
+| Presigned GET | Host `8e2ef86d….r2.cloudflarestorage.com`, path `/pocketqa-evidence/evidence/<id>`, **`X-Amz-Expires=300`** (≤ 5 min, as planned). Download **200, 6,914,699 bytes, sha256 `a5e20d7bdf52bc55…`**, equal to the transcript |
+| The same URL with `Origin: https://evil.example` | no `access-control-allow-origin` (CORS is narrowed to the app origins) |
+
+**P3 (data hygiene):** to complete the e2e, the synthetic tester **joined a migrated study** (synthetic builder) and uploaded evidence. Production now carries one labelled synthetic participation and evidence object (it counts toward that study's slots). That's acceptable and labelled. Record it in the progress notes so later counts or exports aren't mistaken for real activity. Any removal waits for Hamza's decision; there's no automatic deletion.
+
+**Status:**
+- **Unrelated-tester denial: PASSED,** verified independently.
+- **A browser upload over 4.5 MB, playback and expiry: PASSED** (my P3-3 is closed).
+- **Still PENDING:** owner playback of the Seeker recording (sha `3ee5d78c…`). It needs Hamza's own sign-in, which claims his migrated account.
