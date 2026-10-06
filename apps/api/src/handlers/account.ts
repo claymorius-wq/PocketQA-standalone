@@ -60,6 +60,7 @@ export const accountHandlers = {
             authDomain: firebase.authDomain,
             projectId: firebase.projectId,
             authEmulatorUrl: firebase.authEmulatorHost ? `http://${firebase.authEmulatorHost}` : null,
+            googleSignIn: firebase.googleSignIn,
           }
         : null,
     };

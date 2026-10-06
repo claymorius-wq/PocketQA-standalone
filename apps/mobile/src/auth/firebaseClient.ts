@@ -15,6 +15,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { firebasePersistence } from './firebasePersistence';
+import { popupRedirectResolver } from './firebaseResolver';
 
 /**
  * Firebase client for `authMode: 'firebase'` deployments (ADR 0005 §1). Configured only
@@ -28,7 +29,7 @@ export function firebaseAuth(cfg: NonNullable<ClientConfig['firebase']>): Auth {
   if (auth) return auth;
   const app = getApps().find((a) => a.name === 'pocketqa') ?? initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId }, 'pocketqa');
   // Web: tab-scoped sessionStorage. Native: the OS keystore, so sessions survive restarts.
-  auth = initializeAuth(app, { persistence: firebasePersistence() });
+  auth = initializeAuth(app, { persistence: firebasePersistence(), ...(popupRedirectResolver ? { popupRedirectResolver } : {}) });
   if (cfg.authEmulatorUrl) connectAuthEmulator(auth, cfg.authEmulatorUrl, { disableWarnings: true });
   return auth;
 }

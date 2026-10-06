@@ -45,7 +45,8 @@ export type Config = {
    * Firebase project settings. `webApiKey`/`authDomain` are public web config; the Admin
    * credential comes only from GOOGLE_APPLICATION_CREDENTIALS (never read or logged here).
    */
-  firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null } | null;
+  /** googleSignIn: the Google provider is enabled for this project (POCKETQA_FIREBASE_GOOGLE=1), so the web app offers it. */
+  firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null; googleSignIn: boolean } | null;
   /** The shared synthetic demo (preview): never runs with real-data features. */
   sharedDemo: boolean;
   /** Wallet-first login (ADR 0005 §2); off unless POCKETQA_WALLET_LOGIN=1. */
@@ -142,7 +143,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (authEmulatorHost && !/^(127\.0\.0\.1|localhost):\d+$/.test(authEmulatorHost)) throw new ConfigError('POCKETQA_FIREBASE_AUTH_EMULATOR_HOST must be a loopback host:port.');
     // The emulator accepts unsigned tokens, so it is only allowed with a demo- project.
     if (authEmulatorHost && !projectId.startsWith('demo-')) throw new ConfigError('The Firebase Auth emulator may only be used with a demo- project id.');
-    firebase = { projectId, webApiKey, authDomain, authEmulatorHost };
+    firebase = { projectId, webApiKey, authDomain, authEmulatorHost, googleSignIn: env.POCKETQA_FIREBASE_GOOGLE === '1' };
   }
   // firebase-admin also honours the raw FIREBASE_AUTH_EMULATOR_HOST and then accepts
   // unsigned tokens: refuse it unless this is an explicit demo- emulator setup.

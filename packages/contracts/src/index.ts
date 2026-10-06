@@ -760,6 +760,8 @@ export const ClientConfig = z.object({
       projectId: z.string().min(1),
       /** Set only for local emulator testing, e.g. http://127.0.0.1:9099 */
       authEmulatorUrl: z.string().url().nullable(),
+      /** Google sign-in is offered (the provider is enabled for this project). Off unless the server says so. */
+      googleSignIn: z.boolean().default(false),
     })
     .nullable(),
 });

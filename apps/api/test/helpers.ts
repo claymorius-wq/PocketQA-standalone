@@ -96,7 +96,7 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
         siwsDomain: 'pocketqa.local',
         aiProvider: null,
         authMode,
-        firebase: authMode === 'firebase' ? { projectId: 'demo-pocketqa', webApiKey: 'demo-web-api-key', authDomain: 'demo-pocketqa.firebaseapp.com', authEmulatorHost: null } : null, // check-secrets: allow (placeholder public Firebase web config in tests)
+        firebase: authMode === 'firebase' ? { projectId: 'demo-pocketqa', webApiKey: 'demo-web-api-key', authDomain: 'demo-pocketqa.firebaseapp.com', authEmulatorHost: null, googleSignIn: false } : null, // check-secrets: allow (placeholder public Firebase web config in tests)
         sharedDemo: false,
         walletLogin: opts.walletLogin ?? false,
         publicOrigin: opts.walletLogin ? 'https://app.pocketqa.example' : null,
