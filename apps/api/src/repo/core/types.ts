@@ -39,7 +39,7 @@ export interface CoreRepo {
 
   /**
    * Plan §7(a): the first sign-in with a verified email claims a MIGRATED account with that email
-   * (`migrated_link: 'verified_email'`, set only by the migration) that has no sign-in yet. The
+   * (`migrated_link: 'verified_email'`, set only by the migration; never an admin) that has no sign-in yet. The
    * identity, the provider guard, clearing the marker and the audit row commit together, so it
    * happens at most once. Returns the account, or null when nothing is eligible: then the
    * normal rule applies, and accounts are never merged by email.

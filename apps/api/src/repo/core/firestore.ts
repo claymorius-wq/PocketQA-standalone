@@ -98,7 +98,8 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
         const userId = g.data()!.userId as string;
         const [uSnap, pSnap] = await t.getAll(users.doc(userId), providers.doc(`${userId}:firebase`));
         const u = uSnap?.exists ? (uSnap.data() as UserRow & { migrated_link?: string }) : null;
-        if (!u || u.email !== email || u.status === 'deleted' || u.migrated_link !== 'verified_email' || pSnap?.exists) return null;
+        // Admins are never claimed by email: they are linked with the audited admin-link script (pqa-qa r5 P3).
+        if (!u || u.email !== email || u.status === 'deleted' || u.role === 'admin' || u.migrated_link !== 'verified_email' || pSnap?.exists) return null;
         t.create(providers.doc(`${userId}:firebase`), { uid });
         t.create(identityRef(uid), { provider: 'firebase', subject: uid, user_id: userId, has_recovery: 1, valid_after_ms: 0, created_at: audit.createdAt });
         t.update(users.doc(userId), { migrated_link: FieldValue.delete() });

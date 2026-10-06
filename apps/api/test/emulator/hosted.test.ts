@@ -161,6 +161,24 @@ describe('hosted app on the emulators', () => {
     expect(audit.docs.filter((d) => d.data().action === 'user.identity_linked')).toHaveLength(1);
   });
 
+  it('plan §7(a): a mixed-case sign-in email claims the lowercase stored account (r5 P3)', async () => {
+    const { emulatorFirestore } = await import('./fs');
+    const fs = emulatorFirestore();
+    const lower = `mig3-${Date.now()}@example.test`;
+    const migrated = { id: 'migrated-tester-3', email: lower, password_hash: null, display_name: 'Migrated', role: 'tester' as const, status: 'active' as const, device_json: null, created_at: '2026-10-01T00:00:00.000Z' };
+    await deps.repo.core.createUser(migrated);
+    await fs.collection('users').doc(migrated.id).update({ migrated_link: 'verified_email' });
+    const mixed = lower.replace('mig3', 'MiG3').replace('example', 'Example');
+    const up = await rest('accounts:signUp', { email: mixed, password: 'correct horse battery staple', returnSecureToken: true });
+    const { getAuth } = await import('firebase-admin/auth');
+    const { getApps } = await import('firebase-admin/app');
+    await getAuth(getApps().find((a) => a.name === `pocketqa-${PROJECT}`)!).updateUser(up.localId!, { emailVerified: true });
+    const token = (await rest('accounts:signInWithPassword', { email: mixed, password: 'correct horse battery staple', returnSecureToken: true })).idToken!;
+    const res = await call('POST', '/auth/identity/session', token, {});
+    expect(res.status).toBe(200);
+    expect(res.body.user.id).toBe(migrated.id);
+  });
+
   it('plan §7(a): an unverified email never claims a migrated account', async () => {
     const { emulatorFirestore } = await import('./fs');
     const fs = emulatorFirestore();

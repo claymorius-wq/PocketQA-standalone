@@ -234,6 +234,19 @@ describe('plan §7(a): linkMigratedIdentity', () => {
     expect(ids.size).toBe(1);
   });
 
+  it('never links an admin, even one marked by mistake (pqa-qa r5 P3)', async () => {
+    await repo.createUser(user('ad', 'ad@example.test', { role: 'admin' }));
+    await fs.collection('users').doc('ad').update({ migrated_link: 'verified_email' });
+    expect(await repo.linkMigratedIdentity('ad@example.test', 'uid-ad', { id: 'a-ad', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
+  });
+
+  it('matches the stored email exactly: a legacy mixed-case stored email is refused, never guessed (r5 P3)', async () => {
+    await repo.createUser(user('mc', 'Mixed.Case@example.test'));
+    await fs.collection('users').doc('mc').update({ migrated_link: 'verified_email' });
+    // The handler passes the Email-schema (lowercased) address; the legacy row doesn't match it.
+    expect(await repo.linkMigratedIdentity('mixed.case@example.test', 'uid-mc', { id: 'a-mc', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
+  });
+
   it('never links an unmarked, deleted or already-linked account', async () => {
     await repo.createUser(user('n', 'n@example.test'));
     expect(await repo.linkMigratedIdentity('n@example.test', 'uid-n', { id: 'a-n', createdAt: '2026-10-06T00:00:00.000Z' })).toBeNull();
