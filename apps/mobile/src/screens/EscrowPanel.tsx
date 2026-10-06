@@ -8,7 +8,7 @@ import { useIntentKey } from '../api/intentKey';
 import { formatUnits, PILOT_DISCLOSURE, settlementTag, tokenAmount } from '../lib/money';
 import { Button, Card, Field, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
-import { ServerTxSign } from '../wallet/ServerTxSign';
+import { ServerTxSign, VERIFY_VALUE } from '../wallet/ServerTxSign';
 
 type EscrowPayment = Extract<Study['payment'], { mode: 'escrow' }>;
 
@@ -105,8 +105,8 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
             <Card k={0.64} style={styles.card} testID="escrow-pilot-request">
               <KeyValueList>
                 <KeyValue label="Send exactly" value={amount(funding.amountUnits)} valueTestID="escrow-pilot-amount" />
-                <KeyValue label="To the study vault (token account)" value={funding.vault} valueTestID="escrow-pilot-vault" />
-                <KeyValue label="Reference (include it in the transfer)" value={funding.reference} valueTestID="escrow-pilot-reference" />
+                <KeyValue label="To the study vault (token account)" value={funding.vault} valueTestID="escrow-pilot-vault" valueStyle={VERIFY_VALUE} />
+                <KeyValue label="Reference (include it in the transfer)" value={funding.reference} valueTestID="escrow-pilot-reference" valueStyle={VERIFY_VALUE} />
               </KeyValueList>
               {/* The server builds this exact transfer; the wallet signs and sends it after the plan is shown. */}
               <ServerTxSign

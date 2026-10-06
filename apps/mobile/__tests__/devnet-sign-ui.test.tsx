@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
+import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { SettlementApproval, Study } from '@pocket-qa/contracts';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
@@ -130,6 +131,18 @@ describe('ServerTxSign', () => {
     await settle();
     expect(screen.getByTestId('t-plan')).toBeTruthy();
     expect(mockRead).not.toHaveBeenCalled();
+  });
+
+  it('every address on the card wraps inside it (a value you must verify is never cut off at phone width)', async () => {
+    mockRead.mockResolvedValue({ state: 'checked', amountUnits: 1_500_000, recipient: ATTACKER, opId: OP });
+    await render(tree(<ServerTxSign testID="t" settlement="squads_devnet" reviewLabel="Review" signLabel="Sign" load={async () => approval()} submit={jest.fn()} />));
+    await act(async () => fireEvent.press(screen.getByTestId('t-review')));
+    await settle();
+    for (const value of [MULTISIG, ATTACKER, OP, linked]) {
+      const style = StyleSheet.flatten(screen.getByText(value).props.style) as Record<string, unknown>;
+      expect(style).toMatchObject({ flexShrink: 1, textAlign: 'right' });
+      expect(style.flex).toBeGreaterThan(0);
+    }
   });
 
   it('a plan the client refuses shows why and never offers to sign', async () => {

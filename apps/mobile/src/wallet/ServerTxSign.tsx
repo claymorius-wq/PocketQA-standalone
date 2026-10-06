@@ -1,11 +1,25 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View, type TextStyle } from 'react-native';
 import { useSession } from '../auth/SessionProvider';
 import { Button, Card, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList } from '../ui/patterns';
 import { readVaultTransfer } from './devnetRpc';
 import { applyVaultRead, checkServerTxPlan, type CheckedPlan, type ServerTxPlan, type SignContext } from './serverTx';
 import { signServerTransaction } from './signServerTransaction';
+
+/**
+ * A value the builder must verify before signing (addresses, the op id): it takes the row's
+ * remaining width and wraps anywhere, never running off the card at phone width (local devnet
+ * journey, 04-reward-vote-checked).
+ */
+export const VERIFY_VALUE: TextStyle = {
+  flex: 2,
+  flexShrink: 1,
+  fontSize: 14,
+  lineHeight: 20,
+  textAlign: 'right',
+  ...(Platform.OS === 'web' ? ({ wordBreak: 'break-all' } as TextStyle) : {}),
+};
 
 const KIND: Record<CheckedPlan['kind'], string> = {
   payout: 'Reward to the tester',
@@ -90,9 +104,9 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
           <Text variant="label">{`${KIND[c.kind]} · checked in this transaction`}</Text>
           <KeyValueList testID={`${props.testID}-plan`}>
             {c.checked.map((r) => (
-              <KeyValue key={r.label} label={r.label} value={r.value} />
+              <KeyValue key={r.label} label={r.label} value={r.value} valueStyle={VERIFY_VALUE} />
             ))}
-            <KeyValue label="Signed by your wallet" value={c.signer} />
+            <KeyValue label="Signed by your wallet" value={c.signer} valueStyle={VERIFY_VALUE} />
           </KeyValueList>
           {c.described.length ? (
             <>
@@ -104,7 +118,7 @@ export function ServerTxSign<P extends ServerTxPlan>(props: {
               ) : null}
               <KeyValueList testID={`${props.testID}-described`}>
                 {c.described.map((r) => (
-                  <KeyValue key={r.label} label={r.label} value={r.value} />
+                  <KeyValue key={r.label} label={r.label} value={r.value} valueStyle={VERIFY_VALUE} />
                 ))}
               </KeyValueList>
             </>
