@@ -67,3 +67,27 @@ describe('Idempotency-Key', () => {
     expect(credits.body.entries.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('Idempotency-Key from the web client (pqa-qa early r1 P2-H)', () => {
+  it('a browser preflight allows the idempotency-key header', async () => {
+    t = await makeApp();
+    const res = await t.app.inject({
+      method: 'OPTIONS',
+      url: '/me/credits/test-topup',
+      headers: { origin: 'http://localhost:8081', 'access-control-request-method': 'POST', 'access-control-request-headers': 'authorization,content-type,idempotency-key' },
+    });
+    expect(res.statusCode).toBeLessThan(300);
+    expect(String(res.headers['access-control-allow-headers'])).toContain('idempotency-key');
+  });
+
+  it('without a key two identical top-ups are two intents; a retry with the key is one effect', async () => {
+    t = await makeApp();
+    const b = await t.register('builder');
+    await t.req('POST', '/me/credits/test-topup', b.token, { amount: 100 });
+    await t.req('POST', '/me/credits/test-topup', b.token, { amount: 100 });
+    await t.req('POST', '/me/credits/test-topup', b.token, { amount: 100 }, key('retry-key-0006'));
+    await t.req('POST', '/me/credits/test-topup', b.token, { amount: 100 }, key('retry-key-0006'));
+    const entries = (await t.req('GET', '/me/credits', b.token)).body.entries.filter((e: { kind: string }) => e.kind === 'topup' || e.kind === 'test_topup');
+    expect(entries).toHaveLength(3);
+  });
+});

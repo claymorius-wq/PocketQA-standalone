@@ -63,7 +63,7 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
   await app.register(cors, {
     origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin)),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['authorization', 'content-type', 'range'],
+    allowedHeaders: ['authorization', 'content-type', 'range', 'idempotency-key'],
   });
   await app.register(multipart, { limits: { fileSize: MAX_EVIDENCE_BYTES, files: 1, fields: 4, fieldSize: 4096 } });
 

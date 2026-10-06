@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { Evidence } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../../src/api/client';
+import { useIntentKey } from '../../../src/api/intentKey';
 import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
 import { credits } from '../../../src/lib/format';
 import { rewardText } from '../../../src/lib/money';
@@ -41,9 +42,14 @@ function FindingForm({ participationId, evidence }: { participationId: string; e
   const [severity, setSeverity] = useState<'blocker' | 'major' | 'minor' | 'info'>('major');
   const [description, setDescription] = useState('');
   const [evidenceId, setEvidenceId] = useState<string>('none');
+  const intent = useIntentKey();
   const create = useMutation({
-    mutationFn: () => api('createFinding', { params: { id: participationId }, body: { title, severity, description, ...(evidenceId !== 'none' ? { evidenceId } : {}) } }),
+    mutationFn: () => {
+      const body = { title, severity, description, ...(evidenceId !== 'none' ? { evidenceId } : {}) };
+      return api('createFinding', { params: { id: participationId }, body, idempotencyKey: intent.keyFor([participationId, body]) });
+    },
     onSuccess: () => {
+      intent.done();
       setTitle('');
       setDescription('');
       qc.invalidateQueries({ queryKey: ['findings', participationId] });

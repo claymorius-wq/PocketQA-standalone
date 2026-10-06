@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { CREDITS_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
+import { useIntentKey } from '../api/intentKey';
 import { useSession } from '../auth/SessionProvider';
 import { TesterRewards } from './TesterRewards';
 import { GlassSurface } from '../glass';
@@ -127,10 +128,15 @@ export function CreditsScreen({ title }: { title: string }) {
   // The amount in flight: set at the tap (before the mutation's own pending state renders), so the
   // control shows what is being sent and can't be changed until the request settles.
   const [sending, setSending] = useState<'500' | '1000' | '5000' | null>(null);
+  // A retry of the same amount after a lost response replays it; a later top-up is a new intent.
+  const intent = useIntentKey();
   const topUp = useMutation({
-    mutationFn: (value: number) => api('topUp', { body: { amount: value } }),
+    mutationFn: (value: number) => api('topUp', { body: { amount: value }, idempotencyKey: intent.keyFor({ amount: value }) }),
     onSettled: () => setSending(null),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['credits'] }),
+    onSuccess: () => {
+      intent.done();
+      return qc.invalidateQueries({ queryKey: ['credits'] });
+    },
   });
   const builder = user?.role === 'builder';
   return (

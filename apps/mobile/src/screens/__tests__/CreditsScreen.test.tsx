@@ -184,7 +184,7 @@ describe('Budget (builder)', () => {
 
     await fireEvent.press(screen.getByTestId('topup-amount-5000'));
     await fireEvent.press(screen.getByTestId('topup-submit'));
-    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 5000 } });
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 5000 }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     expect(mockHero.every((p) => !p.earned)).toBe(true);
   });
 
@@ -200,7 +200,7 @@ describe('Budget (builder)', () => {
     expect(screen.getByTestId('topup-amount-5000')).toHaveProp('accessibilityState', { selected: false });
     await act(async () => finish({ balance: 500 }));
     expect(mockApi).toHaveBeenCalledTimes(1);
-    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 } });
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     mockApi.mockReset();
   });
 
