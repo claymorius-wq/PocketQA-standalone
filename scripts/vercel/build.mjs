@@ -7,7 +7,7 @@
 //   - config.json (scripts/vercel/config.mjs): /api/* goes to the function, other paths to static files
 //     then the SPA, the shared security headers, and two daily crons.
 // Then it scans the output for server-only secret values (counts only, never a value).
-//   node scripts/vercel/build.mjs [--env staging|production] [--skip-web] [--deploy] [--out <dir>]
+//   node scripts/vercel/build.mjs [--env staging|production|devnet] [--skip-web] [--deploy] [--out <dir>]
 // --deploy (the build that will be uploaded): every server-only variable must be present in this
 // environment, so the value scan really checks all of them (pqa-qa r7 P3). Otherwise it refuses.
 import { execFileSync } from 'node:child_process';
@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { build } from 'esbuild';
 import { assertBundles } from './bundle-check.mjs';
 import { vercelConfig } from './config.mjs';
+import { needlesFor } from './secret-needles.mjs';
 
 const REPO = join(import.meta.dirname, '../..');
 const args = process.argv.slice(2);
@@ -27,12 +28,16 @@ const deploy = args.includes('--deploy');
 if (deploy && args.includes('--out')) throw new Error('--deploy always builds .vercel/output (what vercel deploy --prebuilt uploads).');
 if (deploy && args.includes('--skip-web')) throw new Error('--deploy builds the web app too: drop --skip-web.');
 // Server-only: these live in the Vercel project's server env and must never reach the output.
-const SERVER_ONLY = ['FIREBASE_SERVICE_ACCOUNT_JSON', 'POCKETQA_R2_ACCESS_KEY_ID', 'POCKETQA_R2_SECRET_ACCESS_KEY', 'CRON_SECRET'];
+// The devnet platform signer (devnet-phase-contract.md CH-D4) is always scanned for; it is required
+// only for a devnet deploy, and any other build refuses to run with it in the environment.
+const DEVNET_SIGNER = 'POCKETQA_DEVNET_PLATFORM_SIGNER';
+const SERVER_ONLY = ['FIREBASE_SERVICE_ACCOUNT_JSON', 'POCKETQA_R2_ACCESS_KEY_ID', 'POCKETQA_R2_SECRET_ACCESS_KEY', 'CRON_SECRET', DEVNET_SIGNER];
+if (envName !== 'staging' && envName !== 'production' && envName !== 'devnet') throw new Error('--env must be staging, production or devnet');
+if (envName !== 'devnet' && process.env[DEVNET_SIGNER]) throw new Error(`${DEVNET_SIGNER} is only for --env devnet builds (Preview env only; production never has it).`);
 if (deploy) {
-  const missing = SERVER_ONLY.filter((n) => !process.env[n]);
+  const missing = SERVER_ONLY.filter((n) => !process.env[n] && (n !== DEVNET_SIGNER || envName === 'devnet'));
   if (missing.length) throw new Error(`--deploy needs every server-only variable in the scanning environment (missing: ${missing.join(', ')}).`);
 }
-if (envName !== 'staging' && envName !== 'production') throw new Error('--env must be staging or production');
 
 // One source of truth for the function's time limit: the idempotency lease is tested against it.
 const hostedSrc = readFileSync(join(REPO, 'apps/api/src/hosted/app.ts'), 'utf8');
@@ -114,15 +119,7 @@ const needles = [];
 for (const name of SERVER_ONLY) {
   const v = process.env[name];
   if (!v) continue;
-  needles.push(v);
-  if (name === 'FIREBASE_SERVICE_ACCOUNT_JSON') {
-    try {
-      const sa = JSON.parse(v);
-      for (const k of ['private_key', 'private_key_id', 'client_id']) if (sa[k]) needles.push(String(sa[k]));
-    } catch {
-      /* the value itself is still scanned */
-    }
-  }
+  needles.push(...needlesFor(name, v));
 }
 // Key MATERIAL, not the words: libraries (firebase-admin, jose) mention these markers in their code.
 const keyMaterial = [/-----BEGIN (?:RSA |EC )?PRIVATE KEY-----\s*[A-Za-z0-9+/=\s]{200,}/, /"private_key"\s*:\s*"-----BEGIN/];
