@@ -1,9 +1,17 @@
 // One-way migration of a SQLite SNAPSHOT into Firestore (docs/plans/firebase-vercel-refactor.md
-// §8 steps 1–3, r2 §R4, R9). DRY RUN ONLY in this build: the target is the Firestore emulator.
+// §8, r2 §R4, R9).
 //
+// DRY RUN (emulator only, no object storage):
 //   firebase emulators:exec ... 'tsx scripts/migrate-to-firestore.ts --snapshot <copy.sqlite>
 //     --expect-sha256 <hex> --media-dir <copy/media> [--receipt <seeker-receipt.json>]
 //     --out <manifest.json outside the repo>'
+//
+// REAL RUN (plan §8.3–8.5; run by the lead with authorised credentials from the environment):
+//   tsx scripts/migrate-to-firestore.ts --real --approved-manifest <sha256> [--project <id>]
+//     --snapshot <copy.sqlite> --expect-sha256 <hex> --media-dir <copy/media> [--receipt <json>]
+//     --out <post-run manifest.json outside the repo>
+//   env: FIREBASE_SERVICE_ACCOUNT_JSON, POCKETQA_R2_ACCOUNT_ID, POCKETQA_R2_BUCKET,
+//        POCKETQA_R2_ACCESS_KEY_ID, POCKETQA_R2_SECRET_ACCESS_KEY (names only; never printed)
 //
 // The Seeker receipt defaults to ~/.local/share/pocketqa/migration/seeker-receipt.json (0600);
 // nothing under .preview is ever read.
@@ -11,28 +19,40 @@
 // Safety rules (each enforced below, not just documented):
 //  - The snapshot is a COPY. Its sha256 is checked before it is opened, it is opened with
 //    SQLite `immutable=1` + read-only (no -wal/-shm, never written), and re-hashed afterwards.
-//  - Writes go only to the emulator (FIRESTORE_EMULATOR_HOST, loopback, `demo-` project, enforced
-//    by openFirestore). The real mode refuses unless `--real --approved-manifest <sha256>` are
-//    given, and then still refuses: hosted writes are not enabled in this build (plan §8.4).
-//  - No R2 calls: evidence objects are only PLANNED (target key + expected sha256). The Seeker
-//    recording is planned as a server-side copy from its archived key (receipt) to evidence/{id},
-//    never a re-upload; the archived original is never registered, deletable or touched.
+//  - Dry run: writes only to the emulator (FIRESTORE_EMULATOR_HOST, loopback, `demo-` project,
+//    enforced by openFirestore) and makes no object-storage calls.
+//  - Real run refuses before any write unless: the snapshot is THE approved snapshot (sha below,
+//    for the real project), the manifest computed in memory hashes to `--approved-manifest`, the
+//    target holds no user the plan doesn't migrate, and no planned document exists with
+//    different content (identical content = an idempotent rerun). The real project is
+//    pocketqa-optijara; `--project demo-…` exists only so tests can run it on the emulator.
+//  - Objects first, documents after: each evidence object is uploaded (upload-copy) or
+//    server-side copied from the Seeker archive (server-copy), verified by HEAD size and a full
+//    GET sha256 equal to the expected one, and only then registered in storageObjects. A failed
+//    verify stops the run with that object unregistered. The object helper has NO delete, never
+//    writes outside evidence/{id}, and only ever reads the archive key as a copy source.
 //  - Migrated non-admin users carry `migrated_link: 'verified_email'`: the first sign-in with a
 //    verified password or Google email equal to the stored one may claim the account (plan §7(a)).
 //    Admins never do: they are linked by the audited admin-link script (§7(b)).
 //  - Deterministic doc ids and contents (no server timestamps, no random ids), written with
 //    `set`, so a rerun rewrites identical documents and yields an identical manifest.
-//  - Output is counts only; the manifest file holds ids, keys and hashes, never user content.
+//  - Output is counts only; the manifest files hold ids, keys and hashes, never user content.
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
+import { CopyObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Timestamp, type Firestore } from 'firebase-admin/firestore';
+import type { Readable } from 'node:stream';
 import { openFirestore } from '../src/firestore/admin';
 
 export const TOOL_VERSION = 'migrate-to-firestore/1';
+/** The QA-approved snapshot (plan §8.1, R1); the real project accepts no other. */
+export const REAL_SNAPSHOT_SHA256 = '3501bc9e96436b10b58ba843509ff670dff08354ca61bfdf698429fbede610e3';
+export const REAL_PROJECT = 'pocketqa-optijara';
 const BATCH = 400;
 const FAUCET = 'system:test-faucet';
 export const DEFAULT_RECEIPT = join(homedir(), '.local', 'share', 'pocketqa', 'migration', 'seeker-receipt.json');
@@ -56,7 +76,7 @@ export type EvidencePlan = {
   bytes: number;
   expectedSha256: string;
 };
-export type SeekerReceipt = { evidenceId: string; key: string; sha256: string; bytes: number };
+export type SeekerReceipt = { evidenceId: string; key: string; sha256: string; bytes: number; bucket?: string };
 export type Plan = {
   writes: DocWrite[];
   sourceCounts: Record<string, number>;
@@ -288,15 +308,43 @@ export type Manifest = {
   manifestSha256?: string;
 };
 
-/** The manifest, from what is READ BACK from Firestore (not from the plan alone). */
-export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: string, seeker: SeekerReceipt | null): Promise<Manifest> {
-  const groups = [...new Set(plan.writes.map((w) => groupOf(w.path)))].sort();
-  const docs = new Map<string, Map<string, Data>>(); // group -> path -> data
-  for (const g of groups) {
+/** Documents by collection group, then path. */
+type Docs = Map<string, Map<string, Data>>;
+const groupsOf = (plan: Plan) => [...new Set(plan.writes.map((w) => groupOf(w.path)))].sort();
+
+/** What the target holds in the plan's collections (read back). */
+async function readTarget(fs: Firestore, plan: Plan): Promise<Docs> {
+  const docs: Docs = new Map();
+  for (const g of groupsOf(plan)) {
     const parts = g.split('/');
     const snap = parts.length > 1 ? await fs.collectionGroup(parts[2]!).get() : await fs.collection(g).get();
     docs.set(g, new Map(snap.docs.filter((d) => groupOf(d.ref.path) === g).map((d) => [d.ref.path, d.data()])));
   }
+  return docs;
+}
+
+/** The documents a complete migration of this plan leaves in an otherwise empty target. */
+function plannedDocs(plan: Plan): Docs {
+  const docs: Docs = new Map(groupsOf(plan).map((g) => [g, new Map()]));
+  for (const w of plan.writes) docs.get(groupOf(w.path))!.set(w.path, w.data);
+  return docs;
+}
+
+/** The manifest, from what is READ BACK from Firestore (not from the plan alone). */
+export async function buildManifest(fs: Firestore, plan: Plan, snapshotSha256: string, seeker: SeekerReceipt | null): Promise<Manifest> {
+  return manifestOf(await readTarget(fs, plan), plan, snapshotSha256, seeker);
+}
+
+/**
+ * The manifest a successful run produces, computed in memory from the snapshot alone (no target
+ * read). The real run refuses to write unless its hash equals the QA-approved dry-run manifest.
+ */
+export function plannedManifest(plan: Plan, snapshotSha256: string, seeker: SeekerReceipt | null): Manifest {
+  return manifestOf(plannedDocs(plan), plan, snapshotSha256, seeker);
+}
+
+function manifestOf(docs: Docs, plan: Plan, snapshotSha256: string, seeker: SeekerReceipt | null): Manifest {
+  const groups = groupsOf(plan);
   const collections: Manifest['target']['collections'] = {};
   for (const g of groups) {
     const planned = plan.writes.filter((w) => groupOf(w.path) === g).sort((a, b) => a.path.localeCompare(b.path));
@@ -442,19 +490,197 @@ function outsideRepo(file: string): boolean {
   return rel.startsWith('..') || isAbsolute(rel);
 }
 
+// ── Real run: object storage (no delete exists here) ─────────────────────────────────────
+
+/** The only object operations the real run needs. There is deliberately no delete. */
+export type ObjectStore = {
+  head(key: string): Promise<{ size: number } | null>;
+  /** sha256 of the whole object (a full GET). */
+  sha256(key: string): Promise<string>;
+  put(key: string, body: Buffer, contentType: string): Promise<void>;
+  copy(srcKey: string, dstKey: string): Promise<void>;
+};
+export type R2Target = { endpoint: string; bucket: string; accessKeyId: string; secretAccessKey: string };
+
+/** Writes land only at the app's own evidence/{id} keys. */
+const APP_KEY = /^evidence\/[A-Za-z0-9_-]{8,64}$/;
+const ARCHIVE_KEY = /^retained-local-submissions\/[A-Za-z0-9_-]{8,64}\/[0-9a-f]{64}\.mp4$/;
+
+/** S3-compatible client for R2 (same client settings as storage/r2.ts). PUTs go through a presigned URL. */
+export function s3ObjectStore(r2: R2Target): ObjectStore {
+  const client = new S3Client({ region: 'auto', endpoint: r2.endpoint, forcePathStyle: true, credentials: { accessKeyId: r2.accessKeyId, secretAccessKey: r2.secretAccessKey } });
+  const Bucket = r2.bucket;
+  const missing = (e: unknown) => {
+    const err = e as { name?: string; $metadata?: { httpStatusCode?: number } };
+    return err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404;
+  };
+  const appKey = (key: string) => {
+    if (!APP_KEY.test(key)) throw new Error('refusing to write outside evidence/{id}');
+  };
+  return {
+    async head(key) {
+      try {
+        const r = await client.send(new HeadObjectCommand({ Bucket, Key: key }));
+        return { size: Number(r.ContentLength ?? 0) };
+      } catch (e) {
+        if (missing(e)) return null;
+        throw e;
+      }
+    },
+    async sha256(key) {
+      const r = await client.send(new GetObjectCommand({ Bucket, Key: key }));
+      const h = createHash('sha256');
+      for await (const c of r.Body as Readable) h.update(c as Buffer);
+      return h.digest('hex');
+    },
+    async put(key, body, contentType) {
+      appKey(key);
+      const url = await getSignedUrl(client, new PutObjectCommand({ Bucket, Key: key, ContentType: contentType, ContentLength: body.length }), {
+        expiresIn: 900,
+        signableHeaders: new Set(['content-type', 'content-length']),
+      });
+      const res = await fetch(url, { method: 'PUT', headers: { 'content-type': contentType, 'content-length': String(body.length) }, body: new Uint8Array(body) });
+      if (!res.ok) throw new Error(`PUT failed with HTTP ${res.status}`);
+    },
+    async copy(srcKey, dstKey) {
+      appKey(dstKey);
+      if (!ARCHIVE_KEY.test(srcKey)) throw new Error('refusing to copy from a key that is not a retained archive');
+      await client.send(new CopyObjectCommand({ Bucket, Key: dstKey, CopySource: `${Bucket}/${srcKey}` }));
+    },
+  };
+}
+
+/** R2 settings from the environment (names as in config.ts). A test endpoint only for demo- targets. */
+export function r2FromEnv(env: NodeJS.ProcessEnv, allowTestEndpoint: boolean): R2Target {
+  const accountId = env.POCKETQA_R2_ACCOUNT_ID ?? '';
+  const bucket = env.POCKETQA_R2_BUCKET ?? '';
+  const accessKeyId = env.POCKETQA_R2_ACCESS_KEY_ID ?? '';
+  const secretAccessKey = env.POCKETQA_R2_SECRET_ACCESS_KEY ?? '';
+  if (!/^[a-f0-9]{32}$/.test(accountId)) throw new Error('refusing: POCKETQA_R2_ACCOUNT_ID (32 hex) is required');
+  if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket)) throw new Error('refusing: POCKETQA_R2_BUCKET is required');
+  if (!accessKeyId || !secretAccessKey) throw new Error('refusing: POCKETQA_R2_ACCESS_KEY_ID and POCKETQA_R2_SECRET_ACCESS_KEY are required');
+  let endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
+  if (env.POCKETQA_R2_ENDPOINT) {
+    if (!allowTestEndpoint) throw new Error('refusing: POCKETQA_R2_ENDPOINT (a test server) is not allowed for the real project');
+    if (!/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(env.POCKETQA_R2_ENDPOINT)) throw new Error('refusing: POCKETQA_R2_ENDPOINT may only be a loopback test server');
+    endpoint = env.POCKETQA_R2_ENDPOINT;
+  }
+  return { endpoint, bucket, accessKeyId, secretAccessKey };
+}
+
+// ── Real run: the steps ──────────────────────────────────────────────────────────────
+
+export class Refused extends Error {}
+
+export type RealRunReport = {
+  approvedManifest: string;
+  plannedManifest: string;
+  preCheck: { plannedDocs: number; existingIdentical: number; existingConflicting: number; unplannedUsers: number };
+  objects: { alreadyPresent: number; uploaded: number; serverCopied: number; registered: number; failed: { evidenceId: string; reason: string } | null };
+  docsWritten: number;
+  postManifest: string | null;
+  postMatchesApproved: boolean;
+};
+
+/**
+ * The real migration (plan §8.3–8.5): refuse unless the plan reproduces the approved manifest and
+ * the target holds nothing that conflicts; then objects (verify, then register), then documents,
+ * then the post-run manifest read back from the target.
+ */
+export async function realRun(o: {
+  fs: Firestore;
+  store: ObjectStore;
+  plan: Plan;
+  snapshotSha256: string;
+  seeker: SeekerReceipt;
+  approvedSha256: string;
+  mediaDir: string;
+}): Promise<{ report: RealRunReport; manifest: Manifest | null }> {
+  const { fs, store, plan, seeker } = o;
+  const planned = plannedManifest(plan, o.snapshotSha256, seeker);
+  if (!planned.ok) throw new Refused('refusing: the planned manifest is not ok');
+  if (planned.manifestSha256 !== o.approvedSha256) throw new Refused(`refusing: the planned manifest ${planned.manifestSha256!.slice(0, 12)}… is not the approved ${o.approvedSha256.slice(0, 12)}…`);
+  const report: RealRunReport = {
+    approvedManifest: o.approvedSha256,
+    plannedManifest: planned.manifestSha256!,
+    preCheck: { plannedDocs: plan.writes.length, existingIdentical: 0, existingConflicting: 0, unplannedUsers: 0 },
+    objects: { alreadyPresent: 0, uploaded: 0, serverCopied: 0, registered: 0, failed: null },
+    docsWritten: 0,
+    postManifest: null,
+    postMatchesApproved: false,
+  };
+
+  // Pre-check (read only): no unplanned users; every planned doc absent or identical.
+  const plannedUsers = new Set(plan.writes.filter((w) => w.path.startsWith('users/')).map((w) => w.path.slice('users/'.length)));
+  report.preCheck.unplannedUsers = (await fs.collection('users').select().get()).docs.filter((d) => !plannedUsers.has(d.id)).length;
+  const conflicts = new Set<string>();
+  for (let i = 0; i < plan.writes.length; i += 300) {
+    const part = plan.writes.slice(i, i + 300);
+    const snaps = await fs.getAll(...part.map((w) => fs.doc(w.path)));
+    snaps.forEach((s, j) => {
+      if (!s.exists) return;
+      if (canonical(s.data()) === canonical(part[j]!.data)) report.preCheck.existingIdentical += 1;
+      else {
+        report.preCheck.existingConflicting += 1;
+        conflicts.add(groupOf(part[j]!.path));
+      }
+    });
+  }
+  if (report.preCheck.unplannedUsers > 0) throw Object.assign(new Refused(`refusing: the target holds ${report.preCheck.unplannedUsers} user(s) this migration doesn't plan`), { report });
+  if (conflicts.size > 0) throw Object.assign(new Refused(`refusing: ${report.preCheck.existingConflicting} planned document(s) exist with different content (${[...conflicts].sort().join(', ')})`), { report });
+
+  // Objects, then their registration. The archive key is only ever a copy source.
+  const docByPath = new Map(plan.writes.map((w) => [w.path, w.data]));
+  for (const e of plan.evidence) {
+    const fail = (reason: string) => {
+      report.objects.failed = { evidenceId: e.evidenceId, reason };
+      return Object.assign(new Error(`stopped: evidence ${e.evidenceId}: ${reason} (left unregistered)`), { report });
+    };
+    if (!APP_KEY.test(e.targetKey) || e.targetKey === seeker.key) throw fail('target is not an app evidence key');
+    const existing = await store.head(e.targetKey);
+    if (existing) {
+      if (existing.size !== e.bytes || (await store.sha256(e.targetKey)) !== e.expectedSha256) throw fail('the target already holds different content');
+      report.objects.alreadyPresent += 1;
+    } else if (e.action === 'upload-copy') {
+      if (!/^[\w-]+$/.test(e.sourceKey)) throw fail('unsafe local media name');
+      const body = readFileSync(join(o.mediaDir, e.sourceKey));
+      if (sha(body) !== e.expectedSha256) throw fail('the local media no longer matches its planned sha256');
+      const mime = String(docByPath.get(`evidence/${e.evidenceId}`)?.mime_type ?? '');
+      await store.put(e.targetKey, body, mime);
+      report.objects.uploaded += 1;
+    } else {
+      if (e.sourceKey !== seeker.key || !ARCHIVE_KEY.test(e.sourceKey)) throw fail('server-copy source is not the receipt archive key');
+      const archive = await store.head(seeker.key);
+      if (!archive || archive.size !== seeker.bytes) throw fail('the archive object is missing or its size differs from the receipt');
+      await store.copy(seeker.key, e.targetKey);
+      report.objects.serverCopied += 1;
+    }
+    const after = await store.head(e.targetKey);
+    if (!after || after.size !== e.bytes) throw fail('size verification failed');
+    if ((await store.sha256(e.targetKey)) !== e.expectedSha256) throw fail('sha256 verification failed');
+    const path = `storageObjects/${sha(e.targetKey)}`;
+    await fs.doc(path).set(docByPath.get(path)!);
+    report.objects.registered += 1;
+  }
+
+  // Documents (deterministic, so a rerun rewrites identical content), then the read-back manifest.
+  await applyPlan(fs, plan);
+  report.docsWritten = plan.writes.length;
+  const manifest = await buildManifest(fs, plan, o.snapshotSha256, seeker);
+  report.postManifest = manifest.manifestSha256!;
+  report.postMatchesApproved = manifest.manifestSha256 === o.approvedSha256;
+  return { report, manifest };
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const opt = (name: string) => {
     const i = args.indexOf(name);
     return i >= 0 ? args[i + 1] : undefined;
   };
-  if (args.includes('--real')) {
-    const approved = opt('--approved-manifest');
-    if (!approved || !/^[0-9a-f]{64}$/.test(approved)) throw new Error('refusing: --real needs --approved-manifest <sha256 of the QA-approved dry-run manifest>');
-    // Plan §8.4: the hosted run happens only after QA approves the dry-run manifest, as a separately
-    // approved step. This build has no hosted-write path.
-    throw new Error('refusing: hosted migration is not enabled in this build (dry run only)');
-  }
+  const real = args.includes('--real');
+  const approved = opt('--approved-manifest');
+  if (real && (!approved || !/^[0-9a-f]{64}$/.test(approved))) throw new Error('refusing: --real needs --approved-manifest <sha256 of the QA-approved dry-run manifest>');
   const snapshot = opt('--snapshot');
   const expect = opt('--expect-sha256');
   const mediaDir = opt('--media-dir');
@@ -463,20 +689,50 @@ async function main() {
   if (resolve(receiptFile).split('/').includes('.preview')) throw new Error('refusing: the receipt must not be read from .preview');
   const out = opt('--out');
   if (!snapshot || !expect || !mediaDir || !out) {
-    throw new Error('usage: --snapshot <copy.sqlite> --expect-sha256 <hex> --media-dir <copy/media> [--receipt <seeker-receipt.json>] --out <manifest.json outside the repo>');
+    throw new Error('usage: [--real --approved-manifest <sha256> [--project <id>]] --snapshot <copy.sqlite> --expect-sha256 <hex> --media-dir <copy/media> [--receipt <seeker-receipt.json>] --out <manifest.json outside the repo>');
   }
-  if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('refusing: the dry run writes only to the Firestore emulator (FIRESTORE_EMULATOR_HOST is not set)');
+  const project = real ? (opt('--project') ?? REAL_PROJECT) : 'demo-pocketqa';
+  if (real) {
+    if (project !== REAL_PROJECT && !project.startsWith('demo-')) throw new Error(`refusing: the real run targets ${REAL_PROJECT} (or a demo- emulator project in tests)`);
+    if (project === REAL_PROJECT && expect !== REAL_SNAPSHOT_SHA256) throw new Error('refusing: the real project accepts only the approved snapshot');
+    if (project === REAL_PROJECT && process.env.FIRESTORE_EMULATOR_HOST) throw new Error('refusing: FIRESTORE_EMULATOR_HOST is set for a real-project run');
+    if (project.startsWith('demo-') && !process.env.FIRESTORE_EMULATOR_HOST) throw new Error('refusing: a demo- project runs only on the emulator');
+  } else if (!process.env.FIRESTORE_EMULATOR_HOST) {
+    throw new Error('refusing: the dry run writes only to the Firestore emulator (FIRESTORE_EMULATOR_HOST is not set)');
+  }
   if (!outsideRepo(out)) throw new Error('refusing: the manifest must be written outside the repository');
-
   if (!existsSync(receiptFile)) throw new Error('refusing: the Seeker receipt is missing (default ~/.local/share/pocketqa/migration/seeker-receipt.json, or --receipt)');
   const receipt = JSON.parse(readFileSync(receiptFile, 'utf8')) as SeekerReceipt;
-  const seeker = receipt ? { evidenceId: receipt.evidenceId, key: receipt.key, sha256: receipt.sha256, bytes: receipt.bytes } : null;
+  const seeker: SeekerReceipt = { evidenceId: receipt.evidenceId, key: receipt.key, sha256: receipt.sha256, bytes: receipt.bytes };
+  const r2 = real ? r2FromEnv(process.env, project.startsWith('demo-')) : null;
+  if (r2 && receipt.bucket && receipt.bucket !== r2.bucket) throw new Error('refusing: POCKETQA_R2_BUCKET is not the bucket of the Seeker archive');
+
   const db = openSnapshot(snapshot, expect);
   const plan = planMigration(db, { mediaSha256: mediaHasher(mediaDir), seeker });
   db.close();
-  const fs = openFirestore(process.env, 'demo-pocketqa');
-  await applyPlan(fs, plan);
-  const manifest = await buildManifest(fs, plan, expect, seeker);
+  const fs = openFirestore(process.env, project);
+
+  let manifest: Manifest;
+  if (real) {
+    try {
+      const run = await realRun({ fs, store: s3ObjectStore(r2!), plan, snapshotSha256: expect, seeker, approvedSha256: approved!, mediaDir });
+      manifest = run.manifest!;
+      writeFileSync(`${out}.report.json`, `${JSON.stringify(run.report, null, 2)}\n`, { mode: 0o600 });
+      const r = run.report;
+      console.log(`real run ${project}: pre-check ${r.preCheck.plannedDocs} planned, ${r.preCheck.existingIdentical} already identical, 0 conflicting, 0 unplanned users`);
+      console.log(`objects: ${r.objects.uploaded} uploaded, ${r.objects.serverCopied} server-copied, ${r.objects.alreadyPresent} already present, ${r.objects.registered} verified and registered`);
+      console.log(`documents written: ${r.docsWritten}`);
+      console.log(`post-run manifest ${r.postManifest} ${r.postMatchesApproved ? 'MATCHES' : 'DOES NOT MATCH'} the approved ${approved}`);
+      if (!r.postMatchesApproved) process.exitCode = 1;
+    } catch (e) {
+      const report = (e as { report?: RealRunReport }).report;
+      if (report) writeFileSync(`${out}.report.json`, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o600 });
+      throw e;
+    }
+  } else {
+    await applyPlan(fs, plan);
+    manifest = await buildManifest(fs, plan, expect, seeker);
+  }
   // The snapshot copy is unchanged by the run.
   if (sha(readFileSync(snapshot)) !== expect) throw new Error('the snapshot changed during the run');
   writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
