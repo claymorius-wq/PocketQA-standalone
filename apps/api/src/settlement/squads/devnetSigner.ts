@@ -15,19 +15,24 @@ export class SignerError extends Error {}
 
 export function loadPlatformSigner(env: Record<string, string | undefined>): Keypair {
   const file = env.POCKETQA_DEVNET_PLATFORM_SIGNER_FILE;
-  let raw: string;
-  let name: string;
-  if (file) {
-    name = 'POCKETQA_DEVNET_PLATFORM_SIGNER_FILE';
-    if (!isAbsolute(file)) throw new SignerError(`${name} must be an absolute path.`);
-    if ((statSync(dirname(file)).mode & 0o077) !== 0) throw new SignerError(`${name}: the key directory must be mode 0700.`);
-    if ((statSync(file).mode & 0o077) !== 0) throw new SignerError(`${name}: the key file must be mode 0600.`);
-    raw = readFileSync(file, 'utf8');
-  } else {
-    name = 'POCKETQA_DEVNET_PLATFORM_SIGNER';
-    raw = env.POCKETQA_DEVNET_PLATFORM_SIGNER ?? '';
-    if (!raw) throw new SignerError(`${name} is not set.`);
-  }
+  if (file) return loadKeyFile(file, 'POCKETQA_DEVNET_PLATFORM_SIGNER_FILE');
+  const raw = env.POCKETQA_DEVNET_PLATFORM_SIGNER ?? '';
+  if (!raw) throw new SignerError('POCKETQA_DEVNET_PLATFORM_SIGNER is not set.');
+  return parseKey(raw, 'POCKETQA_DEVNET_PLATFORM_SIGNER');
+}
+
+/**
+ * A key file (Solana CLI JSON format) for an operator tool or a local live run: an absolute path,
+ * the file 0600 in a 0700 directory. `name` labels errors, which never contain the value.
+ */
+export function loadKeyFile(file: string, name: string): Keypair {
+  if (!isAbsolute(file)) throw new SignerError(`${name} must be an absolute path.`);
+  if ((statSync(dirname(file)).mode & 0o077) !== 0) throw new SignerError(`${name}: the key directory must be mode 0700.`);
+  if ((statSync(file).mode & 0o077) !== 0) throw new SignerError(`${name}: the key file must be mode 0600.`);
+  return parseKey(readFileSync(file, 'utf8'), name);
+}
+
+function parseKey(raw: string, name: string): Keypair {
   let bytes: unknown;
   try {
     bytes = JSON.parse(raw);
