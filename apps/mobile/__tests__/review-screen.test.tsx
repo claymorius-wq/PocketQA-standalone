@@ -370,6 +370,67 @@ describe('review screen', () => {
     expect(error).toHaveTextContent(/budget cannot cover/);
   });
 
+  // H-33 (full E2E): a decision already committed elsewhere (another tab, another device) comes back
+  // as CONFLICT_STATE. The screen refetches and shows that decision instead of an error to retry.
+  const conflict = (message: string) => {
+    const { ApiError } = jest.requireMock<{ ApiError: new (code: string, message: string) => Error }>('../src/api/client');
+    return new ApiError('CONFLICT_STATE', message);
+  };
+
+  it('H-33: an approval already decided elsewhere closes the sheet and shows that decision, with no error', async () => {
+    mockApi.mockImplementation(async () => {
+      // Another tab approved first: the server now holds the decision and refuses this one.
+      mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z' });
+      throw conflict('Cannot approve a participation that is approved.');
+    });
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('review-approve'));
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await settle();
+    await settle();
+    await advance(400);
+    expect(mockApi).toHaveBeenCalledTimes(1); // money path: one request, never retried
+    expect(screen.queryByTestId('confirm-sheet')).toBeNull();
+    expect(screen.queryByTestId('decision-error', { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByTestId('review-already-decided', { includeHiddenElements: true })).toHaveTextContent(/Already decided/);
+    expect(screen.getByTestId('review-decided')).toHaveTextContent(/Decision: Approved/);
+    await advance(600);
+    expect(screen.queryByTestId('review-approve')).toBeNull();
+  });
+
+  it('H-33: a rejection that finds the submission already approved shows the approval, with no error', async () => {
+    mockApi.mockImplementation(async () => {
+      mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z' });
+      throw conflict('Cannot reject a participation that is approved.');
+    });
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('review-reject'));
+    await fireEvent.changeText(screen.getByTestId('reject-reason'), 'No evidence attached for the wallet step.');
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await settle();
+    await settle();
+    await advance(400);
+    expect(screen.queryByTestId('confirm-sheet')).toBeNull();
+    expect(screen.queryByTestId('decision-error', { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByTestId('review-already-decided', { includeHiddenElements: true })).toHaveTextContent(/Already decided/);
+    expect(screen.getByTestId('review-decided')).toHaveTextContent(/Decision: Approved/);
+  });
+
+  it('H-33: a conflict that leaves the submission undecided keeps the sheet and its message', async () => {
+    mockApi.mockImplementation(async () => {
+      throw conflict('This study is not accepting decisions right now.');
+    });
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('review-approve'));
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    await settle();
+    await settle();
+    await advance(100);
+    expect(screen.getByTestId('confirm-sheet')).toBeTruthy();
+    expect(screen.getByTestId('decision-error', { includeHiddenElements: true })).toHaveTextContent(/not accepting decisions/);
+    expect(screen.queryByTestId('review-already-decided', { includeHiddenElements: true })).toBeNull();
+  });
+
   it('a disputed rejection shows the tester’s dispute; an overturned one shows the transfer card', async () => {
     mockPart = participation({ status: 'disputed', decidedAt: '2026-10-03T14:30:00.000Z', decisionReason: 'The receipt screen was never reached.' });
     mockDisputes = [{ id: 'd1', participationId: 'p1', status: 'open', reason: 'My note explains the checkout button problem.', outcome: null, resolutionNote: null }];

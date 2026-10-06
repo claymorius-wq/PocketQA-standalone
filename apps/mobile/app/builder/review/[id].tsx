@@ -114,6 +114,9 @@ function ReviewInner() {
   const [passing, setPassing] = useState(false);
   // In-session approvals: each one lands the U7 tail on the Decision notice once.
   const [landed, setLanded] = useState(0);
+  // H-33: this decision was refused because the submission was already decided elsewhere (another
+  // tab or device). The screen then shows that decision (refetched) instead of an error to retry.
+  const [alreadyDecided, setAlreadyDecided] = useState(false);
   const lit = glass.enabled && motion.play.uplightCommit;
   const decide = useMutation({
     // The decision carries its own fields, so a request always sends what was confirmed, even one
@@ -131,6 +134,20 @@ function ReviewInner() {
       qc.invalidateQueries({ queryKey: ['studyParticipations', p.studyId] });
       qc.invalidateQueries({ queryKey: ['study', p.studyId] });
     },
+    // CONFLICT_STATE: the server refused because the submission's state changed. Refetch it (awaited,
+    // so the mutation settles after the fresh state is in); if it is no longer awaiting review, it was
+    // decided elsewhere: close the sheet and show that decision. Anything else keeps the sheet and its
+    // message. Nothing is re-sent: the money path is the server's single decision.
+    onError: async (e) => {
+      if (!(e instanceof ApiError) || e.code !== 'CONFLICT_STATE') return;
+      await qc.refetchQueries({ queryKey: ['participation', id] });
+      const fresh = qc.getQueryData<{ status: string; studyId: string }>(['participation', id]);
+      if (!fresh || fresh.status === 'submitted') return;
+      setAlreadyDecided(true);
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ['studyParticipations', fresh.studyId] });
+      qc.invalidateQueries({ queryKey: ['study', fresh.studyId] });
+    },
   });
   const openSheet = (k: DecisionKind) => {
     // While a decision is still being sent (Cancel works again after the pending escape), Approve
@@ -146,6 +163,7 @@ function ReviewInner() {
       return;
     }
     decide.reset();
+    setAlreadyDecided(false);
     setKind(k);
     setOpen(true);
   };
@@ -201,6 +219,11 @@ function ReviewInner() {
                   </ReviewSection>
                 ) : null}
                 {canAddFinding(p.status) ? <FindingForm participationId={p.id} evidence={ev.data?.items ?? []} /> : null}
+                {alreadyDecided && view.notice ? (
+                  <Notice tone="info" title="Already decided" testID="review-already-decided">
+                    This submission was decided elsewhere (another tab or device) before your decision arrived, so yours wasn’t applied. Its decision is shown below.
+                  </Notice>
+                ) : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
                 {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
@@ -239,7 +262,7 @@ function ReviewInner() {
                       <Checkbox checked={helpful} onChange={setHelpful} label="Mark the feedback helpful (adds reputation points)" testID="approve-helpful" />
                     </>
                   )}
-                  {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
+                  {decide.error && !alreadyDecided ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
                 </ConfirmSheet>
               </>
             )}
