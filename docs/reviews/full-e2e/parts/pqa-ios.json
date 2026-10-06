@@ -1,0 +1,412 @@
+[
+  {
+    "id": "D-01",
+    "area": "devnet",
+    "title": "Devnet escrow runner and receipts inventoried",
+    "status": "PASS",
+    "environment": "static",
+    "deployment": null,
+    "sha": null,
+    "steps": "Inspected apps/api/test-live/squads-devnet.pilot.live.test.ts (runner), test-live/squads-devnet.pilot-run1-complete.live.test.ts + run1Completion.ts (double-execute check), scripts/squads-pilot-readback.ts (read-only), src/settlement/squads/pins.ts, docs/reviews/wallet-rewards/devnet-pilot-* receipts and docs/verification.md (2026-10-05 sections) at firebase-vercel 6324e01.",
+    "fixtures": {
+      "multisig": "AHj8EXYGdzEvzCugchaUprdsjGaxs951weZLvd8g5KNE",
+      "vaultAuthority": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c"
+    },
+    "observed": "Run 1 receipt: commit 18962e3, 2026-10-05T10:39:44Z to 10:41:31Z, outcome \"failed\" (partial run: proposal 4 is still Active; docs/verification.md \"live devnet pilot run 1 (partial) and the harness fix\"), 26 steps, books ok (funded 3300000, settled 2000000, fees 200000, refunded 1100000 units). Completion run at 0b66267 (2026-10-05T10:58:34Z): outcome refused-as-expected. Pins: devnet genesis EtWTRABZ…, Squads program SQDS4ep6…, mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU, threshold 2. Disclosure in receipt: test keys simulate all roles, not independent custody, no physical wallet.",
+    "evidence": [
+      "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json",
+      "docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json"
+    ],
+    "notes": "Receipts are historic artefacts; they are not a new E2E pass."
+  },
+  {
+    "id": "D-02",
+    "area": "devnet",
+    "title": "Finalized pilot transactions re-read fresh from devnet RPC (HISTORIC)",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": null,
+    "sha": null,
+    "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). cd apps/api && tsx scripts/squads-pilot-readback.ts docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json <threshold-refusal sig> <completion sig> <R8 wrong-mint sig> at 2026-10-06T18:36:01Z against https://api.devnet.solana.com (no key loaded, nothing signed or sent); output converted by d-redact-signatures.py (signature prefix + sha256, bound to the pinned receipts).",
+    "fixtures": {
+      "roles": {
+        "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+        "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+        "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+        "testerA": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+        "testerB": "8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH"
+      }
+    },
+    "observed": "genesis EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG (devnet). 29 signatures read (26 receipt steps + 3 extra): 29/29 confirmation \"finalized\"; 27 err null; 2 err {\"InstructionError\":[0,{\"Custom\":6008}]} = 4KNLFE1egjon… slot 507704742 (threshold refusal) and 3zNWsdDxaSwM… slot 507709054 (double execute). Key slots: funding 5dp18gzHJoXy… 507704351; execute 1/2/3 at 507704452/507704560/507704660. Multisig: threshold 2, timeLock 0, configAuthority 1111…1 (autonomous), transactionIndex 4; proposals 1-3 Executed, 4 Active. Squads program data: lastDeploySlot 446638068, upgrade authority HM5y4mz3…, account sha256 5c866bde…0d37 (unchanged). Compared with the historic readback: genesis, mint, multisig, proposals, all 28 shared slots/errors identical; only change pocketqa lamports 4960000240 -> 4959995240 (-5000 = the completion tx fee), total spend 40004760 lamports devnet SOL.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/d02-devnet-readback.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/d02-readback-at.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/d-redact-signatures.py"
+    ],
+    "notes": "Public RPC answered several 429s; the script retried (stderr kept). Devnet SOL and test USDC have no value."
+  },
+  {
+    "id": "D-03",
+    "area": "devnet",
+    "title": "Escrow token movements and balances reconcile on chain (HISTORIC)",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": null,
+    "sha": null,
+    "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). node evidence/pqa-ios/d03-read-amounts.mjs (getParsedTransaction pre/post token balances, getParsedAccountInfo; read-only) at 2026-10-06T18:37Z.",
+    "fixtures": {},
+    "observed": "Mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU on every USDC movement (units, 6 decimals): funding builder -> vault -3300000/+3300000; execute 1 vault -> testerA 1000000; execute 2 vault -> testerB 1000000 (arbiter-approved); execute 3 vault -> builder refund 1100000; unmatched deposit builder -> vault 10000. Balances now: vault 210000 (= 200000 fee + 10000 unmatched, alerted, not credited), testerA 1000000, testerB 1000000, builder 17790000. Matches receipt books: funded 3300000 = settled 2000000 + fees 200000 + refunded 1100000.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/d03-read-amounts.mjs"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "D-04",
+    "area": "devnet",
+    "title": "Refusals hold on chain: wrong mint, 2-of-3 threshold, double execute (HISTORIC)",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": null,
+    "sha": null,
+    "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). Same reads as D-02/D-03.",
+    "fixtures": {},
+    "observed": "R8 wrong-mint funding 4CCcmmDeNDWB… slot 507704321: finalized, err null on chain (it moved 3300000 wSOL base units, mint So111…), and the API refused it as funding (\"The transfer is a different token.\", receipt refusal R8). Threshold refusal 4KNLFE1egjon… and second execute of index 1 3zNWsdDxaSwM…: both finalized with Custom 6008, zero token deltas.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/d02-devnet-readback.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "D-05",
+    "area": "devnet",
+    "title": "Devnet mint is not mainnet USDC",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": null,
+    "sha": null,
+    "steps": "Compared pins.ts PILOT_MINT (= DEVNET_USDC_MINT) with mainnet USDC; read the mint account fresh from devnet RPC (getParsedAccountInfo) at 2026-10-06T18:37Z.",
+    "fixtures": {},
+    "observed": "Pilot mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU != mainnet USDC EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (equalsMainnetUsdc false). On devnet the pilot mint is owned by TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, decimals 6, mintAuthority GrNg1XM2ctzeE2mXxXCfhcTUbejM8Z4z4wNVTy2FjMEz, freezeAuthority set; on devnet the EPjF… address is only a system-program-owned account (not a mint). RPC genesis EtWTRABZ… (devnet), never mainnet 5eykt4Us….",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "D-06",
+    "area": "devnet",
+    "title": "Fresh bounded devnet E2E (new operations, new receipts)",
+    "status": "BLOCKED",
+    "environment": "devnet",
+    "deployment": null,
+    "sha": null,
+    "steps": "Checked whether an isolated valueless fixture exists that needs no private-key handling. Listed (names/sizes only, contents not read) ~/.config/pocketqa-devnet-pilot.",
+    "fixtures": {},
+    "observed": "The only devnet fixture is the pilot key dir ~/.config/pocketqa-devnet-pilot (arbiter.json, builder.json, outsider.json, pocketqa.json, tester.json, create-seed.bin; mode 600, outside the repo). Every fresh run (squads-devnet.pilot.live.test.ts) loads those secret keys and signs ~26 transactions; earlier runs each needed explicit approval (docs/verification.md: \"No further sends\", parent hold). Read-only balances: pocketqa test key 4959995240 lamports, builder 17790000 test-USDC units, so funds are not the blocker. Not run.",
+    "evidence": [],
+    "notes": "BLOCKED: needs explicit authorization to load and sign with the existing pilot keys. If granted, the bounded run is: cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts (new multisig + new operation ids; originals preserved). Historic receipts are NOT substituted for this row."
+  },
+  {
+    "id": "D-07",
+    "area": "devnet",
+    "title": "Hosted product devnet transfers / on-chain settlement",
+    "status": "NOT OFFERED",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+    "sha": "7beaad5",
+    "steps": "curl https://pocketqa.vercel.app/api/config at 2026-10-06T18:39:03Z (HTTP 200, x-vercel-id cdg1::fra1::2xwzt-1791311943999-5fb58f81e318); bundle on / = entry-0e22ecce65b4080a0dad7d009c5007c3.js (frozen).",
+    "fixtures": {},
+    "observed": "features {\"testCredits\":true,\"devnetTransfers\":false,\"settlement\":\"simulated\"}, walletLogin false. The hosted product moves no devnet or mainnet tokens; settlement is simulated bookkeeping.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-config.txt"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "P-01",
+    "area": "physical",
+    "title": "Physical Android attached and reachable over adb",
+    "status": "BLOCKED",
+    "environment": "physical-android",
+    "deployment": null,
+    "sha": null,
+    "steps": "adb devices -l (read-only).",
+    "fixtures": {},
+    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+    ],
+    "notes": "BLOCKED (human): someone at the device must accept the USB-debugging prompt. Serial only; whether it is the Seeker is unknown while unauthorized. Nothing was sent to the device."
+  },
+  {
+    "id": "P-02",
+    "area": "physical",
+    "title": "Seeker: installed Pocket QA build and app launch (non-destructive read)",
+    "status": "BLOCKED",
+    "environment": "physical-android",
+    "deployment": null,
+    "sha": null,
+    "steps": "Planned: adb shell dumpsys package com.reshareai.pocketqa (versionName/versionCode), am start with launcher intent, screenshot.",
+    "fixtures": {},
+    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+    ],
+    "notes": "BLOCKED (human): adb unauthorized (see P-01). Hamza's Seeker submission and recording were not touched."
+  },
+  {
+    "id": "P-03",
+    "area": "physical",
+    "title": "Seeker: screen/mic consent, deny, stop, interruption, review, retain/discard",
+    "status": "BLOCKED",
+    "environment": "physical-android",
+    "deployment": null,
+    "sha": null,
+    "steps": "Not run.",
+    "fixtures": {},
+    "observed": "Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+    ],
+    "notes": "BLOCKED (human). No emulator result is substituted for the physical row."
+  },
+  {
+    "id": "P-04",
+    "area": "physical",
+    "title": "iPhone: broadcast screen + voice recording of other apps",
+    "status": "BLOCKED",
+    "environment": "static",
+    "deployment": null,
+    "sha": null,
+    "steps": "Build-only evidence on the native branch: simulator xcodebuild of the app + PocketQaBroadcast extension at fe89787 (docs/reviews/native-recording/ios-build.txt section 14, commit cf7073a).",
+    "fixtures": {},
+    "observed": "BUILD SUCCEEDED, appex com.reshareai.pocketqa.Broadcast (com.apple.broadcast-services-upload, RPBroadcastProcessModeSampleBuffer) embedded; 0 warnings in our sources. System broadcast cannot run in the iOS Simulator.",
+    "evidence": [],
+    "notes": "BLOCKED: needs a physical iPhone plus an Apple team whose provisioning profiles include group.com.reshareai.pocketqa for the app and .Broadcast. Not part of the frozen web deployment."
+  },
+  {
+    "id": "B-01",
+    "area": "recording",
+    "title": "Desktop browser: consent copy, then screen + mic requested only on the click",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "web-rec-privacy shows \"Everything visible in what you share is recorded\"; getDisplayMedia calls before the click: 0; after: [{\"active\":true}] (inside user activation); getUserMedia (mic) calls: 1.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-consent-light.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "B-02",
+    "area": "recording",
+    "title": "Desktop browser: record, stop, review and replay a real file with video and voice",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "Status \"Recording · 00:0x / 15:00\"; after Stop: \"Recording ready\", tracks [video:ended, audio:ended]. Downloaded pocketqa-recording-20261006-203818.webm 116813 bytes: stream0 opus audio 48000 Hz 1 ch, stream1 vp9 video 1280x720, matroska/webm; ffmpeg decode exit 0, problems []; volumedetect mean -21.2 dB, max 0 dB (synthetic tone, not silence). In-page replay: duration 3.852 s, played 0.364 s, error null, src blob:, 1280x720. Requests carrying data during record/stop/replay/download: [] (local only).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/ffprobe.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-light.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-light.png"
+    ],
+    "notes": "The web recorder is local-only (download, never uploaded); upload of evidence files is covered by other rows."
+  },
+  {
+    "id": "B-03",
+    "area": "recording",
+    "title": "Desktop browser: discard deletes the draft",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "After Discard: Start visible again; fetch(old blob URL) -> \"revoked\".",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "B-04",
+    "area": "recording",
+    "title": "Desktop browser: microphone denied",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "web-rec-error: \"Microphone access was blocked … nothing was recorded\"; tracks [video:ended] (screen released); no review panel; Start enabled (retry possible).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-denied-light.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "B-05",
+    "area": "recording",
+    "title": "Desktop browser: interruption by the browser's \"Stop sharing\"",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "web-rec-ended: \"You stopped sharing from the browser\"; draft kept: \"Recording ready\"; tracks [video:ended, audio:ended].",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-dark.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-dark.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "B-06",
+    "area": "recording",
+    "title": "Desktop browser: pending mic prompt cancelled / sharing stopped before start",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "While \"Allow the microphone\" pending, tracks [video:live]; Cancel -> \"Cancelled. Nothing was recorded.\", tracks [video:ended]. Stop sharing while pending -> \"You stopped sharing before recording started\", tracks [video:ended]. Start enabled in both.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-pending-light.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "B-07",
+    "area": "recording",
+    "title": "Desktop browser: leaving the session mid-recording releases devices and keeps nothing",
+    "status": "PASS",
+    "environment": "desktop-browser",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
+    "fixtures": {},
+    "observed": "Recorder unmounted in the same document (performance.timeOrigin unchanged, not a reload); screen and microphone released; nothing kept.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-01",
+    "area": "wallet",
+    "title": "Hosted: wallet sign-in / connect",
+    "status": "NOT OFFERED",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+    "sha": "7beaad5",
+    "steps": "/api/config read (see D-07); headless Chromium 412x915 loaded https://pocketqa.vercel.app/welcome, /sign-in, /sign-up at 2026-10-06T18:39:31Z and scanned the rendered text for wallet/phantom/solflare/connect.",
+    "fixtures": {},
+    "observed": "walletLogin false. /sign-in: email, password, \"Forgot password?\", \"Continue with Google\", \"Create an account\"; no wallet option (0 matches). /sign-up: role choice + email form, 0 matches. /welcome: one match \"connects\" in marketing copy only.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-config.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-auth-ui.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-sign-in.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-sign-up.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/w01-hosted-welcome.png"
+    ],
+    "notes": "Copy observation for the economics owner (not a defect claim here): hosted /sign-up builder text says \"fund them with local test credits\" on a hosted build."
+  },
+  {
+    "id": "W-02",
+    "area": "wallet",
+    "title": "Local: wallet sign-in (SIWS), first time creates account, then signs straight in",
+    "status": "PASS",
+    "environment": "local-api",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+    "fixtures": {},
+    "observed": "First visit: \"Create an account with this wallet\", 2 signIn signatures with fresh nonces, input {domain localhost:8090, uri http://localhost:8090, chainId solana:devnet, version 1}, statement \"Only sign this on localhost:8090\", signMessage 0; second visit: same address, 1 signIn, lands on discover.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-03",
+    "area": "wallet",
+    "title": "Local: wallet without Sign In With Solana is refused (no signMessage fallback)",
+    "status": "PASS",
+    "environment": "local-api",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+    "fixtures": {},
+    "observed": "sign-in-error \"doesn’t support Sign In With Solana\"; signMessage 0, signIn 0.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-04",
+    "area": "wallet",
+    "title": "Local: link a wallet to an email account (origin-bound message)",
+    "status": "PASS",
+    "environment": "local-api",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+    "fixtures": {},
+    "observed": "register 200; wallet-address shows the linked address; signMessage 1, signIn 0.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-05",
+    "area": "wallet",
+    "title": "Local: wallet chooser and disconnect",
+    "status": "PASS",
+    "environment": "local-api",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+    "fixtures": {},
+    "observed": "\"Continue with Alpha Wallet\" chooser; only the chosen wallet signed (2 signIn, other wallet 0); chosen wallet disconnect 2, other 0.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-06",
+    "area": "wallet",
+    "title": "Local: wallet escrow study, simulated settlement settles once",
+    "status": "PASS",
+    "environment": "local-api",
+    "deployment": null,
+    "sha": null,
+    "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
+    "fixtures": {},
+    "observed": "Builder: escrow-sim-notice \"no funds move\", pool \"3.00 simulated USDC\", total \"3.30 simulated USDC\", \"Funded (simulated)\", PUBLISHED. Tester: reward-disclaimer \"Simulation in this build: no funds move\"; AWAITING REVIEW -> Approved; payment-state \"Settled · simulation, no funds moved\" (never \"paid\"); tester rewards \"1.50 simulated USDC\", reputation 15, badge first_accepted Earned; builder escrow settled \"1.50\", available \"1.65 simulated USDC\"; export payments.received [{amountUnits 1500000, settlement simulated, status confirmed}].",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log",
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/builder-review-settled-light.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/tester-session-settled-dark.png"
+    ],
+    "notes": "Simulated settlement on loopback; no devnet transaction. Not offered on hosted (W-01)."
+  }
+]

@@ -1,0 +1,5 @@
+2026-10-06T18:43:12Z
+$ adb devices -l
+List of devices attached
+SM02E4072811963        unauthorized usb:3-1 transport_id:1
+

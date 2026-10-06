@@ -1,0 +1,391 @@
+{
+  "readAt": "2026-10-06T18:36:01.201Z",
+  "rpc": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "program": {
+    "lastDeploySlot": 446638068,
+    "upgradeAuthority": "HM5y4mz3Bt9JY9mr1hkyhnvqxSH4H2u2451j7Hc2dtvK",
+    "accountDataLength": 1774845,
+    "accountSha256": "5c866bde37d21edfcc92b630aa593a438f0d824be9d176e5904684996a4c0d37",
+    "programBytesTrimmedSha256": "57a8d2d7ef5409df250415135f29f83da876e5adf5a2e5b5752e323cfb4f2f74"
+  },
+  "multisig": {
+    "address": "AHj8EXYGdzEvzCugchaUprdsjGaxs951weZLvd8g5KNE",
+    "threshold": 2,
+    "timeLock": 0,
+    "configAuthority": "11111111111111111111111111111111",
+    "rentCollector": null,
+    "transactionIndex": 4,
+    "members": [
+      {
+        "key": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+        "mask": 2
+      },
+      {
+        "key": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+        "mask": 2
+      },
+      {
+        "key": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+        "mask": 7
+      }
+    ]
+  },
+  "proposals": [
+    {
+      "index": 1,
+      "status": "Executed",
+      "approved": [
+        "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+        "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS"
+      ]
+    },
+    {
+      "index": 2,
+      "status": "Executed",
+      "approved": [
+        "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+        "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS"
+      ]
+    },
+    {
+      "index": 3,
+      "status": "Executed",
+      "approved": [
+        "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+        "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS"
+      ]
+    },
+    {
+      "index": 4,
+      "status": "Active",
+      "approved": [
+        "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS"
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "step": "multisig_create",
+      "signaturePrefix": "keNQ7unZzBDW…",
+      "signatureSha256": "a76b4778ba86c7d62c5a18023250b617e4e19d1cae129a14250d8b08a3786000",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704308,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "token_account_create:BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+      "signaturePrefix": "2KTmxVVEsmgE…",
+      "signatureSha256": "6a394888a219d216a7e03bba6a5866cf9279a7594e9ef98e50aed535961d59d4",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704312,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "runner:wrong_mint_setup (wrap 0.01 devnet SOL; vault-owned wSOL account)",
+      "signaturePrefix": "3jRS6yqCk8DB…",
+      "signatureSha256": "4e8715628289a540958f890c045d42423f4fb9fa4a50a9b7b096bbcac8bfbfd3",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704317,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "runner:wrong_mint_funding (wSOL with the funding reference)",
+      "signaturePrefix": "4CCcmmDeNDWB…",
+      "signatureSha256": "956623141b81e809477e689a01c231d614c810fbd1c131ded489ecb4a1f3729d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704321,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "runner:funding (builder wallet → study vault, 3.30 devnet test USDC)",
+      "signaturePrefix": "5dp18gzHJoXy…",
+      "signatureSha256": "b0deb67a5629e3f4acc37abba9148d4e0a6f906bdcf704c0f086950714a22675",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704351,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "token_account_create:6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+      "signaturePrefix": "5KETSMvcuEAi…",
+      "signatureSha256": "3c5a89befa5583ee9ad0d0a7019a5a541e06ff084df6e8f770ccce28b5ae9eff",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704379,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "vault_transaction_create:1",
+      "signaturePrefix": "xrxNCqfEMkVv…",
+      "signatureSha256": "75263b87d803bf141e0ba4919120a400a5ca4ab01d91ccae7b8360ef3e073a6c",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704392,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_create:1",
+      "signaturePrefix": "5rXjYz8iiZeh…",
+      "signatureSha256": "f3edaea8e1ab4ebcb83593b7ce3540b50389cc0f44b4ed7ba033c56112db5c9d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704407,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:1:pocketqa",
+      "signaturePrefix": "532Hif9URJXX…",
+      "signatureSha256": "19337115e48c1e36e613a17e96a4440e9d89808a19d47254848001592d3b055a",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704419,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:1:builder",
+      "signaturePrefix": "2QDnHdb7PGEu…",
+      "signatureSha256": "10781bc16f574c1c9bd61499bd5350570362dec34c054927fa67b91832921802",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704432,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "vault_transaction_execute:1",
+      "signaturePrefix": "5nquBJWmx3rh…",
+      "signatureSha256": "6b521a431f5af2366779e7c8f2af479b74d368d3dfe0e514f88d51475b9530ba",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704452,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "token_account_create:8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH",
+      "signaturePrefix": "5X9YnHu3dFEG…",
+      "signatureSha256": "6b0738428b87ed3bfd523e8f4d0f7557201bf6db913078f62360af62cc793e77",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704492,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "vault_transaction_create:2",
+      "signaturePrefix": "3dEzJ9dSQFrp…",
+      "signatureSha256": "ffc54c9f78c5df3067377762fbc5dda7987aba7b9d4dd5b80edc5ba4542fab90",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704501,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_create:2",
+      "signaturePrefix": "3pZDmXht3AoF…",
+      "signatureSha256": "5f7aeb16f4d02f0856c03195999157696808d5f86c29499eed8232317a4ebf09",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704509,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:2:pocketqa",
+      "signaturePrefix": "4t67Q224Wbdi…",
+      "signatureSha256": "7d209ee2409342433771b2a4405f7caefbefafdf4dce501a389031c8fc15e03a",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704540,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:2:arbiter",
+      "signaturePrefix": "4hGFdyemnk78…",
+      "signatureSha256": "00edee522f13a4455130355bd93a3e20c8a9e77bf7cef4a775c3f9d2c18baaad",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704545,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "vault_transaction_execute:2",
+      "signaturePrefix": "4V7HR6dezRgF…",
+      "signatureSha256": "745d0632934012b3caa199097349051f6d2d2718fd36de5bc8fbce6823c93e07",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704560,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "vault_transaction_create:3",
+      "signaturePrefix": "35WeTt4T5jhd…",
+      "signatureSha256": "00f29427422a36b669b6f50bb3e8bd6b224b8e50438d42e4393b8eb0674c5b4f",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704609,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_create:3",
+      "signaturePrefix": "2rUPTmha5L65…",
+      "signatureSha256": "cd03fa84ac58b0863e36c03bcd362f1e85e55c1f25e102db5d1f5c5d37ac95f4",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704619,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:3:pocketqa",
+      "signaturePrefix": "2XnjUnVLauvk…",
+      "signatureSha256": "12d00ae6ea483fc52e4281bef614f608a11b26620399760b795370cd549531db",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704632,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:3:builder",
+      "signaturePrefix": "2WsdWrENAZip…",
+      "signatureSha256": "d7ae4548668e447a0821f577627ae84c390d7a18b3a22f7438045f9df4f1075e",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704641,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "vault_transaction_execute:3",
+      "signaturePrefix": "5D1cJ9TVcEpp…",
+      "signatureSha256": "207e9b55d6c5e82c3e6014099874395826c113f3d6cadf85fdc653d5042d100c",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704660,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "runner:unmatched_deposit (builder → vault, 0.01 devnet test USDC, no reference)",
+      "signaturePrefix": "3njTpvNH46p1…",
+      "signatureSha256": "d7eeee7971666991d8a9d1f2ab3bcd21f4b5f9544bf32731c310554cce5568ac",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704683,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    },
+    {
+      "step": "vault_transaction_create:4",
+      "signaturePrefix": "4F79PrVWT5LN…",
+      "signatureSha256": "408c86d64a6c098add003e5606f46a100732d41ccdce422e701cc107ac5b6683",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704720,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_create:4",
+      "signaturePrefix": "4MxQkyEERz3E…",
+      "signatureSha256": "20e33a15bd482cc79085d0beaa633f02ed69684d855eeae5109458e922e2222c",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704724,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "proposal_approve:4:pocketqa",
+      "signaturePrefix": "22KeoQaoEgYh…",
+      "signatureSha256": "85468412d61e826312e809c64e80820852fec2c56154179025e7f9f7093bb439",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704732,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 5000
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "4KNLFE1egjon…",
+      "signatureSha256": "1e61833b4813ddd9ba8ff47f5d35f26dae42a7e46d142d4007b0613240585645",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-run1-readback.json (pinned)",
+      "slot": 507704742,
+      "confirmation": "finalized",
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 6008
+          }
+        ]
+      },
+      "feeLamports": 5000
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "3zNWsdDxaSwM…",
+      "signatureSha256": "38ac272210b9996f8eaa8c643d9f84baac9f1131f876e2c677657da80e30f20d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json send.signature (pinned)",
+      "slot": 507709054,
+      "confirmation": "finalized",
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 6008
+          }
+        ]
+      },
+      "feeLamports": 5000
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "4CCcmmDeNDWB…",
+      "signatureSha256": "956623141b81e809477e689a01c231d614c810fbd1c131ded489ecb4a1f3729d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704321,
+      "confirmation": "finalized",
+      "err": null,
+      "feeLamports": 10000
+    }
+  ],
+  "balances": {
+    "vaultUsdcAtaUnits": "210000",
+    "builderUsdcAtaUnits": "17790000",
+    "testerAUsdcAtaUnits": "1000000",
+    "testerBUsdcAtaUnits": "1000000",
+    "vaultWsolLamports": "4788440",
+    "pocketqaLamports": "4959995240",
+    "builderLamports": "0"
+  },
+  "costs": {
+    "note": "All paid by the Pocket QA test key in devnet SOL (no value); includes failed transactions. Rent is what remains after fees (account creations; the wrong-mint check wrapped 0.01 SOL into a vault-owned account).",
+    "pocketqaStartLamports": 5000000000,
+    "pocketqaNowLamports": 4959995240,
+    "pocketqaSpentLamports": 40004760,
+    "feesOfListedTransactionsLamports": 185000,
+    "rentAndWrappedLamports": 39819760
+  }
+}
