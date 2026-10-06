@@ -462,6 +462,302 @@
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt"
     ],
-    "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device."
+    "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device. Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker)."
+  },
+  {
+    "id": "P-10",
+    "area": "physical",
+    "title": "Seeker read-only inspection: installed build, backend, data size",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "adb devices -l; getprop; adb reverse --list; dumpsys package com.reshareai.pocketqa; adb pull base.apk (copy) + shasum/apksigner; bundle strings; dumpsys diskstats; lsof :8787. Nothing driven.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36"
+    },
+    "observed": "Seeker Android 16 (SDK 36). Hamza's com.reshareai.pocketqa 0.1.0 (1), installed 2026-10-06 01:16:50 (device time), sideloaded, RECORD_AUDIO + POST_NOTIFICATIONS granted. base.apk sha256 6bd0d35a…095b9 = pocketqa-native-0aaa89b.apk (debug key, cert SHA-256 fac61745…3b9c). Bundle has no https API base, only the loopback default -> http://127.0.0.1:8787 via adb reverse = the Mac's live USB API (PID 28574, Hamza's local data); adb reverse/forward empty. App data 1,257,472 B, cache 1,134,592 B.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
+    ],
+    "notes": "Decision: never drive the installed app (its backend is Hamza's live local data; a sign-out would clear its local clips) -> side-by-side E2E package."
+  },
+  {
+    "id": "P-11",
+    "area": "physical",
+    "title": "E2E APK of the candidate built and installed as a NEW package (identity)",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Clean detached checkout of 7bda3ce in scratch; pnpm install --frozen-lockfile; EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api EXPO_PUBLIC_POCKETQA_ENV=staging npx expo prebuild --platform android --clean --no-install; edit ONLY applicationId + app_name; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4; adb install (no -r).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "BUILD SUCCESSFUL 2m30s; 52,525,761 B; sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3; signer CN=Android Debug cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; aapt2 com.reshareai.pocketqa.e2e 0.1.0 (1) arm64-v8a; bundle https://pocketqa.vercel.app/api x1, 127.0.0.1:8787 x0. Install: Success. Hamza's app unchanged (lastUpdateTime 2026-10-06 01:16:50). Hosted /api/config at 21:03:47Z: firebase, r2, walletLogin false, settlement simulated.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p11-apk-identity-7bda3ce.txt"
+    ],
+    "notes": "versionCode is 1 (identity = SHA + APK sha256 + cert). Debug-signed, sideload only, no store."
+  },
+  {
+    "id": "P-12",
+    "area": "physical",
+    "title": "Synthetic tester signs in on the Seeker; Android device profile saved; study becomes eligible",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Intro Skip; credentials typed from ~/.config/pocketqa/qa-synthetic-tester.env in memory via adb input (never printed or screenshotted); Settings > device profile Android / \"Android 16\" / API 36 / \"Solana Seeker\" / en-US; Save device profile; Discover.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Sign-in -> Discover (device chip \"Web · Chromium (QA synthetic)\", 36 open studies; study i4bbaf… absent). After save: \"Device profile saved\"; chip \"Android · Android 16\", 38 open studies, card \"QA synthetic study be1 B (android only)\" first.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/02-sign-in-empty.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/03-discover-before-profile.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/05-device-profile-filled.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/06-device-profile-saved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/07-discover-android.png"
+    ],
+    "notes": "Observation (P3 UX): at the default scroll the profile \"Save\" button sits under the floating tab bar (Save y2355-2511, tab bar y2361-2541); taps land on the tab bar (two of my taps opened Credits) until the form is scrolled. My first fill put \"Solana Seeker\" into the API field (keyboard covered the next field); corrected before any save."
+  },
+  {
+    "id": "P-13",
+    "area": "physical",
+    "title": "Screen share with \"A single app\" on Android 14+: app crashes",
+    "status": "FAIL",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Record screen and voice -> notifications Allow + microphone allowed (Hamza) -> MediaProjection dialog -> \"A single app\" -> Chrome.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Device 23:24:58.175 local: system launched Chrome to the foreground; 23:24:59.4 FATAL in com.reshareai.pocketqa.e2e: SecurityException \"Starting FGS with type microphone … targetSDK=36 … the app must be in the eligible state/exemptions to access the foreground only permission\" at ScreenCaptureService.startForegroundCompat (ScreenCaptureService.kt:230) <- start():86 <- onStartCommand:63; \"Application Error\". Nothing recorded. The app's own recorder copy tells testers to choose \"Share one app\", i.e. the crashing path.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-sequence-logcat.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-crash-androidruntime.txt",
+      "docs/reviews/full-e2e/bugs/P-13-single-app-share-crash.md",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/15-dialog-notifications.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png"
+    ],
+    "notes": "P1. FIX on branch fix/e2e-p13-single-app-fgs @ 27608e9 (native-ios worktree; from feat/firebase-vercel 7d2fe75): CaptureStart puts the service in the foreground with MICROPHONE while Pocket QA is in front BEFORE the consent dialog, adds MEDIA_PROJECTION after consent; every startForeground guarded (clean ERR_FOREGROUND_REFUSED/ERR_START_FAILED, never a crash). Tests: CaptureStartTest 8/8 (RED first), all module JVM tests pass (p13-fix-tests.txt). Fix APK sha256 3635ebad4ed70585369403832ec55b9d2d8edd8fcf11d33660c3d6e4e620f87d (p13-fix-apk-identity-27608e9.txt) installed over the E2E package only at 22:39:09Z. Device re-verification with \"A single app\": NOT RUN yet (paused; needs Hamza + lead go). Supporting evidence: Hamza's own later attempts with the app in front ran with uidState TOP and did not crash."
+  },
+  {
+    "id": "P-14",
+    "area": "physical",
+    "title": "Join (consent v1), start session, task notes persist",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Open study i4bbaf…; tick \"I have read and agree to this consent text.\"; Consent and join; Start session; type a QA synthetic note; Save note; later reopen the participation from My work after an app crash/restart.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Consent and join\" disabled until ticked; after: \"Status: Consented\"; Start session -> \"Status: In progress\"; note saved: after the process restart the note text is still there and the button reads \"Saved\".",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/08-study-detail.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/09-consent.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/10-consent-checked.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/11-consented.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/12-session-started.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/17-participation-reopened.png"
+    ],
+    "notes": "Observation: the Save note button showed \"busy\" for >30 s in the UI tree while the note had already persisted (stale busy state; not data loss)."
+  },
+  {
+    "id": "P-15",
+    "area": "physical",
+    "title": "Entire-screen capture with microphone runs and stops; clip lands in local review",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Record screen and voice -> system dialog \"Share your screen with Pocket QA E2E?\" -> Hamza chose entire screen and confirmed at 22:19:17Z; adb readings during capture; capture ended on the device (stop by Hamza, method not observed by me).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "At 22:19:27Z: dumpsys media_projection \"(com.reshareai.pocketqa.e2e, uid=10178): TYPE_SCREEN_CAPTURE\"; ScreenCaptureService isForeground=true types=0x000000A0 (mediaProjection|microphone), ongoing notification with 1 action (Stop); FGS start logged \"Allowed … uidState: TOP\". Service gone by 22:19:50Z. Review row \"recording-2026-10-06T22:19:34.883Z.mp4 · NOT REVIEWED · video/mp4 · 7.6 MB\", 00:17, Keep/Remove; no upload until chosen.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/18-projection-dialog.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+    ],
+    "notes": "Two earlier on-device-started recordings (21:49/21:50Z) captured Hamza's own Google search: kept LOCAL only, never uploaded, not committed anywhere; screenshots of them were deleted. The first attempt (21:38Z) died with the 60 s screen timeout before the dialog was answered (environment, not product)."
+  },
+  {
+    "id": "P-16",
+    "area": "physical",
+    "title": "Narration: actual microphone speech in the uploaded clip (signal-level evidence)",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "pqa-be1 downloaded the uploaded evidence via the builder private playback grant; pqa-ios: sha256 check, ffprobe, decode, volumedetect, per-0.544 s RMS (full and 300-3400 Hz), spectrogram (p16-narration.sh). The audio file is NOT committed (a real person's voice).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "sha256 92c5c6caf3f9661da9e6773375fc05fe4393724038cbc5f0e6382051ba0ca87c, 7,936,696 B = declared. AAC 44.1 kHz mono 16.53 s + H.264 574x1280 16.61 s; decode exit 0. mean -24.6 dB, max -4.0 dB. Voice band ~-80 dB for the first 1.2 s, then bursts of -15 to -30 dB at 1.7-5.1, 6.6-8.3, 9.4-13.2, 14.8, 15.9 s with pauses -57 to -83 dB; 59 dB dynamic range; spectrogram shows harmonic stacks (pitched fundamental + harmonics, formants) in syllabic bursts = real voiced speech.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration-analysis.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-spectrogram.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration.sh"
+    ],
+    "notes": "LIMIT: the capture ended (~22:19:34.5Z) BEFORE the known-phrase request (22:19:41Z): spontaneous speech, words not verified. Known-phrase protocol: NOT RUN (Hamza asked not to repeat the capture). Audio-track presence alone was never counted."
+  },
+  {
+    "id": "P-17",
+    "area": "physical",
+    "title": "Keep and explicit upload to private R2; builder-side private playback",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "On the new clip: Keep -> \"Upload 1 kept item\". Builder check by pqa-be1 (QA synthetic builder, Chrome): playback token + R2 range requests.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "App: \"Uploaded (1): Recording · video/mp4 · 7.6 MB · Oct 7, 12:23 AM\" (22:23Z); the 2 other local clips untouched. be1: evidence 66b75ea5-26c4-4117-bdfb-d0b33f4e7c9a screen_recording video/mp4 7936696 B, durationMs 16585, capturedOn android; POST /evidence/:id/playback-token 200; R2 206 video/mp4; readyState 4; duration 16.649 s; 574x1280; audio decodes; no media error. Participation still in_progress (not submitted).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+    ],
+    "notes": "Upload was explicit (tapped); nothing uploaded automatically. Tester-side playback of the uploaded item: NOT OFFERED (the uploaded row has no player; tap does nothing)."
+  },
+  {
+    "id": "P-18",
+    "area": "physical",
+    "title": "Lifecycle: background and foreground keep the session state",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "HOME; wait 20 s; bring Pocket QA E2E back (am start, task to front).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Same process (PID 17218), no crash/kill in logcat; after return \"Uploaded (1): Recording · 7.6 MB\" and \"upload or remove 2 items\" unchanged.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+    ],
+    "notes": "Rotation: NOT RUN (needs Hamza to rotate; capture paused)."
+  },
+  {
+    "id": "P-19",
+    "area": "physical",
+    "title": "Submit the participation for review",
+    "status": "BLOCKED",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Submit for review\" stays disabled: \"Stop any recording, then upload or remove 2 items before submitting.\" The 2 items are Hamza's own Google-search clips (must never be uploaded).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png"
+    ],
+    "notes": "BLOCKED (human decision): needs Hamza's explicit yes to Remove those 2 local clips; until then no remove, no submit."
+  },
+  {
+    "id": "P-20",
+    "area": "physical",
+    "title": "Discard/Remove of a local clip",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Remove exists on every unreviewed clip; not exercised (the only removable clips are Hamza's, pending his decision).",
+    "evidence": [],
+    "notes": ""
+  },
+  {
+    "id": "P-21",
+    "area": "physical",
+    "title": "Interruptions: notification Stop, mic taken by a call, screen lock during capture",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Capture testing paused by Hamza/lead after the window.",
+    "evidence": [],
+    "notes": "Emulator evidence exists elsewhere; physical not claimed."
+  },
+  {
+    "id": "P-22",
+    "area": "physical",
+    "title": "Stop verification after the user reported \"still recording\"",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Read-only: dumpsys media_projection, dumpsys activity services (all apps + both Pocket QA packages), dumpsys audio RecordActivityMonitor, dumpsys notification (Pocket QA / record / cast only), dumpsys statusbar, at 22:39:19Z.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Media Projection: null\"; com.reshareai.pocketqa.e2e and com.reshareai.pocketqa: 0 foreground services; no FGS with mediaProjection/microphone type on the device; no active recording client; no Pocket QA, screen-record or cast notification; status bar icons none. Nothing was stopped because nothing was running (the capture service had ended ~22:19:50Z).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+    ],
+    "notes": "Personal notifications seen in the dump were not recorded or relayed."
   }
 ]
