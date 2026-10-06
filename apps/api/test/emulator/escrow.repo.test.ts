@@ -210,3 +210,25 @@ describe('(d) wallet links and devnet transfers', () => {
     expect(await repo.attachTransferSignature('z', 'sig', ISO)).toBeNull();
   });
 });
+
+describe('plan R12 retries (P2-F): an existing effect is returned, never repeated', () => {
+  it('createTransfer (rule D): the same id again returns the existing transfer, even after it moved on', async () => {
+    const row = { id: 'i-deterministic', participation_id: 'p1', builder_id: 'b1', tester_id: 't1', sender: 'a', recipient: 'b', lamports: 1, created_at: ISO, expires_at: ISO };
+    const first = (await repo.createTransfer(row))!;
+    await repo.attachTransferSignature(first.id, 'sig', ISO);
+    const again = await Promise.all(Array.from({ length: N }, () => repo.createTransfer(row)));
+    expect(again.every((x) => x?.id === first.id && x.status === 'pending')).toBe(true);
+    expect(await count('devnetTransfers')).toBe(1);
+  });
+
+  it('openFunding (rule G): a retry after commit returns the open request, with no second request or reference', async () => {
+    await seed(study());
+    await runTxCtx(fs, (t) => createEscrowInTx(t, fs, { study_id: 's1', builder_id: 'b1', settlement: 'simulated', network: 'simulated', mint: 'SIM-USDC', vault: 'sim-vault:s1', fee_bps: 0, created_at: ISO }));
+    await fs.collection(C.walletLinks).doc('b1').set({ user_id: 'b1', address: 'w', linked_at: ISO });
+    const first = await repo.openFunding({ studyId: 's1', user: user('b1', 'builder'), nowMs: NOW, reference: 'ref-a', ttlMs: 60_000 });
+    const retry = await repo.openFunding({ studyId: 's1', user: user('b1', 'builder'), nowMs: NOW + 1, reference: 'ref-b', ttlMs: 60_000 });
+    expect(retry).toEqual(first);
+    expect(await count('escrowFundings')).toBe(1);
+    expect(await count('fundingRefs')).toBe(1);
+  });
+});

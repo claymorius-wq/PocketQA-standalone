@@ -126,7 +126,10 @@ export interface EscrowRepo {
   }): Promise<{ error: DomainError } | { user: UserRow; subject: string | null }>;
 
   // ── Devnet demo transfers ──────────────────────────────────────────────────────────────────
-  /** Inserts an `awaiting_signature` transfer; null if the participation already has an open one. */
+  /**
+   * Inserts an `awaiting_signature` transfer; null if the participation already has an open one.
+   * An existing transfer with this id (a rule D retry) is returned unchanged.
+   */
   createTransfer(row: Omit<TransferRow, 'signature' | 'status' | 'failure_reason' | 'verified_at'>): Promise<TransferRow | null>;
   transferById(id: string): Promise<TransferRow | null>;
   /** The transfer if `builderId` created it, else null. */

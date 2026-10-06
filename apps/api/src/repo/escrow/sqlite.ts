@@ -149,6 +149,9 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
     },
 
     async createTransfer(r) {
+      // Rule D: the same (deterministic) id again is the same transfer, returned as it is.
+      const existing = db.prepare('SELECT * FROM devnet_transfers WHERE id = ?').get(r.id) as TransferRow | undefined;
+      if (existing) return existing;
       try {
         db.prepare(
           `INSERT INTO devnet_transfers (id, participation_id, builder_id, tester_id, sender, recipient, lamports, status, created_at, expires_at)

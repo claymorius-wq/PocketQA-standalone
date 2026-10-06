@@ -2,7 +2,7 @@ import { appIdentityUri, DEVNET_DEMO_LAMPORTS, SOLANA_DEVNET_CHAIN, SOLANA_DEVNE
 import { verifyTransfer, verifyWalletLink } from '@pocket-qa/domain';
 import { ownerParticipationOf, partyParticipationOf } from '../access';
 import { me, type Ctx, type Handler } from '../context';
-import { fail, iso, newId, newNonce, notFound } from '../util';
+import { fail, iso, newNonce, notFound } from '../util';
 import type { TransferRow } from '../repo/escrow/types';
 import { userViewOf } from '../views';
 
@@ -146,8 +146,9 @@ export const walletHandlers = {
     if (!sender) throw fail('CONFLICT_STATE', 'Link your devnet wallet first.');
     if (!recipient) throw fail('CONFLICT_STATE', 'The tester has not linked a devnet wallet.');
     const now = ctx.deps.now();
+    // Rule D (plan R12): under an Idempotency-Key a retry recreates the same id and gets that row back.
     const row = await repo.createTransfer({
-      id: newId(),
+      id: ctx.idemId('transfer'),
       participation_id: p.id,
       builder_id: user.id,
       tester_id: p.tester_id,

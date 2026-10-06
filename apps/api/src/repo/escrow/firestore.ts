@@ -512,6 +512,9 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
     // ── Devnet demo transfers ──
     async createTransfer(row) {
       return tx(async (t) => {
+        // Rule D: the same (deterministic) id again is the same transfer, returned as it is.
+        const existing = data<TransferRow>(await t.get(r('devnetTransfers', row.id)));
+        if (existing) return existing;
         const g = await t.claimGuard(r('openTransfers', row.participation_id), { transfer_id: row.id });
         if (!g.created) return null;
         const full: TransferRow = { ...row, signature: null, status: 'awaiting_signature', failure_reason: null, verified_at: null };
