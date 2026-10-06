@@ -8,6 +8,19 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
  *    (never an EXPO_PUBLIC_ variable, never in the client bundle).
  * Refuses the emulator for a non-demo project and a credential-less real project.
  */
+/**
+ * The server's Google credential for a real project: the service account JSON from the SERVER-ONLY
+ * env var FIREBASE_SERVICE_ACCOUNT_JSON (hosted), which must belong to `projectId`; otherwise null
+ * (local runs fall back to application default credentials).
+ */
+export function serviceAccountCredential(env: NodeJS.ProcessEnv, projectId: string) {
+  const raw = env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  const sa = JSON.parse(raw) as { project_id?: string };
+  if (sa.project_id !== projectId) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON belongs to a different project.');
+  return cert(sa as Parameters<typeof cert>[0]);
+}
+
 export function openFirestore(env: NodeJS.ProcessEnv, projectId: string): Firestore {
   const emulator = env.FIRESTORE_EMULATOR_HOST;
   if (emulator) {
@@ -20,11 +33,9 @@ export function openFirestore(env: NodeJS.ProcessEnv, projectId: string): Firest
     if (emulator) {
       app = initializeApp({ projectId }, name);
     } else {
-      const raw = env.FIREBASE_SERVICE_ACCOUNT_JSON;
-      if (!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON (server-only) is required for hosted Firestore.');
-      const sa = JSON.parse(raw) as { project_id?: string };
-      if (sa.project_id !== projectId) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON belongs to a different project.');
-      app = initializeApp({ projectId, credential: cert(sa as Parameters<typeof cert>[0]) }, name);
+      const credential = serviceAccountCredential(env, projectId);
+      if (!credential) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON (server-only) is required for hosted Firestore.');
+      app = initializeApp({ projectId, credential }, name);
     }
   }
   const db = getFirestore(app);

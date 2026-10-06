@@ -58,7 +58,7 @@ const settle = async () => {
   if (settling || !deps.settlement) return;
   settling = true;
   try {
-    const { alerts } = await runSettlement({ db, now: Date.now, settlement: deps.settlement });
+    const { alerts } = await runSettlement({ repo: deps.repo, now: Date.now, settlement: deps.settlement });
     for (const a of alerts) app.log.error({ alert: 'escrow' }, a);
   } catch {
     app.log.warn('settlement run failed; it will resume from durable state');
