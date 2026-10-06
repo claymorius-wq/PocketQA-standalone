@@ -19,7 +19,10 @@ jest.mock('lucide-react-native', () =>
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'p1' }), Redirect: () => null, router: { push: jest.fn() } }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder' }, features: { testCredits: true, devnetTransfers: true } }) }));
+// The builder's linked devnet wallet (used by the devnet pilot's payout approval).
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder', wallet: { address: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV' } }, features: { testCredits: true, devnetTransfers: true } }) }));
+const mockSign = jest.fn();
+jest.mock('../src/wallet/signServerTransaction', () => ({ signServerTransaction: (...a: unknown[]) => mockSign(...a) }));
 jest.mock('expo-video', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { useVideoPlayer: () => ({}), VideoView: (props: { testID?: string }) => <View testID={props.testID} /> };
@@ -368,6 +371,55 @@ describe('review screen', () => {
     const error = screen.getByTestId('decision-error', { includeHiddenElements: true });
     expect(error).toHaveTextContent(/Decision not saved/);
     expect(error).toHaveTextContent(/budget cannot cover/);
+  });
+
+  // Devnet pilot: an approved payout waits for the builder's vote (2 of 3) in their wallet.
+  const devnetPayout = (status: string, settlement = 'squads_devnet') => ({
+    id: 'set-1', participationId: 'p1', studyId: 's1', studyTitle: 'S', amountUnits: 1_000_000, asset: 'USDC', decimals: 6,
+    destination: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', settlement, status, signature: null, failureReason: null, attempts: 0,
+    authorizedAt: '2026-10-03T14:30:00.000Z', settledAt: null,
+  });
+  /** A server-built Squads approval for the linked wallet (fee payer = linked, Squads v4, unsigned). */
+  function approvalPlan() {
+    const { base58 } = jest.requireActual<typeof import('@scure/base')>('@scure/base');
+    const linked = '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV';
+    const vault = 'GHtXQBsoZHVnNFa9YevAzFr17DJjgHXk3ycTKD5xD3Zi';
+    const keys = [linked, vault, 'SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf'];
+    const bytes = [1, ...new Array(64).fill(0), 0x80, 1, 0, 1, keys.length];
+    for (const k of keys) bytes.push(...base58.decode(k));
+    bytes.push(...base58.decode(vault), 1, 2, 1, 1, 1, 7, 0);
+    return {
+      settlementId: 'set-1', kind: 'payout', transactionB64: Buffer.from(Uint8Array.from(bytes)).toString('base64'), multisig: vault, txIndex: 4,
+      opId: `pqa-op1:${'cd'.repeat(32)}`, amountUnits: 1_000_000, destination: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',
+      mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', network: 'devnet', copy: 'Devnet test USDC, no value · test keys · not independent custody',
+    };
+  }
+
+  it('devnet pilot: a payout awaiting approval → review the vote → sign in the wallet → submitted with its index and op id', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
+    const plan = approvalPlan();
+    mockApi.mockImplementation(async (name: string) => (name === 'settlementApproval' ? plan : { settlementId: 'set-1', kind: 'payout', status: 'submitted', signature: '5igVote', network: 'devnet' }));
+    mockSign.mockImplementation(async (_p: unknown, _c: unknown, send: (s: string) => Promise<unknown>) => {
+      await send('5igVote');
+      return { signature: '5igVote' };
+    });
+    await renderIn(<Review />);
+    expect(screen.queryByTestId('payout-approval-sign')).toBeNull();
+    await fireEvent.press(screen.getByTestId('payout-approval-review'));
+    await settle();
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-1' } });
+    expect(screen.getByTestId('payout-approval-plan')).toHaveTextContent(/pqa-op1:cdcd/);
+    await fireEvent.press(screen.getByTestId('payout-approval-sign'));
+    await settle();
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-1' }, body: { signature: '5igVote', txIndex: 4, opId: plan.opId } });
+  });
+
+  it('the wallet vote is offered only for a devnet payout awaiting approval', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', payout: devnetPayout('submitted') });
+    await renderIn(<Review />);
+    expect(screen.queryByTestId('payout-approval-review')).toBeNull();
   });
 
   it('a disputed rejection shows the tester’s dispute; an overturned one shows the transfer card', async () => {

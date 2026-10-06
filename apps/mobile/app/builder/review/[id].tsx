@@ -21,6 +21,7 @@ import { layout } from '../../../src/theme/tokens';
 import { Button, Checkbox, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
 import { DecisionBar, SectionHeader } from '../../../src/ui/patterns';
 import { TransferCard } from '../../../src/wallet/TransferCard';
+import { ServerTxSign } from '../../../src/wallet/ServerTxSign';
 import { useSession } from '../../../src/auth/SessionProvider';
 
 // Builder review (A-Review, Direction A v2). The participant head with the reward well, the AI
@@ -203,6 +204,19 @@ function ReviewInner() {
                 {canAddFinding(p.status) ? <FindingForm participationId={p.id} evidence={ev.data?.items ?? []} /> : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
                 {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
+                {/* Devnet pilot: the payment's Squads proposal waits for the builder's vote (2 of 3). The
+                    server builds the vote for this payment only; the plan is shown before the wallet signs. */}
+                {p.payout && p.payout.settlement === 'squads_devnet' && p.payout.status === 'awaiting_approval' ? (
+                  <ServerTxSign
+                    testID="payout-approval"
+                    settlement="squads_devnet"
+                    reviewLabel="Review this payment to approve in your wallet"
+                    signLabel="Approve in your wallet"
+                    load={() => api('settlementApproval', { params: { id: p.payout!.id } })}
+                    submit={(signature, plan) => api('submitSettlementApproval', { params: { id: p.payout!.id }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+                    onDone={() => void qc.invalidateQueries({ queryKey: ['participation', id] })}
+                  />
+                ) : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
                 {features.devnetTransfers && !passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
                   <TransferCard participationId={p.id} role="builder" canStart />
