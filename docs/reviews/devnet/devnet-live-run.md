@@ -74,6 +74,7 @@ A devnet deployment signs in against the **same Firebase Auth user pool** as pro
    - It prints the single-use verification link. Open it in the browser, then sign in again.
    - Never paste the link into a document or evidence file.
 4. **Link wallets:** each account links its wallet in the app (a SIWS signature). The builder uses the builder test wallet; the tester uses its own wallet, which receives the payout.
+5. **For the dispute path, a synthetic admin:** sign up `devnet-admin@example.test` (on the allow-list, with **no** wallet, studies or test sessions) and verify it as in step 3. Then, on the host with the devnet env, run `npx tsx apps/api/scripts/devnet-grant-admin.ts devnet-admin@example.test --reason "<why>"`. It writes only under the devnet namespace and refuses anything else (`pqa-be3-interfaces.md` §13).
 
 ## 5. The journey, and who signs what
 1. **Create the study.** The builder creates an escrow study (payment `escrow`).
@@ -99,7 +100,7 @@ A devnet deployment signs in against the **same Firebase Auth user pool** as pro
 ## 6. The arbiter (dispute overturn) and arbiter recovery (P3-S1)
 - **When the arbiter cosigns:** an admin resolving a dispute as **overturned** authorizes the tester's payout with cosigner **arbiter**. The settle run creates the vault transaction and proposal, then waits for the arbiter's vote.
 - **The operator's steps:**
-  1. **Read the payment:** from the admin payout view, take the multisig, index, op id, recipient and amount.
+  1. **Read the payment:** as the devnet admin, call `GET /api/admin/settlements/<settlementId>/devnet` (read-only). Check `cosigner: 'arbiter'` and `state: 'awaiting_cosigner'`, then take the multisig, txIndex, opId, recipient and amountUnits.
   2. **Dry run (no `--send`):** it reads devnet itself and checks that this is exactly that payment, created by the pinned platform key, with an Active proposal and the arbiter a voting member:
      ```
      npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path to the arbiter key file> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \

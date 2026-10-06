@@ -253,3 +253,49 @@ The platform signer's public key is pinned too (pqa-qa P2-DA1). `POCKETQA_DEVNET
   - the cosigner vote is unsigned, with the member as fee payer;
   - create keys are per study and never the platform key;
   - the production connector's chain uses the pinned key, and a mismatched key yields no chain.
+
+## 13. The dispute overturn on devnet: the exact operator procedure
+**The flow, as the code does it:**
+1. The builder rejects.
+2. The tester disputes.
+3. An admin resolves the dispute **overturned**. pqa-be1's `resolveDispute` authorizes the tester's payout with cosigner **`arbiter`**.
+4. The settle slice triggered by `resolveDispute`, or `/api/jobs/settle`, writes the receipt and creates the vault transaction and the proposal. The platform does **not** vote, and the payout is `awaiting_approval`.
+5. Only the arbiter's vote unblocks it, given by `apps/api/scripts/devnet-arbiter.ts`: operator only, a key file, inputs read from the chain, no route.
+6. The next slice or cron run then completes it: the platform votes and executes.
+
+**Before step 3: a synthetic admin on the devnet namespace.** `apps/api/scripts/devnet-grant-admin.ts <email> --reason "…"` runs on the host with the devnet deployment's env.
+- **Where it can grant:** it refuses anything but `POCKETQA_ENV=devnet` and **root (production) repositories**, and writes only under `pocketqaNamespaces/devnet`.
+- **Who it can grant:** an allow-listed `@example.test` account that is verified (`devnet-verify-synthetic.ts`) and dedicated to administration (no wallet, no studies, no test sessions). The reason must be at least 10 characters.
+- **Audit:** it's recorded as `user.admin_granted` by `host-cli`.
+- **Production is never touched:** there's no production admin grant and no HTTP route.
+- **Tests:** `test/emulator/devnet.admin.test.ts`.
+
+**The arbiter's inputs:** they come from the read-only admin route `GET /admin/settlements/:id/devnet`, which is admin only, devnet only, and builds and signs nothing.
+- **What it returns:** `{ settlementId, kind, cosigner, state, multisig, txIndex, opId, recipient, amountUnits, mint, network }` from the receipt.
+- **Before the receipt exists:** `409`.
+- **Check first:** the operator confirms `cosigner: 'arbiter'` and `state: 'awaiting_cosigner'`.
+
+**The CLI:**
+```
+npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 0700 dir> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
+  --multisig <multisig> --index <txIndex> --op <opId> --recipient <recipient> --amount <amountUnits> [--rpc <devnet url>] [--send]
+```
+
+**What it checks on devnet itself, before it signs** (any failure: "Refused, nothing signed: …", exit 1):
+1. **Genesis:** the RPC's genesis hash is devnet's `EtWTRABZ…ZBG`.
+2. **The vault transaction:** the Squads `VaultTransaction` account at `(multisig, index)` exists and is **owned by the Squads program**, and its **creator is the pinned platform key**.
+3. **Exactly this payment** (`verifyVaultTransfer`):
+   - vault 0, no lookup tables;
+   - exactly `[TransferChecked, Memo]`, with the memo equal to the **op id**;
+   - the **mint** is the pinned devnet test USDC, with **6 decimals**;
+   - the source is the study vault's token account, with the vault as authority;
+   - the **destination** is the recipient's token account;
+   - the **amount** is exactly `amountUnits`.
+4. **The multisig:** the arbiter key is a **voting member**.
+5. **The proposal:** it exists and is **Active**. If it already holds the arbiter's vote, the CLI reports `alreadyApproved` and sends nothing.
+
+**What it does:** without `--send`, nothing more (a dry run). With `--send`, it signs **one** `proposal_approve` (the shared `buildApproveTx`, with the arbiter as member and fee payer) and broadcasts it.
+
+**What it prints:** public JSON only, `{ network: 'devnet', checked: { amountUnits, recipient, destination, source }, alreadyApproved, signature | null, sent }`. The key is never printed, and errors never contain it. Tests: `test/devnet-arbiter.test.ts`.
+
+**A fix found while tracing this:** if a proposal reached **Approved** with the cosigner's vote plus another member's (for example the arbiter voting on a builder-cosigned payment), the platform would have retried a vote that fails on chain. It now votes only on an Active proposal and executes an Approved one (`de92f7d`).
