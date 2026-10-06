@@ -14,6 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
+import { assertBundles } from './bundle-check.mjs';
 import { vercelConfig } from './config.mjs';
 
 const REPO = join(import.meta.dirname, '../..');
@@ -85,8 +86,19 @@ if (!args.includes('--skip-web')) {
   delete env.EXPO_PUBLIC_PREVIEW;
   // The web export never needs a server secret, so it never gets one.
   for (const n of SERVER_ONLY) delete env[n];
-  execFileSync('pnpm', ['--filter', '@pocket-qa/mobile', 'build:web'], { cwd: REPO, env, stdio: 'inherit' });
+  // --clear: Metro's transform cache inlines EXPO_PUBLIC_* values, and once served an e2e bundle
+  // (API http://127.0.0.1:18887) to the deployed app (pqa-qa hosted gate r1 P1-H1).
+  rmSync(join(REPO, 'apps/mobile/dist-web'), { recursive: true, force: true }); // no leftovers from earlier exports
+  execFileSync('pnpm', ['--filter', '@pocket-qa/mobile', 'exec', 'expo', 'export', '--platform', 'web', '--output-dir', 'dist-web', '--clear'], { cwd: REPO, env, stdio: 'inherit' });
+  rmSync(staticDir, { recursive: true, force: true });
   cpSync(join(REPO, 'apps/mobile/dist-web'), staticDir, { recursive: true });
+  // And whatever the cache did: the app must call /api and nothing private, or there is no build.
+  try {
+    assertBundles([join(staticDir, '_expo')], '/api');
+  } catch (e) {
+    rmSync(OUT, { recursive: true, force: true });
+    throw e;
+  }
 } else {
   mkdirSync(staticDir, { recursive: true });
 }
