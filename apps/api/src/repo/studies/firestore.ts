@@ -622,7 +622,10 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
 
     async openDispute(participationId, user, reason, id, now) {
       return tx(async (t) => {
-        const { p } = await testerOwned(t, participationId, user);
+        const { p, s } = await testerOwned(t, participationId, user);
+        // A close that committed first wins, even if this request's time was still inside the window
+        // (full E2E E-08): a closed study's budget is already released, so nothing could be paid.
+        if (s.status === 'closed') throw fail('CONFLICT_STATE', 'This study is closed, so its decisions can no longer be disputed.');
         const next = transitionParticipation(p.status, 'dispute');
         if (!canOpenDispute({ status: p.status, decidedAtMs: p.decided_at ? Date.parse(p.decided_at) : null }, now)) {
           throw fail('CONFLICT_STATE', 'The 7-day dispute window for this decision has ended.');
@@ -660,6 +663,8 @@ export function firestoreStudiesRepo(fs: Firestore, hooks: TxHooks = {}): Studie
         const p = (await getParticipation(d.participation_id, t))!;
         const s = (await getStudy(p.study_id, t))!;
         const next = transitionParticipation(p.status, 'resolve');
+        // Never pay from a closed study: its budget went back to the builder (full E2E E-08).
+        if (outcome === 'overturned' && s.status === 'closed') throw fail('CONFLICT_STATE', 'This study is closed and its budget released, so an overturn can’t be paid. Uphold the dispute instead.');
         // An overturn pays what was fixed earlier (amount, wallet); the admin decides the outcome only.
         if (outcome === 'overturned') await payForApprovalInTx(t, s, p, 'dispute_credit', now, admin.id, { why: `dispute ${d.id} overturned`, cosigner: 'arbiter' }, txId);
         if (outcome === 'overturned') await awardApprovalInTx(t, fs, s, p, false, now);

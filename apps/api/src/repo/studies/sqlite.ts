@@ -451,7 +451,10 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
 
     async openDispute(participationId, user, reason, id, now) {
       db.transaction(() => {
-        const { p } = testerOwned(participationId, user);
+        const { p, s } = testerOwned(participationId, user);
+        // A close that committed first wins, even if this request's time was still inside the window
+        // (full E2E E-08): a closed study's budget is already released, so nothing could be paid.
+        if (s.status === 'closed') throw fail('CONFLICT_STATE', 'This study is closed, so its decisions can no longer be disputed.');
         const next = transitionParticipation(p.status, 'dispute');
         if (!canOpenDispute({ status: p.status, decidedAtMs: p.decided_at ? Date.parse(p.decided_at) : null }, now)) {
           throw fail('CONFLICT_STATE', 'The 7-day dispute window for this decision has ended.');
@@ -471,6 +474,8 @@ export function sqliteStudiesRepo(db: DB): StudiesRepo {
         const p = getParticipation(d.participation_id)!;
         const s = getStudy(p.study_id)!;
         const next = transitionParticipation(p.status, 'resolve');
+        // Never pay from a closed study: its budget went back to the builder (full E2E E-08).
+        if (outcome === 'overturned' && s.status === 'closed') throw fail('CONFLICT_STATE', 'This study is closed and its budget released, so an overturn can’t be paid. Uphold the dispute instead.');
         if (outcome === 'overturned' && s.payment_mode === 'escrow') {
           // The admin decides the outcome only; the amount and wallet were fixed earlier.
           authorizePayout(db, s, p, now, admin.id, `dispute ${d.id} overturned`, 'arbiter');
