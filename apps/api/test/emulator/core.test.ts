@@ -145,3 +145,15 @@ describe('job leases with fencing (plan §5)', () => {
     expect(await repo.acquireLease('sweep', 'next', 1000, 1700)).toBe(3);
   });
 });
+
+describe('admin moderation is atomic with its audit (plan T6)', () => {
+  it('status and audit row commit together', async () => {
+    await repo.createUser(user('m', 'm@example.test'));
+    await repo.setStatusAudited('m', 'suspended', { id: 'au1', actor_id: 'admin', action: 'user.suspend', target_type: 'user', target_id: 'm', reason: 'spam', created_at: '2026-10-06T00:00:00.000Z' });
+    expect((await repo.userById('m'))?.status).toBe('suspended');
+    expect((await repo.listAudit()).map((r) => r.id)).toEqual(['au1']);
+    // A missing user fails the whole transaction: no orphan audit row.
+    await expect(repo.setStatusAudited('nobody', 'suspended', { id: 'au2', actor_id: 'admin', action: 'user.suspend', target_type: 'user', target_id: 'nobody', reason: 'x', created_at: '2026-10-06T00:00:01.000Z' })).rejects.toThrow();
+    expect((await repo.listAudit()).map((r) => r.id)).toEqual(['au1']);
+  });
+});

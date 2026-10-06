@@ -80,6 +80,12 @@ export function firestoreCoreRepo(fs: Firestore): CoreRepo {
     async setStatus(userId, status) {
       await users.doc(userId).update({ status });
     },
+    async setStatusAudited(userId, status, row) {
+      await runTxCtx(fs, async (t) => {
+        t.update(users.doc(userId), { status });
+        auditInTx(t, fs, row);
+      });
+    },
     async setRole(userId, role) {
       await users.doc(userId).update({ role });
     },

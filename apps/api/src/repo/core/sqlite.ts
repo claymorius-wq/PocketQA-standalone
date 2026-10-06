@@ -55,6 +55,20 @@ export function sqliteCoreRepo(db: DB): CoreRepo {
     async setStatus(userId, status) {
       db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, userId);
     },
+    async setStatusAudited(userId, status, row) {
+      db.transaction(() => {
+        db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, userId);
+        db.prepare('INSERT INTO audit (id, actor_id, action, target_type, target_id, reason, created_at) VALUES (?,?,?,?,?,?,?)').run(
+          row.id,
+          row.actor_id,
+          row.action,
+          row.target_type,
+          row.target_id,
+          row.reason,
+          row.created_at,
+        );
+      })();
+    },
     async setRole(userId, role) {
       db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
     },

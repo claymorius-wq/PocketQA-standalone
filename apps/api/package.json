@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
-    "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-pocketqa --config ../../firebase.json 'vitest run --config vitest.emulator.config.ts'"
+    "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-pocketqa --config ${EMU_CONFIG:-../../firebase.json} 'vitest run --config vitest.emulator.config.ts ${EMU_FILES:-}'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1146.0",
