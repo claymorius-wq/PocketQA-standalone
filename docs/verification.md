@@ -917,3 +917,33 @@ $ curl -s http://127.0.0.1:8787/health      # the USB local API, untouched by th
 {"ok":true,"contractVersion":"0.6.1"}
 ```
 Also reported by the team at this round: the hosted web rehearsal (be2, 2492203 + ead2349) passes 2/2 with zero CSP violations. The migration dry-run manifest 686c435d…39a7 was APPROVED by pqa-qa (r6), reproduced byte-identical.
+
+## 2026-10-06: HOSTED deployment, Firebase + Firestore + private R2 + Vercel (lead, `feat/firebase-vercel` @ f66469f; code = ef18694, QA freeze APPROVE)
+Authorized by Hamza via the parent. Firestore was enabled and `(default)` created by the parent (eur3, Native, Standard, delete protection on, free tier, uid 749f9772-…); the Vercel project `pocketqa` was created and linked by the parent. Credentials are read only from `~/.config/pocketqa/{firebase.env,r2.env,pocketqa-api.json,cron.env}`, values never printed. `cron.env` was created by the lead (0600, `openssl rand -hex 32`).
+```
+$ firebase firestore:databases:list --project pocketqa-optijara --json
+  (default): eur3 FIRESTORE_NATIVE STANDARD DELETE_PROTECTION_ENABLED freeTier=true uid 749f9772-b802-4401-ac67-f8597cd4a6f9
+$ firebase deploy --only firestore:rules,firestore:indexes --project pocketqa-optijara --config firebase.json --dry-run    # ✔ Dry run complete
+$ firebase deploy --only firestore:rules,firestore:indexes --project pocketqa-optijara --config firebase.json --non-interactive
+Error: … collectionGroups/idempotency/fields/expireAt had HTTP Error: 403, Project pocketqa-optijara has billing disabled. Please enable it.
+$ firebase firestore:indexes --project pocketqa-optijara --json
+  indexes: audit(created_at,writtenAt) evidence(participation_id,created_at) uploadIntents(status,expires_at) uploadIntents(status,quarantine_swept,expires_at) uploadIntents(tester_id,status); fieldOverrides: []   # TTL NOT deployed
+$ firebase deploy --only firestore:rules --project pocketqa-optijara --config firebase.json --non-interactive
+✔  firestore: released rules firestore.rules to cloud.firestore
+$ (preflight, read-only) hostedConfig ok {staging, firestore, firebase, r2, allowDelete true, simulated, testCredits true, trustProxy true}; firestore users docs visible = 0; r2 auth ok (missing app key -> null)
+$ node push-env.mjs   # vercel env add <name> production --force --yes [--sensitive], values on stdin
+  16 × ok (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, CRON_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON sensitive); then POCKETQA_PUBLIC_ORIGIN=https://pocketqa.vercel.app
+$ node scripts/vercel/build.mjs --env staging --deploy   (server-only values in the build process env only)
+built .vercel/output (staging, deploy): api.func maxDuration 60s in fra1; 32 files; secret scan clean (4/4 server-only variables, 7 values checked)
+$ vercel deploy --prebuilt --prod --yes --scope hamzadiaz-4939s-projects
+Production: https://pocketqa-bi07693wj-hamzadiaz-4939s-projects.vercel.app   Aliased: https://pocketqa.vercel.app
+$ vercel inspect pocketqa.vercel.app    →  status ● Ready  (dpl_9sSVSGkBhQbobdeRAdvR4xBQtbXn)
+$ vercel env ls production   → 17 names, all Encrypted, Production (see the list in docs/progress.md)
+$ curl https://pocketqa.vercel.app/api/health   → {"ok":true,"contractVersion":"0.6.1"} [200]
+$ curl https://pocketqa.vercel.app/api/config   → authMode firebase, storage r2, walletLogin false, features {testCredits:true, devnetTransfers:false, settlement:"simulated"} [200]
+$ curl /api/jobs/settle (no secret) → 404 ; with the secret → settle {"ran":true,"complete":true,"alerts":0}; sweep → 500, 500 (just after the index deploy), then 200 ×3 {"ran":true,"complete":true}
+$ curl /api/me, /api/studies/eligible, /api/me/credits, /api/admin/audit (no token) → 401 ×4 ; bad token → 401 ; /builder/study/x → 200 (SPA)
+$ curl -I /  → content-security-policy (app CSP + bucket path), coop same-origin, permissions-policy camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=(), referrer no-referrer, hsts, nosniff, DENY
+$ curl -I /api/config → cache-control no-store; content-security-policy default-src 'none'; sandbox; nosniff
+$ (r2:cors dry run, read-only) bucket pocketqa-evidence: current CORS PUT for https://pocketqa.optijara.ai only → plan: conflict → "Refusing: the bucket has other CORS rules. Nothing was changed."
+```
