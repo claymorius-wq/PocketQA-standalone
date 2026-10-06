@@ -192,3 +192,68 @@ describe('hosted app on the emulators', () => {
   });
 });
 
+
+// pqa-be2: the hosted evidence path end to end (plan §6): direct upload to private R2 through a
+// presigned PUT, server-verified completion, presigned GET playback for the rightful parties only,
+// and account deletion removing the objects with the inline sweep slice clearing the outbox.
+describe('hosted evidence path (pqa-be2)', () => {
+  it('consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage', async () => {
+    const { DEVICE, MP4, STUDY } = await import('../helpers');
+    const { emulatorFirestore } = await import('./fs');
+    const fs = emulatorFirestore();
+    const builder = await signUp('builder');
+    const tester = await signUp('tester');
+    const other = await signUp('tester');
+
+    // A study seeded through the API by its builder; the tester consents and starts.
+    expect((await call('POST', '/me/credits/test-topup', builder, { amount: 1000 })).status).toBe(200);
+    const study = await call('POST', '/studies', builder, STUDY);
+    expect(study.status).toBe(200);
+    expect((await call('POST', `/studies/${study.body.id}/publish`, builder)).status).toBe(200);
+    expect((await call('PUT', '/me/device', tester, DEVICE)).status).toBe(200);
+    const p = await call('POST', `/studies/${study.body.id}/consent`, tester, { consentVersion: 1, accepted: true });
+    expect(p.status).toBe(200);
+    expect((await call('POST', `/participations/${p.body.id}/start`, tester)).status).toBe(200);
+
+    // Direct upload: the bytes go to storage, never through the API.
+    const intent = await call('POST', `/participations/${p.body.id}/evidence/upload-intents`, tester, {
+      kind: 'screen_recording',
+      mimeType: 'video/mp4',
+      sizeBytes: MP4.length,
+      capturedOn: 'android',
+      clientSegmentId: 'seg-hosted-1',
+    });
+    expect(intent.status).toBe(200);
+    expect(intent.body.uploadUrl).toMatch(/\/pqa-test\/quarantine\/[A-Za-z0-9_-]+\?/);
+    expect((await call('POST', `/participations/${p.body.id}/evidence/upload-intents`, other, { kind: 'screen_recording', mimeType: 'video/mp4', sizeBytes: MP4.length, capturedOn: 'android', clientSegmentId: 'x' })).status).toBe(404);
+    expect((await fetch(intent.body.uploadUrl, { method: 'PUT', headers: intent.body.headers, body: MP4 })).status).toBe(200);
+    expect((await call('POST', `/evidence/upload-intents/${intent.body.id}/complete`, other)).status).toBe(404);
+    const done = await call('POST', `/evidence/upload-intents/${intent.body.id}/complete`, tester);
+    expect(done.status).toBe(200);
+    expect(done.body).toMatchObject({ mimeType: 'video/mp4', sizeBytes: MP4.length });
+    expect((await fs.collection('evidence').doc(done.body.id).get()).exists).toBe(true);
+
+    // Playback: a presigned GET for the tester and the builder, the same bytes; others get 404.
+    for (const who of [tester, builder]) {
+      const grant = await call('POST', `/evidence/${done.body.id}/playback-token`, who);
+      expect(grant.status).toBe(200);
+      expect(grant.body.token).toBeUndefined();
+      expect(new URL(grant.body.url).pathname).toBe(`/pqa-test/evidence/${done.body.id}`);
+      expect(Buffer.compare(Buffer.from(await (await fetch(grant.body.url)).arrayBuffer()), MP4)).toBe(0);
+    }
+    const denied = await call('POST', `/evidence/${done.body.id}/playback-token`, other);
+    expect(denied.status).toBe(404);
+    expect(JSON.stringify(denied.body)).not.toContain('X-Amz');
+    expect((await call('GET', `/participations/${p.body.id}/evidence`, other)).status).toBe(404);
+
+    // Account deletion: the recording and its kept quarantine copy are deleted; the purge queued
+    // both keys in the outbox (crash safety) and the inline sweep slice cleared those entries.
+    const before = s3.keys().filter((k) => k.endsWith(done.body.id) || k.endsWith(intent.body.id));
+    expect(before.sort()).toEqual([`pqa-test/evidence/${done.body.id}`, `pqa-test/quarantine/${intent.body.id}`].sort());
+    expect((await call('DELETE', '/me', tester, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
+    expect(s3.keys().filter((k) => k.endsWith(done.body.id) || k.endsWith(intent.body.id))).toEqual([]);
+    expect((await fs.collection('evidence').doc(done.body.id).get()).exists).toBe(false);
+    expect((await fs.collection('storageDeletions').get()).size).toBe(0);
+    expect((await call('POST', `/evidence/${done.body.id}/playback-token`, builder)).status).toBe(404);
+  });
+});

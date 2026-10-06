@@ -23,21 +23,42 @@ jest.mock('../../api/client', () => {
   }
   return { ApiError, api: (...args: unknown[]) => mockApi(...args), mediaUrl: (token: string) => `http://api.test/media/${token}` };
 });
-// The players record the source they were given.
+// The players record the source and props they were given.
 const mockSources: string[] = [];
+const mockProps: Record<string, unknown>[] = [];
 jest.mock('expo-video', () => ({
   useVideoPlayer: (uri: string) => {
     mockSources.push(uri);
     return {};
   },
-  VideoView: () => null,
-}));
-jest.mock('expo-image', () => ({
-  Image: ({ source }: { source: { uri: string } }) => {
-    mockSources.push(source.uri);
+  VideoView: (props: Record<string, unknown>) => {
+    mockProps.push(props);
     return null;
   },
 }));
+jest.mock('expo-image', () => ({
+  Image: (props: { source: { uri: string } }) => {
+    mockSources.push(props.source.uri);
+    mockProps.push(props);
+    return null;
+  },
+}));
+
+/**
+ * The presigned GET needs no bucket CORS rule only while the web players load it as a plain
+ * <video src> / <img src>: expo-video's VideoView.web.js sets crossOrigin only from the prop
+ * (l.219) and routes audio through createMediaElementSource only with useAudioNodePlayback
+ * (l.39-41, 156: silent for a cross-origin video without CORS); expo-image's web hooks.ts fetches
+ * the URL (CORS) only when the source has headers (l.43-48). None may be passed.
+ */
+function expectPlainMediaLoad() {
+  expect(mockProps.length).toBeGreaterThan(0);
+  for (const p of mockProps) {
+    expect(p.crossOrigin).toBeUndefined();
+    expect(p.useAudioNodePlayback).toBeUndefined();
+    expect((p.source as { headers?: unknown } | undefined)?.headers).toBeUndefined();
+  }
+}
 
 const PRESIGNED = 'https://acct.r2.cloudflarestorage.com/pocketqa-evidence/evidence/ev1?X-Amz-Expires=300&X-Amz-Signature=abc';
 const TOKEN = 'a'.repeat(43);
@@ -65,6 +86,7 @@ const wrap = (ui: ReactNode) => (
 beforeEach(() => {
   mockApi.mockReset();
   mockSources.length = 0;
+  mockProps.length = 0;
   jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockImplementation(() => Promise.resolve(true));
   jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((() => ({ remove: jest.fn() })) as unknown as typeof AccessibilityInfo.addEventListener);
 });
@@ -77,6 +99,16 @@ describe('playbackUri', () => {
   });
 });
 
+const SHOT: Evidence = { ...EV, id: 'ev2', kind: 'screenshot', mimeType: 'image/png' };
+
+it('a screenshot loads as a plain image too (no headers, so no fetch)', async () => {
+  mockApi.mockResolvedValue({ url: PRESIGNED, expiresAt: '2026-10-06T10:05:00.000Z' });
+  await render(wrap(<EvidenceItem e={SHOT} />));
+  await act(async () => fireEvent.press(screen.getByTestId('evidence-view')));
+  expect(mockSources).toContain(PRESIGNED);
+  expectPlainMediaLoad();
+});
+
 describe.each([
   ['private R2', { url: PRESIGNED }, PRESIGNED],
   ['local storage', { token: TOKEN }, `http://api.test/media/${TOKEN}`],
@@ -87,6 +119,7 @@ describe.each([
     await act(async () => fireEvent.press(screen.getByTestId('evidence-view')));
     expect(mockApi).toHaveBeenCalledWith('playbackToken', { params: { id: 'ev1' } });
     expect(mockSources).toContain(expected);
+    expectPlainMediaLoad();
   });
 
   it('EvidenceStrip plays from the granted source', async () => {
@@ -96,5 +129,6 @@ describe.each([
     await act(async () => fireEvent.press(screen.getByTestId('evidence-view')));
     expect(mockApi).toHaveBeenCalledWith('playbackToken', { params: { id: 'ev1' } });
     expect(mockSources).toContain(expected);
+    expectPlainMediaLoad();
   });
 });

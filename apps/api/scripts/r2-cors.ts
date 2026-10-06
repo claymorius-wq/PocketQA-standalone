@@ -1,9 +1,11 @@
-// Exact-origin CORS on Pocket QA's own bucket (ledger S3). Dry run by default; --apply only
-// creates the rule when the bucket has no CORS (or already has exactly this rule). It never
-// replaces other rules and never touches objects. Credentials come from the environment
-// (POCKETQA_R2_ACCOUNT_ID, POCKETQA_R2_BUCKET, POCKETQA_R2_ACCESS_KEY_ID,
-// POCKETQA_R2_SECRET_ACCESS_KEY) and are never printed.
-//   pnpm --filter @pocket-qa/api r2:cors -- --origin https://pocketqa.optijara.ai [--apply]
+// Exact-origin CORS on Pocket QA's own bucket (ledger S3). Three modes:
+//   --print   offline: prints the rule for the origin and exits; no credentials, no R2 call;
+//   (default) dry run: reads the bucket's current CORS and prints the plan; writes nothing;
+//   --apply   creates the rule only when the bucket has no CORS (or already has exactly this
+//             rule), then reads it back. It never replaces other rules and never touches objects.
+// Credentials (dry run and --apply) come from the environment (POCKETQA_R2_ACCOUNT_ID,
+// POCKETQA_R2_BUCKET, POCKETQA_R2_ACCESS_KEY_ID, POCKETQA_R2_SECRET_ACCESS_KEY), never printed.
+//   pnpm --filter @pocket-qa/api r2:cors -- --origin https://pocketqa.optijara.ai [--print | --apply]
 import { GetBucketCorsCommand, PutBucketCorsCommand, S3Client } from '@aws-sdk/client-s3';
 import { R2_BUCKETS } from '../src/config';
 import { CorsError, corsRules, planCors, type CorsRule } from '../src/storage/cors';
@@ -12,9 +14,21 @@ const args = process.argv.slice(2);
 const at = args.indexOf('--origin');
 const origin = at >= 0 ? args[at + 1] : undefined;
 const apply = args.includes('--apply');
-if (!origin) {
-  console.error('usage: r2:cors --origin https://<exact origin> [--apply]');
+const print = args.includes('--print');
+if (!origin || (apply && print)) {
+  console.error('usage: r2:cors --origin https://<exact origin> [--print | --apply]');
   process.exit(2);
+}
+if (print) {
+  // Offline: validate the origin and show the rule; nothing else is read or written.
+  try {
+    console.log(JSON.stringify({ CORSRules: corsRules(origin) }, null, 2));
+    process.exit(0);
+  } catch (e) {
+    if (!(e instanceof CorsError)) throw e;
+    console.error(e.message);
+    process.exit(1);
+  }
 }
 const env = process.env;
 const accountId = env.POCKETQA_R2_ACCOUNT_ID ?? '';
