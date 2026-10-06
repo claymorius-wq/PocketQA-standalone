@@ -376,8 +376,8 @@ export default function SignIn() {
             {/* Return submits too: Sign in lives in the bottom dock, which a phone browser's keyboard can cover. */}
             <Field label="Password" value={password} onChangeText={setPassword} secure returnKeyType="go" onSubmitEditing={() => (ready && !busy ? submit() : undefined)} testID="sign-in-password" />
           </View>
-          {canGoogle || canWallet || canReset ? (
-            // Secondary glass under the fields, behind the card's divider: never lit (U1 is Sign in's).
+          {canReset ? (
+            // Password recovery under the fields, behind the card's divider: never lit (U1 is Sign in's).
             <View>
               <CardRule />
               <View style={styles.others}>
@@ -405,37 +405,61 @@ export default function SignIn() {
                     Enter your email above, then send the link.
                   </Text>
                 ) : null}
-                {canGoogle ? <GoogleButton intent="continue" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
-                {canWallet
-                  ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
-                    (android ? [undefined] : wallets).map((w, i) => (
-                      <Button
-                        key={w?.name ?? 'mwa'}
-                        label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
-                        icon={Wallet}
-                        variant="secondary"
-                        onPress={() =>
-                          runPlain(async () => {
-                            setChosenWallet(w);
-                            try {
-                              await signInWithWallet(undefined, w);
-                            } catch (e) {
-                              if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
-                              throw e;
-                            }
-                          })
-                        }
-                        disabled={busy}
-                        testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
-                      />
-                    ))
-                  : null}
               </View>
             </View>
           ) : null}
         </GlassSurface>
+        {canGoogle || canWallet ? (
+          // The other ways in, out of the form card and under an "or" rule: full width on the
+          // screen's edges, like Sign in in the dock (QA google-button r1 B3/B4). Never lit.
+          <View style={styles.others} testID="sign-in-others">
+            <OrRule />
+          {canGoogle ? <GoogleButton intent="continue" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
+          {canWallet
+            ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
+              (android ? [undefined] : wallets).map((w, i) => (
+                <Button
+                  key={w?.name ?? 'mwa'}
+                  label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
+                  icon={Wallet}
+                  variant="secondary"
+                  onPress={() =>
+                    runPlain(async () => {
+                      setChosenWallet(w);
+                      try {
+                        await signInWithWallet(undefined, w);
+                      } catch (e) {
+                        if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
+                        throw e;
+                      }
+                    })
+                  }
+                  disabled={busy}
+                  testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
+                />
+              ))
+            : null}
+          </View>
+        ) : null}
       </View>
     </Screen>
+  );
+}
+
+/** "or" between the form card and the other ways in: the card's rule either side of a muted word. */
+function OrRule() {
+  return (
+    <View style={styles.or} testID="sign-in-or" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.orLine}>
+        <CardRule />
+      </View>
+      <Text variant="small" tone="muted">
+        or
+      </Text>
+      <View style={styles.orLine}>
+        <CardRule />
+      </View>
+    </View>
   );
 }
 
@@ -454,6 +478,8 @@ const styles = StyleSheet.create({
   fields: { gap: 14 },
   // The other ways in: full-width secondaries, 12 apart (the sheets' action gap).
   others: { gap: 12 },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  orLine: { flex: 1 },
   // "Finish your account": the heading block, then the role switch, the name and Create account, 12 apart (A-SignUp's form rhythm).
   finish: { gap: 12 },
   finishHead: { gap: 4 },

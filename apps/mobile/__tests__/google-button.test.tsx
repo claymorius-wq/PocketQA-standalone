@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo, Platform } from 'react-native';
+import { AccessibilityInfo, Platform, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GOOGLE_G_SVG, GOOGLE_G_SVG_SHA256 } from '../src/auth/googleG';
 import { disarmU1 } from '../src/screens/authParts';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { touch } from '../src/theme/tokens';
-import { GoogleButton } from '../src/ui/patterns/GoogleButton';
+import { GOOGLE_THEME, GoogleButton } from '../src/ui/patterns/GoogleButton';
 import SignIn from '../app/(auth)/sign-in';
 import SignUp from '../app/(auth)/sign-up';
 
@@ -84,15 +84,27 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('the official Google G', () => {
-  test('is byte-identical to Google’s asset (pinned sha256)', () => {
-    expect(createHash('sha256').update(GOOGLE_G_SVG, 'utf8').digest('hex')).toBe(GOOGLE_G_SVG_SHA256);
-    expect(GOOGLE_G_SVG_SHA256).toBe('6587b180203a99da15c0a041018e15c94ffd9556c4b9855bdc69806081a93791');
+  test('both theme assets are byte-identical to Google’s (pinned sha256)', () => {
+    for (const t of ['light', 'dark'] as const) {
+      expect(createHash('sha256').update(GOOGLE_G_SVG[t], 'utf8').digest('hex')).toBe(GOOGLE_G_SVG_SHA256[t]);
+    }
+    expect(GOOGLE_G_SVG_SHA256).toEqual({
+      light: '6587b180203a99da15c0a041018e15c94ffd9556c4b9855bdc69806081a93791',
+      dark: '2f7ecc307b1db0f1738456269ee2c4433b3a73c35060ced67a9afcfc6821e786',
+    });
   });
 
-  test('keeps the super G on its white tile and Google’s stroke', () => {
-    expect(GOOGLE_G_SVG).toContain('fill="white"');
-    expect(GOOGLE_G_SVG).toContain('stroke="#747775"');
-    expect(GOOGLE_G_SVG).toContain('conic-gradient');
+  test('each asset’s fill is its theme’s button fill (the G sits on the approved surface)', () => {
+    expect(GOOGLE_G_SVG.light).toContain('fill="white"');
+    expect(GOOGLE_G_SVG.dark).toContain('fill="#131314"');
+    for (const t of ['light', 'dark'] as const) expect(GOOGLE_G_SVG[t]).toContain('conic-gradient');
+  });
+
+  test('the button theme is Google’s approved light and dark, exactly', () => {
+    expect(GOOGLE_THEME).toEqual({
+      light: { fill: '#FFFFFF', stroke: '#747775', text: '#1F1F1F' },
+      dark: { fill: '#131314', stroke: '#8E918F', text: '#E3E3E3' },
+    });
   });
 });
 
@@ -103,6 +115,9 @@ describe('GoogleButton', () => {
     await act(async () => {});
     const button = screen.getByTestId('g');
     expect(button.props.accessibilityRole).toBe('button');
+    expect(button.props.accessibilityLabel).toBe('Continue with Google');
+    // Google's light theme (the test theme is light): the exact fill and stroke.
+    expect(StyleSheet.flatten(button.props.style)).toMatchObject({ backgroundColor: '#FFFFFF', borderColor: '#747775', borderWidth: 1 });
     expect(screen.getByText('Continue with Google')).toBeTruthy();
     // The G is decoration, hidden from assistive tech: the label alone names the button.
     expect(screen.getByTestId('g-logo', HIDDEN)).toBeTruthy();
@@ -148,6 +163,9 @@ describe('Sign in', () => {
     await render(wrap(<SignIn />));
     await act(async () => {});
     expect(screen.getByTestId('sign-in-google-logo', HIDDEN)).toBeTruthy();
+    // Out of the form card, under an "or" divider, full width like Sign in (QA B3/B4).
+    expect(screen.getByTestId('sign-in-or', HIDDEN)).toBeTruthy();
+    expect(within(screen.getByTestId('sign-in-others')).getByTestId('sign-in-google')).toBeTruthy();
     expect(screen.getByText('Continue with Google')).toBeTruthy();
     await act(async () => {
       fireEvent.press(screen.getByTestId('sign-in-google'));

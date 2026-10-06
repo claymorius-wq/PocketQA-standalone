@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useContext, useEffect, useRef, useState, type Ref } from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { CausticSweep, GlassSurface, useSweepOnEnable } from '../glass';
@@ -25,12 +25,6 @@ export type ButtonProps = {
   onPress: () => void;
   variant?: ButtonVariant;
   icon?: KitIcon;
-  /**
-   * Artwork drawn as given in place of `icon`, never tinted or swapped for a glyph variant: a third
-   * party's mark that must keep its own colors (the official Google G). Busy swaps it for the
-   * spinner like `icon`.
-   */
-  leading?: ReactNode;
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -68,7 +62,7 @@ export type ButtonProps = {
  * below), ghost is text. Glyphs (G3): `ink` on the primary fill, `muted` while disabled, rose for
  * the destructive glyphs on danger, `face` otherwise.
  */
-export function Button({ label, onPress, variant = 'primary', icon, leading, loading, disabled, testID, accessibilityLabel, accessibilityHint, size = 'default', sweepOnFire = true, sweepSignal, locked = false, style, ref }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, testID, accessibilityLabel, accessibilityHint, size = 'default', sweepOnFire = true, sweepSignal, locked = false, style, ref }: ButtonProps) {
   const { colors, glass, motion } = useTheme();
   const off = !!(disabled || loading || locked);
   const compact = size === 'compact';
@@ -176,8 +170,6 @@ export function Button({ label, onPress, variant = 'primary', icon, leading, loa
       <Animated.View style={[styles.buttonContent, compact ? styles.compactContent : null, press.motionStyle]}>
         {loading ? (
           <Spinner color={fg} />
-        ) : leading ? (
-          leading
         ) : icon ? (
           <KitIconView icon={icon} size={compact ? 18 : 20} variant={glyph} danger={variant === 'danger' && !disabled} color={fg} />
         ) : null}
