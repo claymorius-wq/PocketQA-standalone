@@ -7,7 +7,7 @@ import { checkServerTxPlan, type CheckedPlan, type ServerTxPlan } from './server
 import { signServerTransaction } from './signServerTransaction';
 
 const KIND: Record<CheckedPlan['kind'], string> = {
-  payout: 'Payout to the tester',
+  payout: 'Reward to the tester',
   refund: 'Refund to the funding wallet',
   fee: 'Platform fee',
   funding: 'Escrow funding',

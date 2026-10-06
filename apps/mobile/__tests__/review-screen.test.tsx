@@ -404,13 +404,13 @@ describe('review screen', () => {
       return { signature: '5igVote' };
     });
     await renderIn(<Review />);
-    expect(screen.queryByTestId('payout-approval-sign')).toBeNull();
-    await fireEvent.press(screen.getByTestId('payout-approval-review'));
+    expect(screen.queryByTestId('reward-approval-sign')).toBeNull();
+    await fireEvent.press(screen.getByTestId('reward-approval-review'));
     await settle();
     await settle();
     expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-1' } });
-    expect(screen.getByTestId('payout-approval-plan')).toHaveTextContent(/pqa-op1:cdcd/);
-    await fireEvent.press(screen.getByTestId('payout-approval-sign'));
+    expect(screen.getByTestId('reward-approval-plan')).toHaveTextContent(/pqa-op1:cdcd/);
+    await fireEvent.press(screen.getByTestId('reward-approval-sign'));
     await settle();
     await settle();
     expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-1' }, body: { signature: '5igVote', txIndex: 4, opId: plan.opId } });
@@ -419,7 +419,7 @@ describe('review screen', () => {
   it('the wallet vote is offered only for a devnet payout awaiting approval', async () => {
     mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', payout: devnetPayout('submitted') });
     await renderIn(<Review />);
-    expect(screen.queryByTestId('payout-approval-review')).toBeNull();
+    expect(screen.queryByTestId('reward-approval-review')).toBeNull();
   });
 
   it('a disputed rejection shows the tester’s dispute; an overturned one shows the transfer card', async () => {

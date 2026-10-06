@@ -208,7 +208,7 @@ function ReviewInner() {
                     server builds the vote for this payment only; the plan is shown before the wallet signs. */}
                 {p.payout && p.payout.settlement === 'squads_devnet' && p.payout.status === 'awaiting_approval' ? (
                   <ServerTxSign
-                    testID="payout-approval"
+                    testID="reward-approval"
                     settlement="squads_devnet"
                     reviewLabel="Review this payment to approve in your wallet"
                     signLabel="Approve in your wallet"

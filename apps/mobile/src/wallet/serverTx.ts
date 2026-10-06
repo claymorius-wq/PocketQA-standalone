@@ -30,7 +30,7 @@ export const PILOT_PROGRAMS: readonly string[] = [
 export type ServerTxPlan = SettlementApproval | DevnetFundingTransaction;
 export type SignContext = { settlement: string; linkedWallet: string | null };
 export type CheckedPlan = {
-  kind: 'payout' | 'refund' | 'fee' | 'funding';
+  kind: SettlementApproval['kind'] | 'funding';
   /** The Squads operation id (a vote), or null for a funding (it carries a reference instead). */
   opId: string | null;
   reference: string | null;

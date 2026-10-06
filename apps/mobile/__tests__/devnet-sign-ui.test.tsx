@@ -86,7 +86,7 @@ describe('ServerTxSign', () => {
     await act(async () => fireEvent.press(screen.getByTestId('t-review')));
     await settle();
     const planCard = screen.getByTestId('t-plan');
-    expect(planCard).toHaveTextContent(/Payout/);
+    expect(planCard).toHaveTextContent(/Reward to the tester/);
     expect(planCard).toHaveTextContent(has('1.00 devnet test USDC'));
     expect(planCard).toHaveTextContent(has(someone));
     expect(planCard).toHaveTextContent(has(OP));
