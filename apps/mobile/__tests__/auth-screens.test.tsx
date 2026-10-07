@@ -230,10 +230,11 @@ describe('Sign in launch', () => {
 });
 
 /** Records every Keyboard listener (the dock and the screen both listen); `emit` calls them all. */
-function mockKeyboard() {
+function mockKeyboard(height = 320) {
   const handlers: Record<string, (() => void)[]> = {};
-  jest.spyOn(Keyboard, 'addListener').mockImplementation(((event: string, cb: () => void) => {
-    (handlers[event] ??= []).push(cb);
+  jest.spyOn(Keyboard, 'metrics').mockImplementation(() => ({ screenX: 0, screenY: 524, width: 390, height }));
+  jest.spyOn(Keyboard, 'addListener').mockImplementation(((name: string, cb: () => void) => {
+    (handlers[name] ??= []).push(cb);
     return { remove: jest.fn() };
   }) as unknown as typeof Keyboard.addListener);
   const emit = (...events: string[]) => {
@@ -249,6 +250,14 @@ function filled() {
   while (node && node.props.contentContainerStyle === undefined) node = node.parent;
   if (!node) throw new Error('no scroll content above the form');
   return (StyleSheet.flatten(node.props.contentContainerStyle) as { flexGrow?: number }).flexGrow === 1;
+}
+
+/** The Screen scroll content padding that keeps controls clear of docks, tab bars and the keyboard. */
+function contentPaddingBottom() {
+  let node = screen.getByTestId('sign-in-email', HIDDEN_OK).parent;
+  while (node && node.props.contentContainerStyle === undefined) node = node.parent;
+  if (!node) throw new Error('no scroll content above the form');
+  return (StyleSheet.flatten(node.props.contentContainerStyle) as { paddingBottom?: number }).paddingBottom ?? 0;
 }
 
 /** The style of the wrapper that holds the error Notice and the form card (the screen's last step). */
@@ -325,6 +334,26 @@ describe('Sign in with the keyboard up', () => {
     expect(screen.getByTestId('sign-in-submit')).toBeTruthy();
     await act(async () => keyboard.hide());
     expect(footerHidden()).toBe(false);
+  });
+
+  it('keeps a failure notice and the fields clear of the Sign in dock after it rides above the keyboard', async () => {
+    const keyboardHeight = 320;
+    const dockHeight = 72;
+    const keyboard = mockKeyboard(keyboardHeight);
+    mockSignIn.mockRejectedValueOnce(new Error('Email or password is incorrect.'));
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    await act(async () =>
+      fireEvent(screen.getByTestId('screen-dock'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: dockHeight } } }),
+    );
+    await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'ana@example.test');
+    await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'wrong-password');
+    await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(screen.getByTestId('sign-in-error')).toBeTruthy();
+
+    await act(async () => keyboard.show());
+
+    expect(contentPaddingBottom()).toBeGreaterThanOrEqual(dockHeight + keyboardHeight + 14);
   });
 });
 
