@@ -1,0 +1,73 @@
+{
+  "ok": false,
+  "mode": "full-stopped-after-publish",
+  "label": "test-only hostname mapping, TLS errors ignored, NOT the hosted deployment",
+  "walletClass": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension; NOT extension compatibility",
+  "target": {
+    "origin": "https://pocketqa-devnet.vercel.app",
+    "proxyPort": 9443,
+    "backend": "http://127.0.0.1:8697",
+    "artifact": "4ee4603"
+  },
+  "study": {
+    "id": "i6e0cf44ec9c8297d06d282afc553946",
+    "title": "Codex devnet journey muxosrqy",
+    "status": "published",
+    "createdAt": "2026-10-07T05:48:38Z",
+    "publishedAt": "2026-10-07T05:48:56Z"
+  },
+  "funding": {
+    "id": "65503611-1e64-45d8-9798-5674e6019e6c",
+    "status": "confirmed",
+    "amountUnits": 1100000,
+    "reference": "BtytnEsmD4wzpjUQ5XZ9zDaeppzuPHEjMjLDd2NuU3FE",
+    "source": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "signature": {
+      "prefix": "4TyVGsoCE6",
+      "sha256": "96f59695d403dd1b88ff27d38b80af93d4588c5657bf5a6dd9e8b82a711b15f1"
+    }
+  },
+  "escrow": {
+    "settlement": "squads_devnet",
+    "network": "solana:devnet",
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "vaultAta": "GJNTrTktAMSMhCzPa6YP3hrDVTukJs2qMvueUpQAQzsz",
+    "feeBps": 1000,
+    "fundingWallet": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn"
+  },
+  "wallets": {
+    "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+  },
+  "screenshots": [
+    "00-first-navigation.png",
+    "01-builder-signed-in.png",
+    "02-tester3-signed-in.png",
+    "03-tester3-wallet-linked.png",
+    "04-builder-new-study-filled.png",
+    "05-builder-draft-study.png",
+    "06-funding-plan-checked.png",
+    "07-funding-cancelled-in-wallet.png",
+    "08-funded-on-devnet.png",
+    "09-published.png"
+  ],
+  "stopReason": "After funding and publishing, the tester Discover page did not show the study within the harness wait. pocketqa-lead directed Codex not to rerun from scratch and to resume this already funded study.",
+  "readOnlyChainReadings": {
+    "builder": {
+      "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+      "ata": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+      "lamports": 49860000,
+      "testUsdcUnits": 14435000
+    },
+    "tester": {
+      "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+      "ata": "3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg",
+      "lamports": 0,
+      "testUsdcUnits": 2500000
+    }
+  },
+  "notes": [
+    "The original run stopped before a completed run.json was written; this artifact reconstructs the funding/publish checkpoint from screenshot evidence, server-log request ids, lead-provided read-only Firestore facts, and read-only Solana RPC balances.",
+    "No private keys are included."
+  ]
+}

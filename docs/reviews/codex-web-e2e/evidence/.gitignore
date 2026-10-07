@@ -1,0 +1,4 @@
+*.key
+*.crt
+*/local-devnet.key
+*/local-devnet.crt

@@ -464,5 +464,27 @@
   "evidence": [
    "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
   ]
+ },
+ {
+  "id": "L-17",
+  "area": "devnet",
+  "title": "Codex (pqa-codex-web) browser payout journey through the real UI on devnet",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet) via test-only hostname mapping, TLS errors ignored, NOT the hosted deployment; headed Chrome; wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "artifact 4ee4603 (server PID 57713)",
+  "sha": "4ee4603",
+  "steps": "funding run (create, fund via the in-page wallet, publish) + RESUME run (tester-3 consent/upload/submit -> builder approve -> reward vote (1 cancel) -> close -> refund + fee votes)",
+  "fixtures": {
+   "study": "i6e0cf44ec9c8297d06d282afc553946",
+   "participation": "3609e04c-2922-4ee0-b7c5-604ed101818d",
+   "tester": "pqa-e2e-devnet-tester-3 (first link of the tester fixture 6xof…)"
+  },
+  "observed": "pqa-qa independent readback: multisig DGLfjk17, vault GJNTrTkt; #1 reward 500000 -> ATA(6xof) memo 67c7b2e4, #2 fee 50000, #3 refund 550000 (op ids recomputed); each Executed [builder, platform] 1/0/1/1/0; #4 absent; vault 0; ledger ok; the builder signed exactly 4 (4TyVGsoCE6, 7NEZFVwB8U, 4XqoL9utcT, 4kvkSSMRjh, all prefix+sha256 match); the deliberate cancel left nothing; platform 14 sigs, 0 outside, net 18810040. Earlier attempts stopped before any signature (a tester-2 link mismatch -> tester-3 provisioned; harness selector fixes) or after funding+publish (resumed, no second funding).",
+  "evidence": [
+   "docs/reviews/codex-web-e2e/report.md",
+   "docs/reviews/codex-web-e2e/evidence/",
+   "docs/reviews/full-e2e/qa/qa-codex-web-r1.md"
+  ],
+  "notes": "No wallet-compatibility claim (L-12 stays BLOCKED); a run by Codex (gpt-5.5) under the parent-authorized exception. Local self-signed TLS keys are gitignored, never committed."
  }
 ]
