@@ -28,6 +28,27 @@ const PROGRAM = new PublicKey(SQUADS_PROGRAM);
 const EXECUTE_DISCRIMINATOR = Buffer.from(multisig.generated.vaultTransactionExecuteInstructionDiscriminator);
 const CREATE_KEY_DOMAIN = 'pocketqa/devnet/create-key/v1/';
 
+/**
+ * What a finalized transaction cost the platform as its fee payer (account 0): pre minus post
+ * balance, i.e. fee + rent; null if it isn't finalized yet or someone else paid.
+ */
+async function platformCost(conn: Connection, signature: string, platform: PublicKey) {
+  const tx = await conn.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 });
+  if (!tx?.meta) return null;
+  if (!tx.transaction.message.staticAccountKeys[0]?.equals(platform)) return null;
+  return { lamports: tx.meta.preBalances[0]! - tx.meta.postBalances[0]!, slot: tx.slot };
+}
+
+/**
+ * Read-only cost lookups with the platform's PUBLIC key only (pqa-qa P3-SR1): what the spend report
+ * needs, without ever loading the platform secret.
+ */
+export function rpcCostReader(conn: Connection | string, platformPubkey: string) {
+  const c = typeof conn === 'string' ? new Connection(conn, 'finalized') : conn;
+  const platform = new PublicKey(platformPubkey);
+  return { costOf: (signature: string) => platformCost(c, signature, platform) };
+}
+
 export class RpcDevnetChain implements DevnetChain {
   readonly roles: { platform: string; arbiter: string };
 
@@ -186,6 +207,10 @@ export class RpcDevnetChain implements DevnetChain {
     if (!v) return 'not_found';
     if (v.err) return 'failed';
     return v.confirmationStatus === 'finalized' ? 'finalized' : 'processing';
+  }
+
+  async costOf(signature: string) {
+    return platformCost(this.conn, signature, this.platform.publicKey);
   }
 
   async blockHeight() {

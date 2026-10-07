@@ -44,6 +44,11 @@ export class FakeDevnetChain implements DevnetChain {
   landed: { step: DevnetStep | 'cosigner_approve' | 'funding'; signature: string }[] = [];
   /** Unsigned transactions built for a wallet (the builder's or the arbiter CLI's). */
   built: ('approve' | 'funding')[] = [];
+  /** What the chain really charges below each step's estimate (fee + rent), as devnet does. */
+  costDiscount = 0;
+  /** Simulates an RPC that can't return a finalized transaction's balances. */
+  costUnavailable = false;
+  private costs = new Map<string, { lamports: number; slot: number }>();
   dropNext = 0;
   lag = false;
   crashAfter: DevnetStep | null = null;
@@ -108,6 +113,15 @@ export class FakeDevnetChain implements DevnetChain {
   async signatureStatus(signature: string) {
     return this.statuses.get(signature) ?? 'not_found';
   }
+  /** What a finalized platform-paid transaction actually cost its fee payer (fee + rent). */
+  async costOf(signature: string) {
+    if (this.costUnavailable || this.statuses.get(signature) === 'processing') return null;
+    return this.costs.get(signature) ?? null;
+  }
+  /** Test: the total the platform really paid, over every landed platform transaction. */
+  platformPaid() {
+    return [...this.costs.values()].reduce((sum, c) => sum + c.lamports, 0);
+  }
   async blockHeight() {
     return this.height;
   }
@@ -136,8 +150,10 @@ export class FakeDevnetChain implements DevnetChain {
       effect();
       this.statuses.set(p.signature, this.lag ? 'processing' : 'finalized');
       this.landed.push({ step: p.step, signature: p.signature });
+      this.costs.set(p.signature, { lamports: STEP_LAMPORTS[p.step] - this.costDiscount, slot: this.height });
     } catch {
       this.statuses.set(p.signature, 'failed'); // landed, and the program refused it (fee paid)
+      this.costs.set(p.signature, { lamports: 5_000, slot: this.height });
     }
     if (this.crashAfter === p.step) {
       this.crashAfter = null;

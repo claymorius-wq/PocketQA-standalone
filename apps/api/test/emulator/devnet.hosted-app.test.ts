@@ -223,8 +223,12 @@ describe('the devnet spend caps come from env and are logged at startup (E-28 #4
     expect(d.config.devnet!.limits.global.lamports).toBe(200_000_000);
     const a = await buildHostedApp(d, { logStream: stream });
     await a.close();
-    const line = lines.map((l) => JSON.parse(l) as { msg: string; devnetSpendCaps?: unknown }).find((l) => l.devnetSpendCaps);
+    const line = lines.map((l) => JSON.parse(l) as { msg: string; devnetSpendCaps?: unknown; devnetSpent?: { lamports: number; usdcUnits: number } }).find((l) => l.devnetSpendCaps);
     expect(line?.devnetSpendCaps).toEqual({ global: { lamports: 200_000_000, usdcUnits: 3_000_000 }, perUser: { lamports: 120_000_000, usdcUnits: 3_000_000 } });
+    // QA P3-CAP1: the current cumulative spend (the namespace's global totals) as numbers.
+    const spent = (await raw.doc(`${DEVNET_ROOT}/devnetSpend/global`).get()).data() ?? { lamports: 0, usdcUnits: 0 };
+    expect(line?.devnetSpent).toEqual({ lamports: spent.lamports, usdcUnits: spent.usdcUnits });
+    expect(line!.devnetSpent!.lamports).toBeGreaterThan(0); // the journey above prepared a vault
     expect(lines.join('')).not.toContain(env.POCKETQA_DEVNET_PLATFORM_SIGNER);
   });
 });

@@ -173,7 +173,11 @@ export async function buildHostedApp(deps: HostedDeps, opts: HostedOptions = {})
   if (deps.settlement instanceof DevnetSquadsSettlement) await deps.settlement.startupCheck();
   const app = await buildApp(deps, { logger: { level: 'info', ...(opts.logStream ? { stream: opts.logStream } : {}) }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
   // The effective devnet spend caps, as numbers (not secrets): cumulative over the namespace's lifetime.
-  if (deps.config.devnet) app.log.info({ devnetSpendCaps: deps.config.devnet.limits }, 'devnet spend caps (cumulative; lamports = fees + rent, test-USDC base units)');
+  // QA P3-CAP1: with the current cumulative spend (the namespace's global totals), so headroom is visible.
+  if (deps.config.devnet) {
+    const devnetSpent = await deps.repo.escrow.devnet!.spendOf('global');
+    app.log.info({ devnetSpendCaps: deps.config.devnet.limits, devnetSpent }, 'devnet spend caps and current spend (cumulative; lamports = fees + rent, test-USDC base units)');
+  }
   return app;
 }
 

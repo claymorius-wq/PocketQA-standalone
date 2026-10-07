@@ -167,12 +167,12 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
     if (rec && rec.status !== 'failed') {
       const st = await chain.signatureStatus(rec.signature);
       if (st === 'finalized') {
-        await this.patchOrPend(kind, id, fence, { steps: { [input.step]: { ...rec, status: 'finalized' } } });
+        await this.patchOrPend(kind, id, fence, { steps: { [input.step]: await this.resolved(rec, 'finalized') } });
         return;
       }
       if (st === 'processing') throw new SettlementPending(`${input.step} is confirming`);
       if (st === 'failed') {
-        await this.patchOrPend(kind, id, fence, { steps: { [input.step]: { ...rec, status: 'failed' } } });
+        await this.patchOrPend(kind, id, fence, { steps: { [input.step]: await this.resolved(rec, 'failed') } });
       } else if (rec.last_valid_block_height >= (await chain.blockHeight())) {
         // Not seen, but it can still land: the SAME bytes again (same signature), never a new transaction.
         if (!(await this.store.beforeBroadcast(kind, id, fence, input.step, rec, now()))) throw new SettlementPending('fenced out');
@@ -198,7 +198,13 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
   private async observed(kind: ReceiptKind, id: string, fence: number, step: DevnetStep, rec: ReceiptStep | undefined) {
     if (!rec || rec.status === 'finalized' || rec.status === 'failed') return;
     const st = await this.d.chain.signatureStatus(rec.signature);
-    if (st === 'finalized' || st === 'failed') await this.patchOrPend(kind, id, fence, { steps: { [step]: { ...rec, status: st } } });
+    if (st === 'finalized' || st === 'failed') await this.patchOrPend(kind, id, fence, { steps: { [step]: await this.resolved(rec, st) } });
+  }
+
+  /** A recorded step resolved, with what the platform really paid for it when the chain says so. */
+  private async resolved(rec: ReceiptStep, status: 'finalized' | 'failed'): Promise<ReceiptStep> {
+    const cost = await this.d.chain.costOf(rec.signature).catch(() => null);
+    return { ...rec, status, ...(cost ? { cost_lamports: cost.lamports, slot: cost.slot } : {}) };
   }
 
   private async patchOrPend(kind: ReceiptKind, id: string, fence: number, p: Parameters<DevnetStore['patch']>[3]) {
@@ -519,9 +525,16 @@ export class DevnetSquadsSettlement implements SettlementProvider, DevnetSettlem
   }
 }
 
-/** What a receipt's landed transactions cost: their estimates (fee + rent); a landed failure cost its fee. */
+/**
+ * What a receipt's landed transactions cost: the cost observed on chain (fee + rent), so the books
+ * equal the chain to the lamport; where it couldn't be read, the estimate (an upper bound) or one fee
+ * for a landed failure, so the books are never below the chain.
+ */
 function spent(steps: Partial<Record<DevnetStep, ReceiptStep>>) {
-  return Object.values(steps).reduce((sum, s) => sum + (s?.status === 'finalized' ? s.est_lamports : s?.status === 'failed' ? 5_000 : 0), 0);
+  return Object.values(steps).reduce((sum, s) => {
+    if (s?.status !== 'finalized' && s?.status !== 'failed') return sum;
+    return sum + (s.cost_lamports ?? (s.status === 'finalized' ? s.est_lamports : 5_000));
+  }, 0);
 }
 
 export function devnetSettlement(deps: DevnetDeps): DevnetSquadsSettlement {

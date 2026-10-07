@@ -112,6 +112,7 @@ A devnet deployment signs in against the **same Firebase Auth user pool** as pro
      npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path to the arbiter key file> --arbiter <POCKETQA_DEVNET_ARBITER_PUBKEY> --platform <POCKETQA_DEVNET_PLATFORM_PUBKEY> \
        --multisig <multisig> --index <n> --op <pqa-op1:…> --recipient <tester wallet> --amount <units>
      ```
+  - **The arbiter key pays its own vote's fee (E-29).** Fund it with a little devnet SOL first. Both the dry run and `--send` refuse below **10,000 lamports** (one signature's fee plus a margin), so "dry run OK" means the send can succeed.
   3. **Vote:** the same command with `--send` votes once with the arbiter key. It prints the public vote signature only, never the key. A second run reports `alreadyApproved`.
   4. **Completion:** the next settle slice or `/api/jobs/settle` run completes it: the platform votes and executes.
 - **Arbiter recovery for builder-cosigned payments, when the builder can't or won't vote:** refunds, fee sweeps and payouts approved by the builder wait for the **builder's** vote. The server never completes a builder-cosigned payment on the arbiter's vote, even though the arbiter is a member.

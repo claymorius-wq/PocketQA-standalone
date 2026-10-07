@@ -13,6 +13,7 @@ import { SettlementFailure, SettlementPending } from '../../src/settlement/types
 import { runSettlement } from '../../src/settlement/worker';
 import type { ParticipationRow, StudyRow } from '../../src/views/studies';
 import { paymentViewOf } from '../../src/views/escrow';
+import { spendReport } from '../../src/devnet/spendReport';
 import { FakeDevnetChain, walletSign } from '../fakeDevnetChain';
 import { clearEmulator, emulatorFirestore } from './fs';
 
@@ -530,5 +531,51 @@ describe('the operator plan of a payment (the arbiter CLI inputs, admin read-onl
     const r = (await repos.escrow.devnet!.receipt(s.id))!;
     expect(plan).toEqual({ settlementId: s.id, kind: 'payout', cosigner: 'arbiter', state: 'awaiting_cosigner', multisig: r.multisig, txIndex: r.tx_index, opId: r.op_id, recipient: p.payout_address, amountUnits: 1_000, mint: PILOT_MINT, network: 'devnet' });
     expect(chain.built.length).toBe(built);
+  });
+});
+
+describe('the spend books equal the chain to the lamport (observed fee + rent), never below it', () => {
+  const spend = async (id: string) => ((await fs.collection('devnetSpend').doc(id).get()).data() ?? { lamports: 0 }).lamports as number;
+  it('a vault and a payout: user and global spend = what the platform really paid (each step’s observed cost recorded)', async () => {
+    chain.costDiscount = 1_234; // devnet charges less than the estimates
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(p!.id);
+    for (let i = 0; i < 6; i++) await settle();
+    expect(await statusOf(p!.id)).toBe('confirmed');
+    expect(await spend('user:b1')).toBe(chain.platformPaid());
+    expect(await spend('global')).toBe(chain.platformPaid());
+    const r = (await fs.collection('squadsAttempts').get()).docs[0]!.data() as { steps: Record<string, { cost_lamports?: number; est_lamports: number }> };
+    for (const st of Object.values(r.steps)) expect(st.cost_lamports).toBe(st.est_lamports - 1_234);
+  });
+
+  it('when a finalized transaction’s cost can’t be read, its estimate (an upper bound) counts: never below the chain', async () => {
+    chain.costDiscount = 1_234;
+    chain.costUnavailable = true;
+    await readyVault();
+    expect(await spend('user:b1')).toBeGreaterThan(chain.platformPaid());
+  });
+});
+
+describe('the read-only spend report (historical gap)', () => {
+  it('reserved vs observed per operation and in total; reports a historical over-count; writes nothing', async () => {
+    chain.costDiscount = 1_234;
+    await readyVault();
+    const [p] = await payouts(1);
+    for (let i = 0; i < 6; i++) await settle();
+    await approveAsBuilder(p!.id);
+    for (let i = 0; i < 6; i++) await settle();
+    let r = await spendReport(fs, chain);
+    expect(r.observedTotal).toBe(chain.platformPaid());
+    expect(r.gap).toBe(0); // the books are trued to the observed cost going forward
+    // A historical estimate-based reservation (as before this fix): the report shows the gap, read-only.
+    const vaultKey = 'vault:s1';
+    await fs.collection('devnetSpendReservations').doc(vaultKey).update({ lamports: 3_889_280 + 20_000 });
+    const before = JSON.stringify((await fs.collection('devnetSpendReservations').get()).docs.map((d) => d.data()));
+    r = await spendReport(fs, chain);
+    expect(r.gap).toBe(3_889_280 + 20_000 - (r.lines.find((l) => l.opKey === vaultKey)!.observedLamports));
+    expect(r.gap).toBeGreaterThan(0);
+    expect(JSON.stringify((await fs.collection('devnetSpendReservations').get()).docs.map((d) => d.data()))).toBe(before);
   });
 });
