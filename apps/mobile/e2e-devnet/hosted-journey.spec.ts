@@ -156,9 +156,12 @@ async function shotOf(p: Page, testId: string, name: string, note?: string) {
 async function until(p: Page, what: string, ready: () => Promise<boolean>, ms = SETTLE_WAIT_MS) {
   const end = Date.now() + ms;
   for (;;) {
-    if (await ready().catch(() => false)) return;
+    // Poll for up to 10 s (the app needs time to restore the session and render after a load), then reload.
+    for (let i = 0; i < 10; i++) {
+      if (await ready().catch(() => false)) return;
+      await p.waitForTimeout(1_000);
+    }
     if (Date.now() > end) throw new Error(`stopped: ${what} not reached within ${Math.round(ms / 1000)} s`);
-    await p.waitForTimeout(10_000);
     await p.reload();
   }
 }
