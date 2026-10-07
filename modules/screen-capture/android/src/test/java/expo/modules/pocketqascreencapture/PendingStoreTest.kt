@@ -80,18 +80,65 @@ class PendingStoreTest {
     assertTrue(dir.listFiles()!!.isEmpty())
   }
 
-  @Test fun aTruncatedFileFromProcessDeathIsSweptAndItsSessionIsToldOnce() {
+  @Test fun aTruncatedFileFromProcessDeathIsKeptAndItsSessionIsToldOnce() {
+    // Hamza's preserve rule (2026-10-07): no recording is ever deleted automatically. A file the
+    // process died writing is never offered or uploaded, but its bytes stay on the device.
     val truncated = recorded(tag = "p1")
     val active = recorded(tag = "p1")
     val done = recorded(tag = "p1")
     store.markComplete(done, 1000, "p1", "user", FULL)
     store.sweep(active = active)
-    assertFalse(truncated.exists())
+    assertTrue(truncated.exists())
     assertTrue(active.exists())
     assertTrue(done.exists())
     assertEquals(1, store.pending("p1").size)
     assertEquals(0, store.takeInterrupted("p2"))
     assertEquals(1, store.takeInterrupted("p1"))
+    assertEquals(0, store.takeInterrupted("p1"))
+    // A later sweep (the same recording still active) neither deletes it nor reports it again.
+    store.sweep(active = active)
+    assertTrue(truncated.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  // pqa-qa B2 r1 B2-1: the finalise path never deletes a recording. A clip that can't be finalised
+  // (a failed stop, an unreadable file: no voice verdict) or recorded (its meta can't be written,
+  // e.g. disk full) stays on the device, unlisted, and its session is told once.
+  @Test fun aClipThatFailedToStopOrCantBeReadIsKeptAndReportedOnce() {
+    val f = recorded(tag = "p1")
+    assertFalse(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = null))
+    assertTrue(f.exists())
+    assertTrue(store.pending("p1").isEmpty())
+    assertEquals(1, store.takeInterrupted("p1"))
+    store.sweep(active = null)
+    assertTrue(f.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun aClipWhoseMetaCantBeWrittenIsKeptAndReportedOnce() {
+    val f = recorded(tag = "p1")
+    // The meta's target is a non-empty directory, so the write-then-rename fails (as on a full disk).
+    File(dir, f.nameWithoutExtension + ".meta").apply { mkdirs(); File(this, "x").writeText("x") }
+    assertFalse(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = FULL))
+    assertTrue(f.exists())
+    assertEquals(1, store.takeInterrupted("p1"))
+    store.sweep(active = null)
+    assertTrue(f.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun aFinalisedClipIsSettledAsPending() {
+    val f = recorded(tag = "p1")
+    assertTrue(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = FULL))
+    assertEquals(listOf(f), store.pending("p1").map { it.file })
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun anEmptyFailedRecordingLeavesNothing() {
+    // Nothing was captured (a start that failed before any frame): no file, no notice.
+    val f = recorded(bytes = 0, tag = "p1")
+    assertFalse(store.settle(f, durationMs = 0, tag = "p1", reason = "error", voice = null))
+    assertFalse(f.exists())
     assertEquals(0, store.takeInterrupted("p1"))
   }
 
@@ -102,17 +149,42 @@ class PendingStoreTest {
     assertFalse(empty.exists())
   }
 
-  @Test fun clipsExpireAfterADay() {
+  @Test fun finishedClipsNeverExpire() {
+    // Hamza's preserve rule (2026-10-07): no age-based expiry; a clip stays listed until the tester
+    // uploads it, removes it (with a confirm), or signs out (with a confirm).
     val f = recorded()
     store.markComplete(f, 1000, "p1", "user", FULL)
+    store.sweep(active = null)
+    clock += 30L * 24 * 60 * 60 * 1000
+    store.sweep(active = null)
+    assertTrue(f.exists())
+    assertEquals(listOf(f), store.pending("p1").map { it.file })
+  }
+
+  @Test fun onlyInterruptedNoticesExpireAfterADay() {
     recorded(tag = "p1") // truncated: leaves an "interrupted" notice
     store.sweep(active = null)
-    clock += PendingStore.TTL_MS + 1
+    clock += PendingStore.NOTICE_TTL_MS + 1
     store.sweep(active = null)
-    assertFalse(f.exists())
-    assertTrue(store.pending("p1").isEmpty())
     assertEquals(0, store.takeInterrupted("p1"))
-    assertTrue(dir.listFiles()!!.isEmpty())
+  }
+
+  @Test fun tempFilesOfTheActiveRecordingAreKeptAndOthersDropped() {
+    val active = recorded(tag = "p1")
+    val activeTmp = File(dir, active.nameWithoutExtension + ".meta.tmp").apply { writeText("x") }
+    val orphanTmp = File(dir, "orphan.rec.tmp").apply { writeText("x") }
+    store.sweep(active = active)
+    assertTrue(activeTmp.exists())
+    assertFalse(orphanTmp.exists())
+  }
+
+  @Test fun anUnreadableMetadataFileNeverCostsTheClip() {
+    val f = recorded()
+    store.markComplete(f, 1000, "p1", "user", FULL)
+    File(dir, f.nameWithoutExtension + ".meta").writeBytes(byteArrayOf(0, 1, 2))
+    store.sweep(active = null)
+    store.sweep(active = null)
+    assertTrue(f.exists())
   }
 
   @Test fun signingOutClearsEveryClipAndNotice() {

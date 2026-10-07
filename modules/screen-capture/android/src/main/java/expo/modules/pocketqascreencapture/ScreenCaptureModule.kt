@@ -41,7 +41,8 @@ private const val PREPARE_TIMEOUT_MS = 5_000L
  *    was in another app, JS reloaded, or the screen was destroyed in the background); each clip
  *    carries its voice verdict (voiceComplete, voiceMs, videoMs);
  *  - takeInterruptedAsync(tag) counts that session's recordings lost to process death, once;
- *  - clearAllAsync() stops and deletes everything (sign-out, account deletion).
+ *  - clearAllAsync() stops and deletes everything: only on the tester's confirmed "sign out and
+ *    delete recordings" or account deletion, never on a session that ended by itself.
  */
 class ScreenCaptureModule : Module() {
   private var pendingStart: Promise? = null
@@ -127,11 +128,10 @@ class ScreenCaptureModule : Module() {
     Events("onStopped")
 
     OnCreate {
-      // Truncated files (the process died mid-recording) and files JS lost track of are deleted;
-      // finished, unclaimed clips stay for their session to claim (expiring after a day).
+      // Housekeeping only: no recording is ever deleted here, and nothing expires (Hamza's preserve
+      // rule, 2026-10-07; see PendingStore). Recordings older builds left in cacheDir/recordings are
+      // no longer deleted either: they aren't offered, but they stay until the tester's own action.
       store.sweep(active = RecorderBridge.currentFile)
-      // Builds before 2026-10-05 kept recordings in the evictable cache; nothing there is offered any more.
-      java.io.File(context.cacheDir, "recordings").deleteRecursively()
       RecorderBridge.onStopped = { reason, clip ->
         sendEvent("onStopped", mapOf("reason" to reason, "clip" to clip?.toMap()))
       }
@@ -182,7 +182,7 @@ class ScreenCaptureModule : Module() {
 
     AsyncFunction("takeInterruptedAsync") { tag: String -> store.takeInterrupted(tag) }
 
-    /** The session screen is gone: delete truncated files and expired clips (finished clips stay for their session). */
+    /** Housekeeping on demand ([PendingStore.sweep]); it never deletes a recording. */
     AsyncFunction("purgeAsync") { store.sweep(active = RecorderBridge.currentFile) }
 
     OnDestroy {

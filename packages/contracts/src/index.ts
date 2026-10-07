@@ -116,6 +116,18 @@ export const DeviceProfile = z.object({
   languages: z.array(z.string().min(2).max(12)).min(1).max(10),
 });
 export type DeviceProfile = z.infer<typeof DeviceProfile>;
+/** Android's API level as the profile form accepts it: a whole number 1–99. */
+export const isAndroidApiLevel = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 99;
+/**
+ * PUT /me/device: an Android profile must carry its API level (a profile saved from the web as
+ * Android with null hid every study with a minimum API, study ia2ed9db). Other platforms keep null.
+ * Only what is SAVED is stricter: stored profiles and User.device keep the DeviceProfile shape.
+ */
+export const DeviceProfileInput = DeviceProfile.superRefine((d, ctx) => {
+  if (d.platform === 'android' && !isAndroidApiLevel(d.androidApiLevel)) {
+    ctx.addIssue({ code: 'custom', path: ['androidApiLevel'], message: 'Android needs its API level (a whole number 1–99).' });
+  }
+});
 
 /** One address links to at most one account; linking an address owned elsewhere is CONFLICT_STATE. */
 export const WalletLink = z.object({
@@ -915,7 +927,7 @@ export const routes = {
   clientConfig: r({ method: 'GET', path: '/config', auth: 'public', scope: 'none', body: null, response: ClientConfig }),
   identitySession: r({ method: 'POST', path: '/auth/identity/session', auth: 'identity', scope: 'self', body: IdentitySessionBody, response: IdentitySessionResponse }),
   me: r({ method: 'GET', path: '/me', auth: 'user', scope: 'self', body: null, response: User }),
-  putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfile, response: User }),
+  putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfileInput, response: User }),
   credits: r({ method: 'GET', path: '/me/credits', auth: 'user', scope: 'self', body: null, response: CreditsView }),
   topUp: r({ method: 'POST', path: '/me/credits/test-topup', auth: 'builder', scope: 'self', body: TopUpBody, response: CreditsView }),
   exportMe: r({ method: 'POST', path: '/me/export', auth: 'user', scope: 'self', body: null, response: ExportBundle }),

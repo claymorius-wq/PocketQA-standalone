@@ -57,7 +57,11 @@ type Session = {
   /** Web: the chosen Wallet Standard wallet; Android: Mobile Wallet Adapter (no choice here). */
   signInWithWallet: (newAccount?: NewAccount, wallet?: StandardWallet) => Promise<void>;
   completeAccount: (input: NewAccount) => Promise<void>;
-  signOut: () => Promise<void>;
+  /**
+   * Ends the session. `deleteRecordings` also deletes every native recording on this device; pass it
+   * only after the tester confirmed exactly that (Settings' sign-out sheet, account deletion).
+   */
+  signOut: (opts?: { deleteRecordings?: boolean }) => Promise<void>;
   refreshUser: () => Promise<void>;
 };
 const Ctx = createContext<Session | null>(null);
@@ -69,6 +73,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const token = useRef<string | null>(null);
   const fb = useRef<Auth | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  // Any change of signed-in user (not only signOut) clears the query cache, so one account's lists
+  // are never shown to another (study ia2ed9db: the eligible list). The same user again keeps it.
+  const userId = useRef<string | null>(null);
+  const switchUser = useCallback(
+    (next: User) => {
+      if (userId.current !== null && userId.current !== next.id) qc.clear();
+      userId.current = next.id;
+      setUser(next);
+    },
+    [qc],
+  );
   const [ready, setReady] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('local');
   const [walletLogin, setWalletLogin] = useState(false);
@@ -82,14 +97,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [pendingProfile, setPendingProfile] = useState<NewAccount | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState(false);
 
-  const clear = useCallback(async () => {
-    // A web screen recording never outlives the session: stop its devices and drop its bytes.
+  const endSession = useCallback(async (opts?: { deleteRecordings?: boolean }) => {
+    // A web screen recording never outlives the session: stop its devices and drop its bytes (they
+    // live only in this page's memory; nothing is stored on the device).
     disposeAllWebRecorders();
-    // Native recordings neither: stop any session and delete every clip and notice on the device,
-    // so the next account on this phone never sees them (pqa-qa r1 guardrail 1).
-    await nativeRecorder()?.clearAllAsync?.().catch(() => {});
+    // Native recordings are kept unless the tester confirmed deleting them (Hamza's preserve rule,
+    // 2026-10-07): a 401, a failed restore or an ended Firebase session never costs a recording.
+    // Another account on this phone still never sees them: a clip is listed only to its own
+    // participation's screen (pqa-qa r1 guardrail 1).
+    if (opts?.deleteRecordings) await nativeRecorder()?.clearAllAsync?.().catch(() => {});
     token.current = null;
     setUser(null);
+    userId.current = null;
     setNeedsAccount(false);
     setSignedInEmail(null);
     qc.clear();
@@ -103,17 +122,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (r.kind === 'signed-in') {
       setNeedsAccount(false);
       setSignedInEmail(null);
-      setUser(r.user);
+      switchUser(r.user);
     } else {
       setNeedsAccount(true);
       setSignedInEmail(fb.current?.currentUser?.email ?? null);
       const saved = await AsyncStorage.getItem(PENDING_PROFILE).catch(() => null);
       setPendingProfile(saved ? (JSON.parse(saved) as NewAccount) : null);
     }
-  }, []);
+  }, [switchUser]);
 
   useEffect(() => {
-    configureClient({ getToken: () => token.current, onUnauthenticated: () => void clear() });
+    configureClient({ getToken: () => token.current, onUnauthenticated: () => void endSession() });
     let unsubscribe: (() => void) | null = null;
     (async () => {
       const cfg = await getClientConfig().catch(() => null);
@@ -133,7 +152,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         fb.current = a;
         configureClient({
           getToken: () => token.current,
-          onUnauthenticated: () => void clear(),
+          onUnauthenticated: () => void endSession(),
           // An expired ID token (e.g. after sleep) is refreshed once before signing out.
           refreshToken: async () => {
             token.current = (await a.currentUser?.getIdToken(true)) ?? null;
@@ -148,7 +167,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           first = false;
           // A persisted Firebase session from an earlier visit.
           // Only a definite "not signed in" ends the session; offline keeps it for later.
-          void (t ? resolveManaged().catch((e) => (endsRestoredSession(e) ? clear() : undefined)) : Promise.resolve()).finally(() => setReady(true));
+          void (t ? resolveManaged().catch((e) => (endsRestoredSession(e) ? endSession() : undefined)) : Promise.resolve()).finally(() => setReady(true));
         });
         return;
       }
@@ -157,21 +176,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (saved) {
         token.current = saved;
         try {
-          setUser(await api('me'));
-        } catch {
-          await clear();
+          switchUser(await api('me'));
+        } catch (e) {
+          // Only a definite "signed out" ends the saved session; offline keeps it and says the
+          // server can't be reached, with Try again (main-app P2: an offline start used to sign out
+          // and delete every recording).
+          if (endsRestoredSession(e)) await endSession();
+          else setUnreachable(true);
         }
       }
       setReady(true);
     })();
     return () => unsubscribe?.();
-  }, [clear, resolveManaged, attempt]);
+  }, [endSession, resolveManaged, attempt, switchUser]);
 
   const accept = useCallback(async (res: { token: string; user: User }) => {
     token.current = res.token;
     await tokenStore.set(res.token);
-    setUser(res.user);
-  }, []);
+    switchUser(res.user);
+  }, [switchUser]);
 
   /** Firebase mode: wait for the ID token after a sign-in, then map it. */
   const afterFirebaseSignIn = useCallback(async () => {
@@ -252,12 +275,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           throw new Error(firebaseErrorText(e, 'sign-in') ?? (e instanceof Error ? e.message : 'Couldn’t resend the email.'), { cause: e });
         } finally {
           setUnverifiedEmail(false);
-          await clear();
+          await endSession();
         }
       },
       discardUnverified: async () => {
         setUnverifiedEmail(false);
-        await clear();
+        await endSession();
       },
       sendPasswordReset: async (email) => {
         try {
@@ -294,15 +317,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSignedInEmail(null);
         setPendingProfile(null);
         await AsyncStorage.removeItem(PENDING_PROFILE).catch(() => {});
-        setUser(r.user);
+        switchUser(r.user);
       },
-      signOut: async () => {
+      signOut: async (opts) => {
         await api('logout').catch(() => {});
-        await clear();
+        await endSession(opts);
       },
-      refreshUser: async () => setUser(await api('me')),
+      refreshUser: async () => switchUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, googleSignIn, signedInEmail, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
+    [ready, user, authMode, storage, walletLogin, googleSignIn, signedInEmail, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, endSession, switchUser],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

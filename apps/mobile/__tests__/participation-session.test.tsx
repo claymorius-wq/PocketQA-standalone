@@ -312,6 +312,10 @@ describe('Your session', () => {
     await press('record-start');
     await press('record-stop');
     await press('segment-remove');
+    // Removing asks first and says the clip is deleted from this phone (Hamza's preserve rule).
+    expect(screen.getByTestId('confirm-sheet')).toHaveTextContent(/deleted from this phone/i);
+    expect(screen.getByTestId('segment-recorded')).toBeTruthy();
+    await press('confirm-ok');
     // The row fades out in place (240ms) before it leaves the list.
     await advance(300);
     expect(screen.queryByTestId('segment-recorded')).toBeNull();
@@ -395,6 +399,11 @@ describe('Your session', () => {
       expect(screen.queryByTestId('segment-keep')).toBeNull();
       expect(screen.queryByTestId('upload-kept')).toBeNull();
       await press('segment-remove');
+      expect(mockDeleted).toEqual([]);
+      await press('confirm-cancel');
+      expect(mockDeleted).toEqual([]);
+      await press('segment-remove');
+      await press('confirm-ok');
       expect(mockDeleted).toContain('file:///files/recordings/cut.mp4');
     });
 
@@ -440,15 +449,19 @@ describe('Your session', () => {
       expect(mockDeleted).toEqual([]);
     });
 
-    it('leaving the session in the foreground still discards the live recording and deletes unsent clips', async () => {
+    it('leaving the session in the foreground stops the live recording and keeps every clip not uploaded (preserve rule)', async () => {
       mockRecorder.takePendingAsync.mockImplementation(() => Promise.resolve([CLIP]));
+      mockRecorder.stopAsync.mockImplementation(() => Promise.resolve({ ...CLIP, uri: 'file:///files/recordings/b.mp4' }));
       const { unmount } = await renderScreen(base('in_progress'));
       mockRecorder.live = true;
       const restore = appStateIs('active');
       await act(async () => unmount());
       restore();
-      expect(mockRecorder.discardAsync).toHaveBeenCalledTimes(1);
-      expect(mockDeleted).toContain(CLIP.uri);
+      // Capture never outlives the session, but its clip is finalised and stays listed natively.
+      expect(mockRecorder.stopAsync).toHaveBeenCalledTimes(1);
+      expect(mockRecorder.discardAsync).not.toHaveBeenCalled();
+      expect(mockRecorder.purgeAsync).not.toHaveBeenCalled();
+      expect(mockDeleted).toEqual([]);
     });
 
     it('iPhone: Start opens the system broadcast picker (other apps, microphone toggle) instead of an in-app recorder', async () => {

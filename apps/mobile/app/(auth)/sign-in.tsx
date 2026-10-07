@@ -204,8 +204,8 @@ export default function SignIn() {
   const moment = signInMoment(ready, signedIn);
   const light = useUplight(moment.grade, moment.active, { level: UPLIGHT.pilot.signIn });
   // Local build (A-SignIn sp.top 1): the content fills the screen and the form card sits low, just
-  // above "New here?". While the keyboard is up (native) the card goes back under the hero, so the
-  // fields stay above the keyboard (the content then fits and cannot scroll them into view).
+  // above "New here?". While the keyboard is up (native) the card goes back under the hero, and Screen
+  // reserves the riding dock's keyboard lift so the fields can scroll above the dock.
   const keyboard = useKeyboardShown(!PREVIEW_BUILD);
   const anchored = !PREVIEW_BUILD && !keyboard;
   // With the keyboard up, Sign in rides on it (dockKeyboard "ride"); bring the form's end into view

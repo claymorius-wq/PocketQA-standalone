@@ -162,6 +162,7 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   useScrollToTopOnRetap(tabBar !== undefined ? navigation : null, scrollView);
   const blurTarget = useRef<View>(null);
   const [dockHeight, setDockHeight] = useState(0);
+  const ridingKeyboard = useKeyboardState(dock !== undefined && dockKeyboard === 'ride');
   // Stack screens: the content scrolls under the header and fades into the ground there (the
   // HeaderScrim), so it is never cut with a hard edge. Static: no scroll events, no animation.
   const scrim = stack && scroll;
@@ -211,10 +212,12 @@ export function Screen({ children, title, subtitle, scroll = true, fill = false,
   // On web the band is only the page's own safe-area inset (statusBand): the browser draws its
   // status bar outside the page.
   const top = stack ? headerHeight + STACK_CONTENT_GAP : statusBand(insets.top, WEB) + layout.headerTextTop - layout.statusBarReserve - insets.top;
-  // With a dock, the content ends `dockClearance` above the dock's top edge (never less than the usual bottom room).
-  const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance : 0;
+  // With a dock, the content ends `dockClearance` above the dock's top edge. A riding dock's top edge
+  // moves up with the keyboard, so the scroll content reserves that lift too.
+  const keyboardLift = ridingKeyboard.shown ? ridingKeyboard.height : 0;
+  const dockRoom = dock && dockHeight > 0 ? dockHeight + (dockPlacement === 'float' ? layout.tabBarInset + insets.bottom : 0) + dockClearance + keyboardLift : 0;
   // Web: the content also runs at least `focusFloor` past the end, so the last controls can be
-  // scrolled clear of a tall dock scrim when they take keyboard focus. Native layout is unchanged.
+  // scrolled clear of a tall dock scrim when they take keyboard focus.
   const pad = { paddingTop: top, paddingBottom: Math.max(space.xxl * 2 + tabBarHeight, dockRoom, WEB ? focusFloor : 0) };
   // Web: keyboard focus scrolls a control into view only when it is outside the scroll area, and
   // that area runs under the header scrim and the dock or tab bar. The same room the content keeps
@@ -335,6 +338,35 @@ function ContentTarget({ target, children }: { target: RefObject<View | null> | 
   );
 }
 
+type KeyboardState = { shown: boolean; height: number };
+const HIDDEN_KEYBOARD: KeyboardState = { shown: false, height: 0 };
+type KeyboardEventLike = { endCoordinates?: { height?: number } };
+
+function keyboardHeight(e?: KeyboardEventLike) {
+  const fromEvent = e?.endCoordinates?.height;
+  if (typeof fromEvent === 'number' && Number.isFinite(fromEvent) && fromEvent > 0) return fromEvent;
+  const metrics = Keyboard.metrics?.();
+  const fromMetrics = metrics?.height;
+  return typeof fromMetrics === 'number' && Number.isFinite(fromMetrics) && fromMetrics > 0 ? fromMetrics : 0;
+}
+
+function useKeyboardState(active = true): KeyboardState {
+  const [state, setState] = useState<KeyboardState>(HIDDEN_KEYBOARD);
+  useEffect(() => {
+    if (!active || WEB) {
+      setState(HIDDEN_KEYBOARD);
+      return;
+    }
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setState({ shown: true, height: keyboardHeight(e as KeyboardEventLike) }));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setState(HIDDEN_KEYBOARD));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [active]);
+  return active ? state : HIDDEN_KEYBOARD;
+}
+
 /** Whether the software keyboard is up, as the Screen's dock sees it (false outside a dock, and while it `stay`s). */
 const DockKeyboardContext = createContext(false);
 
@@ -344,6 +376,10 @@ const DockKeyboardContext = createContext(false);
  */
 export function useDockKeyboard(): boolean {
   return useContext(DockKeyboardContext);
+}
+
+export function useKeyboardShown(active = true): boolean {
+  return useKeyboardState(active).shown;
 }
 
 /** Keyboard behaviour that lifts a riding dock (Android runs edge-to-edge, so the window does not resize). */
@@ -364,7 +400,7 @@ function ScreenDock({ placement, keyboard: mode, blurTarget, mountedAt, onHeight
 }) {
   const insets = useSafeAreaInsets();
   const { motion } = useTheme();
-  const keyboard = useKeyboardShown(mode !== 'stay');
+  const keyboard = useKeyboardState(mode !== 'stay').shown;
   const [late] = useState(() => Date.now() - mountedAt > ENTRANCE_WINDOW);
   const away = useSharedValue(0);
   useEffect(() => {
@@ -759,21 +795,6 @@ function isCommitSheet(title: string, confirmLabel: string, destructive: boolean
 // glass border), grabber at the very top.
 const SHEET_PAD = { top: 9, x: 19, bottom: 23 };
 const KEYBOARD_BEHAVIOR = Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined;
-
-/** Whether the software keyboard is up while `active` (JS events, not per frame; never on web). */
-export function useKeyboardShown(active = true): boolean {
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    if (!active || Platform.OS === 'web') return;
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setShown(true));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setShown(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [active]);
-  return active && shown;
-}
 
 type SheetTile = { glyph: GlyphName; tint?: GlassTone; generic?: boolean };
 

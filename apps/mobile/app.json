@@ -6,8 +6,14 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon/icon-1024.png",
     "android": {
-      "package": "com.reshareai.pocketqa"
+      "package": "com.reshareai.pocketqa",
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon/adaptive-foreground-1024.png",
+        "backgroundColor": "#0B0A1F"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.reshareai.pocketqa",

@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, Text as RNText, View } from 'react-native';
-import type { DeviceProfile } from '@pocket-qa/contracts';
+import { isAndroidApiLevel, type DeviceProfile } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { GradientRule } from '../glass/paint';
 import { forgetSeenBadges } from '../lib/badges';
+import { guessDevice } from '../lib/device';
 import { useAiStatus } from '../lib/queries';
 import { useTheme, type ThemePreference } from '../theme/ThemeProvider';
 import { Button, Card, ConfirmSheet, Field, Notice, Screen, Segmented, StatusPill, Text } from '../ui';
@@ -19,17 +20,6 @@ import { CardHead, LateEnter } from '../settings/cardParts';
 // sits on the ground under Account. Signature (§13): the segment tile slides and "Device profile
 // saved" enters. There is no Uplight on this screen: linking a wallet is not a payment (§14) and
 // deleting an account is destructive.
-
-function guessDevice(): DeviceProfile {
-  const os = Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'web';
-  return {
-    platform: os,
-    osVersion: os === 'web' ? 'Browser' : String(Platform.Version),
-    androidApiLevel: os === 'android' ? Number(Platform.Version) : null,
-    model: os === 'web' ? 'Web preview' : 'My phone',
-    languages: ['en'],
-  };
-}
 
 /** A settings section: the heading with its fading rule, then the section's card (board: gap 12, 30 between sections). */
 function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
@@ -47,16 +37,23 @@ function DeviceForm() {
   const initial = user?.device ?? guessDevice();
   const [platform, setPlatform] = useState<DeviceProfile['platform']>(initial.platform);
   const [osVersion, setOs] = useState(initial.osVersion);
-  const [api_, setApi] = useState(initial.androidApiLevel ? String(initial.androidApiLevel) : '');
+  // On an Android phone, an Android profile saved without an API level (e.g. from the web) starts
+  // with this phone's; it is saved only on Save.
+  const prefillApi = initial.androidApiLevel ?? (initial.platform === 'android' && Platform.OS === 'android' ? Number(Platform.Version) : null);
+  const [api_, setApi] = useState(prefillApi ? String(prefillApi) : '');
   const [model, setModel] = useState(initial.model);
   const [langs, setLangs] = useState(initial.languages.join(', '));
+  // Android needs its API level (a whole number 1–99): without it every study with a minimum API is
+  // hidden (study ia2ed9db). Checked on Save, on the web and on phones alike; the server checks too.
+  const [apiError, setApiError] = useState(false);
+  const apiLevel = /^\d{1,2}$/.test(api_.trim()) ? Number(api_.trim()) : NaN;
   const save = useMutation({
     mutationFn: () =>
       api('putDevice', {
         body: {
           platform,
           osVersion: osVersion.trim(),
-          androidApiLevel: platform === 'android' && api_ ? Number(api_) : null,
+          androidApiLevel: platform === 'android' ? apiLevel : null,
           model: model.trim(),
           languages: langs.split(',').map((l) => l.trim()).filter(Boolean),
         },
@@ -94,7 +91,18 @@ function DeviceForm() {
           </View>
           {android ? (
             <LateEnter style={styles.cell}>
-              <Field label="Android API level" value={api_} onChangeText={setApi} keyboardType="number-pad" hint="Android 14 is API 34." testID="device-api" />
+              <Field
+                label="Android API level"
+                value={api_}
+                onChangeText={(v) => {
+                  setApi(v);
+                  setApiError(false);
+                }}
+                keyboardType="number-pad"
+                hint="Android 14 is API 34."
+                error={apiError ? 'Enter your Android API level (1–99). Android 14 is API 34.' : null}
+                testID="device-api"
+              />
             </LateEnter>
           ) : (
             <View style={styles.cell}>{modelField}</View>
@@ -114,7 +122,16 @@ function DeviceForm() {
         </View>
       ) : null}
       <View style={styles.save}>
-        <Button label="Save device profile" icon="save" onPress={() => save.mutate()} loading={save.isPending} testID="device-save" />
+        <Button
+          label="Save device profile"
+          icon="save"
+          onPress={() => {
+            if (android && !isAndroidApiLevel(apiLevel)) return setApiError(true);
+            save.mutate();
+          }}
+          loading={save.isPending}
+          testID="device-save"
+        />
       </View>
     </Card>
   );
@@ -147,7 +164,8 @@ function AccountData() {
     mutationFn: () => api('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } }),
     onSuccess: async () => {
       await forgetSeenBadges(user?.id);
-      await signOut();
+      // The sheet said so: the account's recordings on this phone go with it.
+      await signOut({ deleteRecordings: true });
     },
   });
   // The rose hairline between keeping your data and deleting it, lit at its near end.
@@ -170,7 +188,7 @@ function AccountData() {
       <ConfirmSheet
         visible={confirm}
         title="Delete your account?"
-        body="This can’t be undone. Type DELETE MY ACCOUNT to confirm."
+        body="This can’t be undone. Recordings on this phone that you haven’t uploaded are deleted too. Type DELETE MY ACCOUNT to confirm."
         confirmLabel="Delete forever"
         destructive
         confirmDisabled={phrase !== 'DELETE MY ACCOUNT'}
@@ -206,8 +224,38 @@ function AiStatus() {
   );
 }
 
+/**
+ * Sign out. On a phone, recordings not uploaded yet live on the device; signing out deletes them, so
+ * it asks first and says exactly that (Hamza's preserve rule, 2026-10-07: no recording is deleted
+ * without the tester's confirmed action). The web keeps no recordings on the device: no sheet.
+ */
+function SignOut() {
+  const { signOut } = useSession();
+  const [asking, setAsking] = useState(false);
+  if (Platform.OS === 'web') {
+    return <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => void signOut()} testID="sign-out" style={styles.signOut} />;
+  }
+  return (
+    <>
+      <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => setAsking(true)} testID="sign-out" style={styles.signOut} />
+      <ConfirmSheet
+        visible={asking}
+        title="Sign out?"
+        body="Recordings on this phone that you haven’t uploaded are deleted when you sign out. Upload or keep working on them first if you need them."
+        confirmLabel="Sign out and delete"
+        destructive
+        onCancel={() => setAsking(false)}
+        onConfirm={() => {
+          setAsking(false);
+          void signOut({ deleteRecordings: true });
+        }}
+      />
+    </>
+  );
+}
+
 export function SettingsScreen() {
-  const { user, signOut } = useSession();
+  const { user } = useSession();
   const { colors, type, preference, setPreference } = useTheme();
   return (
     <Screen title="Settings" subtitle={user ? `${user.displayName} · ${user.role}` : undefined} testID="settings-screen">
@@ -240,7 +288,7 @@ export function SettingsScreen() {
       <AiStatus />
       <SettingsSection title="Account">
         <AccountData />
-        <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => void signOut()} testID="sign-out" style={styles.signOut} />
+        <SignOut />
       </SettingsSection>
     </Screen>
   );
