@@ -819,34 +819,23 @@ export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max
 
 // ---------- demo showcase (POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1 only) ----------
 /**
- * Clearly labelled SYNTHETIC sample profiles for demos: fixtures, never accounts. No sign-in, no
- * participations, ledger, ratings earned from real work, or payouts stand behind them, and the real
- * GET /leaderboard never includes them. Every row carries `fixture: true` and DEMO_PROFILE_LABEL;
- * the response carries DEMO_SHOWCASE_LABEL. The UI shows both labels and no rank.
+ * Clearly labelled SYNTHETIC sample profiles for demos: fixtures, never accounts. No sign-in,
+ * participation, ledger, earned rating or payout stands behind them, and the real GET /leaderboard
+ * (and /me/reputation) never include them. Every row carries `demo: true`; no field is an earning,
+ * credit or USDC amount. Off (ClientConfig.features.demoShowcase false): 404 FEATURE_UNAVAILABLE.
  */
-export const DEMO_PROFILE_LABEL = 'Demo example (not a real user)';
-export const DEMO_SHOWCASE_LABEL = 'Demo examples · synthetic sample profiles, not real users · no real work, ratings or payouts';
-const DemoProfileBase = {
-  /** A fixture id (demo-1 … demo-12), never a user id. */
-  id: z.string().regex(/^demo-[1-9]\d*$/),
-  /** Always starts with "Demo ". */
-  alias: z.string().regex(/^Demo [A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/),
-  fixture: z.literal(true),
-  label: z.literal(DEMO_PROFILE_LABEL),
-  /** Fixture numbers. Tester: their decided submissions. Builder: the submissions they decided. */
-  decided: z.number().int().min(0),
-  /** Whole percent (0–100) of `decided` that were accepted. */
-  acceptedRate: z.number().int().min(0).max(100),
-  qualityScore: z.number().int().min(0).max(100),
-  badges: z.array(BadgeId),
-};
+export const DEMO_SHOWCASE_LABEL = 'Demo examples (not real users)';
+/** A fixture id (demo-1 … demo-12), never a user id. */
+const DemoId = z.string().regex(/^demo-[1-9]\d*$/);
+/** Always starts with "Demo " (so it can't be mistaken for a real pseudonym). */
+const DemoAlias = z.string().regex(/^Demo [A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/);
 /** Strict: a demo row carries no user id, email, wallet or evidence reference. */
-export const DemoTesterProfile = z.strictObject({ ...DemoProfileBase, kind: z.literal('tester') });
-export type DemoTesterProfile = z.infer<typeof DemoTesterProfile>;
-export const DemoBuilderProfile = z.strictObject({ ...DemoProfileBase, kind: z.literal('builder'), studiesPublished: z.number().int().min(0) });
-export type DemoBuilderProfile = z.infer<typeof DemoBuilderProfile>;
-/** In fixture-id order (not a ranking). */
-export const DemoShowcase = z.strictObject({ label: z.literal(DEMO_SHOWCASE_LABEL), testers: z.array(DemoTesterProfile), builders: z.array(DemoBuilderProfile) });
+export const DemoTester = z.strictObject({ id: DemoId, alias: DemoAlias, qualityScore: z.number().int().min(0).max(100), decided: z.number().int().min(0), badges: z.array(BadgeId), demo: z.literal(true) });
+export type DemoTester = z.infer<typeof DemoTester>;
+export const DemoBuilder = z.strictObject({ id: DemoId, alias: DemoAlias, studiesPublished: z.number().int().min(0), demo: z.literal(true) });
+export type DemoBuilder = z.infer<typeof DemoBuilder>;
+/** In fixture-id order: not a ranking (no rank). */
+export const DemoShowcase = z.strictObject({ label: z.literal(DEMO_SHOWCASE_LABEL), testers: z.array(DemoTester), builders: z.array(DemoBuilder) });
 export type DemoShowcase = z.infer<typeof DemoShowcase>;
 
 // ---------- AI ----------
@@ -994,7 +983,7 @@ export const routes = {
   myReputation: r({ method: 'GET', path: '/me/reputation', auth: 'tester', scope: 'self', body: null, response: Reputation }),
   putLeaderboard: r({ method: 'PUT', path: '/me/leaderboard', auth: 'tester', scope: 'self', body: LeaderboardSettingsBody, response: Reputation }),
   leaderboard: r({ method: 'GET', path: '/leaderboard', auth: 'user', scope: 'none', body: null, response: Leaderboard }),
-  /** 404 NOT_FOUND unless POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1. Public: fixtures only. */
+  /** 404 FEATURE_UNAVAILABLE unless POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1. Public: fixtures only. */
   demoShowcase: r({ method: 'GET', path: '/demo/showcase', auth: 'public', scope: 'none', body: null, response: DemoShowcase }),
   adminFraud: r({ method: 'POST', path: '/admin/participations/:id/fraud', auth: 'admin', scope: 'none', body: FraudFindingBody, response: Ok }),
 } as const;
