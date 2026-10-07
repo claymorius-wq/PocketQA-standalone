@@ -1,17 +1,20 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Compass, Smartphone } from 'lucide-react-native';
 import { useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, Text as RNText, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { DeviceProfile } from '@pocket-qa/contracts';
+import { api } from '../../src/api/client';
 import { useSession } from '../../src/auth/SessionProvider';
 import { FlutedLens } from '../../src/glass';
 import { GradientRule } from '../../src/glass/paint';
 import { GlassTile } from '../../src/icons';
+import { guessDevice, profileMismatch } from '../../src/lib/device';
 import { useFocusRefetch, useEligible } from '../../src/lib/queries';
 import { MOTION_DISTANCE } from '../../src/theme/motion';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { Button, EmptyState, Notice, QueryState, Screen } from '../../src/ui';
+import { Button, EmptyState, Notice, QueryState, Screen, Text } from '../../src/ui';
 import { Clauses, SectionHeader, StudyCard } from '../../src/ui/patterns';
 
 // Discover (A-Discover, Direction A v2; ADR 0006). The header carries the 46dp fluted lens mark
@@ -92,6 +95,34 @@ function DeviceMatch({ device }: { device: DeviceProfile }) {
   );
 }
 
+/**
+ * Native only: the saved profile evidently came from another device (e.g. saved on the web). Studies
+ * that need this phone's details are hidden until it's updated, so say so and offer this phone's
+ * details: saved ONLY on this explicit tap (never silently), keeping the saved languages.
+ */
+function DeviceMismatch({ device }: { device: DeviceProfile }) {
+  const { refreshUser } = useSession();
+  const qc = useQueryClient();
+  const use = useMutation({
+    mutationFn: () => api('putDevice', { body: { ...guessDevice(), languages: device.languages } }),
+    onSuccess: () => {
+      void refreshUser();
+      // Eligibility depends on the device profile.
+      void qc.invalidateQueries({ queryKey: ['eligible'] });
+    },
+  });
+  return (
+    <Notice tone="warning" title="Your device profile was saved from another device" testID="device-mismatch">
+      <Text variant="bodySm" tone="muted">
+        Some studies may be hidden until it matches this phone.
+      </Text>
+      <View style={styles.mismatchAction}>
+        <Button label="Use this phone’s details" variant="secondary" size="compact" onPress={() => use.mutate()} loading={use.isPending} testID="device-use-this-phone" />
+      </View>
+    </Notice>
+  );
+}
+
 export default function Discover() {
   const { user } = useSession();
   const { colors, type } = useTheme();
@@ -115,7 +146,10 @@ export default function Discover() {
           Studies are matched to your self-reported device. Add it in Settings to see what’s available.
         </Notice>
       ) : (
-        <DeviceMatch device={device} />
+        <>
+          {profileMismatch(device) ? <DeviceMismatch device={device} /> : null}
+          <DeviceMatch device={device} />
+        </>
       )}
       <Animated.View style={[styles.grow, reEnter]} testID="discover-results">
         <QueryState
@@ -169,6 +203,7 @@ export default function Discover() {
 const styles = StyleSheet.create({
   // The board sets the lens 2dp in from the header's right edge.
   lens: { marginRight: 2 },
+  mismatchAction: { marginTop: 10, alignItems: 'flex-start' },
   // 12 between tile, text and Edit; 8 more below the row than the list gap.
   device: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   deviceText: { flex: 1, minWidth: 0, gap: 2 },

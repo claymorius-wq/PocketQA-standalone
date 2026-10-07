@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
@@ -52,14 +53,17 @@ function Scheme({ children }: { children: ReactNode }) {
   setPreference = useTheme().setPreference;
   return <>{children}</>;
 }
+// The app always provides a QueryClient (Discover's "Use this phone's details" is a mutation).
 const tree = () => (
-  <SafeAreaProvider initialMetrics={METRICS}>
-    <ThemeProvider fonts="system">
-      <Scheme>
-        <Discover />
-      </Scheme>
-    </ThemeProvider>
-  </SafeAreaProvider>
+  <QueryClientProvider client={new QueryClient()}>
+    <SafeAreaProvider initialMetrics={METRICS}>
+      <ThemeProvider fonts="system">
+        <Scheme>
+          <Discover />
+        </Scheme>
+      </ThemeProvider>
+    </SafeAreaProvider>
+  </QueryClientProvider>
 );
 async function renderIn(scheme: ThemePreference) {
   const r = await render(tree());

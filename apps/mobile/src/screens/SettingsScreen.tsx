@@ -6,6 +6,7 @@ import { api, ApiError } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { GradientRule } from '../glass/paint';
 import { forgetSeenBadges } from '../lib/badges';
+import { guessDevice } from '../lib/device';
 import { useAiStatus } from '../lib/queries';
 import { useTheme, type ThemePreference } from '../theme/ThemeProvider';
 import { Button, Card, ConfirmSheet, Field, Notice, Screen, Segmented, StatusPill, Text } from '../ui';
@@ -19,17 +20,6 @@ import { CardHead, LateEnter } from '../settings/cardParts';
 // sits on the ground under Account. Signature (§13): the segment tile slides and "Device profile
 // saved" enters. There is no Uplight on this screen: linking a wallet is not a payment (§14) and
 // deleting an account is destructive.
-
-function guessDevice(): DeviceProfile {
-  const os = Platform.OS === 'android' || Platform.OS === 'ios' ? Platform.OS : 'web';
-  return {
-    platform: os,
-    osVersion: os === 'web' ? 'Browser' : String(Platform.Version),
-    androidApiLevel: os === 'android' ? Number(Platform.Version) : null,
-    model: os === 'web' ? 'Web preview' : 'My phone',
-    languages: ['en'],
-  };
-}
 
 /** A settings section: the heading with its fading rule, then the section's card (board: gap 12, 30 between sections). */
 function SettingsSection({ title, children }: { title: string; children: ReactNode }) {
@@ -47,7 +37,10 @@ function DeviceForm() {
   const initial = user?.device ?? guessDevice();
   const [platform, setPlatform] = useState<DeviceProfile['platform']>(initial.platform);
   const [osVersion, setOs] = useState(initial.osVersion);
-  const [api_, setApi] = useState(initial.androidApiLevel ? String(initial.androidApiLevel) : '');
+  // On an Android phone, an Android profile saved without an API level (e.g. from the web) starts
+  // with this phone's; it is saved only on Save.
+  const prefillApi = initial.androidApiLevel ?? (initial.platform === 'android' && Platform.OS === 'android' ? Number(Platform.Version) : null);
+  const [api_, setApi] = useState(prefillApi ? String(prefillApi) : '');
   const [model, setModel] = useState(initial.model);
   const [langs, setLangs] = useState(initial.languages.join(', '));
   const save = useMutation({

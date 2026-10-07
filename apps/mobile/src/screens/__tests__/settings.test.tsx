@@ -144,6 +144,53 @@ describe('SettingsScreen states', () => {
     expect(mockSession.refreshUser).toHaveBeenCalled();
   });
 
+  /** Settings for a tester whose saved profile is the production trace's (saved on the web as Android, API null). */
+  const FROM_WEB = { platform: 'android', osVersion: 'Browser', androidApiLevel: null, model: 'Web preview', languages: ['en'] };
+  async function renderWithDevice(device: Record<string, unknown>) {
+    mockSession.user = { ...userFor('tester'), device };
+    return render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })}>
+        <SafeAreaProvider initialMetrics={METRICS}>
+          <ThemeProvider fonts="system">
+            <SettingsScreen />
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('native Android: a saved Android profile with no API level pre-fills it from this phone; saved only on Save', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    api.mockResolvedValue({});
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('34');
+    expect(api).not.toHaveBeenCalled(); // pre-filled, not saved
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: { platform: 'android', osVersion: 'Browser', androidApiLevel: 34, model: 'Web preview', languages: ['en'] } });
+  });
+
+  it('no API-level pre-fill on the web (unchanged)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('');
+  });
+
+  it('no API-level pre-fill from a phone of another platform (an iPhone)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue('17.5' as never);
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('');
+  });
+
+  it('a saved API level is kept as saved (never overwritten by this phone’s)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    await renderWithDevice({ ...FROM_WEB, androidApiLevel: 29 });
+    expect(screen.getByTestId('device-api').props.value).toBe('29');
+  });
+
   it('a failed save shows "Couldn’t save" with the server message', async () => {
     api.mockRejectedValue(new ApiError('OFFLINE', 'Can’t reach the Pocket QA server.', 0));
     await renderSettings('tester');
