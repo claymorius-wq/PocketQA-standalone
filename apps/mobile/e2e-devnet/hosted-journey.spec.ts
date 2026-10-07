@@ -46,6 +46,11 @@ const RESUME_PARTICIPATION_ID = process.env.PQA_RESUME_PARTICIPATION_ID ?? '';
  * the tester signs nothing in the remaining steps. Any other link still stops the run.
  */
 const TESTER_ACCEPT_LINK = process.env.PQA_TESTER_ACCEPT_LINK ?? '';
+/**
+ * The tester's reward address frozen at consent: a NEW consent freezes the account's current link (the
+ * accepted one, if any); a resumed participation keeps the fixture it consented with.
+ */
+const testerRewardAddress = () => (TESTER_ACCEPT_LINK && !RESUME_PARTICIPATION_ID ? TESTER_ACCEPT_LINK : loadFixtureSeed('tester').address);
 if (RESUME_STUDY_ID && TESTER_PREVIOUS_LINK) throw new Error('resume mode never changes links: unset PQA_TESTER_PREVIOUS_LINK');
 const SETTLE_WAIT_MS = Number(process.env.PQA_SETTLE_WAIT_MS ?? 15 * 60_000);
 
@@ -220,7 +225,7 @@ test.beforeAll(async ({}, info) => {
   run.title = `Web devnet journey ${run.label} ${Date.now().toString(36)}`;
   if (RESUME_STUDY_ID) run.chain.segments = { segment: 2, resumesStudy: RESUME_STUDY_ID, segment1Evidence: RESUME_PREVIOUS_EVIDENCE, note: 'segment 1 created and funded the study, then was stopped by the lead; segment 2 resumes it (no creation, no new funding, no link changes)' };
   mkdirSync(run.dir, { recursive: true });
-  run.chain.before = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(loadFixtureSeed('tester').address) };
+  run.chain.before = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(testerRewardAddress()) };
 });
 test.afterAll(async () => {
   for (const r of ['builder', 'tester'] as const) {
@@ -230,7 +235,7 @@ test.afterAll(async () => {
     writeFileSync(join(run.dir, `${r}-wallet-log.json`), JSON.stringify(pt.wallet.log, null, 1));
     await pt.ctx.close();
   }
-  run.chain.after = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(loadFixtureSeed('tester').address) };
+  run.chain.after = { builder: await balances(loadFixtureSeed('builder').address), tester: await balances(testerRewardAddress()) };
   writeFileSync(join(run.dir, 'run.json'), JSON.stringify({ label: run.label, viewportNote: run.label === 'pixel7' ? 'mobile viewport, NOT a physical-device wallet deep-link (MWA) test' : 'desktop 1280x900', wallet: TEST_WALLET_NAME, title: run.title, steps: run.steps, chain: run.chain, mainnetBlocked: run.blocked }, null, 1));
 });
 
@@ -396,10 +401,10 @@ test('5 · builder: reviews and approves; votes on the reward in the wallet (can
   await until(b, 'reward awaiting the builder’s vote', () => b.getByTestId('reward-approval-review').isVisible());
   await b.getByTestId('reward-approval-review').click();
   await expect(b.getByTestId('reward-approval-plan')).toBeVisible({ timeout: 30_000 });
-  // The reward goes to the address frozen at consent (the tester fixture), whatever the account is linked to now.
-  const frozen = loadFixtureSeed('tester').address;
+  // The reward goes to the address frozen at consent, whatever the account is linked to now.
+  const frozen = testerRewardAddress();
   await expect(b.getByTestId('reward-approval')).toContainText(frozen);
-  if (TESTER_ACCEPT_LINK) await expect(b.getByTestId('reward-approval')).not.toContainText(TESTER_ACCEPT_LINK);
+  if (TESTER_ACCEPT_LINK && frozen !== TESTER_ACCEPT_LINK) await expect(b.getByTestId('reward-approval')).not.toContainText(TESTER_ACCEPT_LINK);
   const devnetChecked = (await b.getByTestId('reward-approval-described').count()) === 0;
   await shotOf(b, 'reward-approval', 'builder-reward-vote-card', devnetChecked ? 'amount/recipient/op id CHECKED on devnet (vault transaction read)' : `NOT checked on devnet: ${await b.getByTestId('reward-approval-described-note').innerText().catch(() => '(no note)')}`);
   run.builder!.rejectNext.add('signAndSendTransaction');
