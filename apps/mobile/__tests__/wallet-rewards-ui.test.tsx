@@ -48,6 +48,8 @@ jest.mock('../src/lib/queries', () => ({
     return options?.enabled === false ? { isLoading: false, error: null, data: undefined, refetch: jest.fn() } : { isLoading: false, error: mockRepError, data: mockRep, refetch: jest.fn() };
   },
   useLeaderboard: () => ({ isLoading: false, error: mockBoardError, data: mockBoard, refetch: jest.fn() }),
+  // The demo showcase is off here (no features in this session mock): never fetched.
+  useDemoShowcase: () => ({ isLoading: false, error: null, data: undefined, refetch: jest.fn() }),
 }));
 
 /** Whether a host view above `node` is one accessibility element (VoiceOver never visits inside one). */
