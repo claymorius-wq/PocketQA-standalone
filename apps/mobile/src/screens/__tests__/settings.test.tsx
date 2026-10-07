@@ -191,6 +191,56 @@ describe('SettingsScreen states', () => {
     expect(screen.getByTestId('device-api').props.value).toBe('29');
   });
 
+  it.each([
+    ['blank', ''],
+    ['zero', '0'],
+    ['100', '100'],
+    ['not a number', 'abc'],
+    ['a fraction', '34.5'],
+  ])('web: Android with an API level that is %s shows an inline error and does NOT save', async (_n, value) => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-android'));
+    await fireEvent.changeText(screen.getByTestId('device-api'), value);
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.getByTestId('device-api-error')).toHaveTextContent(/Enter your Android API level \(1–99\)/);
+    expect(screen.queryByTestId('device-saved')).toBeNull();
+  });
+
+  it('web: Android with API level 34 saves it', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    api.mockResolvedValue({});
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-android'));
+    await fireEvent.changeText(screen.getByTestId('device-api'), '34');
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: expect.objectContaining({ platform: 'android', androidApiLevel: 34 }) });
+    expect(screen.queryByTestId('device-api-error')).toBeNull();
+  });
+
+  it('native Android: clearing the API level blocks Save the same way', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    await renderWithDevice(FROM_WEB);
+    await fireEvent.changeText(screen.getByTestId('device-api'), '');
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.getByTestId('device-api-error')).toBeTruthy();
+  });
+
+  it('iOS and web platforms never ask for an API level (saved with null)', async () => {
+    api.mockResolvedValue({});
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-ios'));
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: expect.objectContaining({ platform: 'ios', androidApiLevel: null }) });
+  });
+
   it('a failed save shows "Couldn’t save" with the server message', async () => {
     api.mockRejectedValue(new ApiError('OFFLINE', 'Can’t reach the Pocket QA server.', 0));
     await renderSettings('tester');

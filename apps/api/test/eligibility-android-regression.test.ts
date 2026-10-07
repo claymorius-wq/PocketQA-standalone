@@ -42,10 +42,12 @@ describe('GET /studies/eligible: an Android study made with the New Study defaul
     expect(await eligibleIds(tt.token)).toContain(s.id);
   });
 
-  it('an Android profile saved with the API field blank (null, as the web form allows) does NOT see it', async () => {
+  it('an Android profile STORED with a null API level (saved from the web before PUT required it) does NOT see it', async () => {
     t = await makeApp();
     const { s } = await publishedAndroidStudy();
-    const tt = await testerWith({ ...ANDROID_34, androidApiLevel: null });
+    const tt = await t.register('tester');
+    // PUT /me/device now refuses android + null (device-android-api.test.ts); such profiles already stored stay as they are.
+    t.db.prepare('UPDATE users SET device_json = ? WHERE id = ?').run(JSON.stringify({ ...ANDROID_34, androidApiLevel: null }), tt.id);
     expect(await eligibleIds(tt.token)).not.toContain(s.id);
   });
 

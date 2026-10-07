@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, Text as RNText, View } from 'react-native';
-import type { DeviceProfile } from '@pocket-qa/contracts';
+import { isAndroidApiLevel, type DeviceProfile } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
 import { useSession } from '../auth/SessionProvider';
 import { GradientRule } from '../glass/paint';
@@ -43,13 +43,17 @@ function DeviceForm() {
   const [api_, setApi] = useState(prefillApi ? String(prefillApi) : '');
   const [model, setModel] = useState(initial.model);
   const [langs, setLangs] = useState(initial.languages.join(', '));
+  // Android needs its API level (a whole number 1–99): without it every study with a minimum API is
+  // hidden (study ia2ed9db). Checked on Save, on the web and on phones alike; the server checks too.
+  const [apiError, setApiError] = useState(false);
+  const apiLevel = /^\d{1,2}$/.test(api_.trim()) ? Number(api_.trim()) : NaN;
   const save = useMutation({
     mutationFn: () =>
       api('putDevice', {
         body: {
           platform,
           osVersion: osVersion.trim(),
-          androidApiLevel: platform === 'android' && api_ ? Number(api_) : null,
+          androidApiLevel: platform === 'android' ? apiLevel : null,
           model: model.trim(),
           languages: langs.split(',').map((l) => l.trim()).filter(Boolean),
         },
@@ -87,7 +91,18 @@ function DeviceForm() {
           </View>
           {android ? (
             <LateEnter style={styles.cell}>
-              <Field label="Android API level" value={api_} onChangeText={setApi} keyboardType="number-pad" hint="Android 14 is API 34." testID="device-api" />
+              <Field
+                label="Android API level"
+                value={api_}
+                onChangeText={(v) => {
+                  setApi(v);
+                  setApiError(false);
+                }}
+                keyboardType="number-pad"
+                hint="Android 14 is API 34."
+                error={apiError ? 'Enter your Android API level (1–99). Android 14 is API 34.' : null}
+                testID="device-api"
+              />
             </LateEnter>
           ) : (
             <View style={styles.cell}>{modelField}</View>
@@ -107,7 +122,16 @@ function DeviceForm() {
         </View>
       ) : null}
       <View style={styles.save}>
-        <Button label="Save device profile" icon="save" onPress={() => save.mutate()} loading={save.isPending} testID="device-save" />
+        <Button
+          label="Save device profile"
+          icon="save"
+          onPress={() => {
+            if (android && !isAndroidApiLevel(apiLevel)) return setApiError(true);
+            save.mutate();
+          }}
+          loading={save.isPending}
+          testID="device-save"
+        />
       </View>
     </Card>
   );
