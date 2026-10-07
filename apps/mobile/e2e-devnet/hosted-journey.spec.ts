@@ -38,6 +38,8 @@ const TESTER_PREVIOUS_LINK = process.env.PQA_TESTER_PREVIOUS_LINK ?? '';
  */
 const RESUME_STUDY_ID = process.env.PQA_RESUME_STUDY_ID ?? '';
 const RESUME_PREVIOUS_EVIDENCE = process.env.PQA_RESUME_PREVIOUS_EVIDENCE ?? '';
+/** Resume the tester's existing participation (consented and started in an earlier segment): no second consent. */
+const RESUME_PARTICIPATION_ID = process.env.PQA_RESUME_PARTICIPATION_ID ?? '';
 if (RESUME_STUDY_ID && TESTER_PREVIOUS_LINK) throw new Error('resume mode never changes links: unset PQA_TESTER_PREVIOUS_LINK');
 const SETTLE_WAIT_MS = Number(process.env.PQA_SETTLE_WAIT_MS ?? 15 * 60_000);
 
@@ -328,16 +330,23 @@ test('3 · builder: escrow study on the devnet pilot, fund it in the wallet (can
 
 test('4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits', async () => {
   const t = run.tester!.page;
-  await t.getByTestId('tab-discover').click();
-  // The card shows the title more than once (a bare getByText is a strict-mode error, which the wait swallowed).
-  await until(t, 'the study in Discover', () => t.getByText(run.title).first().isVisible(), 60_000);
-  await t.getByText(run.title).first().click();
-  await step('tester-study-detail', t);
-  await t.getByTestId('consent-checkbox').click();
-  await t.getByTestId('consent-reward-wallet').click();
-  await t.getByTestId('consent-submit').click();
-  await expect(t.getByTestId('participation-screen')).toBeVisible();
-  await t.getByTestId('session-start').click();
+  if (RESUME_PARTICIPATION_ID) {
+    await t.goto(`${ORIGIN}/participation/${RESUME_PARTICIPATION_ID}`);
+    await expect(t.getByTestId('participation-screen')).toBeVisible({ timeout: 60_000 });
+    await step('tester-resumed-participation', t, `resumed participation ${RESUME_PARTICIPATION_ID}`);
+    if (await t.getByTestId('session-start').isVisible()) await t.getByTestId('session-start').click();
+  } else {
+    await t.getByTestId('tab-discover').click();
+    // The card shows the title more than once (a bare getByText is a strict-mode error, which the wait swallowed).
+    await until(t, 'the study in Discover', () => t.getByText(run.title).first().isVisible(), 60_000);
+    await t.getByText(run.title).first().click();
+    await step('tester-study-detail', t);
+    await t.getByTestId('consent-checkbox').click();
+    await t.getByTestId('consent-reward-wallet').click();
+    await t.getByTestId('consent-submit').click();
+    await expect(t.getByTestId('participation-screen')).toBeVisible();
+    await t.getByTestId('session-start').click();
+  }
   const png = join(run.dir, 'synthetic-evidence.png');
   syntheticPng(png);
   const chooser = t.waitForEvent('filechooser');
