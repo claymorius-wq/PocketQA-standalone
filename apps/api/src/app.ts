@@ -94,7 +94,7 @@ export async function buildApp(
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof DomainError) {
-      return reply.code(HTTP_STATUS[err.code]).send({ code: err.code, message: err.message });
+      return reply.code((err as { status?: number }).status ?? HTTP_STATUS[err.code]).send({ code: err.code, message: err.message });
     }
     const e = err as { code?: string; statusCode?: number; message: string };
     // A raced unique constraint (e.g. duplicate segment) is a state conflict. Other constraint

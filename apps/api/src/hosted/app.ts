@@ -10,6 +10,13 @@ import { httpDevnetRpc } from '../rpc';
 import { SimulatedSettlement } from '../settlement/simulated';
 import { runSettlement } from '../settlement/worker';
 import { r2Store } from '../storage/r2';
+import type { EvidenceStore } from '../storage/types';
+import type { Firestore } from 'firebase-admin/firestore';
+import type { IdentityProvider } from '../identity/types';
+import { devnetSettlement, DevnetSquadsSettlement } from '../settlement/squads/devnet';
+import { assertPlatformSigner, loadPlatformSigner } from '../settlement/squads/devnetSigner';
+import type { DevnetChain } from '../settlement/squads/devnetTypes';
+import { RpcDevnetChain } from '../settlement/squads/rpcDevnetChain';
 import { sweepStorage } from '../storage/sweep';
 
 /**
@@ -37,9 +44,11 @@ const CRON_LEASE_WAIT_MS = 12_000;
 const CRON_LEASE_RETRY_MS = 500;
 
 /** Mutations after which settlement has work (a payout, a refund, a funding to verify). */
-const SETTLE_AFTER = new Set(['approve', 'reject', 'adminDecide', 'resolveDispute', 'adminFraud', 'closeStudy', 'simulatedWalletPayment', 'submitFundingSignature']);
+const SETTLE_AFTER = new Set(['approve', 'reject', 'adminDecide', 'resolveDispute', 'adminFraud', 'closeStudy', 'simulatedWalletPayment', 'submitFundingSignature', 'submitSettlementApproval']);
 /** Mutations after which storage has work (a quarantine copy to clear, deletions queued). */
 const SWEEP_AFTER = new Set(['completeUploadIntent', 'deleteMe']);
+/** Devnet: inline settle slices per minute across all users (a global bucket, CH-D1). */
+const DEVNET_SLICE_LIMIT = 60;
 
 export type HostedDeps = Deps & { repo: Repos; cronSecret: string };
 
@@ -48,26 +57,79 @@ export function hostedConfig(env: NodeJS.ProcessEnv): { config: Config; cronSecr
   if (config.dataBackend !== 'firestore' || !config.firebase || !config.r2) {
     throw new ConfigError('The hosted API runs only on Firestore, Firebase sign-in and private R2 (POCKETQA_DATA_BACKEND=firestore, POCKETQA_AUTH_MODE=firebase, POCKETQA_STORAGE=r2).');
   }
-  if (config.features.settlement === 'squads_devnet') throw new ConfigError('The hosted API never runs the devnet pilot.');
+  // The pilot (server-held keys for every role) never runs hosted; POCKETQA_ENV=devnet is a different
+  // provider (platform signer only, cosigned by the builder's own wallet) with its own guards.
+  if (config.features.settlement === 'squads_devnet' && !config.devnet) throw new ConfigError('The hosted API never runs the devnet pilot.');
   const cronSecret = env.CRON_SECRET ?? '';
   if (cronSecret.length < 32) throw new ConfigError('CRON_SECRET (server-only, at least 32 characters) is required for the hosted jobs.');
   return { config, cronSecret };
 }
 
-export function hostedDeps(env: NodeJS.ProcessEnv): HostedDeps {
+/**
+ * Where the hosted API's connections go. Production (vercel.ts) always uses `productionConnectors`.
+ * TESTS may pass their own (the Firestore and Auth emulators, a fake S3, a fake devnet chain, a
+ * clock): the env is still loaded and validated by loadConfig exactly as in production, so no runtime
+ * refusal is weakened (POCKETQA_ENV=devnet still refuses demo- projects and emulator variables in the
+ * env); only the connections are redirected. A static test checks that src never passes connectors.
+ */
+export type HostedConnectors = {
+  firestore(config: Config, env: NodeJS.ProcessEnv): Firestore;
+  identity(config: Config): IdentityProvider;
+  r2(config: Config): NonNullable<Config['r2']>;
+  /** POCKETQA_ENV=devnet only: the chain behind the platform signer. */
+  devnetChain(config: Config, env: NodeJS.ProcessEnv): DevnetChain;
+  now: () => number;
+};
+
+export const productionConnectors: HostedConnectors = {
+  firestore: (config, env) => openFirestore(env, config.firebase!.projectId),
+  identity: (config) => firebaseIdentity(config.firebase!),
+  r2: (config) => config.r2!,
+  devnetChain: (config, env) => {
+    // The ONE server key: loaded, then checked against its pin and every other role (P2-DA1); the
+    // chain signs with exactly this key (its roles.platform is this key's public key).
+    const signer = loadPlatformSigner(env);
+    assertPlatformSigner(signer, config.devnet!);
+    return RpcDevnetChain.connect(config.rpcUrl, signer, config.devnet!.arbiter);
+  },
+  now: Date.now,
+};
+
+/**
+ * The data and evidence backends of the hosted API. POCKETQA_ENV=devnet (CH-D2) keeps its data in the
+ * Firestore devnet namespace and its R2 objects under devnet/, never in production's collections or
+ * keys; the deployment refuses to start unless both are in place (pqa-qa P1-NS1).
+ */
+export function hostedBackends(config: Config, env: NodeJS.ProcessEnv, connect: HostedConnectors = productionConnectors): { repo: Repos; store: EvidenceStore } {
+  const devnet = !!config.devnet;
+  const repo = makeRepos({ kind: 'firestore', fs: connect.firestore(config, env), ...(devnet ? { namespace: 'devnet' as const } : {}) });
+  const store = r2Store(connect.r2(config), devnet ? { keyPrefix: 'devnet/' } : {});
+  if (devnet && (repo.namespace !== 'devnet' || store.keyPrefix !== 'devnet/')) {
+    throw new ConfigError('POCKETQA_ENV=devnet must run on the Firestore devnet namespace and the devnet/ R2 prefix; refusing to start.');
+  }
+  return { repo, store };
+}
+
+export function hostedDeps(env: NodeJS.ProcessEnv, connect: HostedConnectors = productionConnectors): HostedDeps {
   const { config, cronSecret } = hostedConfig(env);
-  const repo = makeRepos({ kind: 'firestore', fs: openFirestore(env, config.firebase!.projectId) });
+  const { repo, store } = hostedBackends(config, env, connect);
+  const settlement = config.devnet
+    ? devnetSettlement({ repo, chain: connect.devnetChain(config, env), now: connect.now, limits: config.devnet.limits, roles: config.devnet, allowedEmails: config.devnet.allowedEmails })
+    : config.features.settlement === 'simulated'
+      ? new SimulatedSettlement(repo, connect.now)
+      : null;
   return {
     db: null,
     repo,
     config,
-    now: Date.now,
+    now: connect.now,
     rpc: httpDevnetRpc(config.rpcUrl),
     mediaDir: null,
-    identity: firebaseIdentity(config.firebase!),
-    store: r2Store(config.r2!),
-    // Staging (R11): SIMULATED settlement over Firestore, labelled, never real money.
-    settlement: config.features.settlement === 'simulated' ? new SimulatedSettlement(repo, Date.now) : null,
+    identity: connect.identity(config),
+    store,
+    // Staging (R11): SIMULATED settlement over Firestore, labelled, never real money. Devnet: the
+    // Squads devnet adapter (platform signer only, cosigned by the builder's wallet).
+    settlement,
     cronSecret,
   };
 }
@@ -103,10 +165,19 @@ export async function runJob(deps: HostedDeps, job: 'settle' | 'sweep', budget: 
   }
 }
 
-export type HostedOptions = { cronLeaseWaitMs?: number };
+/** `logStream`: where the app logs (tests capture the startup lines); default stdout. */
+export type HostedOptions = { cronLeaseWaitMs?: number; logStream?: NodeJS.WritableStream };
 
 export async function buildHostedApp(deps: HostedDeps, opts: HostedOptions = {}): Promise<FastifyInstance> {
-  const app = await buildApp(deps, { logger: { level: 'info' }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
+  // Devnet: the pins (genesis, mint, programs) and the platform key are proven on chain before serving.
+  if (deps.settlement instanceof DevnetSquadsSettlement) await deps.settlement.startupCheck();
+  const app = await buildApp(deps, { logger: { level: 'info', ...(opts.logStream ? { stream: opts.logStream } : {}) }, setup: (a) => hostedSetup(a, deps, opts.cronLeaseWaitMs ?? CRON_LEASE_WAIT_MS) });
+  // The effective devnet spend caps, as numbers (not secrets): cumulative over the namespace's lifetime.
+  // QA P3-CAP1: with the current cumulative spend (the namespace's global totals), so headroom is visible.
+  if (deps.config.devnet) {
+    const devnetSpent = await deps.repo.escrow.devnet!.spendOf('global');
+    app.log.info({ devnetSpendCaps: deps.config.devnet.limits, devnetSpent }, 'devnet spend caps and current spend (cumulative; lamports = fees + rent, test-USDC base units)');
+  }
   return app;
 }
 
@@ -133,7 +204,10 @@ function hostedSetup(app: FastifyInstance, deps: HostedDeps, cronLeaseWaitMs: nu
   app.addHook('onSend', async (req, reply, payload) => {
     const route = (req.routeOptions.config as { pqaRoute?: string } | undefined)?.pqaRoute;
     if (reply.statusCode >= 400 || !route) return payload;
-    const job = deps.settlement && SETTLE_AFTER.has(route) ? 'settle' : SWEEP_AFTER.has(route) ? 'sweep' : null;
+    let job: 'settle' | 'sweep' | null = deps.settlement && SETTLE_AFTER.has(route) ? 'settle' : SWEEP_AFTER.has(route) ? 'sweep' : null;
+    // Devnet (CH-D1): the inline settle slices that can sign share one global bucket; when it is
+    // full the slice is skipped (the next one or the cron run continues the work).
+    if (job === 'settle' && deps.settlement instanceof DevnetSquadsSettlement && !(await deps.repo.core.rateLimitHit('devnet:settle-slice', 60_000, DEVNET_SLICE_LIMIT, deps.now()))) job = null;
     if (job) {
       await runJob(deps, job, { maxItems: LAZY_ITEMS, budgetMs: LAZY_BUDGET_MS, leaseMs: LAZY_LEASE_MS }, (a) => req.log.error({ alert: 'escrow' }, a)).catch(() =>
         req.log.warn({ job }, 'inline slice failed; the next run resumes it'),

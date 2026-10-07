@@ -1,0 +1,50 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:222:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.5s)
+  ✓  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:253:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.5s)
+  ✓  3 [desktop] › e2e-devnet/hosted-journey.spec.ts:262:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (2.8s)
+  ✘  4 [desktop] › e2e-devnet/hosted-journey.spec.ts:329:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits (1.1m)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:329:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('uploaded-evidence')
+    Expected substring: "Uploaded (1)"
+    Timeout: 60000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toContainText" getByTestId('uploaded-evidence') with timeout 60000ms
+      - waiting for getByTestId('uploaded-evidence')
+
+
+      346 |   await t.getByTestId('segment-keep').click();
+      347 |   await t.getByTestId('upload-kept').click();
+    > 348 |   await expect(t.getByTestId('uploaded-evidence')).toContainText('Uploaded (1)', { timeout: 60_000 });
+          |                                                    ^
+      349 |   await step('tester-evidence-uploaded', t, 'a generated 64x64 flat PNG (synthetic, no personal content)');
+      350 |   await t.getByTestId('session-submit').click();
+      351 |   await t.getByTestId('confirm-ok').click();
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:348:52
+
+    Error Context: test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:329:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits 
+  2 did not run
+  3 passed (1.3m)
+  1 error was not a part of any test, see above for details

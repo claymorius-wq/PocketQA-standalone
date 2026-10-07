@@ -49,13 +49,14 @@ export type FundingRow = {
 
 export type SettlementRow = {
   id: string;
-  kind: 'payout' | 'refund';
+  /** `fee`: the devnet fee sweep on close (decision (a); Firestore only). */
+  kind: 'payout' | 'refund' | 'fee';
   study_id: string;
   participation_id: string | null;
   tester_id: string | null;
   destination: string;
   amount_units: number;
-  status: 'pending' | 'submitted' | 'confirmed' | 'failed';
+  status: 'pending' | 'submitted' | 'awaiting_approval' | 'confirmed' | 'failed';
   attempt: number;
   attempt_key: string | null;
   signature: string | null;
@@ -85,10 +86,27 @@ export type SimTransferRow = {
   block_time_ms: number;
 };
 
+/** The demo showcase's fixture documents (src/devnet/demoShowcase.ts). No deletion path exists. */
+export interface DemoProfilesStore {
+  /** Every stored document, unvalidated (the caller keeps only contract-exact labelled fixtures). */
+  list(): Promise<unknown[]>;
+  /** Every REAL leaderboard alias in this namespace (leaderboardProfiles; read-only). */
+  realAliases(): Promise<string[]>;
+  /**
+   * One transaction: if any stored document differs from its fixture, writes nothing and names them
+   * (`differing`); otherwise creates the missing ones. Never overwrites, never deletes.
+   */
+  seed(fixtures: readonly import('../../devnet/demoShowcase').DemoProfileDoc[]): Promise<{ written: number; unchanged: number; differing: string[] }>;
+}
+
 /** What a funding transfer's verification concluded (computed outside the transaction). */
 export type FundingVerdict = { status: 'pending' | 'confirmed' | 'failed'; reason: string | null };
 
 export interface EscrowRepo {
+  /** POCKETQA_ENV=devnet's receipts, leases and spend (Firestore only; null on SQLite, where the pilot keeps squads_attempts). */
+  readonly devnet: import('../../settlement/squads/devnetTypes').DevnetStore | null;
+  /** The labelled demo fixtures (`demoProfiles`; Firestore only, null on SQLite). Read and create only. */
+  readonly demo: DemoProfilesStore | null;
   // ── Wallet links (T8) ──────────────────────────────────────────────────────────────────────
   /** The user's linked wallet, or null. Read by the core `userView`. */
   walletLinkOf(userId: string): Promise<WalletLink | null>;
@@ -148,6 +166,7 @@ export interface EscrowRepo {
 
   // ── Escrow (T9) ────────────────────────────────────────────────────────────────────────────
   escrowOf(studyId: string): Promise<EscrowRow | undefined>;
+  settlementById(id: string): Promise<SettlementRow | null>;
   /** The participation's payout settlement, if one was authorized. */
   payoutSettlementOf(participationId: string): Promise<SettlementRow | undefined>;
   /** Records the study's on-chain escrow accounts (Squads pilot; after `prepareVault`). */
@@ -169,7 +188,9 @@ export interface EscrowRepo {
   isFunded(studyId: string): Promise<boolean>;
   /** The study's escrow books and invariant. */
   studyBooks(studyId: string, nowMs: number): Promise<EscrowBooks>;
-  refundOf(studyId: string): Promise<Pick<SettlementRow, 'status' | 'amount_units'> | null>;
+  refundOf(studyId: string): Promise<Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | null>;
+  /** Devnet: the study's fee sweep settlement (null on SQLite, where none exists). */
+  feeSweepOf(studyId: string): Promise<Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | null>;
   payoutsOfTester(testerId: string): Promise<SettlementRow[]>;
   /** Every payout, failed first (operations view). */
   allPayouts(): Promise<SettlementRow[]>;
@@ -181,6 +202,8 @@ export interface EscrowRepo {
   pendingFundings(): Promise<FundingRow[]>;
   /** Pending, retry-due failed, and submitted-without-signature settlements, oldest first. */
   dueSettlements(nowMs: number): Promise<SettlementRow[]>;
+  /** Devnet: an in-flight payment waits for its cosigner's vote (`awaiting_approval`), or moves on again (`submitted`). */
+  setInFlightStatus(id: string, status: 'submitted' | 'awaiting_approval'): Promise<void>;
   /** Persists a new attempt (`submitted`, attempt+1, key) BEFORE anything is sent. */
   beginAttempt(id: string, key: string): Promise<void>;
   recordSubmitSignature(id: string, signature: string): Promise<void>;

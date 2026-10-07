@@ -9,6 +9,7 @@ import { useSession } from '../auth/SessionProvider';
 import { GlassBlur } from '../glass';
 import { arcShare, BADGES, keyBadge, medalLabel, progressText, useNewBadges, type BadgeId } from '../lib/badges';
 import { useLeaderboard, useReputation } from '../lib/queries';
+import { DemoShowcaseSection } from './DemoShowcase';
 import { useTheme } from '../theme/ThemeProvider';
 import { radius } from '../theme/tokens';
 import { Button, Card, Checkbox, EmptyState, Field, Notice, QueryState, Screen, Text } from '../ui';
@@ -270,6 +271,8 @@ export function LeaderboardScreen() {
           </View>
         )}
       </QueryState>
+      {/* Demo examples: a separate, labelled section BELOW the real ranking, never interleaved with it. */}
+      <DemoShowcaseSection />
     </Screen>
   );
 }

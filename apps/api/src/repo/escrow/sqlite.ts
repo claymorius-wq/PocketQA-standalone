@@ -31,6 +31,9 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
   };
 
   return {
+    devnet: null,
+    demo: null,
+
     async walletLinkOf(userId) {
       const r = db.prepare('SELECT address, linked_at FROM wallet_links WHERE user_id = ?').get(userId) as { address: string; linked_at: string } | undefined;
       return r ? ({ address: r.address, linkedAt: r.linked_at } satisfies WalletLink) : null;
@@ -198,6 +201,10 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       return escrowOf(db, studyId);
     },
 
+    async settlementById(id) {
+      return (db.prepare('SELECT * FROM settlements WHERE id = ?').get(id) as SettlementRow | undefined) ?? null;
+    },
+
     async payoutSettlementOf(participationId) {
       return db.prepare(`SELECT * FROM settlements WHERE kind = 'payout' AND participation_id = ?`).get(participationId) as SettlementRow | undefined;
     },
@@ -281,8 +288,12 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
       return studyEscrowBooks(db, studyId, nowMs);
     },
 
+    async feeSweepOf() {
+      return null;
+    },
+
     async refundOf(studyId) {
-      return (db.prepare(`SELECT status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(studyId) as Pick<SettlementRow, 'status' | 'amount_units'> | undefined) ?? null;
+      return (db.prepare(`SELECT id, status, amount_units FROM settlements WHERE kind = 'refund' AND study_id = ?`).get(studyId) as Pick<SettlementRow, 'id' | 'status' | 'amount_units'> | undefined) ?? null;
     },
 
     async payoutsOfTester(testerId) {
@@ -307,8 +318,12 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
 
     async dueSettlements(nowMs) {
       return db
-        .prepare(`SELECT * FROM settlements WHERE status = 'pending' OR (status = 'failed' AND next_attempt_at <= ?) OR (status = 'submitted' AND signature IS NULL) ORDER BY created_at`)
+        .prepare(`SELECT * FROM settlements WHERE status = 'pending' OR (status = 'failed' AND next_attempt_at <= ?) OR (status = 'submitted' AND signature IS NULL) OR status = 'awaiting_approval' ORDER BY created_at`)
         .all(nowMs) as SettlementRow[];
+    },
+
+    async setInFlightStatus(id, status) {
+      db.prepare(`UPDATE settlements SET status = ? WHERE id = ? AND status IN ('submitted','awaiting_approval')`).run(status, id);
     },
 
     async beginAttempt(id, key) {
@@ -329,6 +344,8 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
     },
 
     async confirmSettlement(s, nowMs, label) {
+      // The fee sweep exists only in POCKETQA_ENV=devnet (Firestore); SQLite never creates one.
+      if (s.kind === 'fee') throw new Error('A fee sweep settlement on SQLite: the devnet fee sweep runs only on Firestore.');
       db.transaction(() => {
         const cur = db.prepare('SELECT status FROM settlements WHERE id = ?').get(s.id) as { status: SettlementRow['status'] };
         if (cur.status !== 'submitted') return;

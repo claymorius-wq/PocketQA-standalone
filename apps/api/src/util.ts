@@ -8,6 +8,11 @@ export const HTTP_STATUS: Record<ErrorCode, number> = {
   FORBIDDEN_ROLE: 403,
   NOT_FOUND: 404,
   CONFLICT_STATE: 409,
+  DEVNET_SPEND_CAP: 409,
+  APPROVAL_MISMATCH: 409,
+  COSIGNER_NOT_SEEN: 409,
+  VAULT_NOT_READY: 409,
+  ALREADY_APPROVED: 409,
   NONCE_INVALID: 400,
   BUDGET_INSUFFICIENT: 409,
   CHAIN_UNAVAILABLE: 503,
@@ -21,6 +26,8 @@ export const HTTP_STATUS: Record<ErrorCode, number> = {
 };
 
 export const fail = (code: ErrorCode, message: string) => new DomainError(code, message);
+/** A DomainError answered with `status` instead of its code's usual one (e.g. a 404 FEATURE_UNAVAILABLE). */
+export const failWithStatus = (status: number, code: ErrorCode, message: string) => Object.assign(new DomainError(code, message), { status });
 /** Used for every "not yours" case as well as "doesn't exist", so existence never leaks. */
 export const notFound = (what = 'Resource') => fail('NOT_FOUND', `${what} not found.`);
 

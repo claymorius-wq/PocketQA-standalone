@@ -16,6 +16,7 @@ import { conflict, DomainError } from './errors';
  * - `out:tester:<user>`      confirmed payouts (left the system)
  * - `refund_pending:<study>` unused funds being refunded after close, not yet confirmed
  * - `out:refund:<wallet>`    confirmed refunds, to the wallet that funded the study
+ * - `out:fees:<wallet>`      earned fees swept on close to the platform fee wallet (devnet decision (a))
  * Every posting carries its study id, so a study's books can be checked on their own.
  */
 export const USDC_DECIMALS = 6;
@@ -23,7 +24,7 @@ export const USDC_DECIMALS = 6;
 export const MAX_ESCROW_UNITS = 1_000_000_000_000;
 export const MAX_FEE_BPS = 10_000;
 
-export type EscrowKind = 'funding' | 'payout_authorized' | 'fee_earned' | 'payout_settled' | 'refund_authorized' | 'refund_settled';
+export type EscrowKind = 'funding' | 'payout_authorized' | 'fee_earned' | 'payout_settled' | 'refund_authorized' | 'refund_settled' | 'fee_settled';
 export type EscrowPosting = { account: string; amount: number; kind: EscrowKind; studyId: string | null; participationId: string | null };
 
 export type EscrowQuote = {
@@ -116,6 +117,15 @@ export function planSettleRefund(input: { studyId: string; funder: string; amoun
 }
 
 /**
+ * The fee sweep on close (devnet, amendments r1 decision (a)): the fees a study earned leave its
+ * vault for the platform fee wallet, so every booked movement has an on-chain receipt. Only a
+ * confirmed transfer posts it, as for payouts and refunds.
+ */
+export function planSettleFee(input: { studyId: string; feeWallet: string; amountUnits: number }): EscrowPosting[] {
+  return pair(PLATFORM_FEES, `out:fees:${input.feeWallet}`, units(input.amountUnits, 'The fee sweep', { positive: true }), 'fee_settled', input.studyId, null);
+}
+
+/**
  * The study's books balance: every funded unit is in exactly one place. Reservations (held)
  * are inside the vault, not on top of it. `ok` is false on any imbalance, negative bucket or
  * posting to an account outside this study's escrow.
@@ -134,9 +144,11 @@ export function escrowInvariant(input: { studyId: string; postings: readonly Esc
     feesUnits: sumWhere((a) => a === PLATFORM_FEES),
     pendingRefundUnits: sumWhere((a) => a === refundPendingAccount(input.studyId)),
     refundedUnits: sumWhere((a) => a.startsWith('out:refund:')),
+    /** Earned fees already swept on chain to the platform fee wallet (devnet). */
+    sweptFeesUnits: sumWhere((a) => a.startsWith('out:fees:')),
   };
   const known = (a: string) =>
-    a === 'in:funding' || a === vaultAccount(input.studyId) || a.startsWith('payable:') || a.startsWith('out:tester:') || a === PLATFORM_FEES || a === refundPendingAccount(input.studyId) || a.startsWith('out:refund:');
+    a === 'in:funding' || a === vaultAccount(input.studyId) || a.startsWith('payable:') || a.startsWith('out:tester:') || a === PLATFORM_FEES || a === refundPendingAccount(input.studyId) || a.startsWith('out:refund:') || a.startsWith('out:fees:');
   const total = Object.values(buckets).reduce((s, v) => s + v, 0);
   const ok =
     mine.every((p) => known(p.account) && Number.isSafeInteger(p.amount)) &&

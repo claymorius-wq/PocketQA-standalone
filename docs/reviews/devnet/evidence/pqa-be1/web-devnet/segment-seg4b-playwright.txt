@@ -1,0 +1,42 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:234:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.5s)
+  ✓  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:265:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.5s)
+  ✓  3 [desktop] › e2e-devnet/hosted-journey.spec.ts:274:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (2.7s)
+  ✓  4 [desktop] › e2e-devnet/hosted-journey.spec.ts:341:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits (10.4s)
+  ✘  5 [desktop] › e2e-devnet/hosted-journey.spec.ts:375:5 › 5 · builder: reviews and approves; votes on the reward in the wallet (cancel once, then sign); the payment settles on devnet (1.0m)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:375:5 › 5 · builder: reviews and approves; votes on the reward in the wallet (cancel once, then sign); the payment settles on devnet 
+
+    Error: stopped: the submission on the study page not reached within 60 s
+
+      158 |   for (;;) {
+      159 |     if (await ready().catch(() => false)) return;
+    > 160 |     if (Date.now() > end) throw new Error(`stopped: ${what} not reached within ${Math.round(ms / 1000)} s`);
+          |                                 ^
+      161 |     await p.waitForTimeout(10_000);
+      162 |     await p.reload();
+      163 |   }
+        at until (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:160:33)
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:379:3
+
+    Error Context: test-results/pw-desktop/hosted-journey-5-·-builder-bceb8-e-payment-settles-on-devnet-desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-5-·-builder-bceb8-e-payment-settles-on-devnet-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-5-·-builder-bceb8-e-payment-settles-on-devnet-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-5-·-builder-bceb8-e-payment-settles-on-devnet-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:375:5 › 5 · builder: reviews and approves; votes on the reward in the wallet (cancel once, then sign); the payment settles on devnet 
+  1 did not run
+  4 passed (1.5m)
+  1 error was not a part of any test, see above for details

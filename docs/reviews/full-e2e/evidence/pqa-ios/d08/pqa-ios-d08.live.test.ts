@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- evidence copy kept verbatim (lint-only header; no code changed) */
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, closeSync, fsyncSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

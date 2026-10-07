@@ -1,0 +1,39 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:224:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.7s)
+  ✘  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:255:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (964ms)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:255:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) 
+
+    Error: stopped: linked to an unexpected wallet (Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts)
+
+      177 |     }
+      178 |     // Linked elsewhere: only the address the lead named may be unlinked, through the product's own action.
+    > 179 |     if (!previousLink || !shown.includes(previousLink)) throw new Error(`stopped: linked to an unexpected wallet (${shown.trim()})`);
+          |                                                               ^
+      180 |     await shotOf(p, 'wallet-section', `${settingsTab}-wallet-previous-link`, `previous link (verbatim): ${previousLink}`);
+      181 |     const del = p.waitForResponse((r) => r.request().method() === 'DELETE' && new URL(r.url()).pathname === '/api/wallet');
+      182 |     await p.getByTestId('wallet-unlink').click();
+        at linkWallet (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:179:63)
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:257:3
+
+    Error Context: test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:255:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) 
+  4 did not run
+  1 passed (7.7s)
+  1 error was not a part of any test, see above for details

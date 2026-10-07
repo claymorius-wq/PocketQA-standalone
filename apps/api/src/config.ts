@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
+import { PublicKey } from '@solana/web3.js';
+import { DEFAULT_DEVNET_LIMITS, type DevnetLimits } from './settlement/squads/devnetTypes';
 import { API_DEFAULT_PORT, DEFAULT_SIWS_DOMAIN, isPublicHost, type AuthMode, type SettlementMode, type StorageMode } from '@pocket-qa/contracts';
 
 /** Pocket QA's dedicated R2 bucket(s); add a staging bucket here only by decision (ADR 0005). */
@@ -33,6 +35,14 @@ export type Config = {
   escrowFeeBps: number;
   /** Squads devnet pilot only (ADR 0007 §10): the test-key directory outside the repo (0700). */
   pilotKeysDir: string | null;
+  /**
+   * POCKETQA_ENV=devnet (docs/plans/devnet-phase-contract.md): the hosted integrated devnet journey.
+   * Public settings only: the platform signer itself is loaded by settlement/squads/devnetSigner.ts
+   * and never enters the config. `allowedEmails`: the labelled synthetic accounts that may start a
+   * server-signed operation (CH-D1). `demoShowcase` (POCKETQA_DEMO_SHOWCASE=1): GET /demo/showcase
+   * serves the labelled demo fixtures (src/devnet/demoShowcase.ts). Null in every other env.
+   */
+  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits; demoShowcase: boolean } | null;
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -99,12 +109,22 @@ function isGitIgnored(absDir: string): boolean {
  */
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const envName = env.POCKETQA_ENV ?? 'development';
-  if (envName !== 'development' && envName !== 'staging' && envName !== 'production') throw new ConfigError('POCKETQA_ENV must be development, staging or production.');
+  // POCKETQA_ENV=devnet is the devnet phase's own mode (devnet-phase-contract.md); every other
+  // value keeps the original refusal, word for word.
+  const devnetEnv = envName === 'devnet';
+  if (envName !== 'development' && envName !== 'staging' && envName !== 'production' && !devnetEnv) throw new ConfigError('POCKETQA_ENV must be development, staging or production.');
   const production = envName === 'production';
   const staging = envName === 'staging';
-  // Security rules shared by production and the hosted test deployment.
-  const secured = production || staging;
-  const label = production ? 'Production' : 'Staging';
+  // Security rules shared by production, the hosted test deployment and the hosted devnet journey.
+  const secured = production || staging || devnetEnv;
+  const label = production ? 'Production' : staging ? 'Staging' : 'Devnet';
+  // CH-D4: the devnet settings (the platform signer above all) exist only in devnet mode; every
+  // other env, production included, refuses them by name and never echoes a value.
+  const devnetKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_DEVNET_') && env[k] !== undefined);
+  if (!devnetEnv && devnetKeys.length) throw new ConfigError(`${devnetKeys.join(', ')}: only for POCKETQA_ENV=devnet.`);
+  // The demo showcase (labelled synthetic fixtures) exists only beside the devnet journey: never in
+  // production, staging or development, whatever the value.
+  if (!devnetEnv && env.POCKETQA_DEMO_SHOWCASE !== undefined) throw new ConfigError('POCKETQA_DEMO_SHOWCASE: only for POCKETQA_ENV=devnet.');
   const dataBackend = (env.POCKETQA_DATA_BACKEND ?? 'sqlite') as Config['dataBackend'];
   if (dataBackend !== 'sqlite' && dataBackend !== 'firestore') throw new ConfigError('POCKETQA_DATA_BACKEND must be sqlite or firestore.');
   const host = env.POCKETQA_API_HOST ?? '127.0.0.1';
@@ -249,12 +269,14 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // The shared public demo lets any visitor act as the synthetic builder or admin, and the pilot's
   // test keys sign on the server for every role: never combine them (pilot assets stay private).
   if (sharedDemo && settlement === 'squads_devnet') throw new ConfigError('The shared demo never runs the devnet pilot: its server-held test keys would sign for any visitor. Use POCKETQA_SETTLEMENT=simulated (labelled) or off.');
+  if (devnetEnv && settlement !== 'squads_devnet') throw new ConfigError('POCKETQA_ENV=devnet runs only with POCKETQA_SETTLEMENT=squads_devnet.');
   // The only provider setting that exists is the pilot's key directory; the network, RPC, program,
   // mint and keys are pinned in code (devnet only). Everything else is refused.
-  const providerKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_SETTLEMENT_') && !(settlement === 'squads_devnet' && k === 'POCKETQA_SETTLEMENT_PILOT_KEYS_DIR'));
+  // Devnet mode loads only the platform signer: the pilot's key directory (every role's key) is refused.
+  const providerKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_SETTLEMENT_') && !(settlement === 'squads_devnet' && !devnetEnv && k === 'POCKETQA_SETTLEMENT_PILOT_KEYS_DIR'));
   if (providerKeys.length) throw new ConfigError(`${providerKeys.join(', ')}: no settlement provider, mint, RPC, network or key can be configured (ADR 0007); the devnet pilot takes only POCKETQA_SETTLEMENT_PILOT_KEYS_DIR.`);
   let pilotKeysDir: string | null = null;
-  if (settlement === 'squads_devnet') {
+  if (settlement === 'squads_devnet' && !devnetEnv) {
     const dir = env.POCKETQA_SETTLEMENT_PILOT_KEYS_DIR ?? '';
     if (!dir || !isAbsolute(dir) || !existsSync(dir)) throw new ConfigError('The devnet pilot needs POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: an existing absolute directory of test-only keys.');
     // Symlinks resolved on both sides, so a link from outside into the repo is still refused.
@@ -263,6 +285,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if ((statSync(dir).mode & 0o077) !== 0) throw new ConfigError('The devnet pilot key directory must be readable by its owner only (chmod 700).');
     pilotKeysDir = dir;
   }
+  let devnet: Config['devnet'] = null;
+  if (devnetEnv) devnet = devnetSettings(env, dataBackend, rpcUrl);
   const escrowFeeBps = env.POCKETQA_ESCROW_FEE_BPS === undefined ? 1000 : Number(env.POCKETQA_ESCROW_FEE_BPS);
   if (!Number.isInteger(escrowFeeBps) || escrowFeeBps < 0 || escrowFeeBps > 10_000) throw new ConfigError('POCKETQA_ESCROW_FEE_BPS must be a whole number from 0 to 10000.');
 
@@ -283,6 +307,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     features: { testCredits: !production, devnetTransfers: !secured, settlement },
     escrowFeeBps,
     pilotKeysDir,
+    devnet,
     host: host as Config['host'],
     port,
     dataDir,
@@ -298,4 +323,85 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     storage,
     r2,
   };
+}
+
+const isWalletKey = (s: string | undefined) => {
+  try {
+    return !!s && PublicKey.isOnCurve(new PublicKey(s).toBytes()) && new PublicKey(s).toBase58() === s;
+  } catch {
+    return false;
+  }
+};
+
+/** POCKETQA_ENV=devnet's own guards (devnet-phase-contract.md, amendments r1). Never reads a key. */
+function devnetSettings(env: Record<string, string | undefined>, dataBackend: Config['dataBackend'], rpcUrl: string): NonNullable<Config['devnet']> {
+  if (dataBackend !== 'firestore') throw new ConfigError('POCKETQA_ENV=devnet keeps its data in the Firestore devnet namespace (POCKETQA_DATA_BACKEND=firestore).');
+  // Only the transport is checked here: which cluster it is gets proven at runtime, by reading the
+  // genesis hash and the pinned mint account before every signature (pqa-qa P2-DA2).
+  if (new URL(rpcUrl).protocol !== 'https:') throw new ConfigError('In devnet, POCKETQA_SOLANA_RPC_URL must be https.');
+  const fromEnv = !!env.POCKETQA_DEVNET_PLATFORM_SIGNER;
+  const file = env.POCKETQA_DEVNET_PLATFORM_SIGNER_FILE;
+  if (fromEnv === !!file) throw new ConfigError('POCKETQA_ENV=devnet needs exactly one of POCKETQA_DEVNET_PLATFORM_SIGNER (Vercel Preview) or POCKETQA_DEVNET_PLATFORM_SIGNER_FILE (an absolute path, local runs).');
+  if (file && !isAbsolute(file)) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_SIGNER_FILE must be an absolute path.');
+  // P2-DA1: the platform signer's public key is pinned, so a mis-set signer variable (the fixture
+  // directory holds every role's key) can't silently give the server a second vote.
+  const platform = env.POCKETQA_DEVNET_PLATFORM_PUBKEY;
+  if (!isWalletKey(platform)) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_PUBKEY must be the platform signer\'s public key (base58).');
+  const arbiter = env.POCKETQA_DEVNET_ARBITER_PUBKEY;
+  if (!isWalletKey(arbiter)) throw new ConfigError('POCKETQA_DEVNET_ARBITER_PUBKEY must be the arbiter\'s wallet public key (base58).');
+  const feeWallet = env.POCKETQA_DEVNET_FEE_WALLET;
+  if (!isWalletKey(feeWallet)) throw new ConfigError('POCKETQA_DEVNET_FEE_WALLET must be the platform fee wallet public key (base58).');
+  if (new Set([platform, arbiter, feeWallet]).size !== 3) throw new ConfigError('POCKETQA_DEVNET_PLATFORM_PUBKEY, POCKETQA_DEVNET_ARBITER_PUBKEY and POCKETQA_DEVNET_FEE_WALLET must be three different keys.');
+  const allowedEmails = (env.POCKETQA_DEVNET_ALLOWED_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowedEmails.length === 0) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS must list the synthetic accounts that may start devnet operations.');
+  // CH-D1: labelled synthetic accounts only, never a real person's address.
+  if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
+  const demo = env.POCKETQA_DEMO_SHOWCASE;
+  if (demo !== undefined && demo !== '1') throw new ConfigError('POCKETQA_DEMO_SHOWCASE must be 1 (or unset).');
+  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env), demoShowcase: demo === '1' };
+}
+
+/**
+ * Hard ceilings for the devnet spend caps (lead decision on E-28 #4): an env value above them refuses
+ * startup. 1 SOL global and 0.5 SOL per user (fees + rent), 10 test USDC.
+ */
+export const DEVNET_CAP_CEILINGS = { globalLamports: 1_000_000_000, userLamports: 500_000_000, globalUsdcUnits: 10_000_000, userUsdcUnits: 10_000_000 } as const;
+
+/**
+ * The devnet spend caps (CH-D1): POCKETQA_DEVNET_CAP_* or the defaults (DEFAULT_DEVNET_LIMITS). The caps
+ * stay cumulative over the devnet namespace's lifetime: raising one gives headroom, nothing is reset.
+ */
+function devnetLimits(env: Record<string, string | undefined>): DevnetLimits {
+  const cap = (name: string, fallback: number, ceiling: number) => {
+    const raw = env[name];
+    if (raw === undefined || raw === '') return fallback;
+    if (!/^[1-9]\d*$/.test(raw) || Number(raw) > ceiling) throw new ConfigError(`${name} must be a whole number from 1 to ${ceiling} (a hard ceiling).`);
+    return Number(raw);
+  };
+  const limits: DevnetLimits = {
+    global: {
+      lamports: cap('POCKETQA_DEVNET_CAP_GLOBAL_LAMPORTS', DEFAULT_DEVNET_LIMITS.global.lamports, DEVNET_CAP_CEILINGS.globalLamports),
+      usdcUnits: cap('POCKETQA_DEVNET_CAP_GLOBAL_USDC_UNITS', DEFAULT_DEVNET_LIMITS.global.usdcUnits, DEVNET_CAP_CEILINGS.globalUsdcUnits),
+    },
+    perUser: {
+      lamports: cap('POCKETQA_DEVNET_CAP_USER_LAMPORTS', DEFAULT_DEVNET_LIMITS.perUser.lamports, DEVNET_CAP_CEILINGS.userLamports),
+      usdcUnits: cap('POCKETQA_DEVNET_CAP_USER_USDC_UNITS', DEFAULT_DEVNET_LIMITS.perUser.usdcUnits, DEVNET_CAP_CEILINGS.userUsdcUnits),
+    },
+  };
+  if (limits.perUser.lamports > limits.global.lamports || limits.perUser.usdcUnits > limits.global.usdcUnits) {
+    throw new ConfigError('A per-user devnet cap above its global cap means nothing: lower POCKETQA_DEVNET_CAP_USER_* or raise POCKETQA_DEVNET_CAP_GLOBAL_*.');
+  }
+  return limits;
+}
+
+/**
+ * The local server (src/server.ts: SQLite, timers, the pilot) never runs POCKETQA_ENV=devnet, whose
+ * data lives only in the Firestore devnet namespace and whose settlement is driven by request slices
+ * and cron on the hosted API (pqa-qa P3-F3). Refused explicitly, before anything is opened.
+ */
+export function assertLocalServer(config: Config): void {
+  if (config.devnet) throw new ConfigError('POCKETQA_ENV=devnet runs only as the hosted API (Vercel or the hosted entry), never the local server.');
 }

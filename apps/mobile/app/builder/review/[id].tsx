@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import type { Evidence } from '@pocket-qa/contracts';
+import { SettlementApproval, type Evidence } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../../src/api/client';
 import { useIntentKey } from '../../../src/api/intentKey';
 import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
@@ -21,6 +21,7 @@ import { layout } from '../../../src/theme/tokens';
 import { Button, Checkbox, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
 import { DecisionBar, SectionHeader } from '../../../src/ui/patterns';
 import { TransferCard } from '../../../src/wallet/TransferCard';
+import { ServerTxSign } from '../../../src/wallet/ServerTxSign';
 import { useSession } from '../../../src/auth/SessionProvider';
 
 // Builder review (A-Review, Direction A v2). The participant head with the reward well, the AI
@@ -223,6 +224,20 @@ function ReviewInner() {
                 {conflictOf ? <AlreadyDecided attempted={conflictOf} status={p.status} hasNotice={view.notice} /> : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
                 {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
+                {/* Devnet pilot: the payment's Squads proposal waits for the builder's vote (2 of 3). The
+                    server builds the vote for this payment only; the plan is shown before the wallet signs. */}
+                {p.payout && p.payout.settlement === 'squads_devnet' && p.payout.status === 'awaiting_approval' ? (
+                  <ServerTxSign
+                    testID="reward-approval"
+                    settlement="squads_devnet"
+                    expectedApproval={{ settlementId: p.payout.id, kind: SettlementApproval.shape.kind.enum.payout, amountUnits: p.payout.amountUnits, destination: p.payout.destination }}
+                    reviewLabel="Review this payment to approve in your wallet"
+                    signLabel="Approve in your wallet"
+                    load={() => api('settlementApproval', { params: { id: p.payout!.id } })}
+                    submit={(signature, plan) => api('submitSettlementApproval', { params: { id: p.payout!.id }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+                    onDone={() => void qc.invalidateQueries({ queryKey: ['participation', id] })}
+                  />
+                ) : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
                 {features.devnetTransfers && !passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
                   <TransferCard participationId={p.id} role="builder" canStart />

@@ -1,0 +1,107 @@
+{
+ "label": "desktop",
+ "viewportNote": "desktop 1280x900",
+ "wallet": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+ "title": "Web devnet journey desktop muxc56fw",
+ "steps": [
+  {
+   "step": "builder-signed-in",
+   "at": "2026-10-06T23:54:23.629Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/01-builder-signed-in.png"
+  },
+  {
+   "step": "tester-signed-in",
+   "at": "2026-10-06T23:54:25.049Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/02-tester-signed-in.png"
+  },
+  {
+   "step": "wrong-network-wallet-not-offered",
+   "at": "2026-10-06T23:54:25.550Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/03-wrong-network-wallet-not-offered.png",
+   "note": "only a solana:mainnet wallet is installed; the sign-in screen offers no wallet"
+  },
+  {
+   "step": "tab-builder-settings-wallet-already-linked",
+   "at": "2026-10-06T23:54:26.140Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/04-tab-builder-settings-wallet-already-linked.png",
+   "note": "already linked to the fixture address before this run"
+  },
+  {
+   "step": "tab-settings-wallet-previous-link",
+   "at": "2026-10-06T23:54:26.876Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/05-tab-settings-wallet-previous-link.png",
+   "note": "previous link (verbatim): 2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q"
+  },
+  {
+   "step": "tab-settings-wallet-unlink-response",
+   "at": "2026-10-06T23:54:27.866Z",
+   "shot": "",
+   "note": "DELETE /api/wallet → 200"
+  },
+  {
+   "step": "tab-settings-wallet-unlinked",
+   "at": "2026-10-06T23:54:28.950Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/07-tab-settings-wallet-unlinked.png",
+   "note": "DELETE /api/wallet → 200"
+  },
+  {
+   "step": "tab-settings-wallet-link-cancelled",
+   "at": "2026-10-06T23:54:30.467Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/08-tab-settings-wallet-link-cancelled.png",
+   "note": "the wallet refused the signature (User rejected); nothing linked"
+  },
+  {
+   "step": "tab-settings-wallet-linked",
+   "at": "2026-10-06T23:54:33.316Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/09-tab-settings-wallet-linked.png"
+  },
+  {
+   "step": "builder-new-escrow-study",
+   "at": "2026-10-06T23:54:36.165Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/10-builder-new-escrow-study.png"
+  },
+  {
+   "step": "builder-escrow-quote",
+   "at": "2026-10-06T23:54:38.794Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/11-builder-escrow-quote.png"
+  },
+  {
+   "step": "builder-funding-plan-checked",
+   "at": "2026-10-06T23:54:49.228Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/12-builder-funding-plan-checked.png"
+  },
+  {
+   "step": "builder-funding-cancelled-in-wallet",
+   "at": "2026-10-06T23:54:49.578Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-54-21-020Z/13-builder-funding-cancelled-in-wallet.png",
+   "note": "the wallet refused (User rejected); nothing sent"
+  }
+ ],
+ "chain": {
+  "before": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49920000,
+    "testUsdcUnits": 16646000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  },
+  "after": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49915000,
+    "testUsdcUnits": 15546000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  }
+ },
+ "mainnetBlocked": []
+}

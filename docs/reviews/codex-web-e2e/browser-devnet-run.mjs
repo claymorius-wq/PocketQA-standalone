@@ -1,3 +1,5 @@
+/* global CustomEvent, btoa, window -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

@@ -7,6 +7,7 @@ import type { ParsedTx } from '@pocket-qa/domain';
 import { buildApp, loggerOptions } from '../src/app';
 import type { Deps, DevnetRpc } from '../src/context';
 import { openDb } from '../src/db';
+import { devnetFirestore } from '../src/firestore/namespace';
 import { makeRepos } from '../src/repo';
 import { localStore } from '../src/storage/local';
 import { r2Store } from '../src/storage/r2';
@@ -14,6 +15,7 @@ import { SimulatedSettlement } from '../src/settlement/simulated';
 import { SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
 import type { SquadsChain } from '../src/settlement/squads/chain';
 import type { SettlementProvider } from '../src/settlement/types';
+import { DEFAULT_DEVNET_LIMITS } from '../src/settlement/squads/devnetTypes';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { base58 } from '@scure/base';
 import { buildSiwsMessage, type SiwsInput } from '@pocket-qa/contracts';
@@ -53,8 +55,10 @@ export type Backend = 'sqlite' | 'firestore';
 export const testBackend = (): Backend => (process.env.PQA_TEST_BACKEND === 'firestore' ? 'firestore' : 'sqlite');
 /** `it.skipIf(onFirestore())` for the few assertions that inspect SQLite itself (triggers, raw SQL). */
 export const onFirestore = () => testBackend() === 'firestore';
+/** PQA_TEST_NAMESPACE=devnet: Firestore data under the devnet namespace and R2 keys under devnet/ (CH-D2 isolation tests). */
+export const testNamespace = (): 'devnet' | undefined => (process.env.PQA_TEST_NAMESPACE === 'devnet' ? 'devnet' : undefined);
 
-export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array } = {}) {
+export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array; demoShowcase?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -70,7 +74,8 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
   const storage = opts.storage ?? 'local';
   const s3 = new FakeS3();
   const r2 = storage === 'r2' ? { accountId: '0'.repeat(32), bucket: 'pqa-test', endpoint: await s3.start(), accessKeyId: 'test-key-id', secretAccessKey: 'test-secret-key', allowDelete: opts.r2AllowDelete ?? true } : null; // check-secrets: allow (fake S3 test credentials)
-  const store = r2 ? r2Store(r2) : localStore(mediaDir);
+  const namespace = fs ? testNamespace() : undefined;
+  const store = r2 ? r2Store(r2, namespace ? { keyPrefix: 'devnet/' } : {}) : localStore(mediaDir);
   const logs: string[] = [];
   const stream = new Writable({
     write(chunk, _enc, cb) {
@@ -80,7 +85,7 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
   });
   const deps: Deps = {
       db,
-      repo: fs ? makeRepos({ kind: 'firestore', fs }) : makeRepos({ kind: 'sqlite', db: db! }),
+      repo: fs ? makeRepos({ kind: 'firestore', fs, ...(namespace ? { namespace } : {}) }) : makeRepos({ kind: 'sqlite', db: db! }),
       config: {
         production: opts.production ?? false,
         staging: false,
@@ -89,6 +94,8 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
         features: { testCredits: !opts.production, devnetTransfers: !opts.production, settlement: opts.settlement ?? 'off' },
         escrowFeeBps: 1000,
         pilotKeysDir: null,
+        // Only the demo showcase flag (the route reads nothing else of the devnet settings; no key is used).
+        devnet: opts.demoShowcase ? { platform: '', arbiter: '', feeWallet: '', allowedEmails: [], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS, demoShowcase: true } : null,
         host: '127.0.0.1',
         port: 0,
         dataDir: dir,
@@ -187,7 +194,8 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
     /** The SQLite handle (null on Firestore: assert through `deps.repo` instead). */
     db: db as NonNullable<typeof db>,
     /** The emulator's Firestore (null on SQLite). */
-    fs,
+    // Under PQA_TEST_NAMESPACE=devnet a suite's direct reads see the same (namespaced) data the app writes.
+    fs: fs && namespace ? devnetFirestore(fs) : fs,
     sim,
     linkWallet,
     clock,

@@ -31,6 +31,8 @@ export const useParticipationTransfers = (id: string) =>
 /** A tester's own reputation. Testers only: anyone else passes `enabled: false` (the route would refuse them). */
 export const useReputation = ({ enabled = true }: { enabled?: boolean } = {}) => useQuery({ queryKey: ['reputation'], queryFn: () => api('myReputation'), enabled });
 export const useLeaderboard = () => useQuery({ queryKey: ['leaderboard'], queryFn: () => api('leaderboard') });
+/** The labelled demo showcase (devnet demo deployment only): fetched only while it is on and shown. */
+export const useDemoShowcase = ({ enabled }: { enabled: boolean }) => useQuery({ queryKey: ['demo-showcase'], queryFn: () => api('demoShowcase'), enabled });
 /** Escrow payment states move on their own (the settlement worker): poll while one is still open. */
 export const useMyPayouts = () =>
   useQuery({ queryKey: ['rewards'], queryFn: () => api('myPayouts'), refetchInterval: (q) => (q.state.data?.items.some((x) => x.status !== 'confirmed') ? 5000 : false) });

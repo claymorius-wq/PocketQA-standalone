@@ -102,12 +102,13 @@ export class SimulatedSettlement implements SettlementProvider {
     return { status: r.status, network: r.network, mint: r.mint, destination: r.destination, amountUnits: r.amount_units, reference: r.reference, blockTimeMs: r.block_time_ms, source: r.source };
   }
 
-  async submit(req: { key: string; kind: 'payout' | 'refund'; vault: string; destination: string; amountUnits: number }) {
+  async submit(req: { key: string; kind: 'payout' | 'refund' | 'fee'; vault: string; destination: string; amountUnits: number }) {
     // Idempotent per attempt key, as the worker persists it before sending (simulation).
     const existing = await this.chain.simSignatureForKey(req.key);
     if (existing) return { signature: existing };
     if (req.kind === 'payout' && this.payoutFault) throw new SettlementFailure(FAULT_REASONS[this.payoutFault]);
-    const signature = await this.sendTransfer({ source: req.vault, destination: req.destination, amountUnits: req.amountUnits, reference: req.key }, req.kind, req.key);
+    // The fee sweep is devnet-only; were one ever simulated it is recorded as 'other' (no new sim kind).
+    const signature = await this.sendTransfer({ source: req.vault, destination: req.destination, amountUnits: req.amountUnits, reference: req.key }, req.kind === 'fee' ? 'other' : req.kind, req.key);
     if (this.crashAfterSubmit) throw new Error('simulated crash after the transfer was sent, before it was recorded');
     return { signature };
   }

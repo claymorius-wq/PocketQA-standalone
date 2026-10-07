@@ -1,3 +1,5 @@
+/* global CustomEvent, btoa, window -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
 // A Wallet Standard TEST wallet for Playwright: Solana DEVNET only (valueless test funds).
 // Used for the hosted devnet browser journey (full E2E). It is test tooling, never app or server code.
 //

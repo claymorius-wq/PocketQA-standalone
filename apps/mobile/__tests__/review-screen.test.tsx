@@ -8,6 +8,7 @@ import { DockSlot, LAND_PEAK, useLanding } from '../src/screens/review/ReviewPar
 import { ThemeProvider, useTheme, type ThemePreference } from '../src/theme/ThemeProvider';
 import { PASS_LEAVE_AFTER, PASS_MIN_AFTER_PRESS } from '../src/ui/patterns';
 import Review from '../app/builder/review/[id]';
+import { approvalPlan, ATTACKER, OP } from '../test-support/devnetTx';
 
 // Builder review (A-Review): every testID, label and flow of the pre-Lens screen; the evidence
 // strip (open on demand, the failure under the strip); the docked Decision bar; U7 on Approve (the
@@ -19,7 +20,12 @@ jest.mock('lucide-react-native', () =>
 );
 jest.mock('@react-native-async-storage/async-storage', () => jest.requireActual('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 jest.mock('expo-router', () => ({ useLocalSearchParams: () => ({ id: 'p1' }), Redirect: () => null, router: { push: jest.fn() } }));
-jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder' }, features: { testCredits: true, devnetTransfers: true } }) }));
+// The builder's linked devnet wallet (used by the devnet pilot's payout approval).
+jest.mock('../src/auth/SessionProvider', () => ({ useSession: () => ({ user: { id: 'b1', role: 'builder', wallet: { address: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV' } }, features: { testCredits: true, devnetTransfers: true } }) }));
+const mockSign = jest.fn();
+// The devnet read of a vote's payment (devnetRpc.ts, tested on its own); never the network here.
+jest.mock('../src/wallet/devnetRpc', () => ({ readVaultTransfer: async () => ({ state: 'unavailable', reason: 'We couldn’t reach Solana devnet to read the payment' }) }));
+jest.mock('../src/wallet/signServerTransaction', () => ({ signServerTransaction: (...a: unknown[]) => mockSign(...a) }));
 jest.mock('expo-video', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { useVideoPlayer: () => ({}), VideoView: (props: { testID?: string }) => <View testID={props.testID} /> };
@@ -368,6 +374,55 @@ describe('review screen', () => {
     const error = screen.getByTestId('decision-error', { includeHiddenElements: true });
     expect(error).toHaveTextContent(/Decision not saved/);
     expect(error).toHaveTextContent(/budget cannot cover/);
+  });
+
+  // Devnet pilot: an approved payout waits for the builder's vote (2 of 3) in their wallet.
+  const devnetPayout = (status: string, settlement = 'squads_devnet') => ({
+    id: 'set-1', participationId: 'p1', studyId: 's1', studyTitle: 'S', amountUnits: 1_000_000, asset: 'USDC', decimals: 6,
+    destination: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', settlement, status, signature: null, failureReason: null, attempts: 0,
+    authorizedAt: '2026-10-03T14:30:00.000Z', settledAt: null,
+  });
+  it('devnet pilot: a payout awaiting approval → review the vote → sign in the wallet → submitted with its index and op id', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
+    const plan = approvalPlan({ amountUnits: 1_000_000 });
+    mockApi.mockImplementation(async (name: string) => (name === 'settlementApproval' ? plan : { settlementId: 'set-1', kind: 'payout', status: 'submitted', signature: '5igVote', network: 'devnet' }));
+    mockSign.mockImplementation(async (_p: unknown, _c: unknown, send: (s: string) => Promise<unknown>) => {
+      await send('5igVote');
+      return { signature: '5igVote' };
+    });
+    await renderIn(<Review />);
+    expect(screen.queryByTestId('reward-approval-sign')).toBeNull();
+    await fireEvent.press(screen.getByTestId('reward-approval-review'));
+    await settle();
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('settlementApproval', { params: { id: 'set-1' } });
+    // The vote (multisig, proposal #4) is checked in the bytes; the payment's amount, recipient and op id are described.
+    expect(screen.getByTestId('reward-approval-plan')).toHaveTextContent(/#4 \(/);
+    expect(screen.getByTestId('reward-approval-described')).toHaveTextContent(new RegExp(OP));
+    expect(screen.getByTestId('reward-approval-described')).toHaveTextContent(new RegExp(ATTACKER));
+    await fireEvent.press(screen.getByTestId('reward-approval-sign'));
+    await settle();
+    await settle();
+    expect(mockApi).toHaveBeenCalledWith('submitSettlementApproval', { params: { id: 'set-1' }, body: { signature: '5igVote', txIndex: 4, opId: plan.opId } });
+  });
+
+  it('devnet pilot: a vote for another payment than this tester’s is refused before the wallet opens', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', reward: { kind: 'token', asset: 'USDC', decimals: 6, units: 1_000_000, settlement: 'squads_devnet' }, payout: devnetPayout('awaiting_approval') });
+    mockSign.mockClear();
+    mockApi.mockImplementation(async () => approvalPlan({ amountUnits: 1_000_000, settlementId: 'set-other' }));
+    await renderIn(<Review />);
+    await fireEvent.press(screen.getByTestId('reward-approval-review'));
+    await settle();
+    await settle();
+    expect(screen.getByTestId('reward-approval-error')).toHaveTextContent(/not the payment you are approving.*Nothing was signed/);
+    expect(screen.queryByTestId('reward-approval-sign')).toBeNull();
+    expect(mockSign).not.toHaveBeenCalled();
+  });
+
+  it('the wallet vote is offered only for a devnet payout awaiting approval', async () => {
+    mockPart = participation({ status: 'approved', decidedAt: '2026-10-03T14:30:00.000Z', payout: devnetPayout('submitted') });
+    await renderIn(<Review />);
+    expect(screen.queryByTestId('reward-approval-review')).toBeNull();
   });
 
   // H-33 (full E2E): a decision already committed elsewhere (another tab, another device) comes back

@@ -1,3 +1,5 @@
+/* global CustomEvent, TextDecoder, window -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable @typescript-eslint/no-unused-vars -- evidence copy kept verbatim (lint-only header; no code changed) */
 // Self-test of devnet-test-wallet.mjs with a THROWAWAY in-memory key (never the fixture), a page
 // served by Playwright routing (no network), and a dummy devnet transfer that is signed, never sent.
 import { createPublicKey, verify } from 'node:crypto';

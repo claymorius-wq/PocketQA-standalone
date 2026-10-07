@@ -1,0 +1,41 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:222:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.0s)
+  ✓  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:253:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.7s)
+  ✓  3 [desktop] › e2e-devnet/hosted-journey.spec.ts:262:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (5.4s)
+  ✘  4 [desktop] › e2e-devnet/hosted-journey.spec.ts:326:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits (1.0m)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:326:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits 
+
+    Error: stopped: the study in Discover not reached within 60 s
+
+      150 |   for (;;) {
+      151 |     if (await ready().catch(() => false)) return;
+    > 152 |     if (Date.now() > end) throw new Error(`stopped: ${what} not reached within ${Math.round(ms / 1000)} s`);
+          |                                 ^
+      153 |     await p.waitForTimeout(10_000);
+      154 |     await p.reload();
+      155 |   }
+        at until (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:152:33)
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:329:3
+
+    Error Context: test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-4-·-tester--5d80f--synthetic-evidence-submits-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:326:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits 
+  2 did not run
+  3 passed (1.3m)
+  1 error was not a part of any test, see above for details
