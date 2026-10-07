@@ -341,17 +341,17 @@
   "id": "L-09",
   "area": "devnet",
   "title": "Browser upload to R2 from the devnet origin (CORS)",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "loopback-devnet-artifact",
   "deployment": "4ee4603",
   "sha": "4ee4603",
   "steps": "WD-06",
   "fixtures": {},
-  "observed": "The R2 bucket CORS AllowedOrigins lack the devnet origin https://pocketqa-devnet.vercel.app; the browser PUT is refused (no Access-Control-Allow-Origin). CORS is bucket-wide (the devnet/ prefix shares the production bucket), so adding it widens production CORS. Options for the parent: add the origin PUT-only with exact headers, use an owned origin (a subdomain on optijara.ai), or a separate devnet bucket. Not routed around.",
+  "observed": "Was BLOCKED (the bucket CORS lacked the devnet origin; the browser PUT was refused). FIXED 2026-10-07T04:56:29Z by the repo tool r2-cors --add --apply on pocketqa-evidence only: readback [PUT https://pocketqa.optijara.ai, PUT https://pocketqa.vercel.app, PUT https://pocketqa-devnet.vercel.app], content-type, 3600; the previous rules kept; no wildcard/GET/DELETE. pqa-qa verified from outside (unauthenticated OPTIONS 04:57:00Z): PUT 204 with ACAO for exactly the 3 origins; GET/DELETE 403; an unlisted origin 403. The browser upload then passed in WD-06 (segment 4) and the desktop journey completed (WD-01..WD-10).",
   "evidence": [
    "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
   ],
-  "notes": "External gate (parent/Hamza)."
+  "notes": "CORS is bucket-wide (devnet/ shares the production bucket); writes still require a server-presigned URL."
  },
  {
   "id": "L-10",
@@ -444,7 +444,7 @@
   "environment": "loopback-devnet-artifact (real devnet)",
   "deployment": "4ee4603",
   "sha": "4ee4603",
-  "observed": "The cap control is PASS: it is cumulative over the namespace lifetime, refused E-28 #4 before signing at the 50M cap (QA verified), and the configurable caps under hard ceilings (9efd63e) are QA-approved. Books over-count the chain (fail-safe direction): +5213280 lamports as of 00:06Z (recorded vs on-chain platform spend). Reservations sum = recorded (no untracked spend). The exact true-down fix c3c0c8e is code-reviewed by pqa-qa only: NOT in any artifact, and its emulator suites are NOT RUN (deletion halt).",
+  "observed": "The cap control is PASS: it is cumulative over the namespace lifetime, refused E-28 #4 before signing at the 50M cap (QA verified), and the configurable caps under hard ceilings (9efd63e) are QA-approved. Books over-count the chain (fail-safe direction): +5213280 lamports as of 00:06Z (recorded vs on-chain platform spend). Reservations sum = recorded (no untracked spend). The exact true-down fix c3c0c8e is code-reviewed by pqa-qa and its emulator suites PASS 150/150 (pqa-be2, isolated ports, demo-be2-iso-c3c0, scratch merge 234b291; evidence 2ec9037), but it is NOT in any served artifact yet.",
   "evidence": [
    "docs/reviews/full-e2e/parts/pqa-be2-devnet.json"
   ]
