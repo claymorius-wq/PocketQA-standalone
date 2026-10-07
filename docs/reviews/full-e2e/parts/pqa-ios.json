@@ -129,49 +129,70 @@
     "id": "P-01",
     "area": "physical",
     "title": "Physical Android attached and reachable over adb",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
     "sha": null,
     "steps": "adb devices -l (read-only).",
     "fixtures": {},
-    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "observed": "Superseded by P-10/P-11 (2026-10-06 ~20:57Z onwards): adb devices -l shows \"SM02E4072811963 device usb:3-1 product:seeker_eea model:Seeker device:seeker\", reachable over adb (Android 16, SDK 36). HISTORY (original BLOCKED observation, verbatim): adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
     ],
-    "notes": "BLOCKED (human): someone at the device must accept the USB-debugging prompt. Serial only; whether it is the Seeker is unknown while unauthorized. Nothing was sent to the device."
+    "notes": "Status from the later evidence: P-10 (inspection) and P-11 (install of the E2E package). The earlier BLOCKED reading is kept above as history."
   },
   {
     "id": "P-02",
     "area": "physical",
     "title": "Seeker: installed Pocket QA build and app launch (non-destructive read)",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
     "sha": null,
     "steps": "Planned: adb shell dumpsys package com.reshareai.pocketqa (versionName/versionCode), am start with launcher intent, screenshot.",
     "fixtures": {},
-    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "observed": "Superseded by P-10/P-11: Hamza's installed com.reshareai.pocketqa 0.1.0 (1), first install = last update 2026-10-06 01:16:50 (device time), base.apk sha256 6bd0d35a…095b9 = pocketqa-native-0aaa89b.apk, calls http://127.0.0.1:8787 (loopback default); never launched or modified. The launch was proven on the side-by-side E2E package of the candidate (P-11/P-12: launched to the intro, then sign-in). HISTORY (original BLOCKED observation, verbatim): adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p11-apk-identity-7bda3ce.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/01-launch.png"
     ],
-    "notes": "BLOCKED (human): adb unauthorized (see P-01). Hamza's Seeker submission and recording were not touched."
+    "notes": "Status from P-10 (installed build read-only) and P-11/P-12 (launch of the candidate as com.reshareai.pocketqa.e2e). Hamza's own app was deliberately never launched (its backend is his live local data). Earlier BLOCKED kept as history."
   },
   {
     "id": "P-03",
     "area": "physical",
-    "title": "Seeker: screen/mic consent, deny, stop, interruption, review, retain/discard",
-    "status": "BLOCKED",
+    "title": "Seeker: screen/mic consent, stop, review, retain (proven parts)",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
     "sha": null,
     "steps": "Not run.",
     "fixtures": {},
-    "observed": "Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "observed": "Proven later on the Seeker (E2E package of 7bda3ce): consent = in-app consent v1 gate + Android notifications/microphone grants + the MediaProjection dialog (P-14, P-15); capture with microphone, entire screen: projection TYPE_SCREEN_CAPTURE + FGS mediaProjection|microphone (P-15); stop: the capture service ended and the clip landed in review (P-15), stop verification (P-22); review + retain: Keep -> explicit upload, builder private playback (P-17); lifecycle background/foreground (P-18); real narration in the uploaded clip (P-16). HISTORY (original BLOCKED observation, verbatim): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/18-projection-dialog.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration-analysis.txt"
     ],
-    "notes": "BLOCKED (human). No emulator result is substituted for the physical row."
+    "notes": "Split of the original P-03 (see P-03b for what stays open). Earlier BLOCKED kept as history."
+  },
+  {
+    "id": "P-03b",
+    "area": "physical",
+    "title": "Seeker: deny, interruption, discard (not yet proven)",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": null,
+    "sha": null,
+    "steps": "Not run.",
+    "fixtures": {},
+    "observed": "Still open after the device window: deny of the OS consent / microphone on purpose (NOT RUN), interruptions during capture (notification Stop, call taking the mic, screen lock: NOT RUN, see P-21), discard/Remove of a clip (NOT RUN, see P-20; the only removable clips are Hamza's, pending his decision), single-app sharing (FAIL P-13, fix re-check pending), submit (BLOCKED P-19). HISTORY (original BLOCKED observation, verbatim): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "evidence": [],
+    "notes": "Split of the original P-03; cites P-13, P-19, P-20, P-21."
   },
   {
     "id": "P-04",
@@ -450,7 +471,7 @@
     "id": "P-05",
     "area": "physical",
     "title": "Physical readiness: what must be accepted on the device",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
     "sha": null,
@@ -458,9 +479,10 @@
     "fixtures": {
       "serial": "SM02E4072811963"
     },
-    "observed": "SM02E4072811963 still \"unauthorized\" (usb:3-1). Host adb key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF. Needed at the device: unlock, accept \"Allow USB debugging?\" for that fingerprint with \"Always allow from this computer\"; if no dialog, confirm Developer options > USB debugging is on and replug.",
+    "observed": "Gate cleared: Hamza accepted USB debugging for this Mac (host key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF); 2026-10-06 20:57:47Z adb devices -l: \"SM02E4072811963 device usb:3-1 product:seeker_eea model:Seeker device:seeker transport_id:1\" (P-10). HISTORY (original BLOCKED observation, verbatim): SM02E4072811963 still \"unauthorized\" (usb:3-1). Host adb key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF. Needed at the device: unlock, accept \"Allow USB debugging?\" for that fingerprint with \"Always allow from this computer\"; if no dialog, confirm Developer options > USB debugging is on and replug.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
     ],
     "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device. Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker)."
   },
