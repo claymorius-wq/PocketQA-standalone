@@ -309,3 +309,8 @@ npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 
 - **Funding reservations stay cumulative:** test-USDC reservations are **not** released on close (item (b), withdrawn).
 - **Startup log (P3-CAP1):** the log now states `devnetSpent` (the namespace's global totals) next to `devnetSpendCaps`, as numbers. That comes from the new `DevnetStore.spendOf(id)`.
 - **The historical gap:** `npx tsx apps/api/scripts/devnet-spend-report.ts`, with the devnet env, is **read-only**. Per operation it prints the reserved lamports against the observed cost of its recorded transactions (by signature), then the totals, the gap and the global books. It writes nothing; a test checks the reservations are byte-identical before and after.
+
+## 15. E-29 and P3-SR1
+- **Arbiter CLI funds check:** `ArbiterChain.balance(address)` is new. Before a dry run reports OK, and before `--send` signs, the arbiter key must hold at least `ARBITER_MIN_LAMPORTS = 10,000`: one vote fee of 5,000 plus a margin. Otherwise it refuses: "the arbiter key holds N lamports; its vote's fee needs at least 10000 (devnet SOL: fund the arbiter key first)". An already-cast vote needs no fee and is still just reported.
+- **The spend report reads costs with the platform public key only:** `rpcCostReader(rpcUrl, POCKETQA_DEVNET_PLATFORM_PUBKEY)`, which shares its cost read with `RpcDevnetChain.costOf`. The script never loads the platform secret, and a static test pins that.
+  - **One thing remains:** devnet config validation still requires one signer variable to be **set**. Use `POCKETQA_DEVNET_PLATFORM_SIGNER_FILE`, a path the report never reads.

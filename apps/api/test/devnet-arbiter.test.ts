@@ -1,7 +1,7 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
 import * as multisig from '@sqds/multisig';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { arbiterApprove, ArbiterRefusal, type ArbiterChain, type ArbiterPlan } from '../src/settlement/squads/arbiter';
+import { ARBITER_MIN_LAMPORTS, arbiterApprove, ArbiterRefusal, type ArbiterChain, type ArbiterPlan } from '../src/settlement/squads/arbiter';
 import { ataOf, operationId, sortMembers } from '../src/settlement/squads/adapter';
 import { MAINNET_GENESIS, PERM } from '../src/settlement/squads/pins';
 import { FakeDevnetChain } from './fakeDevnetChain';
@@ -14,7 +14,10 @@ let plan: ArbiterPlan;
 const builder = Keypair.generate().publicKey.toBase58();
 const recipient = Keypair.generate().publicKey.toBase58();
 
+/** SOL balances the arbiter checks (its vote's fee payer); funded by default. */
+let lamports: Map<string, number>;
 const asArbiterChain = (c: FakeDevnetChain): ArbiterChain => ({
+  balance: async (address) => lamports.get(address) ?? 0,
   genesisHash: () => c.genesisHash(),
   account: async (address) => c.vaultTransactionAccount(address),
   getProposal: (ms, i) => c.getProposal(ms, i),
@@ -27,6 +30,7 @@ const run = (over: Partial<ArbiterPlan> = {}, send = false, arbiter = chain.arbi
 
 beforeEach(async () => {
   chain = new FakeDevnetChain();
+  lamports = new Map([[chain.roles.arbiter, 50_000_000]]);
   const createKey = new PublicKey(chain.createKeyFor('s1'));
   const [ms] = multisig.getMultisigPda({ createKey });
   const [vault] = multisig.getVaultPda({ multisigPda: ms, index: 0 });
@@ -84,5 +88,26 @@ describe('the arbiter key itself (pqa-qa P3-A1)', () => {
   it('refuses a key file that is not the pinned --arbiter public key', async () => {
     await expect(run({}, true, Keypair.generate(), chain.roles.platform, chain.roles.arbiter)).rejects.toThrow(/--arbiter/);
     expect(chain.landed.filter((l) => l.step === 'cosigner_approve')).toHaveLength(0);
+  });
+});
+
+describe('the arbiter key must be able to pay for its own vote (E-29)', () => {
+  it('a dry run refuses an unfunded arbiter key: "dry run OK" means the send can succeed', async () => {
+    lamports.set(chain.roles.arbiter, 0);
+    await expect(run()).rejects.toThrow(/arbiter key holds 0 lamports.*at least 10000/);
+    await expect(run({}, true)).rejects.toThrow(/holds 0 lamports/);
+    expect(chain.landed.filter((l) => l.step === 'cosigner_approve')).toHaveLength(0);
+  });
+  it('just below the fee + margin is refused; at it, the dry run passes and --send votes', async () => {
+    lamports.set(chain.roles.arbiter, ARBITER_MIN_LAMPORTS - 1);
+    await expect(run()).rejects.toThrow(/lamports/);
+    lamports.set(chain.roles.arbiter, ARBITER_MIN_LAMPORTS);
+    expect((await run()).signature).toBeNull();
+    expect((await run({}, true)).signature).toBeTruthy();
+  });
+  it('an already-cast vote needs no fee: reported, nothing sent, whatever the balance', async () => {
+    await run({}, true);
+    lamports.set(chain.roles.arbiter, 0);
+    expect(await run({}, true)).toMatchObject({ alreadyApproved: true, signature: null });
   });
 });

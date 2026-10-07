@@ -16,11 +16,20 @@ import { buildApproveTx } from './walletTx';
  * then, and only with `send`, does the arbiter's key sign the one proposal_approve. The platform
  * signer completes the 2-of-3 afterwards (the server's settle run). The key is never printed.
  */
+/**
+ * E-29: the arbiter key pays its own vote's fee. A "dry run OK" must mean the send can succeed, so
+ * both the dry run and --send refuse below one signature's fee (5,000 lamports) plus a margin.
+ */
+export const VOTE_FEE_LAMPORTS = 5_000;
+export const ARBITER_MIN_LAMPORTS = VOTE_FEE_LAMPORTS * 2;
+
 export type ArbiterPlan = { multisig: string; txIndex: number; opId: string; recipient: string; amountUnits: number };
 
 /** What the arbiter reads and sends (RPC in production, the fake chain in tests). */
 export interface ArbiterChain {
   genesisHash(): Promise<string>;
+  /** A wallet's SOL balance in lamports (finalized). */
+  balance(address: string): Promise<number>;
   /** The raw account at `address`: its owning program and data, or null. */
   account(address: string): Promise<{ owner: string; data: Uint8Array } | null>;
   getProposal(multisig: string, index: bigint): Promise<ProposalState | null>;
@@ -58,6 +67,10 @@ export async function arbiterApprove(o: { chain: ArbiterChain; arbiter: Keypair;
   if (!proposal) throw refuse('the proposal does not exist yet (Pocket QA creates it first).');
   if (proposal.approved.includes(me)) return { checked, alreadyApproved: true as const, signature: null };
   if (proposal.status !== 'Active') throw refuse(`the proposal is ${proposal.status.toLowerCase()}, not active.`);
+  const funds = await chain.balance(me);
+  if (funds < ARBITER_MIN_LAMPORTS) {
+    throw refuse(`the arbiter key holds ${funds} lamports; its vote's fee needs at least ${ARBITER_MIN_LAMPORTS} (devnet SOL: fund the arbiter key first).`);
+  }
   if (!o.send) return { checked, alreadyApproved: false as const, signature: null };
   const unsigned = buildApproveTx({ multisig: plan.multisig, index: BigInt(plan.txIndex), member: me, ...(await chain.blockhash()) });
   const tx = VersionedTransaction.deserialize(Buffer.from(unsigned.wireB64, 'base64'));
@@ -71,6 +84,7 @@ export function rpcArbiterChain(rpcUrl: string): ArbiterChain {
   const conn = new Connection(rpcUrl, 'finalized');
   return {
     genesisHash: () => conn.getGenesisHash(),
+    balance: (address) => conn.getBalance(new PublicKey(address), 'finalized'),
     async account(address) {
       const info = await conn.getAccountInfo(new PublicKey(address), 'finalized');
       return info ? { owner: info.owner.toBase58(), data: new Uint8Array(info.data) } : null;

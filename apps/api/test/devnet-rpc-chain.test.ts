@@ -5,7 +5,9 @@ import { Keypair, PublicKey, VersionedTransaction, type Connection } from '@sola
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config';
 import { productionConnectors } from '../src/hosted/app';
-import { RpcDevnetChain } from '../src/settlement/squads/rpcDevnetChain';
+import { RpcDevnetChain, rpcCostReader } from '../src/settlement/squads/rpcDevnetChain';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SettlementFailure, SettlementPending } from '../src/settlement/types';
 import { DEVNET_GENESIS, MAINNET_GENESIS, PILOT_MINT } from '../src/settlement/squads/pins';
 
@@ -140,5 +142,22 @@ describe('the production connector signs with the checked key (pqa-qa N-1)', () 
   it('a signer that is not the pinned key never yields a chain', () => {
     const e = env(Keypair.generate(), platform.publicKey.toBase58());
     expect(() => productionConnectors.devnetChain(loadConfig(e), e)).toThrow(/not POCKETQA_DEVNET_PLATFORM_PUBKEY/);
+  });
+});
+
+describe('the spend report reads costs with the platform PUBLIC key only (pqa-qa P3-SR1)', () => {
+  const tx = (payer: PublicKey, pre: number, post: number) => ({ slot: 77, meta: { preBalances: [pre, 1], postBalances: [post, 1] }, transaction: { message: { staticAccountKeys: [payer] } } });
+  const conn = (t: unknown) => ({ getTransaction: async () => t }) as unknown as Connection;
+  it('the cost of a platform-paid transaction is its fee payer’s balance drop (fee + rent), with its slot', async () => {
+    expect(await rpcCostReader(conn(tx(platform.publicKey, 10_000_000, 7_955_720)), platform.publicKey.toBase58()).costOf('sig')).toEqual({ lamports: 2_044_280, slot: 77 });
+  });
+  it('another payer, or no finalized transaction: null (never a guess)', async () => {
+    expect(await rpcCostReader(conn(tx(Keypair.generate().publicKey, 10, 5)), platform.publicKey.toBase58()).costOf('sig')).toBeNull();
+    expect(await rpcCostReader(conn(null), platform.publicKey.toBase58()).costOf('sig')).toBeNull();
+  });
+  it('the report script never loads the platform secret', () => {
+    const src = readFileSync(join(__dirname, '../scripts/devnet-spend-report.ts'), 'utf8');
+    expect(src).not.toMatch(/loadPlatformSigner|assertPlatformSigner|PLATFORM_SIGNER|RpcDevnetChain\b/);
+    expect(src).toMatch(/rpcCostReader\(/);
   });
 });
