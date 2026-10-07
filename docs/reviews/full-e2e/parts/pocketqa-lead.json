@@ -180,7 +180,7 @@
   "sha": "7beaad5",
   "steps": "",
   "fixtures": {},
-  "observed": "Consent before joining and per-session recording consent: PASS (H-17 hosted; B-01..B-07 desktop). Keep/remove before upload and private storage: PASS (H-18/H-20). \"Secure screens record black\" (Android FLAG_SECURE) needs a physical device: BLOCKED (P-01..P-03, USB debugging unauthorized).",
+  "observed": "Consent before joining and per-session recording consent: PASS (H-17 hosted; B-01..B-07 desktop). Keep/remove before upload and private storage: PASS (H-18/H-20). \"Secure screens record black\" (Android FLAG_SECURE) needs a physical device: BLOCKED (not exercised on the Seeker: device capture paused by Hamza; needs a human at the device).",
   "evidence": [
    "docs/reviews/full-e2e/deck/pocketqa-deck-page-05.png",
    "docs/reviews/full-e2e/economics.md",
