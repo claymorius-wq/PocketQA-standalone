@@ -1,3 +1,5 @@
+/* global document, localStorage -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

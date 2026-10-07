@@ -1,3 +1,5 @@
+/* global document, localStorage -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
 // Desktop completion of W-20 (ledger after) and W-23 (sign-out) for the already-approved run.
 import { createRequire } from 'node:module';
 import { readFileSync, writeFileSync } from 'node:fs';

@@ -1,3 +1,5 @@
+/* global document, localStorage -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
 // pqa-ios full-e2e WEB regression on production (https://pocketqa.vercel.app), real UI, Chromium.
 // Synthetic accounts only; credentials read from the env files in memory and never printed or
 // screenshotted while visible. Usage: node regression.mjs <viewport: desktop|mobile> <outDir>
