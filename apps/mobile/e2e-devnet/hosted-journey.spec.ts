@@ -347,6 +347,11 @@ test('4 · tester: finds the study, consents with the linked wallet, attaches sy
     await t.goto(`${ORIGIN}/participation/${RESUME_PARTICIPATION_ID}`);
     await expect(t.getByTestId('participation-screen')).toBeVisible({ timeout: 60_000 });
     await step('tester-resumed-participation', t, `resumed participation ${RESUME_PARTICIPATION_ID}`);
+    // Already submitted in an earlier segment: never upload or submit twice.
+    if (/AWAITING REVIEW/.test((await t.getByTestId('session-status').innerText().catch(() => '')) ?? '')) {
+      await step('tester-already-submitted', t, 'submitted in an earlier segment; no second upload or submit');
+      return;
+    }
     if (await t.getByTestId('session-start').isVisible()) await t.getByTestId('session-start').click();
   } else {
     await t.getByTestId('tab-discover').click();
