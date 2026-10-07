@@ -147,7 +147,8 @@ function AccountData() {
     mutationFn: () => api('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } }),
     onSuccess: async () => {
       await forgetSeenBadges(user?.id);
-      await signOut();
+      // The sheet said so: the account's recordings on this phone go with it.
+      await signOut({ deleteRecordings: true });
     },
   });
   // The rose hairline between keeping your data and deleting it, lit at its near end.
@@ -170,7 +171,7 @@ function AccountData() {
       <ConfirmSheet
         visible={confirm}
         title="Delete your account?"
-        body="This can’t be undone. Type DELETE MY ACCOUNT to confirm."
+        body="This can’t be undone. Recordings on this phone that you haven’t uploaded are deleted too. Type DELETE MY ACCOUNT to confirm."
         confirmLabel="Delete forever"
         destructive
         confirmDisabled={phrase !== 'DELETE MY ACCOUNT'}
@@ -206,8 +207,38 @@ function AiStatus() {
   );
 }
 
+/**
+ * Sign out. On a phone, recordings not uploaded yet live on the device; signing out deletes them, so
+ * it asks first and says exactly that (Hamza's preserve rule, 2026-10-07: no recording is deleted
+ * without the tester's confirmed action). The web keeps no recordings on the device: no sheet.
+ */
+function SignOut() {
+  const { signOut } = useSession();
+  const [asking, setAsking] = useState(false);
+  if (Platform.OS === 'web') {
+    return <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => void signOut()} testID="sign-out" style={styles.signOut} />;
+  }
+  return (
+    <>
+      <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => setAsking(true)} testID="sign-out" style={styles.signOut} />
+      <ConfirmSheet
+        visible={asking}
+        title="Sign out?"
+        body="Recordings on this phone that you haven’t uploaded are deleted when you sign out. Upload or keep working on them first if you need them."
+        confirmLabel="Sign out and delete"
+        destructive
+        onCancel={() => setAsking(false)}
+        onConfirm={() => {
+          setAsking(false);
+          void signOut({ deleteRecordings: true });
+        }}
+      />
+    </>
+  );
+}
+
 export function SettingsScreen() {
-  const { user, signOut } = useSession();
+  const { user } = useSession();
   const { colors, type, preference, setPreference } = useTheme();
   return (
     <Screen title="Settings" subtitle={user ? `${user.displayName} · ${user.role}` : undefined} testID="settings-screen">
@@ -240,7 +271,7 @@ export function SettingsScreen() {
       <AiStatus />
       <SettingsSection title="Account">
         <AccountData />
-        <Button label="Sign out" icon="signOut" variant="secondary" onPress={() => void signOut()} testID="sign-out" style={styles.signOut} />
+        <SignOut />
       </SettingsSection>
     </Screen>
   );

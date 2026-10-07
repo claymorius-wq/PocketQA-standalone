@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '../../api/client';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
@@ -186,6 +186,7 @@ describe('SettingsScreen states', () => {
     await fireEvent.press(screen.getByTestId('delete-account'));
     expect(screen.getByTestId('confirm-sheet')).toBeTruthy();
     expect(screen.getByText('Delete your account?')).toBeTruthy();
+    expect(screen.getByTestId('confirm-sheet')).toHaveTextContent(/recordings on this phone that you haven.t uploaded/i);
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true });
     await fireEvent.changeText(screen.getByTestId('delete-phrase'), 'delete');
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true });
@@ -208,11 +209,25 @@ describe('SettingsScreen states', () => {
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await settle();
     expect(api).toHaveBeenCalledWith('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } });
-    expect(mockSession.signOut).toHaveBeenCalledTimes(1);
+    // Deleting the account also deletes its recordings on this device; the sheet says so.
+    expect(mockSession.signOut).toHaveBeenCalledWith({ deleteRecordings: true });
     expect(await AsyncStorage.getItem('pocketqa.badgesSeen.u1')).toBeNull();
   });
 
-  it('Sign out signs out directly (no sheet)', async () => {
+  it('phone: Sign out asks first and says the recordings not uploaded are deleted; Cancel keeps everything', async () => {
+    await renderSettings('builder');
+    await fireEvent.press(screen.getByTestId('sign-out'));
+    expect(mockSession.signOut).not.toHaveBeenCalled();
+    expect(screen.getByTestId('confirm-sheet')).toHaveTextContent(/recordings on this phone that you haven.t uploaded are deleted/i);
+    await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    expect(mockSession.signOut).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('sign-out'));
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    expect(mockSession.signOut).toHaveBeenCalledWith({ deleteRecordings: true });
+  });
+
+  it('web: Sign out signs out directly (no sheet; no recordings are kept on a web device)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
     await renderSettings('builder');
     await fireEvent.press(screen.getByTestId('sign-out'));
     expect(mockSession.signOut).toHaveBeenCalledTimes(1);

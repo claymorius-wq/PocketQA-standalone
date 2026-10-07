@@ -20,7 +20,10 @@ import java.util.UUID
  * after uploading or discarding, and deletes everything unsent when the tester leaves the session in
  * the foreground. So a session screen destroyed while the tester is in another app (low memory,
  * "Don't keep activities") loses nothing; pqa-qa r1 P2-A. Only the clip's own session sees it.
- * Everything expires after [TTL_MS], and [clearAll] runs on sign-out and account deletion.
+ * Hamza's preserve rule (2026-10-07): NOTHING here deletes a recording by itself. No clip expires;
+ * a truncated MP4 is kept (never offered or uploaded); [clearAll] runs only when the tester signs out
+ * with "delete recordings" or deletes the account, both behind a confirm that says so. Only temp files
+ * of non-active writes, orphan markers/metas (no MP4 left) and the "interrupted" notices go.
  * java.util.Properties keeps this pure JVM (unit-tested without Android).
  */
 class PendingStore(private val dir: File, private val now: () -> Long = System::currentTimeMillis) {
@@ -131,20 +134,21 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
   }
 
   /**
-   * Deletes truncated recordings (an MP4 with no meta that isn't [active]: the process died while
-   * writing it, so it is never offered or uploaded) and leaves their session a notice; drops stray
-   * metas and temp files; expires everything older than [TTL_MS].
+   * Housekeeping that never deletes a recording (see the class doc): drops temp files of writes that
+   * aren't [active], markers and metas whose MP4 is gone, and notices older than [NOTICE_TTL_MS]. A
+   * truncated recording (an MP4 with no meta that isn't [active]: the process died while writing it)
+   * stays on the device; its session is told once, through a `.lost` notice made from its `.rec`.
    */
   fun sweep(active: File?) {
     val files = dir.listFiles() ?: return
+    // A temp file is `<id>.<ext>.tmp`, so its recording is the name up to the first dot.
     val activeId = active?.nameWithoutExtension
     for (f in files) {
-      val id = f.nameWithoutExtension
+      val id = f.name.substringBefore('.')
       when {
-        f.name.endsWith(".tmp") -> f.delete()
         id == activeId -> Unit
+        f.name.endsWith(".tmp") -> f.delete()
         f.name.endsWith(".mp4") -> if (!sibling(f, ".meta").exists()) {
-          f.delete()
           val rec = sibling(f, ".rec")
           load(rec)?.getProperty("tag")?.let { tag ->
             write(sibling(f, ".lost"), Properties().apply {
@@ -155,16 +159,14 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
           rec.delete()
         }
         f.name.endsWith(".rec") -> if (!sibling(f, ".mp4").exists()) f.delete()
+        // Only a meta whose clip is definitely gone; an unreadable one stays (its clip is never touched).
         f.name.endsWith(".meta") -> {
           val e = read(f)
-          if (e == null || !e.file.exists() || now() - e.createdAt > TTL_MS) {
-            e?.file?.delete()
-            f.delete()
-          }
+          if (e != null && !e.file.exists()) f.delete()
         }
         f.name.endsWith(".lost") -> {
           val at = load(f)?.getProperty("createdAt")?.toLongOrNull()
-          if (at == null || now() - at > TTL_MS) f.delete()
+          if (at == null || now() - at > NOTICE_TTL_MS) f.delete()
         }
       }
     }
@@ -177,6 +179,7 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
   }
 
   companion object {
-    const val TTL_MS = 24L * 60 * 60 * 1000
+    /** An "interrupted" notice is a message, not a recording: it is dropped after a day. */
+    const val NOTICE_TTL_MS = 24L * 60 * 60 * 1000
   }
 }

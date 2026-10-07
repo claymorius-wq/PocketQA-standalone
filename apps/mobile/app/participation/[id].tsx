@@ -305,8 +305,9 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
   const pending =
     segments.filter((s) => s.state === 'recorded' || s.state === 'kept' || s.state === 'failed' || s.state === 'uploading').length + (recording ? 1 : 0);
   useEffect(() => onPendingChange(pending), [pending, onPendingChange]);
-  // Leaving the screen discards anything not uploaded: stop the upload loop (it reads the
-  // list through `get`, which returns nothing once cancelled) and delete the local copies.
+  // Leaving the screen stops the upload loop (it reads the list through `get`, which returns nothing
+  // once cancelled). It never deletes a recording (Hamza's preserve rule, 2026-10-07): clips not
+  // uploaded stay on the device, listed again when the tester comes back to this session.
   const cancelled = useRef(false);
   useEffect(
     () => () => {
@@ -315,13 +316,11 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
       // "Don't keep activities"): that is not the tester leaving. The recording carries on and its
       // clips stay listed natively until the session screen comes back (pqa-qa r1 P2-A).
       if (AppState.currentState !== 'active') return;
-      // The tester left the session: capture never outlives it; stop and delete an in-progress
-      // recording, and delete everything not uploaded.
-      if (recorder) {
-        const discard = recorder.isRecording() ? recorder.discardAsync() : Promise.resolve();
-        void discard.then(() => recorder.purgeAsync()).catch(() => {});
-      }
-      live.current.filter((s) => s.state !== 'uploaded' && s.state !== 'removed').forEach(deleteLocal);
+      // The tester left the session: capture never outlives it, so an in-progress recording stops;
+      // its clip is finalised and kept natively for this session, like every clip not uploaded.
+      if (recorder?.isRecording()) void Promise.resolve(recorder.stopAsync()).catch(() => {});
+      // Web clips live only in this page's memory: release them (nothing is stored on the device).
+      if (Platform.OS === 'web') live.current.filter((s) => s.state !== 'uploaded' && s.state !== 'removed').forEach(deleteLocal);
     },
     [],
   );
@@ -444,6 +443,9 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
     if (live.current.find((s) => s.id === id)?.voiceProblem) return;
     update((l) => applySegment(l, id, 'keep'));
   }
+  // Removing deletes the clip from the phone, so it asks first (Hamza's preserve rule: a recording
+  // goes only by the tester's confirmed action).
+  const [removing, setRemoving] = useState<string | null>(null);
   function remove(id: string) {
     update((l) => removeSegment(l, id, deleteLocal));
   }
@@ -519,11 +521,23 @@ function EvidenceCapture({ p, onPendingChange, locked }: { p: Participation; onP
               error={s.error ?? s.voiceProblem}
               preview={s.uri ? <MediaPreview uri={s.uri} mimeType={s.mimeType} testID="segment-preview" /> : null}
               onKeep={locked || s.voiceProblem ? undefined : () => keep(s.id)}
-              onRemove={locked ? undefined : () => remove(s.id)}
+              onRemove={locked ? undefined : () => setRemoving(s.id)}
             />
           </View>
         ))}
       </GlideList>
+      <ConfirmSheet
+        visible={removing !== null}
+        title="Remove this clip?"
+        body="It’s deleted from this phone and can’t be recovered. Nothing of it has been uploaded."
+        confirmLabel="Remove"
+        destructive
+        onCancel={() => setRemoving(null)}
+        onConfirm={() => {
+          if (removing) remove(removing);
+          setRemoving(null);
+        }}
+      />
       {queued > 0 ? <Button label={`Upload ${queued} kept item${queued === 1 ? '' : 's'}`} icon={Upload} variant="secondary" onPress={uploadAll} loading={busy} disabled={locked} testID="upload-kept" /> : null}
       <QueryState query={uploaded}>
         {(d) =>
