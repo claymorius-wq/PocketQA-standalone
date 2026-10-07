@@ -829,7 +829,7 @@ export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays
 export type Leaderboard = z.infer<typeof Leaderboard>;
 export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });
 
-// ---------- demo showcase (POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1 only) ----------
+// ---------- demo showcase (staging's fixed cohort, Hamza 2026-10-07; devnet with POCKETQA_DEMO_SHOWCASE=1) ----------
 /**
  * Clearly labelled SYNTHETIC sample profiles for demos: fixtures, never accounts. No sign-in,
  * participation, ledger, earned rating or payout stands behind them, and the real GET /leaderboard
@@ -837,7 +837,7 @@ export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max
  * credit or USDC amount. Off (ClientConfig.features.demoShowcase false): 404 FEATURE_UNAVAILABLE.
  */
 export const DEMO_SHOWCASE_LABEL = 'Demo examples (not real users)';
-/** A fixture id (demo-1 … demo-12), never a user id. */
+/** A fixture id (demo-1 … demo-10; at most 10 served), never a user id. */
 const DemoId = z.string().regex(/^demo-[1-9]\d*$/);
 /** Always starts with "Demo " (so it can't be mistaken for a real pseudonym). */
 const DemoAlias = z.string().regex(/^Demo [A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/);
@@ -873,7 +873,7 @@ export const ClientConfig = z.object({
   walletLogin: z.boolean(),
   /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
   // `settlement` defaults to off: a server that predates escrow never enables it by omission.
-  // `demoShowcase`: GET /demo/showcase is served (devnet with POCKETQA_DEMO_SHOWCASE=1 only); off by omission.
+  // `demoShowcase`: GET /demo/showcase is served (staging's fixed cohort; devnet with POCKETQA_DEMO_SHOWCASE=1); off by omission.
   features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off'), demoShowcase: z.boolean().default(false) }),
   firebase: z
     .object({

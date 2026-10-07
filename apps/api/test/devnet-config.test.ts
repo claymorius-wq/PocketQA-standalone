@@ -56,7 +56,7 @@ describe('POCKETQA_ENV=devnet', () => {
   it('loads: hosted security, Firestore, the Squads devnet settlement, the devnet settings (no key in config)', () => {
     const c = loadConfig(devnet);
     expect(c).toMatchObject({ production: false, staging: false, dataBackend: 'firestore', authMode: 'firebase', storage: 'r2', features: { devnetTransfers: false, settlement: 'squads_devnet' }, pilotKeysDir: null });
-    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS, demoShowcase: false });
+    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS });
     expect(JSON.stringify(c)).not.toContain(canaryJson);
     expect(c.rpcUrl).toBe('https://api.devnet.solana.com');
   });
@@ -107,10 +107,21 @@ describe('devnet settings outside POCKETQA_ENV=devnet (CH-D4: production refuses
   });
 });
 
-describe('POCKETQA_DEMO_SHOWCASE (labelled demo fixtures): devnet only', () => {
-  it('is off by default and on with 1 in devnet', () => {
-    expect(loadConfig(devnet).devnet!.demoShowcase).toBe(false);
-    expect(loadConfig({ ...devnet, POCKETQA_DEMO_SHOWCASE: '1' }).devnet!.demoShowcase).toBe(true);
+describe('the demo showcase mode (devnet store by flag; hosted staging fixtures by code, Hamza 2026-10-07)', () => {
+  it('devnet: off by default, the namespace store with POCKETQA_DEMO_SHOWCASE=1', () => {
+    expect(loadConfig(devnet).demoShowcase).toBe('off');
+    expect(loadConfig({ ...devnet, POCKETQA_DEMO_SHOWCASE: '1' }).demoShowcase).toBe('store');
+  });
+  it('staging (the hosted app): the fixed fixture cohort, on by code with no env variable', () => {
+    expect(loadConfig(staging).demoShowcase).toBe('fixtures');
+    expect(hostedConfig({ ...staging, CRON_SECRET: 'c'.repeat(40) } as NodeJS.ProcessEnv).config.demoShowcase).toBe('fixtures');
+  });
+  it('production and development: off', () => {
+    expect(loadConfig(production).demoShowcase).toBe('off');
+    expect(loadConfig({ POCKETQA_DATA_DIR: '/tmp/pqa-devnet-dev' }).demoShowcase).toBe('off');
+  });
+  it('staging still refuses the devnet pilot, word for word', () => {
+    expect(messageOf(() => loadConfig({ ...staging, POCKETQA_SETTLEMENT: 'squads_devnet' }))).toBe('Staging never runs the devnet pilot (server-held test keys): use POCKETQA_SETTLEMENT=simulated or off.');
   });
   it.each(['0', 'true', 'yes', ''])('devnet refuses the value %j (only 1 turns it on)', (v) => {
     expect(() => loadConfig({ ...devnet, POCKETQA_DEMO_SHOWCASE: v })).toThrow(/POCKETQA_DEMO_SHOWCASE must be 1/);

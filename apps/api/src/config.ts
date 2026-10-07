@@ -39,10 +39,18 @@ export type Config = {
    * POCKETQA_ENV=devnet (docs/plans/devnet-phase-contract.md): the hosted integrated devnet journey.
    * Public settings only: the platform signer itself is loaded by settlement/squads/devnetSigner.ts
    * and never enters the config. `allowedEmails`: the labelled synthetic accounts that may start a
-   * server-signed operation (CH-D1). `demoShowcase` (POCKETQA_DEMO_SHOWCASE=1): GET /demo/showcase
-   * serves the labelled demo fixtures (src/devnet/demoShowcase.ts). Null in every other env.
+   * server-signed operation (CH-D1). Null in every other env.
    */
-  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits; demoShowcase: boolean } | null;
+  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits } | null;
+  /**
+   * GET /demo/showcase (src/devnet/demoShowcase.ts; labelled synthetic examples, at most 10):
+   *  - 'fixtures': staging, the hosted app. Hamza's decision (2026-10-07): the showcase is visible
+   *    there, enabled in code (no env variable). Served straight from the fixture: no Firestore
+   *    read or write, so production collections and the real leaderboard are untouched.
+   *  - 'store': POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1, from the namespace's demoProfiles.
+   *  - 'off': everything else (production, development, devnet without the flag): 404.
+   */
+  demoShowcase: 'off' | 'fixtures' | 'store';
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -122,8 +130,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // other env, production included, refuses them by name and never echoes a value.
   const devnetKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_DEVNET_') && env[k] !== undefined);
   if (!devnetEnv && devnetKeys.length) throw new ConfigError(`${devnetKeys.join(', ')}: only for POCKETQA_ENV=devnet.`);
-  // The demo showcase (labelled synthetic fixtures) exists only beside the devnet journey: never in
-  // production, staging or development, whatever the value.
+  // The demo showcase variable exists only beside the devnet journey: production, staging and
+  // development refuse it, whatever the value. (Staging shows the fixture cohort by code instead.)
   if (!devnetEnv && env.POCKETQA_DEMO_SHOWCASE !== undefined) throw new ConfigError('POCKETQA_DEMO_SHOWCASE: only for POCKETQA_ENV=devnet.');
   const dataBackend = (env.POCKETQA_DATA_BACKEND ?? 'sqlite') as Config['dataBackend'];
   if (dataBackend !== 'sqlite' && dataBackend !== 'firestore') throw new ConfigError('POCKETQA_DATA_BACKEND must be sqlite or firestore.');
@@ -308,6 +316,8 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     escrowFeeBps,
     pilotKeysDir,
     devnet,
+    // Hamza (2026-10-07): staging (the hosted app) shows the fixed demo cohort; devnet only with its flag.
+    demoShowcase: devnetEnv ? (env.POCKETQA_DEMO_SHOWCASE === '1' ? 'store' : 'off') : staging ? 'fixtures' : 'off',
     host: host as Config['host'],
     port,
     dataDir,
@@ -361,7 +371,7 @@ function devnetSettings(env: Record<string, string | undefined>, dataBackend: Co
   if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
   const demo = env.POCKETQA_DEMO_SHOWCASE;
   if (demo !== undefined && demo !== '1') throw new ConfigError('POCKETQA_DEMO_SHOWCASE must be 1 (or unset).');
-  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env), demoShowcase: demo === '1' };
+  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env) };
 }
 
 /**

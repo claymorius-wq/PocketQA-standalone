@@ -1,5 +1,5 @@
 // The demo showcase on Firestore, in the devnet namespace (Hamza via the lead, 2026-10-07; pqa-qa
-// acceptance bar r1): the seed writes ONLY pocketqaNamespaces/devnet/demoProfiles (+12, every other
+// acceptance bar r1): the seed writes ONLY pocketqaNamespaces/devnet/demoProfiles (+10, every other
 // collection's count unchanged), run 2 changes nothing (updateTime), a partial state gets only the
 // missing documents, a differing one is refused untouched; GET /demo/showcase serves the demo rows
 // only with the flag; GET /leaderboard and GET /me/reputation are byte-identical with and without
@@ -7,7 +7,7 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEMO_SHOWCASE_LABEL, DemoShowcase, Leaderboard } from '@pocket-qa/contracts';
-import { demoProfileFixtures, seedDemoShowcase } from '../../src/devnet/demoShowcase';
+import { demoProfileFixtures, MAX_DEMO_PROFILES, seedDemoShowcase } from '../../src/devnet/demoShowcase';
 import { DEVNET_ROOT } from '../../src/firestore/namespace';
 import { DEVICE, makeApp, STUDY, type TestApp } from '../helpers';
 import { emulatorFirestore } from './fs';
@@ -16,6 +16,11 @@ process.env.PQA_TEST_BACKEND = 'firestore';
 process.env.PQA_TEST_NAMESPACE = 'devnet';
 const raw = emulatorFirestore();
 const DEMO = `${DEVNET_ROOT}/demoProfiles`;
+/** The two builder docs live devnet holds from before the 10-profile cap (exact stored content). */
+const LEGACY_BUILDERS = [
+  { id: 'demo-11', kind: 'builder', alias: 'Demo Fern Apps', studiesPublished: 2, demo: true },
+  { id: 'demo-12', kind: 'builder', alias: 'Demo Quarry Games', studiesPublished: 1, demo: true },
+];
 let t: TestApp | undefined;
 afterEach(async () => {
   await t?.close();
@@ -63,27 +68,27 @@ async function realLeaderboard(app: TestApp) {
 const rawBody = async (app: TestApp, url: string, token: string) => (await app.app.inject({ method: 'GET', url, headers: { authorization: `Bearer ${token}` } })).body;
 
 describe('the seed (A1–A3, D2, D3)', () => {
-  it('the only delta is demoProfiles +12; run 2 = 0 changes (updateTime unchanged)', async () => {
+  it('the only delta is demoProfiles +10 (Hamza: at most 10); run 2 = 0 changes (updateTime unchanged)', async () => {
     t = await makeApp();
     await realLeaderboard(t);
     const before = await counts();
-    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 12, unchanged: 0, total: 12, readBack: 12 });
+    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 10, unchanged: 0, total: 10, readBack: 10 });
     const after = await counts();
-    expect(after).toEqual({ ...before, 'devnet/demoProfiles': 12 });
+    expect(after).toEqual({ ...before, 'devnet/demoProfiles': 10 });
     expect(before['devnet/demoProfiles']).toBeUndefined();
     expect(Object.keys(after).filter((k) => k.startsWith('/'))).toEqual(['/pocketqaNamespaces']);
     expect((await raw.collection(DEMO).get()).docs.map((d) => d.id).sort()).toEqual(demoProfileFixtures().map((f) => f.id).sort());
     const times = await updateTimes();
-    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 0, unchanged: 12, total: 12, readBack: 12 });
+    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 0, unchanged: 10, total: 10, readBack: 10 });
     expect(await updateTimes()).toEqual(times);
     expect(await counts()).toEqual(after);
   });
 
-  it('a partial state (3 of 12) gets exactly the missing 9; the 3 are not rewritten', async () => {
+  it('a partial state (3 of 10) gets exactly the missing 7; the 3 are not rewritten', async () => {
     t = await makeApp();
     for (const f of demoProfileFixtures().slice(0, 3)) await raw.doc(`${DEMO}/${f.id}`).create(f);
     const times = await updateTimes();
-    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 9, unchanged: 3, total: 12, readBack: 12 });
+    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 7, unchanged: 3, total: 10, readBack: 10 });
     const now = await updateTimes();
     for (const id of Object.keys(times)) expect(now[id]).toBe(times[id]);
   });
@@ -105,7 +110,7 @@ describe('QA P3-D2: the read-only pre-check on real aliases', () => {
     t = await makeApp();
     // A root (production-path) profile is never read: the seed proceeds.
     await raw.doc('leaderboardProfiles/u-root').create({ user_id: 'u-root', opted_in: 1, alias: 'Demo Root', updated_at: '2026-10-01T00:00:00.000Z' });
-    expect(await seedDemoShowcase(t.deps.repo)).toMatchObject({ written: 12 });
+    expect(await seedDemoShowcase(t.deps.repo)).toMatchObject({ written: 10 });
     // Written directly into the namespace: the API now refuses such an alias, but one may predate the guard.
     await raw.doc(`${DEVNET_ROOT}/leaderboardProfiles/u-old`).create({ user_id: 'u-old', opted_in: 1, alias: 'DemoMaple', updated_at: '2026-10-01T00:00:00.000Z' });
     const times = await updateTimes();
@@ -115,16 +120,30 @@ describe('QA P3-D2: the read-only pre-check on real aliases', () => {
 });
 
 describe('GET /demo/showcase in the devnet namespace (B4, C2)', () => {
-  it('flag on: public, labelled, 8 testers and 4 builders, every row demo: true (empty before the seed)', async () => {
-    t = await makeApp({ demoShowcase: true });
+  it('flag on: public, labelled, 8 testers and 2 builders (10 at most), every row demo: true (empty before the seed)', async () => {
+    t = await makeApp({ demoShowcase: 'store' });
     expect((await t.req('GET', '/demo/showcase')).body).toEqual({ label: DEMO_SHOWCASE_LABEL, testers: [], builders: [] });
     await seedDemoShowcase(t.deps.repo);
     const r = await t.req('GET', '/demo/showcase');
     expect(r.status).toBe(200);
     const show = DemoShowcase.parse(r.body);
     expect(show.testers.map((p) => p.id)).toEqual(['demo-1', 'demo-2', 'demo-3', 'demo-4', 'demo-5', 'demo-6', 'demo-7', 'demo-8']);
-    expect(show.builders.map((p) => p.id)).toEqual(['demo-9', 'demo-10', 'demo-11', 'demo-12']);
+    expect(show.builders.map((p) => p.id)).toEqual(['demo-9', 'demo-10']);
     for (const p of [...show.testers, ...show.builders]) expect(p).toMatchObject({ demo: true, alias: expect.stringMatching(/^Demo /) });
+  });
+
+  it('Hamza cap: the live state (12 stored: demo-11/12 from before the cap) serves 10; the seed writes 0 and leaves all 12 as they are', async () => {
+    t = await makeApp({ demoShowcase: 'store' });
+    for (const d of [...demoProfileFixtures(), ...LEGACY_BUILDERS]) await raw.doc(`${DEMO}/${d.id}`).create(d);
+    const times = await updateTimes();
+    const show = DemoShowcase.parse((await t.req('GET', '/demo/showcase')).body);
+    expect(show.testers).toHaveLength(8);
+    expect(show.builders.map((p) => p.id)).toEqual(['demo-9', 'demo-10']);
+    expect(show.testers.length + show.builders.length).toBe(MAX_DEMO_PROFILES);
+    expect(await seedDemoShowcase(t.deps.repo)).toEqual({ written: 0, unchanged: 10, total: 10, readBack: 10 });
+    expect(await updateTimes()).toEqual(times);
+    expect(Object.keys(times)).toHaveLength(12);
+    expect((await raw.doc(`${DEMO}/demo-12`).get()).data()).toEqual(LEGACY_BUILDERS[1]);
   });
 
   it('flag off: 404 FEATURE_UNAVAILABLE even with the fixtures seeded', async () => {
@@ -142,7 +161,7 @@ describe('the real ranking is unchanged (B1, B3)', () => {
     const { b, testers } = await realLeaderboard(t);
     const snapshot = async () => [await rawBody(t!, '/leaderboard', b.token), ...(await Promise.all(testers.map((u) => rawBody(t!, '/me/reputation', u.token))))];
     const setFlag = (on: boolean) => {
-      t!.deps.config.devnet = on ? { platform: '', arbiter: '', feeWallet: '', allowedEmails: [], signer: { kind: 'env' }, limits: t!.deps.config.devnet?.limits ?? { global: { lamports: 0, usdcUnits: 0 }, perUser: { lamports: 0, usdcUnits: 0 } }, demoShowcase: true } : null;
+      t!.deps.config.demoShowcase = on ? 'store' : 'off';
     };
     const base = await snapshot();
     expect(Leaderboard.parse(JSON.parse(base[0]!)).items.length).toBeGreaterThan(0);

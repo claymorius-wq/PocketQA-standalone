@@ -1,6 +1,6 @@
 import { assertCleanCopy, LEADERBOARD_MIN_DECIDED, REPUTATION_WINDOW_DAYS } from '@pocket-qa/domain';
 import { me, type Handler } from '../context';
-import { isDemoAlias, showcaseFrom } from '../devnet/demoShowcase';
+import { demoProfileFixtures, isDemoAlias, showcaseFrom } from '../devnet/demoShowcase';
 import { fail, failWithStatus } from '../util';
 
 export const reputationHandlers = {
@@ -20,14 +20,16 @@ export const reputationHandlers = {
   leaderboard: async (ctx) => ({ items: await ctx.deps.repo.escrow.leaderboard(ctx.deps.now()), windowDays: REPUTATION_WINDOW_DAYS, minDecided: LEADERBOARD_MIN_DECIDED }),
 
   /**
-   * The labelled demo fixtures (src/devnet/demoShowcase.ts). Exists only with POCKETQA_DEMO_SHOWCASE=1
-   * (which config accepts only in POCKETQA_ENV=devnet) AND the devnet namespace's repositories;
-   * otherwise 404 FEATURE_UNAVAILABLE (lead decision). Never merged into the leaderboard above.
+   * The labelled demo examples (src/devnet/demoShowcase.ts), at most 10. Public, read-only. Per
+   * config.demoShowcase: 'fixtures' (staging, the hosted app) serves the fixture itself and never
+   * touches data; 'store' (devnet with POCKETQA_DEMO_SHOWCASE=1) reads the namespace's demoProfiles;
+   * otherwise 404 FEATURE_UNAVAILABLE. Never merged into the leaderboard above.
    */
   demoShowcase: async (ctx) => {
     const { repo, config } = ctx.deps;
-    if (config.devnet?.demoShowcase !== true || repo.namespace !== 'devnet' || !repo.escrow.demo) throw failWithStatus(404, 'FEATURE_UNAVAILABLE', 'The demo showcase is not available on this deployment.');
-    return showcaseFrom(await repo.escrow.demo.list());
+    if (config.demoShowcase === 'fixtures') return showcaseFrom(demoProfileFixtures());
+    if (config.demoShowcase === 'store' && repo.namespace === 'devnet' && repo.escrow.demo) return showcaseFrom(await repo.escrow.demo.list());
+    throw failWithStatus(404, 'FEATURE_UNAVAILABLE', 'The demo showcase is not available on this deployment.');
   },
 
   /**
