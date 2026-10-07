@@ -126,7 +126,7 @@ function DeviceMismatch({ device }: { device: DeviceProfile }) {
 export default function Discover() {
   const { user } = useSession();
   const { colors, type } = useTheme();
-  const q = useEligible();
+  const q = useEligible(user?.id);
   useFocusRefetch(q);
   const state = listState(q);
   const reEnter = useReEnter(state);

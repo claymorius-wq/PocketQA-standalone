@@ -5,14 +5,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { DeviceProfile } from '@pocket-qa/contracts';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import Discover from '../app/(tester)/discover';
+import { useAppFocus } from '../src/lib/queries';
 
 // Study ia2ed9db (production trace by the lead): the server lists it to 38/39 Android testers, incl.
 // the reporting tester, yet the APK's Discover doesn't show it. Remaining suspects are client-side:
 // (i) a stale Discover list: queries don't refetch on window focus, nothing refetches on app
 // RESUME (AppState), only on a tab focus; (ii) the ["eligible"] cache isn't user-scoped, so a list
 // fetched for one account can be shown to another after an account switch.
-// These tests state the DESIRED behaviour; written failing-first, no fix yet. They are `it.failing`
-// so the suite stays green while the bug is real: when a fix lands they FAIL, and must be flipped to `it`.
+// Written failing-first (it.failing, 622581d); flipped to `it` with the fix: the root's useAppFocus
+// wires React Query's focusManager to AppState (eligible refetches on window focus), the key is
+// ['eligible', userId], and the session clears the cache on any change of user.
 
 jest.mock('lucide-react-native', () =>
   jest.requireActual(jest.requireActual<typeof import('node:path')>('node:path').join(process.cwd(), '../../node_modules/lucide-react-native/dist/cjs/lucide-react-native.js')),
@@ -35,11 +37,16 @@ const { api } = jest.requireMock<{ api: jest.Mock }>('../src/api/client');
 const study = (id: string, title: string) => ({ id, title, objective: 'o', rewardCredits: 0, reward: { kind: 'test_credits', credits: 10 }, taskCount: 1, slotsRemaining: 5 });
 const eligibleCalls = () => api.mock.calls.filter((c) => c[0] === 'eligibleStudies').length;
 const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 24, left: 0, right: 0, bottom: 16 } };
+/** The root layout's app-wide focus wiring (app/_layout.tsx calls useAppFocus once). */
+function Root() {
+  useAppFocus();
+  return <Discover />;
+}
 const tree = (client: QueryClient) => (
   <QueryClientProvider client={client}>
     <SafeAreaProvider initialMetrics={METRICS}>
       <ThemeProvider fonts="system">
-        <Discover />
+        <Root />
       </ThemeProvider>
     </SafeAreaProvider>
   </QueryClientProvider>
@@ -63,7 +70,7 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('Discover freshness (study ia2ed9db investigation)', () => {
-  it.failing('(i) coming back to the app (AppState background -> active) refetches the eligible studies', async () => {
+  it('(i) coming back to the app (AppState background -> active) refetches the eligible studies', async () => {
     api.mockResolvedValueOnce({ items: [] }).mockResolvedValueOnce({ items: [study('ia2ed9db', 'Android onboarding check')] });
     await render(tree(appClient()));
     await settle();
@@ -74,13 +81,13 @@ describe('Discover freshness (study ia2ed9db investigation)', () => {
     await act(async () => appStateListeners.forEach((l) => l('active')));
     await settle();
     expect(eligibleCalls()).toBe(2);
-    expect(screen.getByText('Android onboarding check')).toBeTruthy();
+    expect(await screen.findByText('Android onboarding check')).toBeTruthy();
   });
 
-  it.failing('(ii) after an account switch, the previous account’s eligible list is not shown to the new account', async () => {
+  it('(ii) after an account switch, the previous account’s eligible list is not shown to the new account', async () => {
     const client = appClient();
     // Account A's list is in the cache (fetched while A was signed in).
-    client.setQueryData(['eligible'], { items: [study('only-for-A', 'Study only A matches')] });
+    client.setQueryData(['eligible', 'tester-A'], { items: [study('only-for-A', 'Study only A matches')] });
     // B signs in on the same app without the cache being cleared; B's own list comes from the server.
     mockUser = { id: 'tester-B', device: ANDROID };
     let resolveB: (v: unknown) => void = () => {};
@@ -91,7 +98,7 @@ describe('Discover freshness (study ia2ed9db investigation)', () => {
     expect(screen.queryByText('Study only A matches')).toBeNull();
     await act(async () => resolveB({ items: [study('ia2ed9db', 'Android onboarding check')] }));
     await settle();
-    expect(screen.getByText('Android onboarding check')).toBeTruthy();
+    expect(await screen.findByText('Android onboarding check')).toBeTruthy();
     expect(screen.queryByText('Study only A matches')).toBeNull();
   });
 });

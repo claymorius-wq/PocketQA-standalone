@@ -73,6 +73,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const token = useRef<string | null>(null);
   const fb = useRef<Auth | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  // Any change of signed-in user (not only signOut) clears the query cache, so one account's lists
+  // are never shown to another (study ia2ed9db: the eligible list). The same user again keeps it.
+  const userId = useRef<string | null>(null);
+  const switchUser = useCallback(
+    (next: User) => {
+      if (userId.current !== null && userId.current !== next.id) qc.clear();
+      userId.current = next.id;
+      setUser(next);
+    },
+    [qc],
+  );
   const [ready, setReady] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('local');
   const [walletLogin, setWalletLogin] = useState(false);
@@ -97,6 +108,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (opts?.deleteRecordings) await nativeRecorder()?.clearAllAsync?.().catch(() => {});
     token.current = null;
     setUser(null);
+    userId.current = null;
     setNeedsAccount(false);
     setSignedInEmail(null);
     qc.clear();
@@ -110,14 +122,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (r.kind === 'signed-in') {
       setNeedsAccount(false);
       setSignedInEmail(null);
-      setUser(r.user);
+      switchUser(r.user);
     } else {
       setNeedsAccount(true);
       setSignedInEmail(fb.current?.currentUser?.email ?? null);
       const saved = await AsyncStorage.getItem(PENDING_PROFILE).catch(() => null);
       setPendingProfile(saved ? (JSON.parse(saved) as NewAccount) : null);
     }
-  }, []);
+  }, [switchUser]);
 
   useEffect(() => {
     configureClient({ getToken: () => token.current, onUnauthenticated: () => void endSession() });
@@ -164,7 +176,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (saved) {
         token.current = saved;
         try {
-          setUser(await api('me'));
+          switchUser(await api('me'));
         } catch (e) {
           // Only a definite "signed out" ends the saved session; offline keeps it and says the
           // server can't be reached, with Try again (main-app P2: an offline start used to sign out
@@ -176,13 +188,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setReady(true);
     })();
     return () => unsubscribe?.();
-  }, [endSession, resolveManaged, attempt]);
+  }, [endSession, resolveManaged, attempt, switchUser]);
 
   const accept = useCallback(async (res: { token: string; user: User }) => {
     token.current = res.token;
     await tokenStore.set(res.token);
-    setUser(res.user);
-  }, []);
+    switchUser(res.user);
+  }, [switchUser]);
 
   /** Firebase mode: wait for the ID token after a sign-in, then map it. */
   const afterFirebaseSignIn = useCallback(async () => {
@@ -305,15 +317,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setSignedInEmail(null);
         setPendingProfile(null);
         await AsyncStorage.removeItem(PENDING_PROFILE).catch(() => {});
-        setUser(r.user);
+        switchUser(r.user);
       },
       signOut: async (opts) => {
         await api('logout').catch(() => {});
         await endSession(opts);
       },
-      refreshUser: async () => setUser(await api('me')),
+      refreshUser: async () => switchUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, googleSignIn, signedInEmail, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, endSession],
+    [ready, user, authMode, storage, walletLogin, googleSignIn, signedInEmail, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, endSession, switchUser],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
