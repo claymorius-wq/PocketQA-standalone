@@ -30,7 +30,8 @@
  {
   "kind": "sent",
   "chain": "solana:devnet",
-  "signature": "23qD7jPTNBFeituGRx7ydY67GbGyBNtfZLeWm2QH1LfUGkn4ZPTmyRWhbDToQme34FWbrY5wRC5deXPgGF8LarLc",
+  "signaturePrefix": "23qD7jPTNB",
+  "signatureSha256": "38ae69bd44ff4f1334b823c7d23d658f6d185f01253431984fe94996f59c04b4",
   "approved": true
  },
  {

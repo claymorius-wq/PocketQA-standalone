@@ -30,7 +30,8 @@
  {
   "kind": "sent",
   "chain": "solana:devnet",
-  "signature": "27ozdg2YXSVbnZgR3xkJBsQJavpZaCHndikaHgqVLszDj61zoa1ga4b162KTxTD1Sv6RDkp2SrHpqjamVHNfXqEb",
+  "signaturePrefix": "27ozdg2YXS",
+  "signatureSha256": "19d6556f3b2863b62c0216a46bc00e36631d9c362e4da785b96337bdcbe79ddc",
   "approved": true
  },
  {
@@ -53,7 +54,8 @@
  {
   "kind": "sent",
   "chain": "solana:devnet",
-  "signature": "XSM2KiCVtFfSPLiZYbWpSyV5uJsN2QTeyeg5TsyfkNXH66w7nSK4Q5zahgv2VrwzSSLrVEnbcvNydktup3MXpBy",
+  "signaturePrefix": "XSM2KiCVtF",
+  "signatureSha256": "2a736f153483e070d90b987d3281a0103298eb34a032fc838bcd8dd2e0ace5f2",
   "approved": true
  },
  {
@@ -76,7 +78,8 @@
  {
   "kind": "sent",
   "chain": "solana:devnet",
-  "signature": "3G4WUPfQPHpoi9B2RZ38pQaTdixr8S73YPgsrBZU5eE8AMTzrZnt6gKtXhpwznGJum4HT1PvZx6Kzw3DY2bsiPG6",
+  "signaturePrefix": "3G4WUPfQPH",
+  "signatureSha256": "59487dda3ac5be0b092ae03d3027bc867b64b2d0eaf26282886cc8512fb9756e",
   "approved": true
  },
  {
