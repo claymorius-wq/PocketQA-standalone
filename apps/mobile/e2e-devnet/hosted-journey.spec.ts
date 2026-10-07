@@ -323,8 +323,10 @@ test('3 · builder: escrow study on the devnet pilot, fund it in the wallet (can
 
   await b.getByTestId('escrow-fund').click();
   await expect(b.getByTestId('escrow-pilot-request')).toBeVisible();
-  for (let i = 0; i < 12 && !(await b.getByTestId('escrow-wallet-plan').isVisible()); i++) {
-    await b.getByTestId('escrow-wallet-review').click();
+  for (let i = 0; i < 20 && !(await b.getByTestId('escrow-wallet-plan').isVisible()); i++) {
+    // The button is disabled while a review is loading (e.g. the vault still being created): click only when enabled.
+    const review = b.getByTestId('escrow-wallet-review');
+    if ((await review.isVisible()) && (await review.isEnabled())) await review.click();
     await b.waitForTimeout(3_000);
   }
   await expect(b.getByTestId('escrow-wallet-plan')).toBeVisible();
