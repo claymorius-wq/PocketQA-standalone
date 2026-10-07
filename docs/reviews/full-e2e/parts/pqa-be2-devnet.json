@@ -1,0 +1,210 @@
+[
+  {
+    "id": "E-20",
+    "area": "devnet",
+    "title": "Crash after submit: the real step machine adopts by signature/op id and never re-sends (CH-D5)",
+    "status": "PASS",
+    "environment": "emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "test/emulator/devnet.races.stage2.test.ts (real devnetSettlement() on Firestore, devnet namespace): crash after each of dest_ata_create, vault_tx_create, proposal_create, approve_platform, execute; RPC timeout after execute; execute in flight; blockhash expiry boundary; receipt deleted (restore) then recovered by op id. Invariants after each: <=1 landed vault_tx_create/execute per op, no new bytes after the execute, no rebuild while earlier bytes can land, every broadcast present in the REAL Firestore receipt first.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "dest_ata_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; vault_tx_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; proposal_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; approve_platform: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; execute: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; rpc-timeout: {\"result\":\"done\",\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; inflight: {\"firstSlice\":\"pending\",\"secondSlice\":\"pending\",\"result\":\"done\",\"executeSignatures\":1,\"invariants\":[]}; expiry: {\"executeSignaturesAtBoundary\":1,\"executeSignaturesTotal\":2,\"result\":\"done\",\"invariants\":[]}; lost-receipt: {\"result\":\"done\",\"vaultTxBroadcastsBefore\":1,\"after\":1,\"invariants\":[]}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+    ],
+    "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-21",
+    "area": "devnet",
+    "title": "N concurrent settles = 1 on-chain execution; a stale lease holder broadcasts nothing",
+    "status": "PASS",
+    "environment": "emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "stage 2: 20 concurrent slices of one payment gated at the execute broadcast; stale lease: holder A parked before preparing the execute, clock +31 s, holder B takes over (asserted: B sends the execute), A released.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "concurrent: {\"outcomes\":{\"pending\":10,\"done\":10},\"finalResult\":\"done\",\"executesLanded\":1,\"executeBroadcasts\":1,\"invariants\":[]}; stale lease: {\"A\":\"pending\",\"B\":\"pending\",\"aBroadcastsAfterTakeover\":0,\"bExecuteBroadcasts\":1,\"result\":\"done\",\"invariants\":[]}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+    ],
+    "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-22",
+    "area": "devnet",
+    "title": "Duplicate approve/fund requests (Idempotency-Key) and tampered builder transactions (CH-D3), through the hosted app",
+    "status": "PASS",
+    "environment": "hosted-emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "test/emulator/devnet.http.races.test.ts: hostedDeps(real devnet env, be3's test-only connectors) + buildHostedApp over HTTP; 20 concurrent approves (10 one key, 10 distinct); 20 concurrent funding opens; the server-built funding transaction decoded; 4 tampered builder transfers submitted as the funding signature.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "duplicate approve: {\"statuses\":{\"200 approved\":10,\"409 CONFLICT_STATE\":10},\"settlementRows\":1,\"finalStatus\":\"confirmed\",\"executes\":1,\"invariants\":[]}; duplicate fund: {\"statuses\":{\"200\":20},\"distinctFundingIds\":1,\"usdcReserved\":110000,\"quote\":110000}; server-built funding: {\"from\":true,\"vault\":true,\"amount\":true,\"reference\":true,\"mint\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"network\":\"devnet\"}; tampered: {\"another vault\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"mainnet USDC mint\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"one unit short\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"wrong reference\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"}}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt"
+    ],
+    "notes": "Approval mismatch (wrong txIndex/opId -> 409 APPROVAL_MISMATCH, bogus signature -> 409 COSIGNER_NOT_SEEN) is covered by be3's devnet.adapter suite (74/74 in be3-devnet-emulator-suites.txt), not by an independent pqa-be2 test yet. CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-23",
+    "area": "devnet",
+    "title": "Refusals before any signature on the real step machine",
+    "status": "PASS",
+    "environment": "emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "stage 2: 8 chain conditions armed after vault preparation, then one settle slice: count of broadcasts after arming; plus a settled payment re-driven and re-driven with its receipt deleted.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "non-devnet genesis (mainnet): {\"slice\":\"refused: Refused before signing: the RPC is not Solana devnet (genesis hash mismatch).\",\"broadcastsAfterArming\":0}; mint owned by Token-2022: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; mint with 9 decimals: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; the RPC answers the mint query with the MAINNET USDC account: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; Squads program not executable: {\"slice\":\"refused: Refused before signing: the Squads v4 program is not deployed as pinned on this cluster.\",\"broadcastsAfterArming\":0}; multisig threshold 1-of-3: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; multisig with a config authority: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; multisig with an extra member: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; double-execute: {\"again\":\"done\",\"restored\":\"done\",\"newBroadcasts\":0,\"destBalance\":1000}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+    ],
+    "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-24",
+    "area": "devnet",
+    "title": "Ledger integers = on-chain token deltas (payouts, refund) and the fee sweep on close",
+    "status": "PASS",
+    "environment": "hosted-emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "stage 2 ledgerVsChain per finished payment (receipt, settlement, balances, execute's parsed pre/post token balances); hosted journey over HTTP; close of the journey study and settle.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "journey: {\"status\":\"confirmed\",\"settlementUnits\":100000,\"destDelta\":100000,\"vaultDelta\":-100000,\"executes\":1,\"invariants\":[],\"funding\":{\"quote\":220000,\"vaultCredited\":220000}}; close: {\"close\":200,\"settlements\":[\"payout:confirmed:100000\",\"refund:confirmed:110000\",\"fee:confirmed:10000\"],\"rows\":3,\"vaultBefore\":120000,\"vault\":0,\"funderDelta\":110000,\"feeDelta\":10000,\"closeOutflow\":120000,\"feeSettled\":10000,\"bookedFee\":10000,\"feeBps\":1000,\"invariants\":[]}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt",
+      "docs/reviews/devnet/bugs/E-24-fee-sweep-not-implemented.md"
+    ],
+    "notes": "Was FAIL at b0f5793 (the fee sweep, decision (a), not implemented: 10000 stayed in the vault; bugs/E-24-fee-sweep-not-implemented.md); be3 12de3df implemented it. Now: vault 0 after close, fee wallet on-chain delta = the fee settlement = the booked fee (quote perTestFeeUnits x paid tests). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-25",
+    "area": "devnet",
+    "title": "Spend caps, liveness, authz matrix of every devnet route, the rate limiter (CH-D1)",
+    "status": "PASS",
+    "environment": "hosted-emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "stage 2: 20 payouts vs a 2-payment lamport cap (liveness, driven round-robin), 20 funding reservations vs a 2-USDC cap, cumulative spend after 2 finished payments; HTTP: matrix of the 7 contract routes under /escrow/ or /settlements/ (coverage asserted from the contract) x anon/tester/admin/other builder/owner, an off-allow-list builder, 60 rapid calls on 2 send routes.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "lamport cap: {\"cap\":18297840,\"claimed\":2,\"firstSlice\":{\"refused: Refused before signing: this payment woul\":18,\"pending\":2},\"completed\":2,\"stranded\":0,\"spend\":{\"lamports\":18237840,\"usdcUnits\":0}}; funding cap: {\"ok\":2,\"refusals\":[\"Funding this study would exceed the devnet test-USDC cap; no\"]}; cumulative spend: {\"platformPaidOnChain\":18237840,\"spendUser\":{\"lamports\":18237840,\"usdcUnits\":0},\"spendGlobal\":{\"lamports\":18237840,\"usdcUnits\":0},\"receiptStepStatusesAtFinish\":{\"dest_ata_create\":\"finalized\",\"vault_tx_create\":\"finalized\",\"proposal_create\":\"finalized\",\"approve_platform\":\"finalized\",\"execute\":\"finalized\"}}; authz: {\"createEscrowFunding\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"getEscrowFunding\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":200},\"simulatedWalletPayment\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":403,\"owner\":403},\"submitFundingSignature\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"escrowFundingTransaction\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"settlementApproval\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":200},\"submitSettlementApproval\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409}}; off-allow-list: {\"createFunding\":\"403 FEATURE_UNAVAILABLE\",\"newPrepares\":0,\"broadcasts\":0}; rate limit: {\"counts\":{\"createEscrowFunding\":{\"200\":19,\"429 RATE_LIMITED\":41},\"escrowFundingTransaction\":{\"200\":18,\"429 RATE_LIMITED\":42}},\"newPrepares\":0,\"newBroadcasts\":0}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt",
+      "docs/reviews/devnet/bugs/E-25-spend-cap-trueup-zero.md",
+      "docs/reviews/devnet/bugs/E-25-no-rate-limiter-on-devnet-routes.md"
+    ],
+    "notes": "Was FAIL at d8e14f7 on two be3 gaps, both fixed by be3 and approved by pqa-qa freeze r2: (1) true-up returned every finished payment's lamports (bugs/E-25-spend-cap-trueup-zero.md; fixed 37b30d5: cumulative spend now equals what the platform paid), (2) no rate limiter on the devnet send routes (bugs/E-25-no-rate-limiter-on-devnet-routes.md; fixed 5ec7cf9). The 429 test asserts 0 prepares and 0 broadcasts during the burst. The hosted suite is now standalone per test (pqa-qa freeze r2 (b)-(d)). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-26",
+    "area": "devnet",
+    "title": "Env guards: existing refusals byte-identical, devnet settings only in devnet, signer never leaked, deploy scan",
+    "status": "PASS",
+    "environment": "unit",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "test/devnet/env-guards.test.ts: 128 non-devnet environments through today's loadConfig and the verbatim dc5da90 copy; each POCKETQA_DEVNET_ setting outside devnet; devnet refusals; malformed and mismatched signer at load; needles.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "{\"E-26/byte-identical\":{\"cases\":128,\"accepted\":3,\"refusedDistinctMessages\":12,\"diffs\":0},\"E-26/devnet-refusals\":{\"settlementSimulated\":\"ERR: POCKETQA_ENV=devnet runs only with POCKETQA_SETTLEMENT=squads_devnet.\",\"settlementOff\":\"ERR: POCKETQA_ENV=devnet runs only with POCKETQA_SETTLEMENT=squads_devnet.\",\"pilotKeysDir\":\"ERR: POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: no settlement provider, mint, RPC, network or key can be configured (ADR 0007); the devnet pilot takes only POCKETQA_SETTLEMENT_PILOT_KEYS_DIR.\",\"sharedDemo\":\"ERR: The shared demo never runs in devnet.\",\"realAllowList\":\"ERR: POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.\",\"mixedAllowList\":\"ERR: POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.\"},\"E-26/mainnet-rpc\":{\"outcome\":\"ok\"},\"E-26/malformed-signer\":{\"config\":\"ok\",\"loader\":\"ERR: POCKETQA_DEVNET_PLATFORM_SIGNER must hold a JSON array of 64 bytes (the value is not shown).\"},\"E-26/needles\":{\"count\":9,\"covered\":{\"hexKey\":true,\"b64Key\":true,\"hexSeed\":true}}}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/stage1-harness-selftest.txt"
+    ],
+    "notes": "Observation: devnet config accepts a MAINNET RPC URL; the protection is the runtime genesis check before any signature (E-23 'non-devnet genesis' PASS). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-27",
+    "area": "devnet",
+    "title": "Isolation through the hosted app: Firestore namespace, R2 devnet/ prefix, production evidence untouchable",
+    "status": "PASS",
+    "environment": "hosted-emulator",
+    "deployment": "n/a (emulator; no live devnet send)",
+    "sha": "eb5ddba",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "test/emulator/devnet.hosted-isolation.test.ts: hostedDeps(real devnet env, connectors), HTTP journey incl. an escrow study, export, both cron jobs; every root collection counted; hosted store presign/head/delete with production objects seeded at the bucket root.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "firestore: {\"steps\":{\"builderSession\":200,\"testerSession\":200,\"device\":200,\"createStudy\":200,\"exportMe\":200,\"cronSettle\":200,\"cronSweep\":200},\"createStudyCode\":null,\"insideNamespaceCollections\":[\"escrowVaults\",\"identities\",\"jobLeases\",\"studies\",\"studyEscrows\",\"userEmails\",\"userProviders\",\"users\"],\"docsOutsideNamespace\":{}}; r2: {\"putStatus\":200,\"physicalKeys\":[\"pocketqa-evidence/devnet/evidence/devnetprobe01\",\"pocketqa-evidence/evidence/prodobject01\",\"pocketqa-evidence/retained-local-submissions/prod-archive.mp4\"],\"headOfProdKeyThroughDevnetStore\":null}",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/E-27-hosted-isolation.txt",
+      "docs/reviews/devnet/bugs/E-27-hosted-devnet-isolation.md"
+    ],
+    "notes": "Was FAIL (P1) on the code before be3's 9f7e3f7: devnet hosted writes went to production collections and the devnet store deleted a production evidence object (bugs/E-27-hosted-devnet-isolation.md, evidence E-27-hosted-isolation-red.txt at 3ee3b3d); PASS since, now without mocks. CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0)."
+  },
+  {
+    "id": "E-28",
+    "area": "devnet",
+    "title": "Live devnet races within bounds",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": "lead loopback serve of the devnet web candidate artifact 2cab74f (http://127.0.0.1:8697; POCKETQA_PUBLIC_ORIGIN https://pocketqa-devnet.vercel.app; caps global 250M / user 200M lamports)",
+    "sha": "bd461d3",
+    "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+    "steps": "FRESH single pass: test-live/devnet.e28-races.live.test.ts at bd461d3 (clean checkout; harness sha256 e2fd07e4…, readRetry e5e3b5f8…, pqa-qa approved), PQA_E28_LIVE=1, new study cdda612d, 2026-10-06T23:26:27Z, no other /jobs traffic. Pre-T-0 devnetSpend (lead, read-only): global/user 66044960 lamports, 66000 USDC units.",
+    "fixtures": {
+      "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+    },
+    "observed": "PASSED (exit 0): funding 22000 after verifyFundingTx (vault 5smMfu7n…); crash after the vault tx + proposal landed, adopted; restarts old pid 84414->93140->93343->93509; H-2 kill #1 proposal Active (builder vote only), kill #2 Approved (builder + platform); N=5 concurrent slices; payout tx#1 executed once (H-3: executeOk 1 / failed 0 / platformVotes 1); refund (tx#2, 11000) and fee (tx#3, 1000) each builder-approved once after verifyApprovalTx; independent readback (run.json): all three txs executeOk 1 / failed 0 / platformVotes 1 / builderVotes 1 / failedTxs 0, opIds = harness-computed; vault 0; fee wallet +1000 = booked fee (per-test fee x 1 paid test); builder test USDC net 11000; platform spent 20303480 lamports (<= 50M); Squads program data unchanged. HISTORY: EVERYTHING UP TO THE CLOSE PASSED ON CHAIN: funding 22000 after verifyFundingTx; crash after the vault tx + proposal landed, adopted; restarts old pid 19469->45783->45915->45938; H-2 kill #1 with the proposal Active (builder vote only), kill #2 with it Approved (builder + platform); N=5 concurrent slices; payout tx#1 EXECUTED once: executeOk 1 / failed 0 / platformVotes 1 / builderVotes 1, tester ATA +10000; refund and fee approvals each signed ONCE after verifyApprovalTx (opIds and destinations = harness-computed). THE CLOSE STOPPED BY RULE on a harness gap: the close loop re-requested the refund approval after the builder's vote had landed; the wallet's 2nd ProposalApprove failed at SIMULATION (Squads InvalidProposalStatus 6008) and NOTHING landed (tx#3 builderVotes 1, failedTxs 0). State left: study 227fbd36 closed, fee (tx#2, 1000) and refund (tx#3, 11000) APPROVED, not executed, vault 12000; platform spent 20293480 lamports (< 50M). Not reached: vault 0 after close, fee wallet + = booked fee, after-snapshot bounds. Product behaviour observed was correct throughout; the FAIL is the harness run not completing.",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-fresh-pass-bd461d3.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-run-fresh-pass.json",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-T0-3-2afbd34.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-run-T0-3.json",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-attempt1-fc25a77.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-attempt2-03a1bb9.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-cleanup-0213a47a-b3710a4.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-run-cleanup.json",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-T0-4-bd461d3.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-run-T0-4.json",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-finish-227fbd36-41193fe.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-28-cleanup-2cffc01c-d633aaf.txt"
+    ],
+    "notes": "PASS on the fresh single pass (pending pqa-qa's readback). Earlier attempts kept: #1 fc25a77 and #2 03a1bb9 harness gaps before/at the first kill; #3 2afbd34 close stopped on a harness gap with nothing landed (study 227fbd36 finished at 41193fe, QA FC-1 PASS); #4 bd461d3 refused before signing by the then-lifetime global cap (study 2cffc01c cleaned up at d633aaf, QA PASS). Synthetic accounts and fixture wallets only; devnet test USDC (no value)."
+  },
+  {
+    "id": "E-29",
+    "area": "devnet",
+    "title": "Live devnet dispute path: overturn pays once via the arbiter CLI vote; upheld pays nothing; close within bounds",
+    "status": "PASS",
+    "environment": "devnet",
+    "deployment": "lead loopback serve of the devnet artifact 4ee4603 (http://127.0.0.1:8697, PID 11773; includes pqa-be3's arbiter CLI 1fa2b2d, ALREADY_APPROVED b3395da, admin plan route a87b33b, devnet-namespace admin 2180b1e)",
+    "sha": "62e884b",
+    "binds_to": "harness test-live/devnet.e29-dispute.live.test.ts at 62e884b (QA-approved resume harness 5a6b8d5 r3 + gate flip; sha256 1bb09c87ab46ade9876f891e9a31e5104669c76cf3163e6f520689b09f69c8eb); server artifact 4ee4603",
+    "steps": "RESUME mode (E29_RESUME_STUDY_ID=b3efa2ce-4dc5-480d-a8d8-d21871395b91) from a fresh clean worktree (~/.local/share/pocketqa/runs/e29-resume-2-62e884b, clean=0), PQA_E29_LIVE=1, 2026-10-07T00:26:37Z, lead's settle loop stopped, no other live run. The resume skipped creation/funding/rejects/disputes/resolutions (done in attempt 1), re-asserted them from the API, then: settle slices until awaiting_cosigner + proposal Active -> arbiter CLI dry run -> ONE --send -> second run -> settle -> close. Bounds and booked integers checked against attempt 1's BEFORE snapshot (pinned, cross-checked verbatim with the evidence file), i.e. attempt 1 + resume combined.",
+    "fixtures": {
+      "data": "synthetic only: builder, testers A and B, the devnet-namespace admin; fixture wallets (builder, arbiter 5ZFcx5EB…, platform DoUXiXfn…, fee wallet HS1mSCPN…); in-memory tester keys (testers only receive); devnet test USDC (no value)"
+    },
+    "observed": "PASSED (exit 0, 101.9 s). Re-asserted: study published + funded 22000, A 72ca25c7 dispute resolved OVERTURNED, B 03a461a1 dispute resolved UPHELD, B's ATA absent; preconditions: vault 22000, multisig J7kALMas… index 1, no drift on the shared builder/fee wallets, builder wallet linked. Plan = attempt 1's (settlement 23d4a638, txIndex 1, opId pqa-op1:14d88bfb…), cosigner arbiter, opId = harness-computed; builder approval refused; no payout for B. Arbiter CLI: dry run sent false -> ONE --send sent true (5HFU4J8n…) -> second {sent false, alreadyApproved true}. Payout confirmed; tx #1 executeOk 1 / executeFailed 0 / platformVotes 1 / arbiterVotes 1 / builderVotes 0 / failedTxs 0; A's ATA 10000; B's ATA null. Close: refund + fee sweep each builder-approved once after verifyApprovalTx; vault 0; exactly 3 vault txs, none paying B. Final read-only chain: proposals #1-#3 Executed; #1 approved by arbiter + platform (exactly one arbiter vote, arbiter spent exactly 5000 lamports), #2/#3 by builder + platform. Books (combined): builder test USDC 15546000 -> 15535000 (-11000 = reward 10000 + fee 1000); fee wallet 4000 -> 5000 (+1000 = per-test fee x 1 paid test); platform 4810271640 -> 4779963160 = 30308480 lamports incl. the 10000000 arbiter fixture funding (<= 50M); Squads program data unchanged. HISTORY: attempt 1 (4a21dd8, 2026-10-07T00:10Z) created + funded study b3efa2ce (22000 after verifyFundingTx), rejected both, both disputed, A overturned / B upheld, then STOPPED by rule: the harness called the arbiter CLI while the plan was still 'claimed' (no vault tx yet); the CLI refused, nothing signed (fixed at 14736bf: wait for awaiting_cosigner + proposal Active). Resume run 1 (62e884b, 00:23Z, clean worktree e29-resume-62e884b): all checks passed through the dry run; the --send STOPPED at simulation ('no record of a prior credit'): the arbiter fixture held 0 lamports (fee payer of its own vote); nothing broadcast; read-only state: proposal #1 Active with 0 votes, vault 22000. The lead then funded the arbiter fixture with 10000000 lamports (platform transfer, sig prefix yESeXcGYCMuc). Resume run 2 = this PASS.",
+    "evidence": [
+      "docs/reviews/devnet/evidence/pqa-be2/E-29-combined-4a21dd8-62e884b.txt",
+      "docs/reviews/devnet/evidence/pqa-be2/E-29-attempt1-4a21dd8.txt"
+    ],
+    "notes": "PASS on resume run 2 (pending pqa-qa's readback). Follow-up for QA at b9d380a (gate false): step-0 arbiter-SOL floor + P3-R1 (fresh branch assigns studyId before use). Suggested to pqa-be3: the CLI dry run should check the fee payer's SOL. Synthetic accounts and fixture wallets only; devnet test USDC (no value)."
+  }
+]

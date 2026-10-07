@@ -10,7 +10,7 @@ for f in sorted(glob.glob(os.path.join(H, 'parts', '*.json'))):
         rows.append(r)
 ids = collections.Counter(r['id'] for r in rows)
 assert not [i for i, n in ids.items() if n > 1], 'duplicate ids'
-ok = {'PASS', 'FAIL', 'BLOCKED', 'NOT OFFERED', 'NOT RUN'}
+ok = {'PASS', 'FAIL', 'BLOCKED', 'NOT OFFERED', 'NOT RUN', 'NOTE'}  # NOTE = informational, never a result
 assert all(r['status'] in ok for r in rows), 'bad status'
 assert all(r.get('environment') for r in rows), 'missing environment'
 json.dump({'generated_from': 'parts/*.json', 'rows': rows}, open(os.path.join(H, 'results.json'), 'w'), indent=1, ensure_ascii=False)

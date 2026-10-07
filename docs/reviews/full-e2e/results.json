@@ -114,7 +114,7 @@
    "sha": "7beaad5",
    "steps": "",
    "fixtures": {},
-   "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md.",
+   "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md. UPDATE 2026-10-07: approved work paid from a per-study escrow is now PROVEN ON DEVNET with valueless test USDC (E-28 fresh pass, E-29 dispute; QA readbacks); the claim as worded (\"USDC escrow on Solana\") remains NOT OFFERED for real USDC/mainnet, and the hosted product stays simulated.",
    "evidence": [
     "docs/reviews/full-e2e/deck/pocketqa-deck-page-01.png",
     "docs/reviews/full-e2e/economics.md"
@@ -234,7 +234,7 @@
    "sha": "31c2141",
    "steps": "",
    "fixtures": {},
-   "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe).",
+   "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe). UPDATE 2026-10-07: the dispute path is also proven on devnet (E-29: reject -> dispute -> admin overturn -> arbiter vote -> paid once; upheld -> nothing paid).",
    "evidence": [
     "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md",
     "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
@@ -251,19 +251,18 @@
    "id": "C-08",
    "area": "deck-claim",
    "title": "Slide 08: per-study 2-of-3 Squads v4 USDC vault; paid where agreed; fee only on approved work; wallet login via MWA; devnet pilot 26 finalized tx with refusals",
-   "status": "BLOCKED",
+   "status": "PASS",
    "environment": "devnet",
-   "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz / dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
-   "sha": "7beaad5",
+   "deployment": "devnet artifacts on loopback: 8c84fad (E-28 runs), 2cab74f (cleanup2 + fresh E-28), 4ee4603 (web + E-29); never deployed",
+   "sha": "4ee4603",
    "steps": "",
    "fixtures": {},
-   "observed": "Historic devnet pilot re-read now: 29/29 signatures finalized (27 ok + 2 expected refusals), amounts reconcile (funded 3300000 = settled 2000000 + fee 200000 + refunded 1100000), wrong-mint/threshold/double-execute refused, test mint != mainnet USDC (D-02..D-05). Deck says 26 finalized transactions; the readback covers 29 signatures, so the count needs re-checking against the pilot receipts. Fee on approved work only: escrow quote exact (H-13). Fresh bounded devnet run BLOCKED (D-06: pilot keys outside the repo need approval). Wallet login: hosted NOT OFFERED (W-01), local PASS (W-02..W-05).",
+   "observed": "FRESH integrated devnet evidence (not the historic pilot), each with pqa-qa independent chain readback: E-28 fresh single pass (bd461d3 on 2cab74f: funding -> crash adopt -> 2 in-flight kills -> N=5 -> payout once -> refund + fee sweep once; vault 0), E-29 dispute (62e884b on 4ee4603: overturn paid via exactly one arbiter vote, upheld paid nothing), WD-03 a builder funding signed through the real web UI (test wallet). Per-study Squads v4 2-of-3 vault, pinned devnet mint, fee only on approved tests (1000 per paid test), unused rewards + fees back on close: PASS on devnet. Exceptions: (a) the deck claim \"Your wallet is your login (MWA)\": hosted NOT OFFERED (walletLogin false), local PASS (W-02..W-05), MWA device path not run; (b) the deck count \"26 finalized transactions\" does not match the pilot readback (29 signatures); (c) custody is test keys held by one custodian, NOT independent custody; (d) no real USDC anywhere (devnet test mint 4zMMC9…, no value).",
    "evidence": [
-    "docs/reviews/full-e2e/deck/pocketqa-deck-page-08.png",
-    "docs/reviews/full-e2e/economics.md",
-    "docs/reviews/full-e2e/parts/pqa-be1.json",
-    "docs/reviews/full-e2e/parts/pqa-be2.json",
-    "docs/reviews/full-e2e/parts/pqa-ios.json"
+    "docs/reviews/full-e2e/parts/pqa-be2-devnet.json",
+    "docs/reviews/full-e2e/parts/pqa-be1-devnet.json",
+    "docs/reviews/full-e2e/parts/pqa-ios.json",
+    "docs/reviews/full-e2e/economics.md"
    ],
    "notes": "",
    "owner": "pocketqa-lead"
@@ -341,6 +340,408 @@
    ],
    "notes": "Production data written in this pass is synthetic only (labelled \"QA synthetic … be1\").",
    "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-08",
+   "area": "release",
+   "title": "Merge status: phase work on main",
+   "status": "NOT RUN",
+   "environment": "static",
+   "deployment": "n/a",
+   "sha": "daf0c85",
+   "steps": "git fetch; merge-base --is-ancestor per branch",
+   "fixtures": {},
+   "observed": "origin/main = daf0c85 (PR #11). NOTHING from this phase is merged: feat/firebase-vercel, feat/devnet-adapter, feat/devnet-races, feat/devnet-client, feat/devnet-builders, fix/e2e-p13-single-app-fgs are all off main. Merging needs reviewed PRs on the reshareai remote and Hamza's go (CLAUDE.md: no direct unreviewed main changes).",
+   "evidence": [
+    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
+   ],
+   "notes": "Production candidate 7bda3ce is deployed as dpl_DfajPV9S (pocketqa.vercel.app, simulated) without being on main.",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-09",
+   "area": "devnet",
+   "title": "Browser upload to R2 from the devnet origin (CORS)",
+   "status": "BLOCKED",
+   "environment": "loopback-devnet-artifact",
+   "deployment": "4ee4603",
+   "sha": "4ee4603",
+   "steps": "WD-06",
+   "fixtures": {},
+   "observed": "The R2 bucket CORS AllowedOrigins lack the devnet origin https://pocketqa-devnet.vercel.app; the browser PUT is refused (no Access-Control-Allow-Origin). CORS is bucket-wide (the devnet/ prefix shares the production bucket), so adding it widens production CORS. Options for the parent: add the origin PUT-only with exact headers, use an owned origin (a subdomain on optijara.ai), or a separate devnet bucket. Not routed around.",
+   "evidence": [
+    "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
+   ],
+   "notes": "External gate (parent/Hamza).",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-10",
+   "area": "devnet",
+   "title": "Hosted devnet preview deployment",
+   "status": "BLOCKED",
+   "environment": "static",
+   "deployment": "none",
+   "sha": "4ee4603",
+   "steps": "Vercel API read-only project read",
+   "fixtures": {},
+   "observed": "Project pocketqa: ssoProtection all_except_custom_domains, 0 protection-bypass entries, no password protection; no devnet preview created. The devnet product was exercised as the exact deploy artifact on loopback (serve-local) against real devnet, Firestore devnet namespace and R2 devnet/; a hosted preview needs Hamza (shareable link/automation bypass/Vercel login or an owned custom domain).",
+   "evidence": [
+    "docs/plans/devnet-phase-contract.md"
+   ],
+   "notes": "No protection setting was changed.",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "L-11",
+   "area": "incident",
+   "title": "/private/tmp session scratch deletion (live USB API data dir)",
+   "status": "BLOCKED",
+   "environment": "static",
+   "deployment": "n/a",
+   "sha": "b5a062e",
+   "steps": "lsof, backup sha/integrity, hosted reads",
+   "fixtures": {},
+   "observed": "See incident record. Verified backup 20261006T000054Z (sha 3501bc9e…, integrity ok, 11 media OK, counts 77/39/30/11/154); hosted Seeker evidence present (R2 27178114 B). PID 28574 still serves from open handles to deleted files. Recovery decision (restore option A/B) is Hamza's.",
+   "evidence": [
+    "docs/reviews/full-e2e/incident-2026-10-07-tmp-cleanup.md"
+   ],
+   "notes": "No claim of no loss; post-backup local writes unverifiable from outside the process.",
+   "owner": "pocketqa-lead"
+  },
+  {
+   "id": "WD-01",
+   "area": "auth",
+   "title": "Sign-in of both roles through the web UI; a mainnet-only wallet is not offered",
+   "status": "PASS",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 1: builder and tester sign in with email/password on /sign-in (real Firebase Auth, project pocketqa-optijara; credentials read in memory from the 0600 e28 env files). A separate browser context whose only injected wallet announces solana:mainnet opens /sign-in.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Passed in segment 1 (23:54:23Z/23:54:25Z), segment 2 (23:57Z) and segment 3 (23:59Z): builder lands on Studies, tester on Discover. The mainnet-only wallet ('Mainnet-only test wallet (injected by Playwright)', no key material) is not offered on sign-in (no 'Continue with Mainnet-only' entry). No mainnet request in any run (mainnetBlocked = [] in every run.json).",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/01-builder-signed-in.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/02-tester-signed-in.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/03-wrong-network-wallet-not-offered.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/run.json"
+   ],
+   "notes": "The wallet is a Wallet Standard TEST wallet injected by Playwright, not an extension; this is NOT a wallet-compatibility claim (real extension/MWA = separate human/device row, QA G-W3).",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-02",
+   "area": "wallet",
+   "title": "Wallet link: tester disconnects the previous throwaway link, one in-wallet cancel, links the tester fixture via SIWS; builder already linked",
+   "status": "PASS",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 2 under the lead's decision B: tester Settings shows the previous link 2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q (be2's last E-28 throwaway key); 'Unlink wallet' (DELETE /api/wallet); 'Link wallet' with the wallet refusing the SIWS signMessage once (User rejected, code 4001); 'Link wallet' again, signed by the tester fixture. Builder Settings: already linked to the builder fixture (recorded, no change).",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Previous link recorded verbatim 23:54:26.876Z; DELETE /api/wallet -> 200 at 23:54:27.866Z; the cancel showed the wallet error and linked nothing (23:54:30Z); POST /api/wallet/nonce 200 x2, POST /api/wallet/link 200; Settings shows 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs (~23:54:33Z). Tester wallet log: signMessage refused (policy), then signMessage approved; no transaction. Earlier attempt #3 (23:52Z) had STOPPED here on the unexpected link without any change. Segments 2 and 3 found both accounts already linked to their fixtures (no change).",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/05-tab-settings-wallet-previous-link.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/07-tab-settings-wallet-unlinked.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/08-tab-settings-wallet-link-cancelled.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/09-tab-settings-wallet-linked.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/tester-wallet-log.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/tester-console-network.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-52-04-731Z/run.json"
+   ],
+   "notes": "The unlink (DELETE /api/wallet 200 on synthetic tester-1) was done under the lead's decision B BEFORE the parent's override 'do NOT unlink any account or wallet'; no link change since (the parent's no-unlink / no-deletions rules hold). 2bV3...Cz9q held 0.01 test USDC and 0 SOL (read-only) and was left untouched on chain.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-03",
+   "area": "escrow",
+   "title": "Builder escrow study, funding plan card checked in the bytes, one in-wallet cancel, signed funding on devnet",
+   "status": "PASS",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 3 (segment 1): New study (Android+Web, en, API>=29), Wallet escrow (devnet pilot notice), reward 0.50 x 2 slots, Save draft -> quote 1.10 total (asserted <= 3); 'Fund ... from wallet' -> request; 'Review the transfer' (first try 409 vault still being created, then the plan); 'Sign and send' with the wallet refusing once (User rejected); 'Sign and send' again: the fixture signs, the harness sends the exact bytes to https://api.devnet.solana.com after a genesis check.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Funding plan card: amount, study vault token account, source, reference, mint all 'checked in this transaction' (CS1). Cancel: 'Not signed' error, nothing sent (23:54:49.578Z). Signed funding: signature prefix 23qD7jPT, sha256 38ae69bd44ff4f1334b823c7d23d658f6d185f01253431984fe94996f59c04b4, slot 508265229, finalized 23:54:49Z, err null, fee 5000 lamports: spl-token transferChecked 1100000 units (6 dec, mint 4zMMC9...) from builder ATA 3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux (16646000 -> 15546000) to study vault ATA Gup11F3SDfZc2SD8rCzJfqGbjbnGRDP4uzEv8RYNX8D9 (vault RgALyRMBcDbZLvnAC4CLiHrq4wN9NsGTKbnxqZUHo8t, 0 -> 1100000), reference 2aAraEszMbHCLFceCymK2rKdu1BKgEm98kvoEBWw4kqu as the 5th account. POST /api/escrow/fundings/328fe32d.../signature 200. Segment 1 was then stopped by the lead's override while waiting; segment 2 (23:57:07Z) showed 'Funded on devnet from 6XoD...dudn' (books: available 1.10) after the lead's settle loop. Builder SOL 49920000 -> 49915000.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/10-builder-new-escrow-study.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/11-builder-escrow-quote.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/12-builder-funding-plan-checked.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/13-builder-funding-cancelled-in-wallet.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/builder-wallet-log.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/builder-console-network.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/run.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/07-builder-funded.png"
+   ],
+   "notes": "QA read back 23qD7jPT on devnet. Test USDC moved: 1.10 (bound 3 per run). The 409 on the first transaction GET is the server's 'vault still being created' (expected), shown in the console log as one failed resource load.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-04",
+   "area": "escrow",
+   "title": "Publish the funded study",
+   "status": "PASS",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 3 (segment 2, resume mode: no creation, the fund button never pressed): reload until 'Funded on devnet', then Publish -> confirm.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Status PUBLISHED (23:57:10Z). Segment 3 found it already published and did not publish again.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/06-builder-resumed-study.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/07-builder-funded.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/08-builder-published.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json"
+   ],
+   "notes": "Segments: 1 = creation + funding (stopped by the lead), 2 = resume (publish), 3 = resume (tester). Every run.json records the segment and the segment-1 evidence dir.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-05",
+   "area": "tester",
+   "title": "Tester finds the study in Discover and consents with the linked fixture wallet",
+   "status": "PASS",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 4 (segment 3): Discover -> the study card -> consent checkbox + 'use my linked wallet for the reward' -> consent -> Start.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Study shown in Discover; consent 200 -> participation 85aff24a-5274-41a4-8711-b58962b09125, started (POST /start 200). Segment 2 had stopped here on a harness bug (see notes), not the product: GET /studies/eligible as the tester (read-only diagnosis) returned exactly this study.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/09-tester-study-detail.png",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/tester-console-network.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/run.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json"
+   ],
+   "notes": "",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-06",
+   "area": "evidence",
+   "title": "Tester evidence upload (synthetic 64x64 PNG) to R2",
+   "status": "BLOCKED",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 4: Attach evidence -> the synthetic PNG (generated flat 64x64, no personal content) -> Keep -> Upload kept.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "POST /api/participations/85aff24a.../evidence/upload-intents 200; the browser's direct PUT to https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/devnet/quarantine/c0526ef4-... failed 3x (net::ERR_FAILED); console: \"Access to fetch at ... from origin 'https://pocketqa-devnet.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present\". 'Uploaded (1)' never appeared.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/tester-console-network.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/run.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/segment3-playwright.txt"
+   ],
+   "notes": "EXTERNAL GATE: the R2 bucket CORS AllowedOrigins lacks https://pocketqa-devnet.vercel.app (the devnet POCKETQA_PUBLIC_ORIGIN); it would block the real devnet deployment too. A production R2 bucket change, reported by the lead to the parent; NOT routed around (no Playwright proxy for R2). The open upload intent was left to expire (no deletions). Segment 4 prepared: acdf5ff (resume the participation, retry the upload).",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-07",
+   "area": "tester",
+   "title": "Tester submits",
+   "status": "NOT RUN",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "Prepared in apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) steps 4-6.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Not run: blocked by WD-06 (no evidence uploaded, so no submission).",
+   "evidence": [],
+   "notes": "Runs as segment 4 (acdf5ff) once the R2 CORS origin is added and the lead gives GO.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-08",
+   "area": "escrow",
+   "title": "Builder approves; reward vote (one cancel, then sign); settled on devnet",
+   "status": "NOT RUN",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "Prepared in apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) steps 4-6.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Not run: blocked by WD-06 (no evidence uploaded, so no submission).",
+   "evidence": [],
+   "notes": "Runs as segment 4 (acdf5ff) once the R2 CORS origin is added and the lead gives GO.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-09",
+   "area": "escrow",
+   "title": "Close; refund and fee-sweep votes; finalized",
+   "status": "NOT RUN",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "Prepared in apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) steps 4-6.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Not run: blocked by WD-06 (no evidence uploaded, so no submission).",
+   "evidence": [],
+   "notes": "Runs as segment 4 (acdf5ff) once the R2 CORS origin is added and the lead gives GO.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-10",
+   "area": "escrow",
+   "title": "Balances: escrow books and read-only chain before/after",
+   "status": "NOT RUN",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "Prepared in apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) steps 4-6.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Not run: blocked by WD-06 (no evidence uploaded, so no submission).",
+   "evidence": [],
+   "notes": "Runs as segment 4 (acdf5ff) once the R2 CORS origin is added and the lead gives GO.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-11",
+   "area": "viewport",
+   "title": "The same journey in Pixel 7 emulation",
+   "status": "NOT RUN",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 Pixel 7 emulation, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project pixel7), after desktop.",
+   "fixtures": {
+    "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+    "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+    "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+    "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+    "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+   },
+   "observed": "Not run: the lead holds Pixel 7 until desktop completes.",
+   "evidence": [],
+   "notes": "Label: 'mobile viewport, NOT a physical-device wallet deep-link (MWA) test'.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-12",
+   "area": "escrow",
+   "title": "LOCAL journey on a FAKE chain: funding (tampered plan refused), reward vote checked, refund vote at close",
+   "status": "PASS",
+   "environment": "local-fake-chain (emulators + FakeDevnetChain), browser = Playwright Chromium, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "none (local, in-process connectors)",
+   "sha": "b5fa752",
+   "steps": "apps/mobile/e2e-devnet/journey.spec.ts on committed b5fa752 (no temporary merge): the real hosted app in POCKETQA_ENV=devnet through be3's test-only connectors (Firestore/Auth emulators on be1 ports, FakeS3, FakeDevnetChain with real transaction bytes), one virtual https origin in Playwright routing, everything else aborted.",
+   "fixtures": {
+    "accounts": "emulator-only synthetic builder/tester",
+    "wallets": "throwaway in-memory keys"
+   },
+   "observed": "3 passed (funding 6.6 s incl. a System-transfer plan refused in the browser with no wallet request; reward vote: vault tx read on the fake devnet, amount/recipient/op id checked, 2-of-3 executed; refund vote at close). Gates on b5fa752: mobile 1465, domain 301, api unit 779, api emulator 683.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/run.txt",
+    "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/02-funding-plan-checked.png",
+    "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/04-reward-vote-checked.png",
+    "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/06-refund-vote-checked.png",
+    "docs/reviews/devnet/pqa-be1-journey-harness.md"
+   ],
+   "notes": "FAKE CHAIN: not evidence of a real devnet transfer. Run before b08f840 (fee-sweep vote), so the fee sweep is not covered there.",
+   "owner": "pqa-be1-devnet"
+  },
+  {
+   "id": "WD-N1",
+   "area": "harness",
+   "title": "Harness issues found and fixed during the desktop run (test-only)",
+   "status": "NOTE",
+   "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+   "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+   "sha": "4ee4603",
+   "steps": "Attempts and segments on 2026-10-06/07, all under the lead's GO.",
+   "fixtures": {},
+   "observed": "(1) Attempt #1 23:50:52Z: the scratch dir under /private/tmp had been removed by the disk cleanup -> the shell failed on the output redirect; Playwright never started. (2) Attempt #2 23:51:27Z: the cleanup also removed ~/Library/Caches/ms-playwright -> no browser; re-downloading would be an install -> switched the hosted projects to the installed Google Chrome 154 (535a6f5). (3) Attempt #3 23:52:04Z: STOPPED on the tester's unexpected existing link 2bV3... (no change made). (4) Segment 2: a bare getByText(title) matched twice on the Discover card; the strict-mode error was swallowed by the wait as 'not visible' -> .first() (f78a74d). (5) Segment 1 was stopped by the parent's override; killed by exact PIDs, a zsh word-splitting slip meant the first kill hit only the parent shells (the rest exited with them, verified PID by PID). In every case the chain was inspected before any retry: nothing signed except the WD-03 funding.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/attempt2-playwright.txt",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/attempt3-playwright.txt",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-52-04-731Z/run.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json",
+    "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-51-28-172Z/run.json"
+   ],
+   "notes": "Evidence is copied from the gitignored apps/mobile/test-results/hosted-devnet (no secrets, no presigned URLs: query strings are dropped by the recorder).",
+   "owner": "pqa-be1-devnet"
   },
   {
    "id": "H-01",
@@ -1271,6 +1672,224 @@
    "owner": "pqa-be1"
   },
   {
+   "id": "E-20",
+   "area": "devnet",
+   "title": "Crash after submit: the real step machine adopts by signature/op id and never re-sends (CH-D5)",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "test/emulator/devnet.races.stage2.test.ts (real devnetSettlement() on Firestore, devnet namespace): crash after each of dest_ata_create, vault_tx_create, proposal_create, approve_platform, execute; RPC timeout after execute; execute in flight; blockhash expiry boundary; receipt deleted (restore) then recovered by op id. Invariants after each: <=1 landed vault_tx_create/execute per op, no new bytes after the execute, no rebuild while earlier bytes can land, every broadcast present in the REAL Firestore receipt first.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "dest_ata_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; vault_tx_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; proposal_create: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; approve_platform: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; execute: {\"result\":\"done\",\"crashed\":true,\"slices\":7,\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; rpc-timeout: {\"result\":\"done\",\"invariants\":[],\"ledger\":{\"ok\":true,\"settlementUnits\":1000,\"receiptUnits\":1000,\"destDelta\":1000,\"vaultDelta\":-1000,\"parsedDest\":1000,\"parsedVault\":-1000}}; inflight: {\"firstSlice\":\"pending\",\"secondSlice\":\"pending\",\"result\":\"done\",\"executeSignatures\":1,\"invariants\":[]}; expiry: {\"executeSignaturesAtBoundary\":1,\"executeSignaturesTotal\":2,\"result\":\"done\",\"invariants\":[]}; lost-receipt: {\"result\":\"done\",\"vaultTxBroadcastsBefore\":1,\"after\":1,\"invariants\":[]}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+   ],
+   "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-21",
+   "area": "devnet",
+   "title": "N concurrent settles = 1 on-chain execution; a stale lease holder broadcasts nothing",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "stage 2: 20 concurrent slices of one payment gated at the execute broadcast; stale lease: holder A parked before preparing the execute, clock +31 s, holder B takes over (asserted: B sends the execute), A released.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "concurrent: {\"outcomes\":{\"pending\":10,\"done\":10},\"finalResult\":\"done\",\"executesLanded\":1,\"executeBroadcasts\":1,\"invariants\":[]}; stale lease: {\"A\":\"pending\",\"B\":\"pending\",\"aBroadcastsAfterTakeover\":0,\"bExecuteBroadcasts\":1,\"result\":\"done\",\"invariants\":[]}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+   ],
+   "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-22",
+   "area": "devnet",
+   "title": "Duplicate approve/fund requests (Idempotency-Key) and tampered builder transactions (CH-D3), through the hosted app",
+   "status": "PASS",
+   "environment": "hosted-emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "test/emulator/devnet.http.races.test.ts: hostedDeps(real devnet env, be3's test-only connectors) + buildHostedApp over HTTP; 20 concurrent approves (10 one key, 10 distinct); 20 concurrent funding opens; the server-built funding transaction decoded; 4 tampered builder transfers submitted as the funding signature.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "duplicate approve: {\"statuses\":{\"200 approved\":10,\"409 CONFLICT_STATE\":10},\"settlementRows\":1,\"finalStatus\":\"confirmed\",\"executes\":1,\"invariants\":[]}; duplicate fund: {\"statuses\":{\"200\":20},\"distinctFundingIds\":1,\"usdcReserved\":110000,\"quote\":110000}; server-built funding: {\"from\":true,\"vault\":true,\"amount\":true,\"reference\":true,\"mint\":\"4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU\",\"network\":\"devnet\"}; tampered: {\"another vault\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"mainnet USDC mint\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"one unit short\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"},\"wrong reference\":{\"submit\":\"200 failed\",\"publish\":\"409 BUDGET_INSUFFICIENT\"}}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt"
+   ],
+   "notes": "Approval mismatch (wrong txIndex/opId -> 409 APPROVAL_MISMATCH, bogus signature -> 409 COSIGNER_NOT_SEEN) is covered by be3's devnet.adapter suite (74/74 in be3-devnet-emulator-suites.txt), not by an independent pqa-be2 test yet. CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-23",
+   "area": "devnet",
+   "title": "Refusals before any signature on the real step machine",
+   "status": "PASS",
+   "environment": "emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "stage 2: 8 chain conditions armed after vault preparation, then one settle slice: count of broadcasts after arming; plus a settled payment re-driven and re-driven with its receipt deleted.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "non-devnet genesis (mainnet): {\"slice\":\"refused: Refused before signing: the RPC is not Solana devnet (genesis hash mismatch).\",\"broadcastsAfterArming\":0}; mint owned by Token-2022: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; mint with 9 decimals: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; the RPC answers the mint query with the MAINNET USDC account: {\"slice\":\"refused: Refused before signing: the devnet test USDC mint does not match its pins (address, classic Token program, 6 decimals).\",\"broadcastsAfterArming\":0}; Squads program not executable: {\"slice\":\"refused: Refused before signing: the Squads v4 program is not deployed as pinned on this cluster.\",\"broadcastsAfterArming\":0}; multisig threshold 1-of-3: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; multisig with a config authority: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; multisig with an extra member: {\"slice\":\"refused: Refused before signing: the study multisig on chain is not the pinned autonomous 2-of-3 (threshold, config authority, time lock, rent collector or memb\",\"broadcastsAfterArming\":0}; double-execute: {\"again\":\"done\",\"restored\":\"done\",\"newBroadcasts\":0,\"destBalance\":1000}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt"
+   ],
+   "notes": "CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-24",
+   "area": "devnet",
+   "title": "Ledger integers = on-chain token deltas (payouts, refund) and the fee sweep on close",
+   "status": "PASS",
+   "environment": "hosted-emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "stage 2 ledgerVsChain per finished payment (receipt, settlement, balances, execute's parsed pre/post token balances); hosted journey over HTTP; close of the journey study and settle.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "journey: {\"status\":\"confirmed\",\"settlementUnits\":100000,\"destDelta\":100000,\"vaultDelta\":-100000,\"executes\":1,\"invariants\":[],\"funding\":{\"quote\":220000,\"vaultCredited\":220000}}; close: {\"close\":200,\"settlements\":[\"payout:confirmed:100000\",\"refund:confirmed:110000\",\"fee:confirmed:10000\"],\"rows\":3,\"vaultBefore\":120000,\"vault\":0,\"funderDelta\":110000,\"feeDelta\":10000,\"closeOutflow\":120000,\"feeSettled\":10000,\"bookedFee\":10000,\"feeBps\":1000,\"invariants\":[]}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt",
+    "docs/reviews/devnet/bugs/E-24-fee-sweep-not-implemented.md"
+   ],
+   "notes": "Was FAIL at b0f5793 (the fee sweep, decision (a), not implemented: 10000 stayed in the vault; bugs/E-24-fee-sweep-not-implemented.md); be3 12de3df implemented it. Now: vault 0 after close, fee wallet on-chain delta = the fee settlement = the booked fee (quote perTestFeeUnits x paid tests). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-25",
+   "area": "devnet",
+   "title": "Spend caps, liveness, authz matrix of every devnet route, the rate limiter (CH-D1)",
+   "status": "PASS",
+   "environment": "hosted-emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "stage 2: 20 payouts vs a 2-payment lamport cap (liveness, driven round-robin), 20 funding reservations vs a 2-USDC cap, cumulative spend after 2 finished payments; HTTP: matrix of the 7 contract routes under /escrow/ or /settlements/ (coverage asserted from the contract) x anon/tester/admin/other builder/owner, an off-allow-list builder, 60 rapid calls on 2 send routes.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "lamport cap: {\"cap\":18297840,\"claimed\":2,\"firstSlice\":{\"refused: Refused before signing: this payment woul\":18,\"pending\":2},\"completed\":2,\"stranded\":0,\"spend\":{\"lamports\":18237840,\"usdcUnits\":0}}; funding cap: {\"ok\":2,\"refusals\":[\"Funding this study would exceed the devnet test-USDC cap; no\"]}; cumulative spend: {\"platformPaidOnChain\":18237840,\"spendUser\":{\"lamports\":18237840,\"usdcUnits\":0},\"spendGlobal\":{\"lamports\":18237840,\"usdcUnits\":0},\"receiptStepStatusesAtFinish\":{\"dest_ata_create\":\"finalized\",\"vault_tx_create\":\"finalized\",\"proposal_create\":\"finalized\",\"approve_platform\":\"finalized\",\"execute\":\"finalized\"}}; authz: {\"createEscrowFunding\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"getEscrowFunding\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":200},\"simulatedWalletPayment\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":403,\"owner\":403},\"submitFundingSignature\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"escrowFundingTransaction\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409},\"settlementApproval\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":200},\"submitSettlementApproval\":{\"anon\":401,\"tester\":403,\"admin\":403,\"otherBuilder\":404,\"owner\":409}}; off-allow-list: {\"createFunding\":\"403 FEATURE_UNAVAILABLE\",\"newPrepares\":0,\"broadcasts\":0}; rate limit: {\"counts\":{\"createEscrowFunding\":{\"200\":19,\"429 RATE_LIMITED\":41},\"escrowFundingTransaction\":{\"200\":18,\"429 RATE_LIMITED\":42}},\"newPrepares\":0,\"newBroadcasts\":0}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/stage2-real-step-machine.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/http-races-hosted-devnet.txt",
+    "docs/reviews/devnet/bugs/E-25-spend-cap-trueup-zero.md",
+    "docs/reviews/devnet/bugs/E-25-no-rate-limiter-on-devnet-routes.md"
+   ],
+   "notes": "Was FAIL at d8e14f7 on two be3 gaps, both fixed by be3 and approved by pqa-qa freeze r2: (1) true-up returned every finished payment's lamports (bugs/E-25-spend-cap-trueup-zero.md; fixed 37b30d5: cumulative spend now equals what the platform paid), (2) no rate limiter on the devnet send routes (bugs/E-25-no-rate-limiter-on-devnet-routes.md; fixed 5ec7cf9). The 429 test asserts 0 prepares and 0 broadcasts during the burst. The hosted suite is now standalone per test (pqa-qa freeze r2 (b)-(d)). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-26",
+   "area": "devnet",
+   "title": "Env guards: existing refusals byte-identical, devnet settings only in devnet, signer never leaked, deploy scan",
+   "status": "PASS",
+   "environment": "unit",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "test/devnet/env-guards.test.ts: 128 non-devnet environments through today's loadConfig and the verbatim dc5da90 copy; each POCKETQA_DEVNET_ setting outside devnet; devnet refusals; malformed and mismatched signer at load; needles.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "{\"E-26/byte-identical\":{\"cases\":128,\"accepted\":3,\"refusedDistinctMessages\":12,\"diffs\":0},\"E-26/devnet-refusals\":{\"settlementSimulated\":\"ERR: POCKETQA_ENV=devnet runs only with POCKETQA_SETTLEMENT=squads_devnet.\",\"settlementOff\":\"ERR: POCKETQA_ENV=devnet runs only with POCKETQA_SETTLEMENT=squads_devnet.\",\"pilotKeysDir\":\"ERR: POCKETQA_SETTLEMENT_PILOT_KEYS_DIR: no settlement provider, mint, RPC, network or key can be configured (ADR 0007); the devnet pilot takes only POCKETQA_SETTLEMENT_PILOT_KEYS_DIR.\",\"sharedDemo\":\"ERR: The shared demo never runs in devnet.\",\"realAllowList\":\"ERR: POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.\",\"mixedAllowList\":\"ERR: POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.\"},\"E-26/mainnet-rpc\":{\"outcome\":\"ok\"},\"E-26/malformed-signer\":{\"config\":\"ok\",\"loader\":\"ERR: POCKETQA_DEVNET_PLATFORM_SIGNER must hold a JSON array of 64 bytes (the value is not shown).\"},\"E-26/needles\":{\"count\":9,\"covered\":{\"hexKey\":true,\"b64Key\":true,\"hexSeed\":true}}}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/stage1-harness-selftest.txt"
+   ],
+   "notes": "Observation: devnet config accepts a MAINNET RPC URL; the protection is the runtime genesis check before any signature (E-23 'non-devnet genesis' PASS). CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-27",
+   "area": "devnet",
+   "title": "Isolation through the hosted app: Firestore namespace, R2 devnet/ prefix, production evidence untouchable",
+   "status": "PASS",
+   "environment": "hosted-emulator",
+   "deployment": "n/a (emulator; no live devnet send)",
+   "sha": "eb5ddba",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "test/emulator/devnet.hosted-isolation.test.ts: hostedDeps(real devnet env, connectors), HTTP journey incl. an escrow study, export, both cron jobs; every root collection counted; hosted store presign/head/delete with production objects seeded at the bucket root.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "firestore: {\"steps\":{\"builderSession\":200,\"testerSession\":200,\"device\":200,\"createStudy\":200,\"exportMe\":200,\"cronSettle\":200,\"cronSweep\":200},\"createStudyCode\":null,\"insideNamespaceCollections\":[\"escrowVaults\",\"identities\",\"jobLeases\",\"studies\",\"studyEscrows\",\"userEmails\",\"userProviders\",\"users\"],\"docsOutsideNamespace\":{}}; r2: {\"putStatus\":200,\"physicalKeys\":[\"pocketqa-evidence/devnet/evidence/devnetprobe01\",\"pocketqa-evidence/evidence/prodobject01\",\"pocketqa-evidence/retained-local-submissions/prod-archive.mp4\"],\"headOfProdKeyThroughDevnetStore\":null}",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/E-27-hosted-isolation.txt",
+    "docs/reviews/devnet/bugs/E-27-hosted-devnet-isolation.md"
+   ],
+   "notes": "Was FAIL (P1) on the code before be3's 9f7e3f7: devnet hosted writes went to production collections and the devnet store deleted a production evidence object (bugs/E-27-hosted-devnet-isolation.md, evidence E-27-hosted-isolation-red.txt at 3ee3b3d); PASS since, now without mocks. CORRECTION (pqa-qa qa-devnet-stage2-r1): claims made earlier from 54d2187 (stage 2), db59189 and 1a74790 (hosted E-22/E-24/E-25) were NOT reproducible from those commits: they lacked the adversarialChain.ts changes the suites need (ataOf token accounts, platformKp, async receiptHas, walletTransfer); their evidence said 'uncommitted at run time'. Fixed in b78f51c. Every value in this row was re-recorded from a CLEAN detached checkout of eb5ddba (git status --porcelain: 0).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-28",
+   "area": "devnet",
+   "title": "Live devnet races within bounds",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": "lead loopback serve of the devnet web candidate artifact 2cab74f (http://127.0.0.1:8697; POCKETQA_PUBLIC_ORIGIN https://pocketqa-devnet.vercel.app; caps global 250M / user 200M lamports)",
+   "sha": "bd461d3",
+   "binds_to": "feat/devnet-adapter caad952 (step machine 26d0505, namespace fix 9f7e3f7, true-up 37b30d5, rate limiter 5ec7cf9, RpcDevnetChain 207d8e0, fee sweep 12de3df)",
+   "steps": "FRESH single pass: test-live/devnet.e28-races.live.test.ts at bd461d3 (clean checkout; harness sha256 e2fd07e4…, readRetry e5e3b5f8…, pqa-qa approved), PQA_E28_LIVE=1, new study cdda612d, 2026-10-06T23:26:27Z, no other /jobs traffic. Pre-T-0 devnetSpend (lead, read-only): global/user 66044960 lamports, 66000 USDC units.",
+   "fixtures": {
+    "data": "synthetic only; throwaway never-funded platform key; pqa-be2 AdversarialDevnet (independent of the adapter's fake)"
+   },
+   "observed": "PASSED (exit 0): funding 22000 after verifyFundingTx (vault 5smMfu7n…); crash after the vault tx + proposal landed, adopted; restarts old pid 84414->93140->93343->93509; H-2 kill #1 proposal Active (builder vote only), kill #2 Approved (builder + platform); N=5 concurrent slices; payout tx#1 executed once (H-3: executeOk 1 / failed 0 / platformVotes 1); refund (tx#2, 11000) and fee (tx#3, 1000) each builder-approved once after verifyApprovalTx; independent readback (run.json): all three txs executeOk 1 / failed 0 / platformVotes 1 / builderVotes 1 / failedTxs 0, opIds = harness-computed; vault 0; fee wallet +1000 = booked fee (per-test fee x 1 paid test); builder test USDC net 11000; platform spent 20303480 lamports (<= 50M); Squads program data unchanged. HISTORY: EVERYTHING UP TO THE CLOSE PASSED ON CHAIN: funding 22000 after verifyFundingTx; crash after the vault tx + proposal landed, adopted; restarts old pid 19469->45783->45915->45938; H-2 kill #1 with the proposal Active (builder vote only), kill #2 with it Approved (builder + platform); N=5 concurrent slices; payout tx#1 EXECUTED once: executeOk 1 / failed 0 / platformVotes 1 / builderVotes 1, tester ATA +10000; refund and fee approvals each signed ONCE after verifyApprovalTx (opIds and destinations = harness-computed). THE CLOSE STOPPED BY RULE on a harness gap: the close loop re-requested the refund approval after the builder's vote had landed; the wallet's 2nd ProposalApprove failed at SIMULATION (Squads InvalidProposalStatus 6008) and NOTHING landed (tx#3 builderVotes 1, failedTxs 0). State left: study 227fbd36 closed, fee (tx#2, 1000) and refund (tx#3, 11000) APPROVED, not executed, vault 12000; platform spent 20293480 lamports (< 50M). Not reached: vault 0 after close, fee wallet + = booked fee, after-snapshot bounds. Product behaviour observed was correct throughout; the FAIL is the harness run not completing.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-fresh-pass-bd461d3.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-run-fresh-pass.json",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-T0-3-2afbd34.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-run-T0-3.json",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-attempt1-fc25a77.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-attempt2-03a1bb9.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-cleanup-0213a47a-b3710a4.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-run-cleanup.json",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-T0-4-bd461d3.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-run-T0-4.json",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-finish-227fbd36-41193fe.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-28-cleanup-2cffc01c-d633aaf.txt"
+   ],
+   "notes": "PASS on the fresh single pass (pending pqa-qa's readback). Earlier attempts kept: #1 fc25a77 and #2 03a1bb9 harness gaps before/at the first kill; #3 2afbd34 close stopped on a harness gap with nothing landed (study 227fbd36 finished at 41193fe, QA FC-1 PASS); #4 bd461d3 refused before signing by the then-lifetime global cap (study 2cffc01c cleaned up at d633aaf, QA PASS). Synthetic accounts and fixture wallets only; devnet test USDC (no value).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
+   "id": "E-29",
+   "area": "devnet",
+   "title": "Live devnet dispute path: overturn pays once via the arbiter CLI vote; upheld pays nothing; close within bounds",
+   "status": "PASS",
+   "environment": "devnet",
+   "deployment": "lead loopback serve of the devnet artifact 4ee4603 (http://127.0.0.1:8697, PID 11773; includes pqa-be3's arbiter CLI 1fa2b2d, ALREADY_APPROVED b3395da, admin plan route a87b33b, devnet-namespace admin 2180b1e)",
+   "sha": "62e884b",
+   "binds_to": "harness test-live/devnet.e29-dispute.live.test.ts at 62e884b (QA-approved resume harness 5a6b8d5 r3 + gate flip; sha256 1bb09c87ab46ade9876f891e9a31e5104669c76cf3163e6f520689b09f69c8eb); server artifact 4ee4603",
+   "steps": "RESUME mode (E29_RESUME_STUDY_ID=b3efa2ce-4dc5-480d-a8d8-d21871395b91) from a fresh clean worktree (~/.local/share/pocketqa/runs/e29-resume-2-62e884b, clean=0), PQA_E29_LIVE=1, 2026-10-07T00:26:37Z, lead's settle loop stopped, no other live run. The resume skipped creation/funding/rejects/disputes/resolutions (done in attempt 1), re-asserted them from the API, then: settle slices until awaiting_cosigner + proposal Active -> arbiter CLI dry run -> ONE --send -> second run -> settle -> close. Bounds and booked integers checked against attempt 1's BEFORE snapshot (pinned, cross-checked verbatim with the evidence file), i.e. attempt 1 + resume combined.",
+   "fixtures": {
+    "data": "synthetic only: builder, testers A and B, the devnet-namespace admin; fixture wallets (builder, arbiter 5ZFcx5EB…, platform DoUXiXfn…, fee wallet HS1mSCPN…); in-memory tester keys (testers only receive); devnet test USDC (no value)"
+   },
+   "observed": "PASSED (exit 0, 101.9 s). Re-asserted: study published + funded 22000, A 72ca25c7 dispute resolved OVERTURNED, B 03a461a1 dispute resolved UPHELD, B's ATA absent; preconditions: vault 22000, multisig J7kALMas… index 1, no drift on the shared builder/fee wallets, builder wallet linked. Plan = attempt 1's (settlement 23d4a638, txIndex 1, opId pqa-op1:14d88bfb…), cosigner arbiter, opId = harness-computed; builder approval refused; no payout for B. Arbiter CLI: dry run sent false -> ONE --send sent true (5HFU4J8n…) -> second {sent false, alreadyApproved true}. Payout confirmed; tx #1 executeOk 1 / executeFailed 0 / platformVotes 1 / arbiterVotes 1 / builderVotes 0 / failedTxs 0; A's ATA 10000; B's ATA null. Close: refund + fee sweep each builder-approved once after verifyApprovalTx; vault 0; exactly 3 vault txs, none paying B. Final read-only chain: proposals #1-#3 Executed; #1 approved by arbiter + platform (exactly one arbiter vote, arbiter spent exactly 5000 lamports), #2/#3 by builder + platform. Books (combined): builder test USDC 15546000 -> 15535000 (-11000 = reward 10000 + fee 1000); fee wallet 4000 -> 5000 (+1000 = per-test fee x 1 paid test); platform 4810271640 -> 4779963160 = 30308480 lamports incl. the 10000000 arbiter fixture funding (<= 50M); Squads program data unchanged. HISTORY: attempt 1 (4a21dd8, 2026-10-07T00:10Z) created + funded study b3efa2ce (22000 after verifyFundingTx), rejected both, both disputed, A overturned / B upheld, then STOPPED by rule: the harness called the arbiter CLI while the plan was still 'claimed' (no vault tx yet); the CLI refused, nothing signed (fixed at 14736bf: wait for awaiting_cosigner + proposal Active). Resume run 1 (62e884b, 00:23Z, clean worktree e29-resume-62e884b): all checks passed through the dry run; the --send STOPPED at simulation ('no record of a prior credit'): the arbiter fixture held 0 lamports (fee payer of its own vote); nothing broadcast; read-only state: proposal #1 Active with 0 votes, vault 22000. The lead then funded the arbiter fixture with 10000000 lamports (platform transfer, sig prefix yESeXcGYCMuc). Resume run 2 = this PASS.",
+   "evidence": [
+    "docs/reviews/devnet/evidence/pqa-be2/E-29-combined-4a21dd8-62e884b.txt",
+    "docs/reviews/devnet/evidence/pqa-be2/E-29-attempt1-4a21dd8.txt"
+   ],
+   "notes": "PASS on resume run 2 (pending pqa-qa's readback). Follow-up for QA at b9d380a (gate false): step-0 arbiter-SOL floor + P3-R1 (fresh branch assigns studyId before use). Suggested to pqa-be3: the CLI dry run should check the fee payer's SOL. Synthetic accounts and fixture wallets only; devnet test USDC (no value).",
+   "owner": "pqa-be2-devnet"
+  },
+  {
    "id": "E-01",
    "area": "capacity",
    "title": "Capacity race: N testers join the LAST slot concurrently",
@@ -2167,7 +2786,847 @@
    "evidence": [
     "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt"
    ],
-   "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device.",
+   "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device. Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-10",
+   "area": "physical",
+   "title": "Seeker read-only inspection: installed build, backend, data size",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "adb devices -l; getprop; adb reverse --list; dumpsys package com.reshareai.pocketqa; adb pull base.apk (copy) + shasum/apksigner; bundle strings; dumpsys diskstats; lsof :8787. Nothing driven.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36"
+   },
+   "observed": "Seeker Android 16 (SDK 36). Hamza's com.reshareai.pocketqa 0.1.0 (1), installed 2026-10-06 01:16:50 (device time), sideloaded, RECORD_AUDIO + POST_NOTIFICATIONS granted. base.apk sha256 6bd0d35a…095b9 = pocketqa-native-0aaa89b.apk (debug key, cert SHA-256 fac61745…3b9c). Bundle has no https API base, only the loopback default -> http://127.0.0.1:8787 via adb reverse = the Mac's live USB API (PID 28574, Hamza's local data); adb reverse/forward empty. App data 1,257,472 B, cache 1,134,592 B.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
+   ],
+   "notes": "Decision: never drive the installed app (its backend is Hamza's live local data; a sign-out would clear its local clips) -> side-by-side E2E package.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-11",
+   "area": "physical",
+   "title": "E2E APK of the candidate built and installed as a NEW package (identity)",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Clean detached checkout of 7bda3ce in scratch; pnpm install --frozen-lockfile; EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api EXPO_PUBLIC_POCKETQA_ENV=staging npx expo prebuild --platform android --clean --no-install; edit ONLY applicationId + app_name; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4; adb install (no -r).",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "BUILD SUCCESSFUL 2m30s; 52,525,761 B; sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3; signer CN=Android Debug cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; aapt2 com.reshareai.pocketqa.e2e 0.1.0 (1) arm64-v8a; bundle https://pocketqa.vercel.app/api x1, 127.0.0.1:8787 x0. Install: Success. Hamza's app unchanged (lastUpdateTime 2026-10-06 01:16:50). Hosted /api/config at 21:03:47Z: firebase, r2, walletLogin false, settlement simulated.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p11-apk-identity-7bda3ce.txt"
+   ],
+   "notes": "versionCode is 1 (identity = SHA + APK sha256 + cert). Debug-signed, sideload only, no store.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-12",
+   "area": "physical",
+   "title": "Synthetic tester signs in on the Seeker; Android device profile saved; study becomes eligible",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Intro Skip; credentials typed from ~/.config/pocketqa/qa-synthetic-tester.env in memory via adb input (never printed or screenshotted); Settings > device profile Android / \"Android 16\" / API 36 / \"Solana Seeker\" / en-US; Save device profile; Discover.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "Sign-in -> Discover (device chip \"Web · Chromium (QA synthetic)\", 36 open studies; study i4bbaf… absent). After save: \"Device profile saved\"; chip \"Android · Android 16\", 38 open studies, card \"QA synthetic study be1 B (android only)\" first.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/02-sign-in-empty.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/03-discover-before-profile.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/05-device-profile-filled.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/06-device-profile-saved.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/07-discover-android.png"
+   ],
+   "notes": "Observation (P3 UX): at the default scroll the profile \"Save\" button sits under the floating tab bar (Save y2355-2511, tab bar y2361-2541); taps land on the tab bar (two of my taps opened Credits) until the form is scrolled. My first fill put \"Solana Seeker\" into the API field (keyboard covered the next field); corrected before any save.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-13",
+   "area": "physical",
+   "title": "Screen share with \"A single app\" on Android 14+: app crashes",
+   "status": "FAIL",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Record screen and voice -> notifications Allow + microphone allowed (Hamza) -> MediaProjection dialog -> \"A single app\" -> Chrome.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "Device 23:24:58.175 local: system launched Chrome to the foreground; 23:24:59.4 FATAL in com.reshareai.pocketqa.e2e: SecurityException \"Starting FGS with type microphone … targetSDK=36 … the app must be in the eligible state/exemptions to access the foreground only permission\" at ScreenCaptureService.startForegroundCompat (ScreenCaptureService.kt:230) <- start():86 <- onStartCommand:63; \"Application Error\". Nothing recorded. The app's own recorder copy tells testers to choose \"Share one app\", i.e. the crashing path.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-sequence-logcat.txt",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-crash-androidruntime.txt",
+    "docs/reviews/full-e2e/bugs/P-13-single-app-share-crash.md",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/15-dialog-notifications.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png"
+   ],
+   "notes": "P1. FIX on branch fix/e2e-p13-single-app-fgs @ 27608e9 (native-ios worktree; from feat/firebase-vercel 7d2fe75): CaptureStart puts the service in the foreground with MICROPHONE while Pocket QA is in front BEFORE the consent dialog, adds MEDIA_PROJECTION after consent; every startForeground guarded (clean ERR_FOREGROUND_REFUSED/ERR_START_FAILED, never a crash). Tests: CaptureStartTest 8/8 (RED first), all module JVM tests pass (p13-fix-tests.txt). Fix APK sha256 3635ebad4ed70585369403832ec55b9d2d8edd8fcf11d33660c3d6e4e620f87d (p13-fix-apk-identity-27608e9.txt) installed over the E2E package only at 22:39:09Z. Device re-verification with \"A single app\": NOT RUN yet (paused; needs Hamza + lead go). Supporting evidence: Hamza's own later attempts with the app in front ran with uidState TOP and did not crash.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-14",
+   "area": "physical",
+   "title": "Join (consent v1), start session, task notes persist",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Open study i4bbaf…; tick \"I have read and agree to this consent text.\"; Consent and join; Start session; type a QA synthetic note; Save note; later reopen the participation from My work after an app crash/restart.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "\"Consent and join\" disabled until ticked; after: \"Status: Consented\"; Start session -> \"Status: In progress\"; note saved: after the process restart the note text is still there and the button reads \"Saved\".",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/08-study-detail.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/09-consent.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/10-consent-checked.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/11-consented.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/12-session-started.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/17-participation-reopened.png"
+   ],
+   "notes": "Observation: the Save note button showed \"busy\" for >30 s in the UI tree while the note had already persisted (stale busy state; not data loss).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-15",
+   "area": "physical",
+   "title": "Entire-screen capture with microphone runs and stops; clip lands in local review",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Record screen and voice -> system dialog \"Share your screen with Pocket QA E2E?\" -> Hamza chose entire screen and confirmed at 22:19:17Z; adb readings during capture; capture ended on the device (stop by Hamza, method not observed by me).",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "At 22:19:27Z: dumpsys media_projection \"(com.reshareai.pocketqa.e2e, uid=10178): TYPE_SCREEN_CAPTURE\"; ScreenCaptureService isForeground=true types=0x000000A0 (mediaProjection|microphone), ongoing notification with 1 action (Stop); FGS start logged \"Allowed … uidState: TOP\". Service gone by 22:19:50Z. Review row \"recording-2026-10-06T22:19:34.883Z.mp4 · NOT REVIEWED · video/mp4 · 7.6 MB\", 00:17, Keep/Remove; no upload until chosen.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/18-projection-dialog.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+   ],
+   "notes": "Two earlier on-device-started recordings (21:49/21:50Z) captured Hamza's own Google search: kept LOCAL only, never uploaded, not committed anywhere; screenshots of them were deleted. The first attempt (21:38Z) died with the 60 s screen timeout before the dialog was answered (environment, not product).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-16",
+   "area": "physical",
+   "title": "Narration: actual microphone speech in the uploaded clip (signal-level evidence)",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "pqa-be1 downloaded the uploaded evidence via the builder private playback grant; pqa-ios: sha256 check, ffprobe, decode, volumedetect, per-0.544 s RMS (full and 300-3400 Hz), spectrogram (p16-narration.sh). The audio file is NOT committed (a real person's voice).",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "sha256 92c5c6caf3f9661da9e6773375fc05fe4393724038cbc5f0e6382051ba0ca87c, 7,936,696 B = declared. AAC 44.1 kHz mono 16.53 s + H.264 574x1280 16.61 s; decode exit 0. mean -24.6 dB, max -4.0 dB. Voice band ~-80 dB for the first 1.2 s, then bursts of -15 to -30 dB at 1.7-5.1, 6.6-8.3, 9.4-13.2, 14.8, 15.9 s with pauses -57 to -83 dB; 59 dB dynamic range; spectrogram shows harmonic stacks (pitched fundamental + harmonics, formants) in syllabic bursts = real voiced speech.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration-analysis.txt",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-spectrogram.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration.sh"
+   ],
+   "notes": "LIMIT: the capture ended (~22:19:34.5Z) BEFORE the known-phrase request (22:19:41Z): spontaneous speech, words not verified. Known-phrase protocol: NOT RUN (Hamza asked not to repeat the capture). Audio-track presence alone was never counted.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-17",
+   "area": "physical",
+   "title": "Keep and explicit upload to private R2; builder-side private playback",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "On the new clip: Keep -> \"Upload 1 kept item\". Builder check by pqa-be1 (QA synthetic builder, Chrome): playback token + R2 range requests.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "App: \"Uploaded (1): Recording · video/mp4 · 7.6 MB · Oct 7, 12:23 AM\" (22:23Z); the 2 other local clips untouched. be1: evidence 66b75ea5-26c4-4117-bdfb-d0b33f4e7c9a screen_recording video/mp4 7936696 B, durationMs 16585, capturedOn android; POST /evidence/:id/playback-token 200; R2 206 video/mp4; readyState 4; duration 16.649 s; 574x1280; audio decodes; no media error. Participation still in_progress (not submitted).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+   ],
+   "notes": "Upload was explicit (tapped); nothing uploaded automatically. Tester-side playback of the uploaded item: NOT OFFERED (the uploaded row has no player; tap does nothing).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-18",
+   "area": "physical",
+   "title": "Lifecycle: background and foreground keep the session state",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "HOME; wait 20 s; bring Pocket QA E2E back (am start, task to front).",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "Same process (PID 17218), no crash/kill in logcat; after return \"Uploaded (1): Recording · 7.6 MB\" and \"upload or remove 2 items\" unchanged.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+   ],
+   "notes": "Rotation: NOT RUN (needs Hamza to rotate; capture paused).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-19",
+   "area": "physical",
+   "title": "Submit the participation for review",
+   "status": "BLOCKED",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Not run.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "\"Submit for review\" stays disabled: \"Stop any recording, then upload or remove 2 items before submitting.\" The 2 items are Hamza's own Google-search clips (must never be uploaded).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png"
+   ],
+   "notes": "BLOCKED (human decision): needs Hamza's explicit yes to Remove those 2 local clips; until then no remove, no submit.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-20",
+   "area": "physical",
+   "title": "Discard/Remove of a local clip",
+   "status": "NOT RUN",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Not run.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "Remove exists on every unreviewed clip; not exercised (the only removable clips are Hamza's, pending his decision).",
+   "evidence": [],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-21",
+   "area": "physical",
+   "title": "Interruptions: notification Stop, mic taken by a call, screen lock during capture",
+   "status": "NOT RUN",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Not run.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "Capture testing paused by Hamza/lead after the window.",
+   "evidence": [],
+   "notes": "Emulator evidence exists elsewhere; physical not claimed.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "P-22",
+   "area": "physical",
+   "title": "Stop verification after the user reported \"still recording\"",
+   "status": "PASS",
+   "environment": "physical-android",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Read-only: dumpsys media_projection, dumpsys activity services (all apps + both Pocket QA packages), dumpsys audio RecordActivityMonitor, dumpsys notification (Pocket QA / record / cast only), dumpsys statusbar, at 22:39:19Z.",
+   "fixtures": {
+    "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+    "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+    "tester": "QA synthetic tester (hosted)",
+    "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+    "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+   },
+   "observed": "\"Media Projection: null\"; com.reshareai.pocketqa.e2e and com.reshareai.pocketqa: 0 foreground services; no FGS with mediaProjection/microphone type on the device; no active recording client; no Pocket QA, screen-record or cast notification; status bar icons none. Nothing was stopped because nothing was running (the capture service had ended ~22:19:50Z).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+   ],
+   "notes": "Personal notifications seen in the dump were not recorded or relayed.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-10",
+   "area": "web",
+   "title": "Sign-in (builder) with the Google button visible (not used)",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | mobile viewport: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-10-builder.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-10-builder.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-11",
+   "area": "web",
+   "title": "Builder test-credit balance before",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"builderBalance\": \"780 test credits\", \"budgetCard\": null} | mobile viewport: {\"builderBalance\": \"730 test credits\", \"budgetCard\": null} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-11-builder.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-11-builder.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-12",
+   "area": "web",
+   "title": "Builder creates a small test-credit study (1 slot) and publishes it",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"title\": \"QA synthetic web regression desktop-muxa0p92\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i5b95f5fc9bf4f57fa53d65471f156c4\"} | mobile viewport: {\"title\": \"QA synthetic web regression mobile-muxa6n9k\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i15bd4c262534189dc7b3d6053d9d3aa\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-12-builder.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-12-builder.png"
+   ],
+   "notes": "Default reward 50 test credits; reserved 50 at publish.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-13",
+   "area": "web",
+   "title": "Tester sign-in; tester balance before",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"testerBalance\": \"150 test credits\"} | mobile viewport: {\"testerBalance\": \"200 test credits\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-13-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-13-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-14",
+   "area": "web",
+   "title": "Eligibility: web-only study hidden for an Android profile, shown after a web profile",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"chipBefore\": \"MATCHED TO Android · Android 16 Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | mobile viewport: {\"chipBefore\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-14-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-14-tester.png"
+   ],
+   "notes": "Mobile run: the profile was already web (the desktop run had saved it), and the \"before\" count was taken before the Discover list had loaded, so it is not an eligibility signal. The negative eligibility proof is the desktop run: Android 16 profile -> 0 cards for the web-only study; after saving the web profile -> 1 card.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-15",
+   "area": "web",
+   "title": "Study detail, consent checkbox gate, join",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | mobile viewport: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-15-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-15-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-16",
+   "area": "web",
+   "title": "Session start; task note saved and persisted after reload",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | mobile viewport: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-16-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-16-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-17",
+   "area": "web",
+   "title": "Web evidence upload: synthetic PNG -> keep -> upload to private R2",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:55 AM\"} | mobile viewport: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:59 AM\"} | console/network issues: tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/b666f9dc-427b-463d-9123-b4e8886dd52b net::ERR_; tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/ed18cb42-af60-4702-b097-12157ce3f817 net::ERR_",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-17-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-17-tester.png"
+   ],
+   "notes": "The single failed request in each upload (PUT …/quarantine/<id> net::ERR_ABORTED) is explained in W-24: one PUT, completion 200, no retry; Chromium logs the unread response as aborted.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-18",
+   "area": "web",
+   "title": "Submit the participation",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | mobile viewport: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-18-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-18-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-19",
+   "area": "web",
+   "title": "Builder review: note, AI unavailable, private evidence image, finding, approve",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 12:55 AM\"} | mobile viewport: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 1:00 AM\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-19-builder.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-19-builder.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-21",
+   "area": "web",
+   "title": "Tester reputation page",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"points\": \"65\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 65 points Earned only when a builder accepts your work. Points are reputation, no\"} | mobile viewport: {\"points\": \"75\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 75 points Earned only when a builder accepts your work. Points are reputation, no\"} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-21-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-21-tester.png"
+   ],
+   "notes": "",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-22",
+   "area": "web",
+   "title": "Tester data export",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"exportDone\": \"Export ready 11 participations, 0 studies, 4 evidence items, 6 ledger entries, 0 wallet escrow records (each labelled with its settlement), 7 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 16253}} | mobile viewport: {\"exportDone\": \"Export ready 12 participations, 0 studies, 5 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 8 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 18386}} | console/network issues: none",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-22-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+   ],
+   "notes": "The export file was saved, its top-level keys recorded, and its content NOT kept in evidence.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-20",
+   "area": "web",
+   "title": "Test-credit ledger after approval: tester credited once, builder debited once; tester sees approval and the finding",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop (completed by finish.mjs on the same approved participation): tester 150 -> 200 (\"Approved 50 test credits added to your balance\", top ledger row \"Approved work Oct 7, 12:55 AM +50\"); builder 780 -> 730; finding visible to the tester. | mobile viewport: tester 200 -> 250, builder 730 -> 680, approval notice same text. | desktop trace run: tester 250 -> 300, builder 680 -> 630. Each journey = exactly one +50 for the tester and one -50 for the builder (reserved 50 at publish). Console/network issues: none.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-approved.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-credits.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-builder-budget.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-builder.png"
+   ],
+   "notes": "The first desktop attempt FAILED in MY runner (it looked for a budget tab on the study screen; the builder budget is the /budget route), recorded in desktop/results.json; the runner was fixed and the step completed read-only. Not a product defect. Ledger values can also move if another agent uses the same synthetic pair concurrently; none of the deltas here deviated from +50/-50.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-23",
+   "area": "web",
+   "title": "Sign-out (both roles) and private-route denial after sign-out",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop: {\"tester\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}} | mobile viewport: {\"tester\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}} (tester /credits and builder /budget redirect to /sign-in, no balance rendered). Console/network issues: none.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-builder.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-tester.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-builder.png"
+   ],
+   "notes": "First desktop attempt failed in MY runner (it opened /settings for the builder, whose route is /builder-settings); completed by finish.mjs. Not a product defect.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-24",
+   "area": "web",
+   "title": "Upload request trace: one PUT to private R2, completion verified server-side (explains the logged ERR_ABORTED)",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "desktop trace run: t=0 POST /api/participations/700a3313…/evidence/upload-intents -> 200 (613 ms); t=613 PUT /pocketqa-evidence/quarantine/1ba50da7… (one PUT only); t=942 POST /api/evidence/upload-intents/1ba50da7…/complete issued (the client only completes when the PUT returned ok, apps/mobile/src/api/client.ts:151-163) and at t=942 Chromium logs the PUT as net::ERR_ABORTED; t=2270 complete -> 200; builder GET /pocketqa-evidence/evidence/4f59c370… -> 200. No retry, no lost upload; the abort is the unread response body being torn down.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/r2-trace.json",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/results.json"
+   ],
+   "notes": "Benign log artefact (could be silenced by reading/cancelling the PUT response body).",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-25",
+   "area": "web",
+   "title": "Tester sees builder findings on the approved participation (both viewports)",
+   "status": "PASS",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "findcheck.mjs on participations 125d94e6 (mobile run) and fa5abae9 (desktop run), at Pixel 7 and 1280x900: \"Findings from the builder\" > \"QA synthetic finding: main button label\" + \"Synthetic web regression finding; no real issue.\" visible (1 match each).",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-mobile-125d94e6.png",
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-desktop-fa5abae9.png"
+   ],
+   "notes": "The mobile W-20 check reported findingVisible false because it ran right after reload before the section rendered (runner timing); confirmed visible after the page settled.",
+   "owner": "pqa-ios"
+  },
+  {
+   "id": "W-26",
+   "area": "web",
+   "title": "Copy observation: hosted Settings mentions linking a devnet wallet",
+   "status": "NOT OFFERED",
+   "environment": "hosted-simulated",
+   "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+   "sha": "7bda3ce",
+   "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+   "fixtures": {
+    "builder": "QA synthetic builder (hosted)",
+    "tester": "QA synthetic tester (hosted)",
+    "studies": {
+     "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+     "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+     "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+    },
+    "participations": {
+     "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+     "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+     "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+    }
+   },
+   "observed": "Production Settings (tester, mobile viewport): \"Unavailable on this device · No Solana wallet extension found. Install one to link a devnet wallet.\" while hosted walletLogin=false and devnetTransfers=false.",
+   "evidence": [
+    "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+   ],
+   "notes": "Not a functional defect; flagged for the copy/economics owner (devnet wording on the production site).",
    "owner": "pqa-ios"
   }
  ]

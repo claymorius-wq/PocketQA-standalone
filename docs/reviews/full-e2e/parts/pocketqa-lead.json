@@ -106,7 +106,7 @@
   "sha": "7beaad5",
   "steps": "",
   "fixtures": {},
-  "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md.",
+  "observed": "Consent + recording: B-01..B-07 (desktop) PASS; native Seeker BLOCKED (P-01..P-03). \"Paid from a USDC escrow on Solana\": hosted is simulated (settlement simulated, devnetTransfers false); on-chain only in the devnet pilot with valueless test USDC (D-02..D-05, historic re-read). No real USDC payment exists anywhere. Copy correction proposed in economics.md. UPDATE 2026-10-07: approved work paid from a per-study escrow is now PROVEN ON DEVNET with valueless test USDC (E-28 fresh pass, E-29 dispute; QA readbacks); the claim as worded (\"USDC escrow on Solana\") remains NOT OFFERED for real USDC/mainnet, and the hosted product stays simulated.",
   "evidence": [
    "docs/reviews/full-e2e/deck/pocketqa-deck-page-01.png",
    "docs/reviews/full-e2e/economics.md"
@@ -220,7 +220,7 @@
   "sha": "31c2141",
   "steps": "",
   "fixtures": {},
-  "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe).",
+  "observed": "Tasks/criteria (H-12), watch recordings + notes (H-20/H-21), approve/reject with reason (H-22), tester dispute (H-23): PASS live. Was FAIL on the frozen deployment: E-08 (a dispute timed before a close could open on the closed study; an overturn minted credits). Fixed in 31c2141 (red→green on SQLite + Firestore, pqa-qa APPROVE), live as dpl_GPVC; H-32 re-ran reject → dispute → close refused (409) → reconciliation on it: PASS; read-only prod integrity check 0 violations (integrity-check-prod.json). Admin resolution on prod NOT OFFERED (H-30). Related UX FAIL H-33 (stale approve retry shows an error; money-safe). UPDATE 2026-10-07: the dispute path is also proven on devnet (E-29: reject -> dispute -> admin overturn -> arbiter vote -> paid once; upheld -> nothing paid).",
   "evidence": [
    "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md",
    "docs/reviews/full-e2e/deck/pocketqa-deck-page-07.png",
@@ -236,19 +236,18 @@
   "id": "C-08",
   "area": "deck-claim",
   "title": "Slide 08: per-study 2-of-3 Squads v4 USDC vault; paid where agreed; fee only on approved work; wallet login via MWA; devnet pilot 26 finalized tx with refusals",
-  "status": "BLOCKED",
+  "status": "PASS",
   "environment": "devnet",
-  "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz / dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe",
-  "sha": "7beaad5",
+  "deployment": "devnet artifacts on loopback: 8c84fad (E-28 runs), 2cab74f (cleanup2 + fresh E-28), 4ee4603 (web + E-29); never deployed",
+  "sha": "4ee4603",
   "steps": "",
   "fixtures": {},
-  "observed": "Historic devnet pilot re-read now: 29/29 signatures finalized (27 ok + 2 expected refusals), amounts reconcile (funded 3300000 = settled 2000000 + fee 200000 + refunded 1100000), wrong-mint/threshold/double-execute refused, test mint != mainnet USDC (D-02..D-05). Deck says 26 finalized transactions; the readback covers 29 signatures, so the count needs re-checking against the pilot receipts. Fee on approved work only: escrow quote exact (H-13). Fresh bounded devnet run BLOCKED (D-06: pilot keys outside the repo need approval). Wallet login: hosted NOT OFFERED (W-01), local PASS (W-02..W-05).",
+  "observed": "FRESH integrated devnet evidence (not the historic pilot), each with pqa-qa independent chain readback: E-28 fresh single pass (bd461d3 on 2cab74f: funding -> crash adopt -> 2 in-flight kills -> N=5 -> payout once -> refund + fee sweep once; vault 0), E-29 dispute (62e884b on 4ee4603: overturn paid via exactly one arbiter vote, upheld paid nothing), WD-03 a builder funding signed through the real web UI (test wallet). Per-study Squads v4 2-of-3 vault, pinned devnet mint, fee only on approved tests (1000 per paid test), unused rewards + fees back on close: PASS on devnet. Exceptions: (a) the deck claim \"Your wallet is your login (MWA)\": hosted NOT OFFERED (walletLogin false), local PASS (W-02..W-05), MWA device path not run; (b) the deck count \"26 finalized transactions\" does not match the pilot readback (29 signatures); (c) custody is test keys held by one custodian, NOT independent custody; (d) no real USDC anywhere (devnet test mint 4zMMC9…, no value).",
   "evidence": [
-   "docs/reviews/full-e2e/deck/pocketqa-deck-page-08.png",
-   "docs/reviews/full-e2e/economics.md",
-   "docs/reviews/full-e2e/parts/pqa-be1.json",
-   "docs/reviews/full-e2e/parts/pqa-be2.json",
-   "docs/reviews/full-e2e/parts/pqa-ios.json"
+   "docs/reviews/full-e2e/parts/pqa-be2-devnet.json",
+   "docs/reviews/full-e2e/parts/pqa-be1-devnet.json",
+   "docs/reviews/full-e2e/parts/pqa-ios.json",
+   "docs/reviews/full-e2e/economics.md"
   ],
   "notes": ""
  },
@@ -321,5 +320,69 @@
    "docs/verification.md"
   ],
   "notes": "Production data written in this pass is synthetic only (labelled \"QA synthetic … be1\")."
+ },
+ {
+  "id": "L-08",
+  "area": "release",
+  "title": "Merge status: phase work on main",
+  "status": "NOT RUN",
+  "environment": "static",
+  "deployment": "n/a",
+  "sha": "daf0c85",
+  "steps": "git fetch; merge-base --is-ancestor per branch",
+  "fixtures": {},
+  "observed": "origin/main = daf0c85 (PR #11). NOTHING from this phase is merged: feat/firebase-vercel, feat/devnet-adapter, feat/devnet-races, feat/devnet-client, feat/devnet-builders, fix/e2e-p13-single-app-fgs are all off main. Merging needs reviewed PRs on the reshareai remote and Hamza's go (CLAUDE.md: no direct unreviewed main changes).",
+  "evidence": [
+   "docs/reviews/firebase-vercel/qa-e08-fix-review-r1.md"
+  ],
+  "notes": "Production candidate 7bda3ce is deployed as dpl_DfajPV9S (pocketqa.vercel.app, simulated) without being on main."
+ },
+ {
+  "id": "L-09",
+  "area": "devnet",
+  "title": "Browser upload to R2 from the devnet origin (CORS)",
+  "status": "BLOCKED",
+  "environment": "loopback-devnet-artifact",
+  "deployment": "4ee4603",
+  "sha": "4ee4603",
+  "steps": "WD-06",
+  "fixtures": {},
+  "observed": "The R2 bucket CORS AllowedOrigins lack the devnet origin https://pocketqa-devnet.vercel.app; the browser PUT is refused (no Access-Control-Allow-Origin). CORS is bucket-wide (the devnet/ prefix shares the production bucket), so adding it widens production CORS. Options for the parent: add the origin PUT-only with exact headers, use an owned origin (a subdomain on optijara.ai), or a separate devnet bucket. Not routed around.",
+  "evidence": [
+   "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
+  ],
+  "notes": "External gate (parent/Hamza)."
+ },
+ {
+  "id": "L-10",
+  "area": "devnet",
+  "title": "Hosted devnet preview deployment",
+  "status": "BLOCKED",
+  "environment": "static",
+  "deployment": "none",
+  "sha": "4ee4603",
+  "steps": "Vercel API read-only project read",
+  "fixtures": {},
+  "observed": "Project pocketqa: ssoProtection all_except_custom_domains, 0 protection-bypass entries, no password protection; no devnet preview created. The devnet product was exercised as the exact deploy artifact on loopback (serve-local) against real devnet, Firestore devnet namespace and R2 devnet/; a hosted preview needs Hamza (shareable link/automation bypass/Vercel login or an owned custom domain).",
+  "evidence": [
+   "docs/plans/devnet-phase-contract.md"
+  ],
+  "notes": "No protection setting was changed."
+ },
+ {
+  "id": "L-11",
+  "area": "incident",
+  "title": "/private/tmp session scratch deletion (live USB API data dir)",
+  "status": "BLOCKED",
+  "environment": "static",
+  "deployment": "n/a",
+  "sha": "b5a062e",
+  "steps": "lsof, backup sha/integrity, hosted reads",
+  "fixtures": {},
+  "observed": "See incident record. Verified backup 20261006T000054Z (sha 3501bc9e…, integrity ok, 11 media OK, counts 77/39/30/11/154); hosted Seeker evidence present (R2 27178114 B). PID 28574 still serves from open handles to deleted files. Recovery decision (restore option A/B) is Hamza's.",
+  "evidence": [
+   "docs/reviews/full-e2e/incident-2026-10-07-tmp-cleanup.md"
+  ],
+  "notes": "No claim of no loss; post-backup local writes unverifiable from outside the process."
  }
 ]
