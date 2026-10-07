@@ -1,0 +1,33 @@
+# Step 3: before state (read-only), 2026-10-07T12:34:59Z
+$ adb devices -l
+List of devices attached
+SM02E4072811963        device usb:3-1 product:seeker_eea model:Seeker device:seeker transport_id:3
+
+
+== com.reshareai.pocketqa
+$ adb shell dumpsys package com.reshareai.pocketqa (selected lines)
+  firstInstallTime=2026-10-06 01:16:50
+  codePath=/data/app/~~PRnR3HYYlOLTnuozu09QTw==/com.reshareai.pocketqa-L8eYoLEoa2CYbeQk_IHIDw==
+  installerPackageName=com.google.android.packageinstaller
+  lastUpdateTime=2026-10-06 01:16:50
+  signatures=PackageSignatures{7cb3f1e version:2, signatures:[51ed3f60], past signatures:[]}
+  versionCode=1 minSdk=24 targetSdk=36
+  versionName=0.1.0
+  installed base.apk (pulled copy) sha256 6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9
+  Signer #1 certificate DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US
+  Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+  application: label='Pocket QA' icon='res/d2.webp'
+
+== com.reshareai.pocketqa.e2e
+$ adb shell dumpsys package com.reshareai.pocketqa.e2e (selected lines)
+  firstInstallTime=2026-10-06 23:05:06
+  codePath=/data/app/~~sRHL2tCoq73yO2wUM7y4XA==/com.reshareai.pocketqa.e2e-7qkaMhmuv0VkwkcgqsTklg==
+  installerPackageName=null
+  lastUpdateTime=2026-10-07 00:39:09
+  signatures=PackageSignatures{d539206 version:2, signatures:[51ed3f60], past signatures:[]}
+  versionCode=1 minSdk=24 targetSdk=36
+  versionName=0.1.0
+  installed base.apk (pulled copy) sha256 3635ebad4ed70585369403832ec55b9d2d8edd8fcf11d33660c3d6e4e620f87d
+  Signer #1 certificate DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US
+  Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+  application: label='Pocket QA E2E' icon='res/d2.webp'
