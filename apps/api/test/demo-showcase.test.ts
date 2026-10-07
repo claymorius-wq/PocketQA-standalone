@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEMO_SHOWCASE_LABEL, DemoBuilder, DemoShowcase, DemoTester, routes } from '@pocket-qa/contracts';
-import { demoProfileFixtures, DemoSeedError, sameDemoDoc, seedDemoShowcase, showcaseFrom, type DemoProfileDoc } from '../src/devnet/demoShowcase';
+import { demoProfileFixtures, DemoSeedError, isDemoAlias, sameDemoDoc, seedDemoShowcase, showcaseFrom, type DemoProfileDoc } from '../src/devnet/demoShowcase';
 import type { Repos } from '../src/repo';
 import type { DemoProfilesStore } from '../src/repo/escrow/types';
 import { makeApp, type TestApp } from './helpers';
@@ -102,11 +102,12 @@ function onlyDemo(demo: DemoProfilesStore, ns: 'devnet' | 'root' = 'devnet'): Re
   return { kind: 'firestore', namespace, core: trap('core'), studies: trap('studies'), evidence: trap('evidence'), escrow } as unknown as Repos;
 }
 /** An in-memory store with the Firestore store's rules (differing → nothing written; missing → created). */
-function memoryStore(initial: Record<string, unknown> = {}) {
+function memoryStore(initial: Record<string, unknown> = {}, realAliases: string[] = []) {
   const docs = new Map(Object.entries(initial));
   let writes = 0;
   const store: DemoProfilesStore = {
     list: async () => [...docs.values()],
+    realAliases: async () => realAliases,
     async seed(fixtures) {
       const differing = fixtures.filter((f) => docs.has(f.id) && !sameDemoDoc(docs.get(f.id), f)).map((f) => f.id);
       if (differing.length) return { written: 0, unchanged: 0, differing };
@@ -119,16 +120,25 @@ function memoryStore(initial: Record<string, unknown> = {}) {
   return { store, docs, writes: () => writes };
 }
 
-describe('B3: "Demo " is reserved for the labelled examples', () => {
-  it('a real tester cannot take an alias starting with "Demo" (any case); other aliases still work', async () => {
+describe('B3 / QA P3-D2: "Demo…" is reserved for the labelled examples', () => {
+  it('isDemoAlias: NFKC, zero-width and format characters stripped, look-alike letters folded, then /^demo/i', () => {
+    for (const a of ['Demo', 'DemoMaple', 'Demo Maple', 'demo maple', 'DEMO-Maple', 'Demonstrator', '  Demo', '\u200BDemo Maple', 'D\u200Bemo', 'De\u200Dmo\u2060X', '\uFEFFDemo', 'D\u00ADemo', 'Ｄｅｍｏ Maple', 'Dеmo', 'DЕMО', 'Dεmο', 'ԁemo', 'ᎠEMO', 'ⅮEMO']) {
+      expect(isDemoAlias(a), JSON.stringify(a)).toBe(true);
+    }
+    for (const a of ['Careful Cat', 'Maple Demo', 'Dem0', 'Deme', 'D emo', 'Mode']) expect(isDemoAlias(a), JSON.stringify(a)).toBe(false);
+  });
+
+  it('a real tester cannot take a Demo alias through the API (any case, bare "Demo", no separator); other aliases still work', async () => {
     t = await makeApp();
     const u = await t.register('tester');
-    for (const alias of ['Demo Maple', 'demo maple', 'DEMO-Maple', 'Demo_x']) {
+    for (const alias of ['Demo Maple', 'demo maple', 'DEMO-Maple', 'Demo_x', 'DemoMaple', 'Demo', 'Demonstrator']) {
       const r = await t.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias });
       expect(r.status, alias).toBe(400);
       expect(r.body.message).toMatch(/reserved for the labelled demo examples/);
     }
-    expect((await t.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias: 'Demonstrator' })).status).toBe(200);
+    // Non-ASCII look-alikes never reach the guard: the alias contract is ASCII-only (400 VALIDATION).
+    expect((await t.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias: 'Dеmo Maple' })).status).toBe(400);
+    expect((await t.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias: 'Maple Demo' })).status).toBe(200);
   });
 });
 
@@ -152,6 +162,14 @@ describe('the seed (A3, A4, D2, D3)', () => {
     const f = demoProfileFixtures();
     const m = memoryStore(Object.fromEntries(f.slice(0, 3).map((d) => [d.id, structuredClone(d)])));
     expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 9, unchanged: 3, total: 12, readBack: 12 });
+  });
+
+  it('QA P3-D2: refuses, writing nothing, while a REAL alias in the namespace starts with Demo (read-only pre-check)', async () => {
+    const m = memoryStore({}, ['Careful Cat', 'D\u200Bemo Old']);
+    await expect(seedDemoShowcase(onlyDemo(m.store))).rejects.toThrow(/Refused, nothing written: 1 real leaderboard alias starts with "Demo"/);
+    expect(m.writes()).toBe(0);
+    const ok = memoryStore({}, ['Careful Cat', 'Maple Demo']);
+    expect(await seedDemoShowcase(onlyDemo(ok.store))).toMatchObject({ written: 12 });
   });
 
   it('a differing document (changed or extra field) is never overwritten: refused with the ids, nothing written', async () => {

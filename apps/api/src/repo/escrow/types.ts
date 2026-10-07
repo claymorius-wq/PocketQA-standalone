@@ -90,6 +90,8 @@ export type SimTransferRow = {
 export interface DemoProfilesStore {
   /** Every stored document, unvalidated (the caller keeps only contract-exact labelled fixtures). */
   list(): Promise<unknown[]>;
+  /** Every REAL leaderboard alias in this namespace (leaderboardProfiles; read-only). */
+  realAliases(): Promise<string[]>;
   /**
    * One transaction: if any stored document differs from its fixture, writes nothing and names them
    * (`differing`); otherwise creates the missing ones. Never overwrites, never deletes.

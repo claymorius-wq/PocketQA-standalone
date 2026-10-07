@@ -100,6 +100,20 @@ describe('the seed (A1–A3, D2, D3)', () => {
   });
 });
 
+describe('QA P3-D2: the read-only pre-check on real aliases', () => {
+  it('reads only the namespace; refuses (nothing written) while a real profile there has a Demo… alias', async () => {
+    t = await makeApp();
+    // A root (production-path) profile is never read: the seed proceeds.
+    await raw.doc('leaderboardProfiles/u-root').create({ user_id: 'u-root', opted_in: 1, alias: 'Demo Root', updated_at: '2026-10-01T00:00:00.000Z' });
+    expect(await seedDemoShowcase(t.deps.repo)).toMatchObject({ written: 12 });
+    // Written directly into the namespace: the API now refuses such an alias, but one may predate the guard.
+    await raw.doc(`${DEVNET_ROOT}/leaderboardProfiles/u-old`).create({ user_id: 'u-old', opted_in: 1, alias: 'DemoMaple', updated_at: '2026-10-01T00:00:00.000Z' });
+    const times = await updateTimes();
+    await expect(seedDemoShowcase(t.deps.repo)).rejects.toThrow(/1 real leaderboard alias starts with "Demo"/);
+    expect(await updateTimes()).toEqual(times);
+  });
+});
+
 describe('GET /demo/showcase in the devnet namespace (B4, C2)', () => {
   it('flag on: public, labelled, 8 testers and 4 builders, every row demo: true (empty before the seed)', async () => {
     t = await makeApp({ demoShowcase: true });

@@ -15,6 +15,10 @@ export function firestoreDemoProfiles(fs: Firestore): DemoProfilesStore {
     async list() {
       return (await col().get()).docs.map((d) => d.data());
     },
+    // Read-only: the real profiles' aliases (leaderboardAliases holds only hashed keys; the profile holds the alias).
+    async realAliases() {
+      return (await fs.collection('leaderboardProfiles').get()).docs.map((d) => (d.data() as { alias?: unknown }).alias).filter((a): a is string => typeof a === 'string');
+    },
     async seed(fixtures) {
       // One transaction: read every fixture's document; if any differs, write nothing; else create the missing ones.
       return runTx(fs, async (tx) => {

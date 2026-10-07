@@ -335,7 +335,17 @@ reservation, and no payout.
   - Store: `src/repo/escrow/demoProfiles.ts`, read and create only. SQLite has none.
   - Fixture: `src/devnet/demoShowcase.ts`, deterministic.
 - **The real ranking:** `GET /leaderboard` and `/me/reputation` are unchanged and never read `demoProfiles`.
-  - B3: a real tester's alias may not start with "Demo" (`demo` followed by a space, `_` or `-`, any case). The prefix is reserved for the examples.
+  - B3 and QA P3-D2: a real tester's alias may not read as "Demo…". `isDemoAlias` does this:
+    1. NFKC-normalises the alias.
+    2. Strips Unicode format characters (zero-width and similar) and leading spaces.
+    3. Folds Cyrillic, Greek and Cherokee look-alikes of D, E, M and O to Latin.
+    4. Tests `/^demo/i`.
+    - This covers "DemoMaple", a bare "Demo" and "Demonstrator". The alias contract is ASCII-only, so non-ASCII look-alikes are already refused there with 400.
+  - The seed's read-only pre-check refuses, writing nothing, while any real `leaderboardProfiles` alias in the namespace reads as "Demo…".
+    - `leaderboardAliases` holds only hashed keys; the alias text lives on the profile.
+- **`/config` (QA P3-D3):** every deployment's `GET /config`, production included, now carries `features.demoShowcase` (`false` everywhere but devnet with the flag).
+  - Harmless: it is public configuration, and older clients ignore it.
+  - It is not byte-identical to the previous `/config` response, so a byte comparison across this change will differ by that one field.
 - **Seed:** `npx tsx scripts/devnet-seed-demo.ts`, with the devnet deployment's env. It refuses without `POCKETQA_ENV=devnet` and `POCKETQA_DEMO_SHOWCASE=1`, and refuses non-devnet repositories.
   - It runs one transaction. If any stored demo document differs from its fixture (a changed or extra field), it refuses, names the ids and writes nothing (QA D3: never overwrite).
   - Otherwise it creates only the missing documents, so a second run writes 0.
@@ -348,10 +358,12 @@ reservation, and no payout.
     - A4: the seed runs against a stub where every repo member except the demo store throws;
     - D2 and D3 against the store contract;
     - static checks: no delete or update on the seed path, no Auth, the CLI gate.
+  - `test/demo-seed-auth.test.ts` (QA P3-D1): every `firebase-admin/auth` export is a stub that records and throws. The seed's module graph is loaded and the seed runs, with zero Auth calls.
   - `test/devnet-config.test.ts` and `test/demo-showcase-config.test.ts`: the flag.
   - `test/emulator/devnet.demo.test.ts` (Firestore):
     - A2: per-collection counts, root and namespace;
     - D2: `updateTime` unchanged on run 2;
     - D3: a partial state, and a differing document refused untouched;
+    - P3-D2: the alias pre-check reads only the namespace, and refuses while a namespaced Demo… alias exists;
     - the route;
     - B1: `/leaderboard` and `/me/reputation` byte-identical with and without the seed and the flag.

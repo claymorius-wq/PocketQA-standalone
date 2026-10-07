@@ -1,6 +1,6 @@
 import { assertCleanCopy, LEADERBOARD_MIN_DECIDED, REPUTATION_WINDOW_DAYS } from '@pocket-qa/domain';
 import { me, type Handler } from '../context';
-import { showcaseFrom } from '../devnet/demoShowcase';
+import { isDemoAlias, showcaseFrom } from '../devnet/demoShowcase';
 import { fail, failWithStatus } from '../util';
 
 export const reputationHandlers = {
@@ -11,8 +11,8 @@ export const reputationHandlers = {
     const user = me(ctx);
     const { optIn, alias } = ctx.body as { optIn: boolean; alias?: string };
     if (alias !== undefined) assertCleanCopy({ alias });
-    // pqa-qa B3: "Demo …" names only the labelled demo examples (GET /demo/showcase), never a real tester.
-    if (alias !== undefined && /^demo[\s_-]/i.test(alias.trim())) throw fail('VALIDATION', 'Aliases starting with "Demo" are reserved for the labelled demo examples.');
+    // pqa-qa B3 / P3-D2: "Demo…" names only the labelled demo examples (GET /demo/showcase), never a real tester.
+    if (alias !== undefined && isDemoAlias(alias)) throw fail('VALIDATION', 'Aliases starting with "Demo" are reserved for the labelled demo examples.');
     await ctx.deps.repo.escrow.putLeaderboard(user.id, optIn, alias, ctx.deps.now());
     return ctx.deps.repo.escrow.reputationOf(user.id, ctx.deps.now());
   },
