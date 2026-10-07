@@ -817,7 +817,7 @@ export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays
 export type Leaderboard = z.infer<typeof Leaderboard>;
 export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });
 
-// ---------- demo showcase (POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1 only) ----------
+// ---------- demo showcase (staging's fixed cohort, Hamza 2026-10-07; devnet with POCKETQA_DEMO_SHOWCASE=1) ----------
 /**
  * Clearly labelled SYNTHETIC sample profiles for demos: fixtures, never accounts. No sign-in,
  * participation, ledger, earned rating or payout stands behind them, and the real GET /leaderboard
@@ -861,7 +861,7 @@ export const ClientConfig = z.object({
   walletLogin: z.boolean(),
   /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
   // `settlement` defaults to off: a server that predates escrow never enables it by omission.
-  // `demoShowcase`: GET /demo/showcase is served (devnet with POCKETQA_DEMO_SHOWCASE=1 only); off by omission.
+  // `demoShowcase`: GET /demo/showcase is served (staging's fixed cohort; devnet with POCKETQA_DEMO_SHOWCASE=1); off by omission.
   features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off'), demoShowcase: z.boolean().default(false) }),
   firebase: z
     .object({

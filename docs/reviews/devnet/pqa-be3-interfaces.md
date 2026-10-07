@@ -317,6 +317,15 @@ npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 
 
 ## 16. The demo showcase (Hamza via the lead, 2026-10-07; devnet/demo scope only; QA bar qa-demo-showcase-acceptance-r1)
 
+**Scope change (Hamza GO, 2026-10-07): visible on the hosted staging app, at most 10 in total.** This deliberately reverses QA bar C ("refused outside devnet") for staging only.
+
+- **Config:** `config.demoShowcase` is `'off' | 'fixtures' | 'store'`. It replaces `config.devnet.demoShowcase`.
+  - **staging → `'fixtures'`:** enabled in code, with no env variable (a Vercel env write is not ours to make). The route serves `demoProfileFixtures()` capped at `MAX_DEMO_PROFILES = 10`: 8 testers plus demo-9 and demo-10. It does **no Firestore read or write**, so production collections and the real leaderboard and ranks are untouched by construction. A test traps every repository and still gets 10.
+  - **devnet → `'store'`** with `POCKETQA_DEMO_SHOWCASE=1`: the namespace `demoProfiles` store and the idempotent seed, as before, also capped at 10. The 12 stored documents are left as they are.
+  - **production and development → `'off'`:** `/config` says `features.demoShowcase: false`, and the route returns 404 `FEATURE_UNAVAILABLE`. `POCKETQA_DEMO_SHOWCASE` is still refused outside devnet, staging included, with the same message.
+  - Staging still refuses `squads_devnet`, with the message byte-identical.
+- **Authz:** unchanged. `GET /demo/showcase` is **public** (no session), read-only, and has no payouts, ledger, points, aliases or users.
+
 Clearly labelled SYNTHETIC sample profiles for demos. They are fixture documents, not accounts: no
 Firebase Auth user, no `users` row, no participation, ledger, points, leaderboard profile or alias
 reservation, and no payout.

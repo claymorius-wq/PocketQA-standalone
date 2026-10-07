@@ -121,7 +121,7 @@ describe('QA P3-D2: the read-only pre-check on real aliases', () => {
 
 describe('GET /demo/showcase in the devnet namespace (B4, C2)', () => {
   it('flag on: public, labelled, 8 testers and 2 builders (10 at most), every row demo: true (empty before the seed)', async () => {
-    t = await makeApp({ demoShowcase: true });
+    t = await makeApp({ demoShowcase: 'store' });
     expect((await t.req('GET', '/demo/showcase')).body).toEqual({ label: DEMO_SHOWCASE_LABEL, testers: [], builders: [] });
     await seedDemoShowcase(t.deps.repo);
     const r = await t.req('GET', '/demo/showcase');
@@ -133,7 +133,7 @@ describe('GET /demo/showcase in the devnet namespace (B4, C2)', () => {
   });
 
   it('Hamza cap: the live state (12 stored: demo-11/12 from before the cap) serves 10; the seed writes 0 and leaves all 12 as they are', async () => {
-    t = await makeApp({ demoShowcase: true });
+    t = await makeApp({ demoShowcase: 'store' });
     for (const d of [...demoProfileFixtures(), ...LEGACY_BUILDERS]) await raw.doc(`${DEMO}/${d.id}`).create(d);
     const times = await updateTimes();
     const show = DemoShowcase.parse((await t.req('GET', '/demo/showcase')).body);
@@ -161,7 +161,7 @@ describe('the real ranking is unchanged (B1, B3)', () => {
     const { b, testers } = await realLeaderboard(t);
     const snapshot = async () => [await rawBody(t!, '/leaderboard', b.token), ...(await Promise.all(testers.map((u) => rawBody(t!, '/me/reputation', u.token))))];
     const setFlag = (on: boolean) => {
-      t!.deps.config.devnet = on ? { platform: '', arbiter: '', feeWallet: '', allowedEmails: [], signer: { kind: 'env' }, limits: t!.deps.config.devnet?.limits ?? { global: { lamports: 0, usdcUnits: 0 }, perUser: { lamports: 0, usdcUnits: 0 } }, demoShowcase: true } : null;
+      t!.deps.config.demoShowcase = on ? 'store' : 'off';
     };
     const base = await snapshot();
     expect(Leaderboard.parse(JSON.parse(base[0]!)).items.length).toBeGreaterThan(0);

@@ -53,7 +53,7 @@ export const accountHandlers = {
       authMode,
       storage: ctx.deps.config.storage,
       walletLogin: ctx.deps.config.walletLogin,
-      features: { ...ctx.deps.config.features, demoShowcase: ctx.deps.config.devnet?.demoShowcase ?? false },
+      features: { ...ctx.deps.config.features, demoShowcase: (ctx.deps.config.demoShowcase ?? 'off') !== 'off' },
       firebase: firebase
         ? {
             apiKey: firebase.webApiKey,

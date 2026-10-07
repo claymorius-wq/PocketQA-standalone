@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEMO_SHOWCASE_LABEL, DemoBuilder, DemoShowcase, DemoTester, routes } from '@pocket-qa/contracts';
+import { ClientConfig, DEMO_SHOWCASE_LABEL, DemoBuilder, DemoShowcase, DemoTester, Leaderboard, routes } from '@pocket-qa/contracts';
+import { reputationHandlers } from '../src/handlers/reputation';
+import { hostedConfig } from '../src/hosted/app';
 import { demoProfileFixtures, DemoSeedError, isDemoAlias, MAX_DEMO_PROFILES, sameDemoDoc, seedDemoShowcase, showcaseFrom, type DemoProfileDoc } from '../src/devnet/demoShowcase';
 import type { Repos } from '../src/repo';
 import type { DemoProfilesStore } from '../src/repo/escrow/types';
-import { makeApp, type TestApp } from './helpers';
+import { DEVICE, makeApp, STUDY, type TestApp } from './helpers';
 
 // The demo showcase (Hamza via the lead, 2026-10-07; pqa-qa acceptance bar r1 A–D): labelled
 // SYNTHETIC fixtures in the devnet namespace only. These run on SQLite and pure code; the Firestore
@@ -109,13 +111,92 @@ describe('GET /demo/showcase off the devnet namespace (C2)', () => {
     expect(r.body.code).toBe('FEATURE_UNAVAILABLE');
   });
 
-  it('flag on but not the devnet namespace (here SQLite): still 404 FEATURE_UNAVAILABLE', async () => {
-    t = await makeApp({ demoShowcase: true });
+  it('store mode but not the devnet namespace (here SQLite): still 404 FEATURE_UNAVAILABLE', async () => {
+    t = await makeApp({ demoShowcase: 'store' });
     const r = await t.req('GET', '/demo/showcase');
     expect(r.status).toBe(404);
     expect(r.body.code).toBe('FEATURE_UNAVAILABLE');
   });
 });
+
+describe('the hosted staging cohort (fixtures mode, Hamza 2026-10-07): served from code, never from data', () => {
+  it('serves exactly 10: the 8 testers + demo-9, demo-10 (never demo-11/12), "Demo " aliases, demo: true; /config says on', async () => {
+    t = await makeApp({ demoShowcase: 'fixtures' });
+    const r = await t.req('GET', '/demo/showcase');
+    expect(r.status).toBe(200);
+    const show = DemoShowcase.parse(r.body);
+    expect(show.label).toBe('Demo examples (not real users)');
+    expect(show.testers.map((p) => p.id)).toEqual(['demo-1', 'demo-2', 'demo-3', 'demo-4', 'demo-5', 'demo-6', 'demo-7', 'demo-8']);
+    expect(show.builders.map((p) => p.id)).toEqual(['demo-9', 'demo-10']);
+    expect(show.testers.length + show.builders.length).toBe(MAX_DEMO_PROFILES);
+    expect(JSON.stringify(show)).not.toMatch(/demo-1[12]/);
+    for (const p of [...show.testers, ...show.builders]) expect(p).toMatchObject({ demo: true, alias: expect.stringMatching(/^Demo /) });
+    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features.demoShowcase).toBe(true);
+  });
+
+  it('the real staging config, end to end through the handler: 10 served with every repository trapped (no Firestore read, no write)', async () => {
+    const { config } = hostedConfig({ ...STAGING_ENV, CRON_SECRET: 'c'.repeat(40) } as NodeJS.ProcessEnv);
+    const trap = new Proxy({}, { get: (_, k) => { throw new Error(`the showcase touched the repository (${String(k)})`); } });
+    const out = DemoShowcase.parse(await reputationHandlers.demoShowcase({ deps: { config, repo: trap } } as never));
+    expect(out.testers.length + out.builders.length).toBe(10);
+  });
+
+  it('the production env serves nothing: /config off and 404', async () => {
+    const prod = hostedConfig({ ...STAGING_ENV, POCKETQA_ENV: 'production', POCKETQA_SETTLEMENT: 'off', CRON_SECRET: 'c'.repeat(40) } as NodeJS.ProcessEnv).config;
+    expect(prod.demoShowcase).toBe('off');
+    await expect(reputationHandlers.demoShowcase({ deps: { config: prod, repo: {} } } as never)).rejects.toMatchObject({ code: 'FEATURE_UNAVAILABLE', status: 404 });
+    t = await makeApp({ production: true });
+    expect((await t.req('GET', '/demo/showcase')).status).toBe(404);
+    expect(ClientConfig.parse((await t.req('GET', '/config')).body).features.demoShowcase).toBe(false);
+  });
+
+  it('the real /leaderboard and /me/reputation are byte-identical with the showcase on and off', async () => {
+    t = await makeApp();
+    const app = t;
+    const b = await app.register('builder');
+    await app.req('POST', '/me/credits/test-topup', b.token, { amount: 5000 });
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const s = (await app.req('POST', '/studies', b.token, { ...STUDY, slots: 10 })).body;
+      await app.req('POST', `/studies/${s.id}/publish`, b.token);
+      ids.push(s.id);
+    }
+    const u = await app.register('tester');
+    await app.req('PUT', '/me/device', u.token, DEVICE);
+    for (const id of ids) {
+      const p = (await app.req('POST', `/studies/${id}/consent`, u.token, { consentVersion: 1, accepted: true })).body;
+      await app.req('POST', `/participations/${p.id}/start`, u.token);
+      await app.req('POST', `/participations/${p.id}/submit`, u.token);
+      await app.req('POST', `/participations/${p.id}/approve`, b.token, {});
+    }
+    expect((await app.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias: 'Careful Cat' })).status).toBe(200);
+    const raw = async (url: string, token: string) => (await app.app.inject({ method: 'GET', url, headers: { authorization: `Bearer ${token}` } })).body;
+    const snap = async () => [await raw('/leaderboard', b.token), await raw('/me/reputation', u.token)];
+    const off = await snap();
+    expect(Leaderboard.parse(JSON.parse(off[0]!)).items.map((r) => r.alias)).toEqual(['Careful Cat']);
+    app.deps.config.demoShowcase = 'fixtures';
+    expect((await app.req('GET', '/demo/showcase')).status).toBe(200);
+    expect(await snap()).toEqual(off);
+    expect(off.join('')).not.toMatch(/Demo |demo-/);
+  });
+});
+
+/** The staging env the hosted app runs with (placeholders; settlement simulated). */
+const STAGING_ENV = {
+  POCKETQA_ENV: 'staging',
+  POCKETQA_DATA_BACKEND: 'firestore',
+  POCKETQA_AUTH_MODE: 'firebase',
+  POCKETQA_FIREBASE_PROJECT_ID: 'pocketqa-optijara',
+  POCKETQA_FIREBASE_WEB_API_KEY: 'public-web-key', // check-secrets: allow (placeholder public Firebase web config in tests)
+  POCKETQA_PUBLIC_ORIGIN: 'https://pocketqa.example',
+  POCKETQA_STORAGE: 'r2',
+  POCKETQA_R2_ACCOUNT_ID: 'a'.repeat(32),
+  POCKETQA_R2_BUCKET: 'pocketqa-evidence',
+  POCKETQA_R2_ACCESS_KEY_ID: 'key-id',
+  POCKETQA_R2_SECRET_ACCESS_KEY: 'not-a-real-secret', // check-secrets: allow (placeholder test value)
+  POCKETQA_R2_ALLOW_DELETE: '1',
+  POCKETQA_SETTLEMENT: 'simulated',
+};
 
 /** Repos whose every member except `namespace` and `escrow.demo` throws when touched (A4: no Auth, no other data). */
 function onlyDemo(demo: DemoProfilesStore, ns: 'devnet' | 'root' = 'devnet'): Repos {
@@ -227,7 +308,7 @@ describe('no deletion path; no Auth; the CLI gate; the leaderboard code untouche
     const s = src('scripts/devnet-seed-demo.ts');
     expect(s).toMatch(/loadConfig\(process\.env\)/);
     expect(s).toMatch(/if \(!config\.devnet\) throw/);
-    expect(s).toMatch(/if \(!config\.devnet\.demoShowcase\) throw/);
+    expect(s).toMatch(/if \(config\.demoShowcase !== 'store'\) throw/);
     expect(s).toMatch(/namespace: 'devnet'/);
   });
   it('the leaderboard and reputation code never read demoProfiles (B2)', () => {

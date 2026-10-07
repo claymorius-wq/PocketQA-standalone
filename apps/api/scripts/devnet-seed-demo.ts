@@ -14,7 +14,7 @@ import { makeRepos } from '../src/repo';
 try {
   const config = loadConfig(process.env);
   if (!config.devnet) throw new DemoSeedError('Run with the devnet deployment env (POCKETQA_ENV=devnet).');
-  if (!config.devnet.demoShowcase) throw new DemoSeedError('The demo showcase is off: set POCKETQA_DEMO_SHOWCASE=1 in the devnet env first.');
+  if (config.demoShowcase !== 'store') throw new DemoSeedError('The demo showcase is off: set POCKETQA_DEMO_SHOWCASE=1 in the devnet env first.');
   const repos = makeRepos({ kind: 'firestore', fs: openFirestore(process.env, config.firebase!.projectId), namespace: 'devnet' });
   const result = await seedDemoShowcase(repos);
   console.log(JSON.stringify({ namespace: 'devnet', collection: 'demoProfiles', ...result }));
