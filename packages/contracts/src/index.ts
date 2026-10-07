@@ -872,7 +872,8 @@ export const ClientConfig = z.object({
   walletLogin: z.boolean(),
   /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
   // `settlement` defaults to off: a server that predates escrow never enables it by omission.
-  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off') }),
+  // `demoShowcase`: GET /demo/showcase is served (devnet with POCKETQA_DEMO_SHOWCASE=1 only); off by omission.
+  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off'), demoShowcase: z.boolean().default(false) }),
   firebase: z
     .object({
       apiKey: z.string().min(1),
