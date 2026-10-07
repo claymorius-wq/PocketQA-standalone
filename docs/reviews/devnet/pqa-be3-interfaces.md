@@ -315,29 +315,43 @@ npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 
 - **The spend report reads costs with the platform public key only:** `rpcCostReader(rpcUrl, POCKETQA_DEVNET_PLATFORM_PUBKEY)`, which shares its cost read with `RpcDevnetChain.costOf`. The script never loads the platform secret, and a static test pins that.
   - **One thing remains:** devnet config validation still requires one signer variable to be **set**. Use `POCKETQA_DEVNET_PLATFORM_SIGNER_FILE`, a path the report never reads.
 
-## 16. The demo showcase (Hamza via the lead, 2026-10-07; devnet/demo scope only)
+## 16. The demo showcase (Hamza via the lead, 2026-10-07; devnet/demo scope only; QA bar qa-demo-showcase-acceptance-r1)
 
 Clearly labelled SYNTHETIC sample profiles for demos. They are fixture documents, not accounts: no
-Firebase Auth user, no `users` row, no participation, ledger, points, leaderboard profile or payout.
+Firebase Auth user, no `users` row, no participation, ledger, points, leaderboard profile or alias
+reservation, and no payout.
 
 - **Flag:** `POCKETQA_DEMO_SHOWCASE=1` is accepted only with `POCKETQA_ENV=devnet`. Any value
   in production, staging or development is refused, and in devnet it must be `1` or unset.
-  It lands in `config.devnet.demoShowcase`.
-- **Data:** `pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-12` (8 testers, then 4 builders),
-  reached only through `devnetFirestore`.
-  - Store: `src/repo/escrow/demoProfiles.ts`, read and upsert only, with no deletion path. SQLite has none (`escrow.demo = null`).
-  - Fixture: `src/devnet/demoShowcase.ts`, deterministic (no clock, no randomness).
-- **Contract:** `GET /demo/showcase` is public and returns `DemoShowcase`, `{ label: DEMO_SHOWCASE_LABEL, testers: DemoTesterProfile[], builders: DemoBuilderProfile[] }`.
-  - Rows are strict, so they can carry no user id, email or wallet. Each row has: `id` (`demo-N`), `kind`, `alias` (starts with `Demo `), `fixture: true`, `label: DEMO_PROFILE_LABEL` ("Demo example (not a real user)"), `decided`, `acceptedRate` (whole percent), `qualityScore` (0–100), and `badges` (BadgeId[], empty for builders). Builders also have `studiesPublished`.
-  - The rows come in fixture order and are not a ranking, so they have no rank.
-  - The route returns 404 `NOT_FOUND` "Route not found." unless the flag is on AND the repositories are the devnet namespace's.
-  - Stored documents that don't match the strict contract exactly (unlabelled, not `Demo `, extra fields) are never served.
-- **The real leaderboard:** `GET /leaderboard` is unchanged and reads only `leaderboardProfiles`, so it never sees a demo row.
-- **Seed:** `npx tsx scripts/devnet-seed-demo.ts`, with the devnet deployment's env. It refuses without `POCKETQA_ENV=devnet` and refuses non-devnet repositories.
-  - It runs one transaction: it reads all 12 documents and writes, with merge, only those that differ on a fixture field.
-  - It prints `{written, unchanged, total, readBack}`, so a second run prints `written: 0, unchanged: 12`.
-  - It has no deletion path.
+  - It sets `config.devnet.demoShowcase` and the client's `ClientConfig.features.demoShowcase` (default false).
+- **Contract (lead decision):** `GET /demo/showcase` is public and returns `{ label: "Demo examples (not real users)", testers: DemoTester[], builders: DemoBuilder[] }`.
+  - `DemoTester = { id, alias, qualityScore, decided, badges, demo: true }`.
+  - `DemoBuilder = { id, alias, studiesPublished, demo: true }`.
+  - Both are strict: no user id, email or wallet, and no earnings, credit or USDC field.
+  - Rows come in fixture-id order and are not a ranking.
+  - When off (no flag, or not the devnet namespace's repositories) the route answers **404 `FEATURE_UNAVAILABLE`**.
+  - Stored documents that don't match the strict contract are never served.
+- **Data:** `pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-12` (8 testers, then 4 builders), reached only through `devnetFirestore`.
+  - Store: `src/repo/escrow/demoProfiles.ts`, read and create only. SQLite has none.
+  - Fixture: `src/devnet/demoShowcase.ts`, deterministic.
+- **The real ranking:** `GET /leaderboard` and `/me/reputation` are unchanged and never read `demoProfiles`.
+  - B3: a real tester's alias may not start with "Demo" (`demo` followed by a space, `_` or `-`, any case). The prefix is reserved for the examples.
+- **Seed:** `npx tsx scripts/devnet-seed-demo.ts`, with the devnet deployment's env. It refuses without `POCKETQA_ENV=devnet` and `POCKETQA_DEMO_SHOWCASE=1`, and refuses non-devnet repositories.
+  - It runs one transaction. If any stored demo document differs from its fixture (a changed or extra field), it refuses, names the ids and writes nothing (QA D3: never overwrite).
+  - Otherwise it creates only the missing documents, so a second run writes 0.
+  - It prints `{written, unchanged, total, readBack}`. `readBack` counts the rows the route would serve.
+  - It has no deletion or reset path.
 - **Tests:**
-  - `test/demo-showcase.test.ts` (unit and SQLite): the fixture, the strict filter, the 404s, the seed refusal, and static checks that nothing deletes and nothing imports Auth.
-  - `test/devnet-config.test.ts`: the flag's refusals.
-  - `test/emulator/devnet.demo.test.ts` (Firestore): seed idempotency and drift repair, the namespace-only writes, the route with and without the flag, and the leaderboard being identical with and without the seed.
+  - `test/demo-showcase.test.ts` (unit and SQLite):
+    - the fixture, the strict filter and the 404s;
+    - B3 and A3;
+    - A4: the seed runs against a stub where every repo member except the demo store throws;
+    - D2 and D3 against the store contract;
+    - static checks: no delete or update on the seed path, no Auth, the CLI gate.
+  - `test/devnet-config.test.ts` and `test/demo-showcase-config.test.ts`: the flag.
+  - `test/emulator/devnet.demo.test.ts` (Firestore):
+    - A2: per-collection counts, root and namespace;
+    - D2: `updateTime` unchanged on run 2;
+    - D3: a partial state, and a differing document refused untouched;
+    - the route;
+    - B1: `/leaderboard` and `/me/reputation` byte-identical with and without the seed and the flag.

@@ -26,6 +26,8 @@ export const HTTP_STATUS: Record<ErrorCode, number> = {
 };
 
 export const fail = (code: ErrorCode, message: string) => new DomainError(code, message);
+/** A DomainError answered with `status` instead of its code's usual one (e.g. a 404 FEATURE_UNAVAILABLE). */
+export const failWithStatus = (status: number, code: ErrorCode, message: string) => Object.assign(new DomainError(code, message), { status });
 /** Used for every "not yours" case as well as "doesn't exist", so existence never leaks. */
 export const notFound = (what = 'Resource') => fail('NOT_FOUND', `${what} not found.`);
 

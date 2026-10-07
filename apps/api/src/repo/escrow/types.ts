@@ -90,8 +90,11 @@ export type SimTransferRow = {
 export interface DemoProfilesStore {
   /** Every stored document, unvalidated (the caller keeps only contract-exact labelled fixtures). */
   list(): Promise<unknown[]>;
-  /** Upserts each fixture by its fixed id (merge); a document equal on every fixture field is not written. */
-  seed(fixtures: readonly import('../../devnet/demoShowcase').DemoProfileDoc[]): Promise<{ written: number; unchanged: number }>;
+  /**
+   * One transaction: if any stored document differs from its fixture, writes nothing and names them
+   * (`differing`); otherwise creates the missing ones. Never overwrites, never deletes.
+   */
+  seed(fixtures: readonly import('../../devnet/demoShowcase').DemoProfileDoc[]): Promise<{ written: number; unchanged: number; differing: string[] }>;
 }
 
 /** What a funding transfer's verification concluded (computed outside the transaction). */
@@ -100,7 +103,7 @@ export type FundingVerdict = { status: 'pending' | 'confirmed' | 'failed'; reaso
 export interface EscrowRepo {
   /** POCKETQA_ENV=devnet's receipts, leases and spend (Firestore only; null on SQLite, where the pilot keeps squads_attempts). */
   readonly devnet: import('../../settlement/squads/devnetTypes').DevnetStore | null;
-  /** The labelled demo fixtures (`demoProfiles`; Firestore only, null on SQLite). Read and upsert only. */
+  /** The labelled demo fixtures (`demoProfiles`; Firestore only, null on SQLite). Read and create only. */
   readonly demo: DemoProfilesStore | null;
   // ── Wallet links (T8) ──────────────────────────────────────────────────────────────────────
   /** The user's linked wallet, or null. Read by the core `userView`. */
