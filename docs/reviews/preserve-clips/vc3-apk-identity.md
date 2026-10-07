@@ -22,6 +22,7 @@ dex hits PendingStore: 10
 dex hits settle: 16
 Sign out and delete: 1
 staging: 1
+Remove this clip?: 1
 ```
 
 The first five gates (cert, package and versionCode, label, icon, bundle content) are the lead's. The badging has no `application-debuggable` line. The `dex hits` counts are byte grep counts (presence only). `Sign out and delete` and `Remove this clip?` are the new ASCII UI strings; the remove-sheet body contains a curly apostrophe, so Hermes stores it as UTF-16 and a byte grep is not used for it.
