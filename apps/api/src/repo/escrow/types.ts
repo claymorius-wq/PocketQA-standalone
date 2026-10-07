@@ -86,12 +86,22 @@ export type SimTransferRow = {
   block_time_ms: number;
 };
 
+/** The demo showcase's fixture documents (src/devnet/demoShowcase.ts). No deletion path exists. */
+export interface DemoProfilesStore {
+  /** Every stored document, unvalidated (the caller keeps only contract-exact labelled fixtures). */
+  list(): Promise<unknown[]>;
+  /** Upserts each fixture by its fixed id (merge); a document equal on every fixture field is not written. */
+  seed(fixtures: readonly import('../../devnet/demoShowcase').DemoProfileDoc[]): Promise<{ written: number; unchanged: number }>;
+}
+
 /** What a funding transfer's verification concluded (computed outside the transaction). */
 export type FundingVerdict = { status: 'pending' | 'confirmed' | 'failed'; reason: string | null };
 
 export interface EscrowRepo {
   /** POCKETQA_ENV=devnet's receipts, leases and spend (Firestore only; null on SQLite, where the pilot keeps squads_attempts). */
   readonly devnet: import('../../settlement/squads/devnetTypes').DevnetStore | null;
+  /** The labelled demo fixtures (`demoProfiles`; Firestore only, null on SQLite). Read and upsert only. */
+  readonly demo: DemoProfilesStore | null;
   // ── Wallet links (T8) ──────────────────────────────────────────────────────────────────────
   /** The user's linked wallet, or null. Read by the core `userView`. */
   walletLinkOf(userId: string): Promise<WalletLink | null>;

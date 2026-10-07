@@ -56,7 +56,7 @@ describe('POCKETQA_ENV=devnet', () => {
   it('loads: hosted security, Firestore, the Squads devnet settlement, the devnet settings (no key in config)', () => {
     const c = loadConfig(devnet);
     expect(c).toMatchObject({ production: false, staging: false, dataBackend: 'firestore', authMode: 'firebase', storage: 'r2', features: { devnetTransfers: false, settlement: 'squads_devnet' }, pilotKeysDir: null });
-    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS });
+    expect(c.devnet).toEqual({ platform: canary.publicKey.toBase58(), arbiter, feeWallet, allowedEmails: ['devnet-builder@example.test', 'devnet-tester@example.test'], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS, demoShowcase: false });
     expect(JSON.stringify(c)).not.toContain(canaryJson);
     expect(c.rpcUrl).toBe('https://api.devnet.solana.com');
   });
@@ -104,6 +104,23 @@ describe('devnet settings outside POCKETQA_ENV=devnet (CH-D4: production refuses
       expect(m).toMatch(new RegExp(`${k}.*only for POCKETQA_ENV=devnet`));
       expect(m).not.toContain(canaryJson);
     }
+  });
+});
+
+describe('POCKETQA_DEMO_SHOWCASE (labelled demo fixtures): devnet only', () => {
+  it('is off by default and on with 1 in devnet', () => {
+    expect(loadConfig(devnet).devnet!.demoShowcase).toBe(false);
+    expect(loadConfig({ ...devnet, POCKETQA_DEMO_SHOWCASE: '1' }).devnet!.demoShowcase).toBe(true);
+  });
+  it.each(['0', 'true', 'yes', ''])('devnet refuses the value %j (only 1 turns it on)', (v) => {
+    expect(() => loadConfig({ ...devnet, POCKETQA_DEMO_SHOWCASE: v })).toThrow(/POCKETQA_DEMO_SHOWCASE must be 1/);
+  });
+  it.each([
+    ['production', production],
+    ['staging', staging],
+    ['development', { POCKETQA_DATA_DIR: '/tmp/pqa-devnet-dev' }],
+  ])('%s refuses it, whatever its value', (_, env) => {
+    for (const v of ['1', '0', '']) expect(() => loadConfig({ ...env, POCKETQA_DEMO_SHOWCASE: v })).toThrow('POCKETQA_DEMO_SHOWCASE: only for POCKETQA_ENV=devnet.');
   });
 });
 

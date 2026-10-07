@@ -1,5 +1,8 @@
 import { assertCleanCopy, LEADERBOARD_MIN_DECIDED, REPUTATION_WINDOW_DAYS } from '@pocket-qa/domain';
+import { DEMO_SHOWCASE_LABEL } from '@pocket-qa/contracts';
 import { me, type Handler } from '../context';
+import { showcaseFrom } from '../devnet/demoShowcase';
+import { fail } from '../util';
 
 export const reputationHandlers = {
   myReputation: (ctx) => ctx.deps.repo.escrow.reputationOf(me(ctx).id, ctx.deps.now()),
@@ -14,6 +17,17 @@ export const reputationHandlers = {
   },
 
   leaderboard: async (ctx) => ({ items: await ctx.deps.repo.escrow.leaderboard(ctx.deps.now()), windowDays: REPUTATION_WINDOW_DAYS, minDecided: LEADERBOARD_MIN_DECIDED }),
+
+  /**
+   * The labelled demo fixtures (src/devnet/demoShowcase.ts). Exists only with POCKETQA_DEMO_SHOWCASE=1
+   * (which config accepts only in POCKETQA_ENV=devnet) AND the devnet namespace's repositories;
+   * otherwise it answers exactly like an unknown route. Never merged into the leaderboard above.
+   */
+  demoShowcase: async (ctx) => {
+    const { repo, config } = ctx.deps;
+    if (config.devnet?.demoShowcase !== true || repo.namespace !== 'devnet' || !repo.escrow.demo) throw fail('NOT_FOUND', 'Route not found.');
+    return showcaseFrom(await repo.escrow.demo.list(), DEMO_SHOWCASE_LABEL);
+  },
 
   /**
    * An admin upholds a fraud finding on accepted work: its points are reversed (append-only) and

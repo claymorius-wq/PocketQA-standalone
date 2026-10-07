@@ -15,6 +15,7 @@ import { SimulatedSettlement } from '../src/settlement/simulated';
 import { SquadsDevnetSettlement } from '../src/settlement/squads/adapter';
 import type { SquadsChain } from '../src/settlement/squads/chain';
 import type { SettlementProvider } from '../src/settlement/types';
+import { DEFAULT_DEVNET_LIMITS } from '../src/settlement/squads/devnetTypes';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { base58 } from '@scure/base';
 import { buildSiwsMessage, type SiwsInput } from '@pocket-qa/contracts';
@@ -57,7 +58,7 @@ export const onFirestore = () => testBackend() === 'firestore';
 /** PQA_TEST_NAMESPACE=devnet: Firestore data under the devnet namespace and R2 keys under devnet/ (CH-D2 isolation tests). */
 export const testNamespace = (): 'devnet' | undefined => (process.env.PQA_TEST_NAMESPACE === 'devnet' ? 'devnet' : undefined);
 
-export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array } = {}) {
+export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; authMode?: 'local' | 'firebase'; walletLogin?: boolean; storage?: 'local' | 'r2'; r2AllowDelete?: boolean; production?: boolean; trustProxy?: boolean; settlement?: 'off' | 'simulated' | 'squads_devnet'; squadsChain?: SquadsChain; squadsCreateSeed?: Uint8Array; demoShowcase?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pqa-api-'));
   const mediaDir = join(dir, 'media');
   mkdirSync(mediaDir);
@@ -93,6 +94,8 @@ export async function makeApp(opts: { backend?: Backend; captureLogs?: boolean; 
         features: { testCredits: !opts.production, devnetTransfers: !opts.production, settlement: opts.settlement ?? 'off' },
         escrowFeeBps: 1000,
         pilotKeysDir: null,
+        // Only the demo showcase flag (the route reads nothing else of the devnet settings; no key is used).
+        devnet: opts.demoShowcase ? { platform: '', arbiter: '', feeWallet: '', allowedEmails: [], signer: { kind: 'env' }, limits: DEFAULT_DEVNET_LIMITS, demoShowcase: true } : null,
         host: '127.0.0.1',
         port: 0,
         dataDir: dir,

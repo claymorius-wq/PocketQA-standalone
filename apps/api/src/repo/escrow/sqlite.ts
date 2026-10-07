@@ -32,6 +32,7 @@ export function sqliteEscrowRepo(db: DB): EscrowRepo {
 
   return {
     devnet: null,
+    demo: null,
 
     async walletLinkOf(userId) {
       const r = db.prepare('SELECT address, linked_at FROM wallet_links WHERE user_id = ?').get(userId) as { address: string; linked_at: string } | undefined;

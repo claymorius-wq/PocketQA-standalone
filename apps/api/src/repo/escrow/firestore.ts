@@ -28,6 +28,7 @@ import type { UserRow } from '../../views/core';
 import type { DisputeRow, ParticipationRow, StudyRow } from '../../views/studies';
 import { auditInTx, firestoreCoreRepo, userInTx } from '../core/firestore';
 import { firestoreStudiesRepo } from '../studies/firestore';
+import { firestoreDemoProfiles } from './demoProfiles';
 import { firestoreDevnetStore } from './devnetStore';
 import type { EscrowRepo, EscrowRow, FundingRow, SettlementRow, SimTransferRow, TransferRow, WalletLink } from './types';
 
@@ -476,6 +477,7 @@ export function firestoreEscrowRepo(fs: Firestore, hooks: TxHooks = {}): EscrowR
 
   return {
     devnet: firestoreDevnetStore(fs, hooks),
+    demo: firestoreDemoProfiles(fs),
 
     // ── Wallet links ──
     async walletLinkOf(userId) {

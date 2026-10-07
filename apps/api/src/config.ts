@@ -39,9 +39,10 @@ export type Config = {
    * POCKETQA_ENV=devnet (docs/plans/devnet-phase-contract.md): the hosted integrated devnet journey.
    * Public settings only: the platform signer itself is loaded by settlement/squads/devnetSigner.ts
    * and never enters the config. `allowedEmails`: the labelled synthetic accounts that may start a
-   * server-signed operation (CH-D1). Null in every other env.
+   * server-signed operation (CH-D1). `demoShowcase` (POCKETQA_DEMO_SHOWCASE=1): GET /demo/showcase
+   * serves the labelled demo fixtures (src/devnet/demoShowcase.ts). Null in every other env.
    */
-  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits } | null;
+  devnet?: { platform: string; arbiter: string; feeWallet: string; allowedEmails: string[]; signer: { kind: 'env' } | { kind: 'file'; path: string }; limits: DevnetLimits; demoShowcase: boolean } | null;
   host: '127.0.0.1' | '::1';
   port: number;
   dataDir: string;
@@ -121,6 +122,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   // other env, production included, refuses them by name and never echoes a value.
   const devnetKeys = Object.keys(env).filter((k) => k.startsWith('POCKETQA_DEVNET_') && env[k] !== undefined);
   if (!devnetEnv && devnetKeys.length) throw new ConfigError(`${devnetKeys.join(', ')}: only for POCKETQA_ENV=devnet.`);
+  // The demo showcase (labelled synthetic fixtures) exists only beside the devnet journey: never in
+  // production, staging or development, whatever the value.
+  if (!devnetEnv && env.POCKETQA_DEMO_SHOWCASE !== undefined) throw new ConfigError('POCKETQA_DEMO_SHOWCASE: only for POCKETQA_ENV=devnet.');
   const dataBackend = (env.POCKETQA_DATA_BACKEND ?? 'sqlite') as Config['dataBackend'];
   if (dataBackend !== 'sqlite' && dataBackend !== 'firestore') throw new ConfigError('POCKETQA_DATA_BACKEND must be sqlite or firestore.');
   const host = env.POCKETQA_API_HOST ?? '127.0.0.1';
@@ -355,7 +359,9 @@ function devnetSettings(env: Record<string, string | undefined>, dataBackend: Co
   if (allowedEmails.length === 0) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS must list the synthetic accounts that may start devnet operations.');
   // CH-D1: labelled synthetic accounts only, never a real person's address.
   if (!allowedEmails.every((e) => /^[a-z0-9._+-]+@example\.test$/.test(e))) throw new ConfigError('POCKETQA_DEVNET_ALLOWED_EMAILS may list only synthetic @example.test accounts.');
-  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env) };
+  const demo = env.POCKETQA_DEMO_SHOWCASE;
+  if (demo !== undefined && demo !== '1') throw new ConfigError('POCKETQA_DEMO_SHOWCASE must be 1 (or unset).');
+  return { platform: platform!, arbiter: arbiter!, feeWallet: feeWallet!, allowedEmails, signer: fromEnv ? { kind: 'env' } : { kind: 'file', path: file! }, limits: devnetLimits(env), demoShowcase: demo === '1' };
 }
 
 /**

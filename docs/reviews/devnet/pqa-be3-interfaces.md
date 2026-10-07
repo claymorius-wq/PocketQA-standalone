@@ -314,3 +314,30 @@ npx tsx apps/api/scripts/devnet-arbiter.ts --key-file <abs path, 0600 file in a 
 - **Arbiter CLI funds check:** `ArbiterChain.balance(address)` is new. Before a dry run reports OK, and before `--send` signs, the arbiter key must hold at least `ARBITER_MIN_LAMPORTS = 10,000`: one vote fee of 5,000 plus a margin. Otherwise it refuses: "the arbiter key holds N lamports; its vote's fee needs at least 10000 (devnet SOL: fund the arbiter key first)". An already-cast vote needs no fee and is still just reported.
 - **The spend report reads costs with the platform public key only:** `rpcCostReader(rpcUrl, POCKETQA_DEVNET_PLATFORM_PUBKEY)`, which shares its cost read with `RpcDevnetChain.costOf`. The script never loads the platform secret, and a static test pins that.
   - **One thing remains:** devnet config validation still requires one signer variable to be **set**. Use `POCKETQA_DEVNET_PLATFORM_SIGNER_FILE`, a path the report never reads.
+
+## 16. The demo showcase (Hamza via the lead, 2026-10-07; devnet/demo scope only)
+
+Clearly labelled SYNTHETIC sample profiles for demos. They are fixture documents, not accounts: no
+Firebase Auth user, no `users` row, no participation, ledger, points, leaderboard profile or payout.
+
+- **Flag:** `POCKETQA_DEMO_SHOWCASE=1` is accepted only with `POCKETQA_ENV=devnet`. Any value
+  in production, staging or development is refused, and in devnet it must be `1` or unset.
+  It lands in `config.devnet.demoShowcase`.
+- **Data:** `pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-12` (8 testers, then 4 builders),
+  reached only through `devnetFirestore`.
+  - Store: `src/repo/escrow/demoProfiles.ts`, read and upsert only, with no deletion path. SQLite has none (`escrow.demo = null`).
+  - Fixture: `src/devnet/demoShowcase.ts`, deterministic (no clock, no randomness).
+- **Contract:** `GET /demo/showcase` is public and returns `DemoShowcase`, `{ label: DEMO_SHOWCASE_LABEL, testers: DemoTesterProfile[], builders: DemoBuilderProfile[] }`.
+  - Rows are strict, so they can carry no user id, email or wallet. Each row has: `id` (`demo-N`), `kind`, `alias` (starts with `Demo `), `fixture: true`, `label: DEMO_PROFILE_LABEL` ("Demo example (not a real user)"), `decided`, `acceptedRate` (whole percent), `qualityScore` (0–100), and `badges` (BadgeId[], empty for builders). Builders also have `studiesPublished`.
+  - The rows come in fixture order and are not a ranking, so they have no rank.
+  - The route returns 404 `NOT_FOUND` "Route not found." unless the flag is on AND the repositories are the devnet namespace's.
+  - Stored documents that don't match the strict contract exactly (unlabelled, not `Demo `, extra fields) are never served.
+- **The real leaderboard:** `GET /leaderboard` is unchanged and reads only `leaderboardProfiles`, so it never sees a demo row.
+- **Seed:** `npx tsx scripts/devnet-seed-demo.ts`, with the devnet deployment's env. It refuses without `POCKETQA_ENV=devnet` and refuses non-devnet repositories.
+  - It runs one transaction: it reads all 12 documents and writes, with merge, only those that differ on a fixture field.
+  - It prints `{written, unchanged, total, readBack}`, so a second run prints `written: 0, unchanged: 12`.
+  - It has no deletion path.
+- **Tests:**
+  - `test/demo-showcase.test.ts` (unit and SQLite): the fixture, the strict filter, the 404s, the seed refusal, and static checks that nothing deletes and nothing imports Auth.
+  - `test/devnet-config.test.ts`: the flag's refusals.
+  - `test/emulator/devnet.demo.test.ts` (Firestore): seed idempotency and drift repair, the namespace-only writes, the route with and without the flag, and the leaderboard being identical with and without the seed.
