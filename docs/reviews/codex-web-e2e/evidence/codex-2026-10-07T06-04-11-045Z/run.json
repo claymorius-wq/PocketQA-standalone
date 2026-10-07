@@ -36,7 +36,7 @@
       "failure_reason": null,
       "created_at": 1791352123351,
       "expires_at": 1791353923351,
-      "signature": "4TyVGsoCE6… sha256 96f59695d403dd1b88ff27d38b80af93d4588c5657bf5a6dd9e8b82a711b15f1",
+      "signature": "4TyVGsoCE6\u2026 sha256 96f59695d403dd1b88ff27d38b80af93d4588c5657bf5a6dd9e8b82a711b15f1",
       "source": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
       "confirmed_at": 1791352131977,
       "status": "confirmed"
@@ -119,8 +119,9 @@
       {
         "kind": "sent",
         "chain": "solana:devnet",
-        "signature": "7NEZFVwB8UYuZYggrdSAgY6dt9M3rxjyj2e8pu3mFct66YoXhBGVR3VyEk3Ncuc9TLZ76vA76WDbK7WD86u19fq",
-        "approved": true
+        "approved": true,
+        "signaturePrefix": "7NEZFVwB8U",
+        "signatureSha256": "106d11742c931da690e68be3c6229d42e81eb86190cd45c2ddb5ca6e83168d96"
       },
       {
         "kind": "disconnect",
@@ -142,8 +143,9 @@
       {
         "kind": "sent",
         "chain": "solana:devnet",
-        "signature": "4XqoL9utcT7cpswBnbAyrhuCGvoEtGxdr36BjNWhDdKMC4BTYqcPQ3JmvJegjWJ5vcCQMsGPdXeEiNPW1MfS9Jzm",
-        "approved": true
+        "approved": true,
+        "signaturePrefix": "4XqoL9utcT",
+        "signatureSha256": "073a398e2e5577a9bdca89715560b0df7f3e363b56139d6ed9cb2677eb1a744d"
       },
       {
         "kind": "disconnect",
@@ -165,8 +167,9 @@
       {
         "kind": "sent",
         "chain": "solana:devnet",
-        "signature": "4kvkSSMRjhqCBkYA3bVesKuYQMd4yvdnSHdmbj9PcdXEwPVxgL9ZcuzEPBFms8kgeYFkSzJWc6puEVzfeW7BiW2r",
-        "approved": true
+        "approved": true,
+        "signaturePrefix": "4kvkSSMRjh",
+        "signatureSha256": "686ed714a5a8bcc157c6e3b18d05d4659b3d2283766f846860f1fb8a53809016"
       },
       {
         "kind": "disconnect",
