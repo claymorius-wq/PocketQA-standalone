@@ -1,0 +1,124 @@
+[
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 314,
+  "approved": false,
+  "refused": "policy"
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 314,
+  "programs": [
+   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signature": "3ZvnC6dK9WmnUV8B1ConRhH82iVYLiVMDaBicZkMfrawsVPnerUnqDhWgLFipij73VU3zzM8XNm4SR4rUij9sbXZ",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "approved": false,
+  "refused": "policy"
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signature": "5cjGy5YyQWmNWHQh2Gqqrono5yoQc7v3VM69dSKRJcAJHkQ4QdnDGXLCqgdziNesbsZsmPgQxXRiCmsdF8bF8kXs",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signature": "3w5jo6mQsbu8SC3Zdqx6qKUMT16iYVqBCQoPq37WLesfepp9kuEzdYmU1eLgapUfXizS1dFonAm1esgkVyyPcyFh",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signature": "4S7T7kZ3Nzmnj5xh1mfWAiQA5NPJq5zL1eicruv2irkKYtQ6m72D61cR3YRV6t4fzfDSy2q9Q9ERDDKCahpShy31",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ }
+]

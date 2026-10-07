@@ -1,0 +1,73 @@
+{
+ "label": "pixel7",
+ "viewportNote": "mobile viewport, NOT a physical-device wallet deep-link (MWA) test",
+ "wallet": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+ "title": "Web devnet journey pixel7 muxne2rn",
+ "steps": [
+  {
+   "step": "builder-signed-in",
+   "at": "2026-10-07T05:09:14.564Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/01-builder-signed-in.png"
+  },
+  {
+   "step": "tester-signed-in",
+   "at": "2026-10-07T05:09:16.045Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/02-tester-signed-in.png"
+  },
+  {
+   "step": "wrong-network-wallet-not-offered",
+   "at": "2026-10-07T05:09:16.603Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/03-wrong-network-wallet-not-offered.png",
+   "note": "only a solana:mainnet wallet is installed; the sign-in screen offers no wallet"
+  },
+  {
+   "step": "tab-builder-settings-wallet-already-linked",
+   "at": "2026-10-07T05:09:17.260Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/04-tab-builder-settings-wallet-already-linked.png",
+   "note": "already linked to the fixture address before this run"
+  },
+  {
+   "step": "tab-settings-wallet-linked-elsewhere-accepted",
+   "at": "2026-10-07T05:09:18.153Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/05-tab-settings-wallet-linked-elsewhere-accepted.png",
+   "note": "linked by another lane to Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts; accepted as found, NO change (lead option A)"
+  },
+  {
+   "step": "builder-new-escrow-study",
+   "at": "2026-10-07T05:09:20.774Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/06-builder-new-escrow-study.png"
+  },
+  {
+   "step": "builder-escrow-quote",
+   "at": "2026-10-07T05:09:23.547Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-09-11-938Z/07-builder-escrow-quote.png"
+  }
+ ],
+ "chain": {
+  "before": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49885000,
+    "testUsdcUnits": 16085000
+   },
+   "tester": {
+    "owner": "Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts",
+    "lamports": 0,
+    "testUsdcUnits": 10000
+   }
+  },
+  "after": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49885000,
+    "testUsdcUnits": 16085000
+   },
+   "tester": {
+    "owner": "Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts",
+    "lamports": 0,
+    "testUsdcUnits": 10000
+   }
+  }
+ },
+ "mainnetBlocked": []
+}

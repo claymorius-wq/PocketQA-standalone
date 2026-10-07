@@ -1,0 +1,159 @@
+{
+ "label": "pixel7",
+ "viewportNote": "mobile viewport, NOT a physical-device wallet deep-link (MWA) test",
+ "wallet": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+ "title": "Web devnet journey pixel7 muxnfql5",
+ "steps": [
+  {
+   "step": "builder-signed-in",
+   "at": "2026-10-07T05:10:32.222Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/01-builder-signed-in.png"
+  },
+  {
+   "step": "tester-signed-in",
+   "at": "2026-10-07T05:10:33.902Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/02-tester-signed-in.png"
+  },
+  {
+   "step": "wrong-network-wallet-not-offered",
+   "at": "2026-10-07T05:10:34.467Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/03-wrong-network-wallet-not-offered.png",
+   "note": "only a solana:mainnet wallet is installed; the sign-in screen offers no wallet"
+  },
+  {
+   "step": "tab-builder-settings-wallet-already-linked",
+   "at": "2026-10-07T05:10:35.526Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/04-tab-builder-settings-wallet-already-linked.png",
+   "note": "already linked to the fixture address before this run"
+  },
+  {
+   "step": "tab-settings-wallet-linked-elsewhere-accepted",
+   "at": "2026-10-07T05:10:36.208Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/05-tab-settings-wallet-linked-elsewhere-accepted.png",
+   "note": "linked by another lane to Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts; accepted as found, NO change (lead option A)"
+  },
+  {
+   "step": "builder-new-escrow-study",
+   "at": "2026-10-07T05:10:38.557Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/06-builder-new-escrow-study.png"
+  },
+  {
+   "step": "builder-escrow-quote",
+   "at": "2026-10-07T05:10:41.388Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/07-builder-escrow-quote.png"
+  },
+  {
+   "step": "builder-funding-plan-checked",
+   "at": "2026-10-07T05:10:51.368Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/08-builder-funding-plan-checked.png"
+  },
+  {
+   "step": "builder-funding-cancelled-in-wallet",
+   "at": "2026-10-07T05:10:51.846Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/09-builder-funding-cancelled-in-wallet.png",
+   "note": "the wallet refused (User rejected); nothing sent"
+  },
+  {
+   "step": "builder-funded",
+   "at": "2026-10-07T05:10:56.379Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/10-builder-funded.png"
+  },
+  {
+   "step": "builder-published",
+   "at": "2026-10-07T05:10:58.526Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/11-builder-published.png"
+  },
+  {
+   "step": "tester-study-detail",
+   "at": "2026-10-07T05:10:59.922Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/12-tester-study-detail.png"
+  },
+  {
+   "step": "tester-evidence-uploaded",
+   "at": "2026-10-07T05:11:10.254Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/13-tester-evidence-uploaded.png",
+   "note": "a generated 64x64 flat PNG (synthetic, no personal content)"
+  },
+  {
+   "step": "tester-submitted",
+   "at": "2026-10-07T05:11:13.787Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/14-tester-submitted.png"
+  },
+  {
+   "step": "builder-review",
+   "at": "2026-10-07T05:11:17.263Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/15-builder-review.png"
+  },
+  {
+   "step": "builder-reward-vote-card",
+   "at": "2026-10-07T05:12:37.551Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/16-builder-reward-vote-card.png",
+   "note": "amount/recipient/op id CHECKED on devnet (vault transaction read)"
+  },
+  {
+   "step": "builder-reward-vote-cancelled-in-wallet",
+   "at": "2026-10-07T05:12:38.014Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/17-builder-reward-vote-cancelled-in-wallet.png",
+   "note": "the wallet refused (User rejected); nothing sent"
+  },
+  {
+   "step": "builder-reward-settled",
+   "at": "2026-10-07T05:13:42.793Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/18-builder-reward-settled.png"
+  },
+  {
+   "step": "tester-reward-settled",
+   "at": "2026-10-07T05:13:45.762Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/19-tester-reward-settled.png"
+  },
+  {
+   "step": "builder-refund-vote-card",
+   "at": "2026-10-07T05:15:00.281Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/20-builder-refund-vote-card.png",
+   "note": "checked on devnet"
+  },
+  {
+   "step": "builder-fee-sweep-vote-card",
+   "at": "2026-10-07T05:15:02.272Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/21-builder-fee-sweep-vote-card.png",
+   "note": "checked on devnet"
+  },
+  {
+   "step": "builder-closed-books",
+   "at": "2026-10-07T05:16:05.193Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/22-builder-closed-books.png"
+  },
+  {
+   "step": "tester-rewards",
+   "at": "2026-10-07T05:16:05.750Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/pixel7-2026-10-07T05-10-29-465Z/23-tester-rewards.png"
+  }
+ ],
+ "chain": {
+  "before": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49885000,
+    "testUsdcUnits": 16085000
+   },
+   "tester": {
+    "owner": "Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts",
+    "lamports": 0,
+    "testUsdcUnits": 10000
+   }
+  },
+  "after": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49865000,
+    "testUsdcUnits": 15535000
+   },
+   "tester": {
+    "owner": "Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts",
+    "lamports": 0,
+    "testUsdcUnits": 510000
+   }
+  }
+ },
+ "mainnetBlocked": []
+}
