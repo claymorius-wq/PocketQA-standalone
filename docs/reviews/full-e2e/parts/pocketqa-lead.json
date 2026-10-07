@@ -442,9 +442,9 @@
   "title": "Devnet spend books vs chain (cap accounting)",
   "status": "PASS",
   "environment": "loopback-devnet-artifact (real devnet)",
-  "deployment": "4ee4603",
-  "sha": "4ee4603",
-  "observed": "The cap control is PASS: it is cumulative over the namespace lifetime, refused E-28 #4 before signing at the 50M cap (QA verified), and the configurable caps under hard ceilings (9efd63e) are QA-approved. Books over-count the chain (fail-safe direction): +5213280 lamports as of 00:06Z (recorded vs on-chain platform spend). Reservations sum = recorded (no untracked spend). The exact true-down fix c3c0c8e is code-reviewed by pqa-qa and its emulator suites PASS 150/150 (pqa-be2, isolated ports, demo-be2-iso-c3c0, scratch merge 234b291; evidence 2ec9037), but it is NOT in any served artifact yet.",
+  "deployment": "candidate artifact a364b08/6fb9e3e (loopback)",
+  "sha": "a364b08",
+  "observed": "The cap control is PASS: it is cumulative over the namespace lifetime, refused E-28 #4 before signing at the 50M cap (QA verified), and the configurable caps under hard ceilings (9efd63e) are QA-approved. Books over-count the chain (fail-safe direction): +5213280 lamports as of 00:06Z (recorded vs on-chain platform spend). Reservations sum = recorded (no untracked spend). The exact true-down fix c3c0c8e is code-reviewed by pqa-qa and its emulator suites PASS 150/150 (pqa-be2, isolated ports, demo-be2-iso-c3c0, scratch merge 234b291; evidence 2ec9037), but it is NOT in any served artifact yet. UPDATE 2026-10-07 11:52Z: PROVEN LIVE on the candidate artifact a364b08/6fb9e3e (which contains c3c0c8e + dc01238): an E-28 single pass (study f4f15afb…) moved the recorded devnetSpend by exactly 20303480 lamports = the chain platform spend for that run (and +22000 test-USDC units = its funding). The historical over-count from before c3c0c8e remains in the cumulative total (fail-safe); new operations are exact.",
   "evidence": [
    "docs/reviews/full-e2e/parts/pqa-be2-devnet.json"
   ]
@@ -486,5 +486,23 @@
    "docs/reviews/full-e2e/qa/qa-codex-web-r1.md"
   ],
   "notes": "No wallet-compatibility claim (L-12 stays BLOCKED); a run by Codex (gpt-5.5) under the parent-authorized exception. Local self-signed TLS keys are gitignored, never committed."
+ },
+ {
+  "id": "L-18",
+  "area": "devnet",
+  "title": "Labelled DEMO showcase (synthetic sample testers/builders), devnet/demo scope only",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (devnet namespace) + emulator",
+  "deployment": "candidate artifact a364b08/6fb9e3e (loopback)",
+  "sha": "a364b08",
+  "steps": "be3 server/seed + be1 UI (feat/demo-showcase); pqa-qa acceptance A-F; live seed run twice; Codex read-only screenshots",
+  "fixtures": {
+   "demoProfiles": "pocketqaNamespaces/devnet/demoProfiles/demo-1..demo-12"
+  },
+  "observed": "12 deterministic demo profiles (8 testers, 4 builders) in the DEVNET namespace only; no Auth users, participations, ledger, ratings or payouts. Seed run 1 wrote 12 (readBack 12), run 2 wrote 0. The real /leaderboard and /me/reputation are byte-identical before/after (live list empty: ordering proven by the emulator B1 test); production integrity counts are identical and qa-prod-delta shows 0 production writes. The UI shows a separate section \"Demo examples (not real users)\" with a Demo badge + \"not a real user\" per profile, no ranks/money/actions, and a per-viewer toggle; off in production (the flag is refused outside POCKETQA_ENV=devnet). pqa-qa final candidate verdict APPROVE (a364b08).",
+  "evidence": [
+   "docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/"
+  ],
+  "notes": "Not hosted (Vercel preview env secrets need Hamza). P3s: the alias look-alikes U+1D05/U+A4D3 (P3-D4); \"Demolition\"-style real aliases refused (a trade-off)."
  }
 ]
