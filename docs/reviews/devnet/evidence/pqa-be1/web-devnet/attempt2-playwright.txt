@@ -1,0 +1,35 @@
+
+Running 6 tests using 1 worker
+
+  ✘  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:192:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (0ms)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:192:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered 
+
+    Error: browserType.launch: Executable doesn't exist at /Users/hamzadiaz/Library/Caches/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell
+    ╔════════════════════════════════════════════════════════════╗
+    ║ Looks like Playwright was just installed or updated.       ║
+    ║ Please run the following command to download new browsers: ║
+    ║                                                            ║
+    ║     npx playwright install                                 ║
+    ║                                                            ║
+    ║ <3 Playwright Team                                         ║
+    ╚════════════════════════════════════════════════════════════╝
+
+    Error Context: test-results/pw-desktop/hosted-journey-1-·-auth-bo-7727a--only-wallet-is-not-offered-desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-1-·-auth-bo-7727a--only-wallet-is-not-offered-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-1-·-auth-bo-7727a--only-wallet-is-not-offered-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-1-·-auth-bo-7727a--only-wallet-is-not-offered-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:192:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered 
+  5 did not run
+  1 error was not a part of any test, see above for details

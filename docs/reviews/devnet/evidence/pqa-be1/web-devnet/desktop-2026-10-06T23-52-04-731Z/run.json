@@ -1,0 +1,57 @@
+{
+ "label": "desktop",
+ "viewportNote": "desktop 1280x900",
+ "wallet": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+ "title": "Web devnet journey desktop muxc29a3",
+ "steps": [
+  {
+   "step": "builder-signed-in",
+   "at": "2026-10-06T23:52:08.174Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-52-04-731Z/01-builder-signed-in.png"
+  },
+  {
+   "step": "tester-signed-in",
+   "at": "2026-10-06T23:52:09.851Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-52-04-731Z/02-tester-signed-in.png"
+  },
+  {
+   "step": "wrong-network-wallet-not-offered",
+   "at": "2026-10-06T23:52:10.330Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-52-04-731Z/03-wrong-network-wallet-not-offered.png",
+   "note": "only a solana:mainnet wallet is installed; the sign-in screen offers no wallet"
+  },
+  {
+   "step": "tab-builder-settings-wallet-already-linked",
+   "at": "2026-10-06T23:52:11.303Z",
+   "shot": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/test-results/hosted-devnet/desktop-2026-10-06T23-52-04-731Z/04-tab-builder-settings-wallet-already-linked.png",
+   "note": "already linked to the fixture address before this run"
+  }
+ ],
+ "chain": {
+  "before": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49920000,
+    "testUsdcUnits": 16646000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  },
+  "after": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49920000,
+    "testUsdcUnits": 16646000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  }
+ },
+ "mainnetBlocked": []
+}

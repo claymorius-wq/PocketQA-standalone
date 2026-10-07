@@ -1,0 +1,40 @@
+[
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 314,
+  "approved": false,
+  "refused": "policy"
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 314,
+  "programs": [
+   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signature": "23qD7jPTNBFeituGRx7ydY67GbGyBNtfZLeWm2QH1LfUGkn4ZPTmyRWhbDToQme34FWbrY5wRC5deXPgGF8LarLc",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ }
+]
