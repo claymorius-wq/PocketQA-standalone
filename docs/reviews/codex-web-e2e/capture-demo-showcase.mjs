@@ -1,3 +1,4 @@
+/* global localStorage -- evidence copy: this runs inside the page (Playwright addInitScript) */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
