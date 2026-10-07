@@ -37,6 +37,8 @@ object RecorderBridge {
   @Volatile var currentFile: File? = null
   /** Called by the service when a session ends for any reason ("user" | "system" | "mic" | "error" | "limit"). */
   @Volatile var onStopped: ((reason: String, clip: Clip?) -> Unit)? = null
+  /** Set while a start waits for the service to confirm it is in the foreground (true) or was refused. */
+  @Volatile var onPrepared: ((Boolean) -> Unit)? = null
   /** Set while JS awaits stopAsync(); resolved by the service when the file is finalized. */
   @Volatile var pendingStop: ((Clip?) -> Unit)? = null
 }
