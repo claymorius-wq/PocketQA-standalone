@@ -4,13 +4,13 @@ import {
   holdsBudget,
   planAuthorizePayout,
   planAuthorizeRefund,
-  planFunding,
   quoteEscrow,
   verifyFundingTransfer,
   type EscrowPosting,
   type EscrowQuote,
 } from '@pocket-qa/domain';
 import type { DB } from './db';
+import type { EscrowRepo, EscrowRow, FundingRow, SettlementRow } from './repo/escrow/types';
 import type { SettlementProvider } from './settlement/types';
 import { fail, iso, newId } from './util';
 import { participationStatuses, type ParticipationRow, type StudyRow } from './views';
@@ -20,39 +20,7 @@ import { participationStatuses, type ParticipationRow, type StudyRow } from './v
  * refund authorization, and funding verification. Only SIMULATED settlement exists; the provider
  * is injected (`deps.settlement`), and nothing here signs or sends.
  */
-export type EscrowRow = { study_id: string; settlement: 'simulated' | 'squads_devnet'; network: string; mint: string; vault: string; fee_bps: number; funding_wallet: string | null; created_at: string; multisig: string | null; vault_authority: string | null };
-export type FundingRow = {
-  id: string;
-  study_id: string;
-  amount_units: number;
-  reference: string;
-  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'failed' | 'expired';
-  signature: string | null;
-  source: string | null;
-  failure_reason: string | null;
-  created_at: number;
-  expires_at: number;
-  confirmed_at: number | null;
-};
-export type SettlementRow = {
-  id: string;
-  kind: 'payout' | 'refund';
-  study_id: string;
-  participation_id: string | null;
-  tester_id: string | null;
-  destination: string;
-  amount_units: number;
-  status: 'pending' | 'submitted' | 'confirmed' | 'failed';
-  attempt: number;
-  attempt_key: string | null;
-  signature: string | null;
-  failure_reason: string | null;
-  next_attempt_at: number;
-  created_at: number;
-  settled_at: number | null;
-  /** Who co-signs with the Pocket QA release key (Squads pilot): the builder, or the arbiter. */
-  cosigner: 'builder' | 'arbiter';
-};
+export type { EscrowRow, FundingRow, SettlementRow } from './repo/escrow/types';
 
 export const FUNDING_TTL_MS = 30 * 60_000;
 
@@ -119,70 +87,89 @@ export function authorizePayout(db: DB, s: StudyRow, p: ParticipationRow, nowMs:
   audit(db, actorId, 'escrow.payout_authorized', 'participation', p.id, `${quote.rewardUnits} units to the frozen payout wallet (simulated settlement) · ${why}`, nowMs);
 }
 
+/** What the payments export reads, per backend (rows ordered by created_at ascending). */
+export type PaymentsExportInput = {
+  /** The user's received payouts, with their study titles. */
+  received: (SettlementRow & { title: string })[];
+  /** Funding requests of the user's own studies. */
+  fundings: FundingRow[];
+  /** Refunds of the user's own studies. */
+  refunds: SettlementRow[];
+  /** Payouts of the user's own studies, with the study terms that fix the fee. */
+  studyPayments: { study_id: string; amount_units: number; status: SettlementRow['status']; created_at: number; settled_at: number | null; fee_bps: number; reward_credits: number; slots: number }[];
+  /** The settlement kind of a study's escrow ('simulated' when none). */
+  settlementOf: (studyId: string) => EscrowRow['settlement'];
+};
+
 /**
  * The money part of the user's own data export (ADR 0007), least data and own data only:
  * a tester's rewards (to their own frozen wallet); a builder's fundings, refunds and per-test
  * payments of their own studies, with no tester identity, participation or wallet. Amounts are
  * exact decimal strings of base units. Provider-internal fields (attempt keys) never appear.
+ * Pure: both backends feed it.
  */
-export function paymentsExport(db: DB, userId: string) {
+export function paymentsExportFrom(input: PaymentsExportInput) {
   const units = (n: number) => String(n);
-  const kindOf = (studyId: string) => (escrowOf(db, studyId)?.settlement ?? 'simulated');
-  const asset = (studyId: string) => ({ asset: 'USDC' as const, decimals: 6 as const, settlement: kindOf(studyId) });
+  const asset = (studyId: string) => ({ asset: 'USDC' as const, decimals: 6 as const, settlement: input.settlementOf(studyId) });
   const isoOrNull = (ms: number | null) => (ms === null ? null : iso(ms));
-  const received = (
-    db
-      .prepare(`SELECT x.*, s.title FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'payout' AND x.tester_id = ? ORDER BY x.created_at`)
-      .all(userId) as (SettlementRow & { title: string })[]
-  ).map((x) => ({
-    participationId: x.participation_id!,
-    studyId: x.study_id,
-    studyTitle: x.title,
-    amountUnits: units(x.amount_units),
-    ...asset(x.study_id),
-    destination: x.destination,
-    status: x.status,
-    signature: x.signature,
-    authorizedAt: iso(x.created_at),
-    settledAt: isoOrNull(x.settled_at),
-  }));
-  const fundings = (db.prepare(`SELECT f.* FROM escrow_fundings f JOIN studies s ON s.id = f.study_id WHERE s.builder_id = ? ORDER BY f.created_at`).all(userId) as FundingRow[]).map((f) => ({
-    id: f.id,
-    studyId: f.study_id,
-    amountUnits: units(f.amount_units),
-    ...asset(f.study_id),
-    source: f.source,
-    status: f.status,
-    signature: f.signature,
-    createdAt: iso(f.created_at),
-    confirmedAt: isoOrNull(f.confirmed_at),
-  }));
-  const refunds = (db.prepare(`SELECT x.* FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'refund' AND s.builder_id = ? ORDER BY x.created_at`).all(userId) as SettlementRow[]).map((x) => ({
-    studyId: x.study_id,
-    amountUnits: units(x.amount_units),
-    ...asset(x.study_id),
-    destination: x.destination,
-    status: x.status,
-    signature: x.signature,
-    settledAt: isoOrNull(x.settled_at),
-  }));
-  const studyPayments = (
-    db
+  return {
+    received: input.received.map((x) => ({
+      participationId: x.participation_id!,
+      studyId: x.study_id,
+      studyTitle: x.title,
+      amountUnits: units(x.amount_units),
+      ...asset(x.study_id),
+      destination: x.destination,
+      status: x.status,
+      signature: x.signature,
+      authorizedAt: iso(x.created_at),
+      settledAt: isoOrNull(x.settled_at),
+    })),
+    fundings: input.fundings.map((f) => ({
+      id: f.id,
+      studyId: f.study_id,
+      amountUnits: units(f.amount_units),
+      ...asset(f.study_id),
+      source: f.source,
+      status: f.status,
+      signature: f.signature,
+      createdAt: iso(f.created_at),
+      confirmedAt: isoOrNull(f.confirmed_at),
+    })),
+    refunds: input.refunds.map((x) => ({
+      studyId: x.study_id,
+      amountUnits: units(x.amount_units),
+      ...asset(x.study_id),
+      destination: x.destination,
+      status: x.status,
+      signature: x.signature,
+      settledAt: isoOrNull(x.settled_at),
+    })),
+    studyPayments: input.studyPayments.map((x) => ({
+      studyId: x.study_id,
+      amountUnits: units(x.amount_units),
+      feeUnits: units(studyQuote({ reward_credits: x.reward_credits, slots: x.slots }, { fee_bps: x.fee_bps }).perTestFeeUnits),
+      status: x.status,
+      authorizedAt: iso(x.created_at),
+      settledAt: isoOrNull(x.settled_at),
+    })),
+  };
+}
+
+export function paymentsExport(db: DB, userId: string) {
+  return paymentsExportFrom({
+    received: db.prepare(`SELECT x.*, s.title FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'payout' AND x.tester_id = ? ORDER BY x.created_at`).all(userId) as (SettlementRow & { title: string })[],
+    fundings: db.prepare(`SELECT f.* FROM escrow_fundings f JOIN studies s ON s.id = f.study_id WHERE s.builder_id = ? ORDER BY f.created_at`).all(userId) as FundingRow[],
+    refunds: db.prepare(`SELECT x.* FROM settlements x JOIN studies s ON s.id = x.study_id WHERE x.kind = 'refund' AND s.builder_id = ? ORDER BY x.created_at`).all(userId) as SettlementRow[],
+    studyPayments: db
       .prepare(
         `SELECT x.study_id, x.amount_units, x.status, x.created_at, x.settled_at, e.fee_bps, s.reward_credits, s.slots
          FROM settlements x JOIN studies s ON s.id = x.study_id JOIN study_escrows e ON e.study_id = s.id
          WHERE x.kind = 'payout' AND s.builder_id = ? ORDER BY x.created_at`,
       )
-      .all(userId) as { study_id: string; amount_units: number; status: SettlementRow['status']; created_at: number; settled_at: number | null; fee_bps: number; reward_credits: number; slots: number }[]
-  ).map((x) => ({
-    studyId: x.study_id,
-    amountUnits: units(x.amount_units),
-    feeUnits: units(studyQuote({ reward_credits: x.reward_credits, slots: x.slots }, { fee_bps: x.fee_bps }).perTestFeeUnits),
-    status: x.status,
-    authorizedAt: iso(x.created_at),
-    settledAt: isoOrNull(x.settled_at),
-  }));
-  return { received, fundings, refunds, studyPayments };
+      .all(userId) as PaymentsExportInput['studyPayments'],
+    settlementOf: (studyId) => escrowOf(db, studyId)?.settlement ?? 'simulated',
+  });
 }
 
 /** On close: everything left in the vault is set aside for refund to the funding wallet. */
@@ -207,41 +194,20 @@ export function authorizeRefund(db: DB, s: StudyRow, nowMs: number, actorId: str
 
 /**
  * Verifies a funding signature against the server-owned expectation and records the outcome.
- * `confirmed` credits the vault once (unique signature and unique funding posting).
+ * The provider is read first (network, outside any transaction); the repository then records the
+ * verdict in one transaction, where `confirmed` credits the vault once (unique signature and
+ * unique funding posting).
  */
-export async function verifyFunding(db: DB, provider: SettlementProvider, f: FundingRow, signature: string, nowMs: number, actorId: string): Promise<FundingRow> {
-  const esc = escrowOf(db, f.study_id)!;
+export async function verifyFunding(repo: EscrowRepo, provider: SettlementProvider, f: FundingRow, signature: string, nowMs: number, actorId: string): Promise<FundingRow> {
+  const esc = (await repo.escrowOf(f.study_id))!;
   const seen = await provider.getTransfer(signature, { vault: esc.vault, reference: f.reference });
   const verdict = verifyFundingTransfer(
     { network: provider.network, mint: provider.mint, vault: esc.vault, amountUnits: f.amount_units, reference: f.reference, notBeforeMs: f.created_at },
     seen,
   );
-  db.transaction(() => {
-    const cur = db.prepare('SELECT * FROM escrow_fundings WHERE id = ?').get(f.id) as FundingRow;
-    if (cur.status === 'confirmed' || cur.status === 'failed' || cur.status === 'expired') return;
-    if (cur.signature && cur.signature !== signature) throw fail('CONFLICT_STATE', 'This funding request already has a different transfer.');
-    const usedElsewhere = db.prepare('SELECT 1 FROM escrow_fundings WHERE signature = ? AND id != ?').get(signature, f.id);
-    if (usedElsewhere) throw fail('CONFLICT_STATE', 'This transfer already funded another request.');
-    // A refund needs somewhere to go: never confirm a transfer whose funding wallet is unknown.
-    if (verdict.status === 'confirmed' && !seen?.source) {
-      verdict.status = 'failed';
-      verdict.reason = 'The transfer has no identifiable funding wallet, so a refund would have nowhere to go.';
-    }
-    if (verdict.status === 'pending') {
-      db.prepare(`UPDATE escrow_fundings SET status = 'pending', signature = ? WHERE id = ?`).run(signature, f.id);
-    } else if (verdict.status === 'failed') {
-      db.prepare(`UPDATE escrow_fundings SET status = 'failed', signature = ?, failure_reason = ? WHERE id = ?`).run(signature, verdict.reason, f.id);
-    } else {
-      db.prepare(`UPDATE escrow_fundings SET status = 'confirmed', signature = ?, source = ?, confirmed_at = ? WHERE id = ?`).run(signature, seen!.source, nowMs, f.id);
-      db.prepare('UPDATE study_escrows SET funding_wallet = ? WHERE study_id = ?').run(seen!.source, f.study_id);
-      postEscrow(db, planFunding({ studyId: f.study_id, fundingId: f.id, amountUnits: f.amount_units }), nowMs, f.id);
-      audit(db, actorId, 'escrow.funding_confirmed', 'study', f.study_id, `${f.amount_units} units from ${seen!.source} (${provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value'})`, nowMs);
-      // A funding that lands after its study closed (its builder deleted the account while the
-      // transfer was in flight) is refunded at once to the wallet it came from.
-      const study = db.prepare('SELECT * FROM studies WHERE id = ?').get(f.study_id) as StudyRow;
-      // The builder can no longer sign once the study was closed by their account's deletion.
-      if (study.status === 'closed') authorizeRefund(db, study, nowMs, actorId, 'arbiter');
-    }
-  })();
-  return db.prepare('SELECT * FROM escrow_fundings WHERE id = ?').get(f.id) as FundingRow;
+  return repo.recordFundingVerdict({ fundingId: f.id, signature, verdict, source: seen?.source ?? null, nowMs, actorId, label: settlementLabel(provider) });
 }
+
+/** How audit copy names the settlement a provider performs. */
+export const settlementLabel = (provider: Pick<SettlementProvider, 'mode'>) =>
+  provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value';

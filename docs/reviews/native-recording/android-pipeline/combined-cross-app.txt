@@ -1,0 +1,12 @@
+# Combined build (fe89787 = native branch + origin/main daf0c85 intro/badges), APK 277e8744…91a9, emulator -no-audio
+# voice-cross-app.yaml: fresh install -> intro shown and skipped -> sign in -> record across Settings/Display/Clock -> notification Stop -> back (no intro re-shown) -> keep -> upload. Maestro rc=0.
+00:12:40.621 Assert that id: welcome-screen|sign-in-screen is visible COMPLETED
+00:12:44.041 Tap on id: intro-skip COMPLETED
+00:12:44.042 Run flow when id: intro-skip is visible COMPLETED
+PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=2111 video=1528 rejected=0 bytes=9117519
+overrun lines: 0
+video 49.009 s, audio 49.017 s, |a-v| 0.008 s (limit 1.0 s)
+audio samples held 49.017 s of 49.017 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+7cfd9c26aa7d6fbacd36023d2a2a1c8323c06f849c34a9e4c96bcd87cac553a2  p5/cross-app/uploaded.mp4 (private, git-ignored)

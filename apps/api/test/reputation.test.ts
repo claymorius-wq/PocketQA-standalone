@@ -69,9 +69,14 @@ describe('H1/H5/H6: points only for accepted work, once, with no cash value', ()
     const u = await tester();
     const p = await submit(u, s.id);
     await t.req('POST', `/participations/${p}/approve`, b.token, {});
-    expect(() =>
-      t.db.prepare(`INSERT INTO points_events (id, user_id, participation_id, kind, points, platform, created_at) VALUES ('dup', ?, ?, 'accepted', 10, 'web', '2026-10-05T00:00:00Z')`).run(u.id, p),
-    ).toThrow(/UNIQUE/);
+    if (t.db) {
+      expect(() =>
+        t.db!.prepare(`INSERT INTO points_events (id, user_id, participation_id, kind, points, platform, created_at) VALUES ('dup', ?, ?, 'accepted', 10, 'web', '2026-10-05T00:00:00Z')`).run(u.id, p),
+      ).toThrow(/UNIQUE/);
+    } else {
+      // Firestore: the award guard (plan r2 §R2 row 30) holds the slot, so a second award can't be created.
+      await expect(t.fs!.collection('pointsAwards').doc(`${p}:accepted`).create({ event_id: 'dup' })).rejects.toThrow(/ALREADY_EXISTS|already exists/i);
+    }
     expect((await rep(u)).points).toBe(10);
   });
 });
@@ -91,8 +96,9 @@ describe('H2: an upheld fraud finding reverses points, append-only', () => {
     expect(r.points).toBe(0);
     expect(r.events.map((e) => e.kind).sort()).toEqual(['accepted', 'helpful', 'reversal', 'reversal']);
     expect(r.badges.map((x) => x.id)).not.toContain('first_accepted');
-    expect(() => t.db.prepare('DELETE FROM points_events').run()).toThrow(/append-only/);
-    expect((t.db.prepare(`SELECT action FROM audit WHERE action = 'reputation.fraud_upheld'`).all() as unknown[]).length).toBe(1);
+    // SQLite enforces append-only with a trigger; on Firestore the repository has no update or delete.
+    if (t.db) expect(() => t.db!.prepare('DELETE FROM points_events').run()).toThrow(/append-only/);
+    expect((await t.deps.repo.core.listAudit()).filter((x) => x.action === 'reputation.fraud_upheld')).toHaveLength(1);
   });
 
   it('only accepted work can be marked fraudulent', async () => {
@@ -120,12 +126,18 @@ describe('H3: self-dealing withholds points and flags the work', () => {
     const alt = await tester();
     const altWallet = await t.linkWallet(alt.token);
     const p = (await t.req('POST', `/studies/${s.id}/consent`, alt.token, { consentVersion: 1, accepted: true, payoutAddress: altWallet.address })).body;
-    t.db.prepare('UPDATE study_escrows SET funding_wallet = ? WHERE study_id = ?').run(altWallet.address, s.id); // simulate the shared wallet
+    // Simulate the shared wallet (Firestore also keeps the builder-funding-wallet index the check reads).
+    if (t.db) t.db.prepare('UPDATE study_escrows SET funding_wallet = ? WHERE study_id = ?').run(altWallet.address, s.id);
+    else {
+      await t.fs!.collection('studyEscrows').doc(s.id).update({ funding_wallet: altWallet.address });
+      await t.fs!.collection('builderFundingWallets').doc(`${b.id}:${altWallet.address}`).set({ builder_id: b.id, wallet: altWallet.address });
+    }
     await t.req('POST', `/participations/${p.id}/start`, alt.token);
     await t.req('POST', `/participations/${p.id}/submit`, alt.token);
     await t.req('POST', `/participations/${p.id}/approve`, b.token, { helpful: true });
     expect((await rep(alt)).points).toBe(0);
-    expect(t.db.prepare('SELECT reason FROM points_flags WHERE participation_id = ?').get(p.id)).toMatchObject({ reason: expect.stringMatching(/wallet/) });
+    const flag = t.db ? t.db.prepare('SELECT reason FROM points_flags WHERE participation_id = ?').get(p.id) : (await t.fs!.collection('pointsFlags').doc(p.id).get()).data();
+    expect(flag).toMatchObject({ reason: expect.stringMatching(/wallet/) });
     void w;
   });
 });
@@ -164,7 +176,7 @@ describe('H4: the leaderboard is opt-in, pseudonymous and quality-ranked', () =>
     const u = await tester();
     await t.req('PUT', '/me/leaderboard', u.token, { optIn: true, alias: 'Gone Soon' });
     expect((await t.req('DELETE', '/me', u.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM leaderboard_profiles').get()).toEqual({ n: 0 });
+    expect(t.db ? (t.db.prepare('SELECT COUNT(*) AS n FROM leaderboard_profiles').get() as { n: number }).n : (await t.fs!.collection('leaderboardProfiles').get()).size).toBe(0);
   });
 
   it('builders and admins have no leaderboard profile', async () => {

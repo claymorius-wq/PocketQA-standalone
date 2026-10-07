@@ -6,7 +6,15 @@ appId: com.reshareai.pocketqa
     # Maestro grants every runtime permission by default; NOTIFICATIONS lets a flow deny it.
     permissions:
       notifications: ${NOTIFICATIONS || 'allow'}
+      # Narration needs the microphone; MIC=deny exercises the refusal path.
+      microphone: ${MIC || 'allow'}
+# A fresh install shows the intro once before Sign in (main #10).
 - runFlow: _skip-intro.yaml
+# A cold start on a loaded host can take longer than Maestro's default wait.
+- extendedWaitUntil:
+    visible:
+      id: sign-in-email
+    timeout: 60000
 - tapOn:
     id: sign-in-email
 - inputText: ${EMAIL}

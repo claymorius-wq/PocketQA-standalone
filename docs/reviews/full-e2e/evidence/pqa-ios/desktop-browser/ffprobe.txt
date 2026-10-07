@@ -1,0 +1,10 @@
+# Web recorder, real Chromium MediaRecorder on SYNTHETIC media (fake devices), 2026-10-06T18:38:19.843Z
+# downloaded through the app as pocketqa-recording-20261006-203818.webm (116813 bytes)
+$ ffprobe -v error -show_entries stream=... -show_entries format=format_name,size -of compact <file>
+stream|index=0|codec_name=opus|codec_type=audio|sample_rate=48000|channels=1
+stream|index=1|codec_name=vp9|codec_type=video|width=1280|height=720
+format|format_name=matroska,webm|duration=N/A|size=116813
+$ ffmpeg -v error -i <file> -f null -   → exit 0, problems [] (known null-muxer DTS notes tolerated: 0)
+$ ffprobe format duration → N/A (MediaRecorder WebM carries no duration header; players compute it, see usability-guide.md)
+$ ffmpeg -i <file> -af volumedetect -vn -f null -   → mean_volume -21.2 dB, max_volume 0 dB (the fake microphone's tone; not silence)
+replay in page: {"duration":3.852,"played":0.364431,"error":null,"src":"blob:","w":1280,"h":720}

@@ -1,0 +1,4 @@
+video 82.434 s, audio 82.268 s, |a-v| 0.165 s (limit 1.0 s)
+audio samples held 82.268 s of 82.268 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)

@@ -34,12 +34,17 @@ beforeAll(async () => {
   const admin = await t.admin();
 
   // A transfer row for the transfer routes (wallet linking is covered in wallet.test.ts).
-  t.db
-    .prepare(
-      `INSERT INTO devnet_transfers (id, participation_id, builder_id, tester_id, sender, recipient, lamports, status, created_at, expires_at)
-       VALUES ('tr1', ?, ?, ?, '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV', '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 1000000, 'awaiting_signature', ?, ?)`,
-    )
-    .run(participationId, builder.id, tester.id, new Date(t.clock.now).toISOString(), new Date(t.clock.now + 600_000).toISOString());
+  await t.deps.repo.escrow.createTransfer({
+    id: 'tr1',
+    participation_id: participationId,
+    builder_id: builder.id,
+    tester_id: tester.id,
+    sender: '7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV',
+    recipient: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',
+    lamports: 1000000,
+    created_at: new Date(t.clock.now).toISOString(),
+    expires_at: new Date(t.clock.now + 600_000).toISOString(),
+  });
 
   // A (simulated) escrow study of builder A with an open funding request, for the escrow routes.
   await t.linkWallet(builder.token);

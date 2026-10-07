@@ -77,3 +77,79 @@ claude --model claude-opus-5-5 --append-system-prompt "<team rules: no Agent too
 ```
 
 No `--fallback-model` was passed. The banner in pane `wX:p2` reads "Opus 5.5 · Claude Max".
+
+## 2026-10-05: iOS native implementer pane `pqa-ios` (native screen + voice recording)
+**Why:** Hamza authorised the native mobile recording build, and the parent asked for iOS in parallel in its own Opus 5.5 pane and worktree, with disjoint ownership.
+
+**Launch:**
+- launched by `pocketqa-lead` from inside Herdr (`HERDR_ENV=1`, pane `wX:p1`):
+  ```
+  herdr pane split --current --direction down --cwd /Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios --no-focus   → wX:p3
+  herdr agent start pqa-ios --kind claude --pane wX:p3 -- --model claude-opus-5-5          → agent_started pqa-ios idle wX:p3
+  ```
+- no `--fallback-model`;
+- the brief forbids subagents and the advisor tool, and limits it to the files it owns.
+
+**Worktree:** `.worktrees/native-ios`, branch `feat/native-voice-ios`, from `c648dd2`.
+
+**Ownership:**
+- the iOS module: `modules/screen-capture/ios/**` and `ios-extension/**`;
+- `expo-module.config.json`;
+- `apps/mobile/plugins/withBroadcastExtension.js` and its test;
+- the iOS entries in `app.json`.
+
+The lead keeps Android, the shared JS and the docs, and integrates.
+
+**Live proof** (`herdr agent list`, workspace `wX`, at 2026-10-05T17:00Z):
+```
+pocketqa-lead  wX:p1  claude  status=working  cwd=/Users/hamzadiaz/Projects/pocket-qa
+pqa-ios  wX:p3  claude  status=working  cwd=/Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios
+pqa-qa  wX:p2  claude  status=done  cwd=/Users/hamzadiaz/Projects/pocket-qa
+```
+Pane `wX:p3` scrollback (read with `herdr pane read`) shows the launch line `claude --model claude-opus-5-5` and the banner `Opus 5.5 · Claude Max`; no fallback model.
+
+## 2026-10-06: Firebase/Firestore + Vercel refactor backend panes (lead, from wX:p1, HERDR_ENV=1)
+Commands (herdr CLI, inside workspace wX only):
+```
+herdr tab create --workspace wX                      -> tab wX:t2, root pane wX:p4
+herdr pane split wX:p4 --direction right --no-focus  -> wX:p5
+herdr pane split wX:p5 --direction down  --no-focus  -> wX:p6
+herdr agent start pqa-be1 --kind claude --pane wX:p4 -- --model claude-opus-5-5   -> agent_started
+herdr agent start pqa-be2 --kind claude --pane wX:p5 -- --model claude-opus-5-5   -> agent_started
+herdr agent start pqa-be3 --kind claude --pane wX:p6 -- --model claude-opus-5-5   -> agent_started
+```
+Live `herdr agent list` (workspace wX, 2026-10-06):
+```
+  pocketqa-lead  wX:p1  claude   working
+  pqa-ios        wX:p3  claude   done
+  pqa-qa         wX:p2  claude   done
+  pqa-be1        wX:p4  claude   working
+  pqa-be2        wX:p5  claude   working
+  pqa-be3        wX:p6  claude   working
+```
+Pane banners (`herdr agent read <name> --source recent`):
+```
+  pqa-be1 banner: Opus 5.5 · Claude Max
+  pqa-be2 banner: Opus 5.5 · Claude Max
+  pqa-be3 banner: Opus 5.5 · Claude Max
+```
+Processes (`ps` args, cwd = the firebase-vercel worktree):
+```
+pid 69667 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+pid 69739 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+pid 69886 cwd=.worktrees/firebase-vercel args=claude --model claude-opus-5-5
+```
+
+## 2026-10-06 ~19:40Z: devnet phase lanes (live proof via `herdr agent list`, workspace wX)
+```
+pocketqa-lead wX:p1 working /Users/hamzadiaz/Projects/pocket-qa da661565
+pqa-ios wX:p3 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/native-ios 05ae0360
+pqa-qa wX:p2 idle /Users/hamzadiaz/Projects/pocket-qa e1acf907
+pqa-be1 wX:p4 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel 8ba16467
+pqa-be2 wX:p5 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel bf021446
+pqa-be3 wX:p6 working /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel a379b1f3
+```
+- Lanes (contract docs/plans/devnet-phase-contract.md, base dc5da90): pqa-be1 → .worktrees/e2e-fix-h33 (fix/e2e-h33) then the devnet browser journey; pqa-be2 → .worktrees/devnet-races (feat/devnet-races); pqa-be3 → .worktrees/devnet-adapter (feat/devnet-adapter); pqa-ios → D-08 fresh devnet pilot run + device readiness; pqa-qa → review.
+- pqa-be3 already existed (pane wX:p6, launched earlier); `herdr agent start pqa-be3` in a new tab was refused for the duplicate name, and that tab (wX:t3) was closed.
+- Each lane worktree was added to its agent with `/add-dir` → "Yes, for this session" (no saved permission or global policy change).
+- Model: every Claude process in the team runs with `--model opus` (ps). The exact-id flag `claude-opus-5-5` is not visible in the process arguments; be1, be2 and pqa-ios self-reported `claude-opus-5-5`, and be3 was asked to report it. The running panes' flags cannot be changed without restarting them.

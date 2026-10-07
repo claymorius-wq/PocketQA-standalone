@@ -460,6 +460,15 @@ describe('capability: desktop browsers only, said honestly (T12)', () => {
     navigator: { userAgent: desktopUA, maxTouchPoints: 0, mediaDevices: { getDisplayMedia: () => 0, getUserMedia: () => 0 }, ...nav },
     ...over,
   });
+  it('mobile browsers get the real alternatives, and never a claim that a web app can record other apps', () => {
+    const c = webRecordingCapability(g({}, { userAgent: 'Mozilla/5.0 (Linux; Android 14; Seeker) AppleWebKit/537.36 Chrome/141.0 Mobile Safari/537.36' }));
+    const reason = (c as { reason: string }).reason;
+    expect(reason).toMatch(/can’t record other apps/);
+    expect(reason).toMatch(/Pocket QA Android app/);
+    expect(reason).toMatch(/iPhone app/);
+    expect(reason).toMatch(/built-in screen recorder.*attach/);
+    expect(reason).not.toMatch(/install(ed)? (this|the) web app|home screen app records|PWA records/i);
+  });
   it('desktop Chrome with everything → available', () => {
     expect(webRecordingCapability(g())).toEqual({ available: true });
   });

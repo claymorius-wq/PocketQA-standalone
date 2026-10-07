@@ -18,7 +18,9 @@ export function firebaseErrorText(e: unknown, action: 'sign-in' | 'sign-up' | 'g
     if (code === 'auth/unauthorized-domain' || code === 'auth/operation-not-allowed') return 'Google sign-in isn’t available on this site.';
     if (code === 'auth/account-exists-with-different-credential') return 'This email already uses another sign-in method. Sign in with that method.';
     if (code === 'auth/popup-blocked') return 'Allow pop-ups for this site to sign in with Google.';
-    return 'Google sign-in didn’t complete. Try again.';
+    // Never hide the cause again (the live report showed only this sentence): name the code, and log it.
+    console.warn('[pocketqa] Google sign-in failed:', code);
+    return `Google sign-in didn’t complete (${code}). Try again.`;
   }
   if (action === 'sign-up') {
     if (code === 'auth/weak-password') return 'Choose a stronger password.';

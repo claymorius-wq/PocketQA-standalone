@@ -1,0 +1,19 @@
+{
+ "readAt": "2026-10-06T18:38:46Z",
+ "deployment": "dpl_GAmobrPxJNns8u1sHaSU2GrXVhJz",
+ "steps": "A fresh browser context per route, no session; final pathname after load",
+ "finalPath": {
+  "/discover": "/sign-in",
+  "/work": "/sign-in",
+  "/credits": "/sign-in",
+  "/settings": "/sign-in",
+  "/studies": "/sign-in",
+  "/budget": "/sign-in",
+  "/builder/new-study": "/sign-in",
+  "/disputes": "/sign-in",
+  "/audit": "/sign-in",
+  "/moderation": "/sign-in",
+  "/leaderboard": "/sign-in",
+  "/reputation": "/sign-in"
+ }
+}

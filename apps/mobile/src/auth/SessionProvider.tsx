@@ -13,6 +13,7 @@ import { PRODUCTION_BUILD } from '../lib/deployment';
 import { endsRestoredSession, resolveManagedSession } from './managedSession';
 import { restoreToken } from './restore';
 import { tokenStore } from './tokenStore';
+import { nativeRecorder } from '../evidence/recorder';
 import { disposeAllWebRecorders } from '../evidence/webScreenRecorder';
 
 type NewAccount = { role: 'tester' | 'builder'; displayName: string };
@@ -24,6 +25,8 @@ type Session = {
   /** Evidence storage from the server's public config, for honest copy about where data lives. */
   storage: StorageMode;
   walletLogin: boolean;
+  /** The deployment offers Google sign-in (server /config firebase.googleSignIn; web only). */
+  googleSignIn: boolean;
   /**
    * Production builds only: the server's /config couldn't be read, so the deployment's auth
    * mode is unknown. The app says so and offers a retry instead of assuming local accounts.
@@ -34,6 +37,8 @@ type Session = {
   features: ClientConfig['features'];
   /** Signed in with a managed identity that has no Pocket QA account yet: ask for a role. */
   needsAccount: boolean;
+  /** Managed sign-in with no Pocket QA account yet: the identity's email (for "No Pocket QA account uses <email> yet"), else null. */
+  signedInEmail: string | null;
   /** Role and name typed at sign-up (firebase mode), to prefill "Finish your account". */
   pendingProfile: NewAccount | null;
   signIn: (email: string, password: string) => Promise<void>;
@@ -67,6 +72,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('local');
   const [walletLogin, setWalletLogin] = useState(false);
+  const [googleSignIn, setGoogleSignIn] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageMode>('local');
   const [features, setFeatures] = useState<ClientConfig['features']>(NO_FEATURES);
   const [unreachable, setUnreachable] = useState(false);
@@ -78,9 +85,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(async () => {
     // A web screen recording never outlives the session: stop its devices and drop its bytes.
     disposeAllWebRecorders();
+    // Native recordings neither: stop any session and delete every clip and notice on the device,
+    // so the next account on this phone never sees them (pqa-qa r1 guardrail 1).
+    await nativeRecorder()?.clearAllAsync?.().catch(() => {});
     token.current = null;
     setUser(null);
     setNeedsAccount(false);
+    setSignedInEmail(null);
     qc.clear();
     await tokenStore.clear().catch(() => {});
     if (fb.current) await firebaseSession.signOut(fb.current).catch(() => {});
@@ -91,9 +102,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const r = await resolveManagedSession((body) => api('identitySession', { body }));
     if (r.kind === 'signed-in') {
       setNeedsAccount(false);
+      setSignedInEmail(null);
       setUser(r.user);
     } else {
       setNeedsAccount(true);
+      setSignedInEmail(fb.current?.currentUser?.email ?? null);
       const saved = await AsyncStorage.getItem(PENDING_PROFILE).catch(() => null);
       setPendingProfile(saved ? (JSON.parse(saved) as NewAccount) : null);
     }
@@ -111,6 +124,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       setUnreachable(false);
       setWalletLogin(cfg?.walletLogin ?? false);
+      setGoogleSignIn(cfg?.authMode === 'firebase' && !!cfg.firebase?.googleSignIn);
       setStorage(cfg?.storage ?? 'local');
       setFeatures(cfg?.features ?? NO_FEATURES);
       if (cfg?.authMode === 'firebase' && cfg.firebase) {
@@ -183,6 +197,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       authMode,
       storage,
       walletLogin,
+      googleSignIn,
+      signedInEmail,
       unreachable,
       retryConnection: () => {
         setReady(false);
@@ -275,6 +291,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       completeAccount: async (input) => {
         const r = await api('identitySession', { body: { newAccount: input } });
         setNeedsAccount(false);
+        setSignedInEmail(null);
         setPendingProfile(null);
         await AsyncStorage.removeItem(PENDING_PROFILE).catch(() => {});
         setUser(r.user);
@@ -285,7 +302,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       refreshUser: async () => setUser(await api('me')),
     }),
-    [ready, user, authMode, storage, walletLogin, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
+    [ready, user, authMode, storage, walletLogin, googleSignIn, signedInEmail, unreachable, features, needsAccount, pendingProfile, unverifiedEmail, accept, acceptWallet, afterFirebaseSignIn, clear],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

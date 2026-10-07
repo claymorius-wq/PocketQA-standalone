@@ -2,13 +2,13 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installWallet } from './testWallet';
+import { API } from './api';
 
 // Wallet-funded escrow and reputation in the real web app against the real local API, which runs
 // SIMULATED settlement (ADR 0007): no network, no keys, no asset. Every money state in the UI must
 // say it is a simulation. Screenshots: docs/reviews/wallet-rewards/browser.
 const SHOTS = join(__dirname, '../../../docs/reviews/wallet-rewards/browser');
 mkdirSync(SHOTS, { recursive: true });
-const API = 'http://127.0.0.1:8787';
 const run = Date.now().toString(36);
 const pw = 'correct horse battery staple';
 

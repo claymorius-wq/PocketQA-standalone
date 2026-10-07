@@ -178,6 +178,7 @@ describe('New study', () => {
         slots: 5,
         consentText: expect.stringMatching(/^I agree to record my screen/),
       },
+      idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/),
     });
     expect(mockReplace).toHaveBeenCalledWith('/builder/study/study-9');
   });

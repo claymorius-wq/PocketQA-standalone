@@ -1,0 +1,17 @@
+{
+  "authMode": "firebase",
+  "storage": "r2",
+  "walletLogin": false,
+  "features": {
+    "testCredits": true,
+    "devnetTransfers": false,
+    "settlement": "simulated"
+  },
+  "firebase": {
+    "apiKey": "<redacted: public web key, 39 chars>",
+    "authDomain": "pocketqa-optijara.firebaseapp.com",
+    "projectId": "pocketqa-optijara",
+    "authEmulatorUrl": null,
+    "googleSignIn": true
+  }
+}

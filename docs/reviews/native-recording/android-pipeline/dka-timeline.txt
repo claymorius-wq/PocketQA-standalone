@@ -1,0 +1,17 @@
+[23:36:22 +1s] mode=dka load={ 15.33 15.12 13.59 }
+[23:37:53 +92s] recording (projections=1)
+[23:38:03 +102s] always_finish_activities=1
+[23:38:06 +105s] away in Settings
+[23:38:26 +125s] away, screen destroyed: projections=1
+[23:38:26 +125s] back to Pocket QA
+[23:38:41 +140s] tapped Stop
+[23:38:46 +145s] always_finish_activities reset to 0
+[23:38:57 +156s] after stop: projections=0
+10-05 23:38:29.241  7313  7628 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=3687 video=2327 rejected=0 bytes=11064568
+[23:38:58 +157s] overrun lines: 0
+[23:39:32 +191s] uploaded
+video 85.721 s, audio 85.612 s, |a-v| 0.109 s (limit 1.0 s)
+audio samples held 85.612 s of 85.612 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+[23:39:32 +191s] EXIT=0

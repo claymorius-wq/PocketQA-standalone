@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Linking, StyleSheet } from 'react-native';
 import type { DevnetTransfer } from '@pocket-qa/contracts';
 import { api } from '../api/client';
+import { useIntentKey } from '../api/intentKey';
 import { GlassSurface, useUplight } from '../glass';
 import { glyphIcon } from '../icons';
 import { transferSignCapability } from '../lib/capability';
@@ -120,9 +121,13 @@ export function TransferCard({ participationId, role, canStart }: { participatio
   const items = q.data?.items ?? [];
   const open = items.some((t) => t.status === 'awaiting_signature' || t.status === 'pending' || t.status === 'confirmed');
   const litId = newestConfirmed(items);
+  const intent = useIntentKey();
   const create = useMutation({
-    mutationFn: () => api('createTransfer', { body: { participationId } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['transfers', participationId] }),
+    mutationFn: () => api('createTransfer', { body: { participationId }, idempotencyKey: intent.keyFor(participationId) }),
+    onSuccess: () => {
+      intent.done();
+      return qc.invalidateQueries({ queryKey: ['transfers', participationId] });
+    },
   });
   if (role === 'tester' && items.length === 0) return null;
   return (

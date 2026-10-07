@@ -1,0 +1,15 @@
+H-15 credit-funding trace: file:line citations (feat/firebase-vercel; deployed sha 7beaad5, then a9d0e7e: these files unchanged)
+packages/contracts/src/index.ts:48:export const CREDITS_DISCLAIMER = 'Test credits · no cash value' as const;
+packages/contracts/src/index.ts:810:  topUp: r({ method: 'POST', path: '/me/credits/test-topup', auth: 'builder', scope: 'self', body: TopUpBody, response: CreditsView }),
+packages/domain/src/ledger.ts:20:export const FAUCET: Account = 'system:test-faucet';
+packages/domain/src/ledger.ts:23:export const MAX_TOPUP = 10_000;
+packages/domain/src/ledger.ts:38:export function planTopUp(userId: string, amount: number): Posting[] {
+apps/api/src/handlers/account.ts:187:  topUp: async (ctx) => {
+apps/api/src/handlers/account.ts:188:    if (!ctx.deps.config.features.testCredits) {
+apps/api/src/handlers/account.ts:189:      throw fail('FEATURE_UNAVAILABLE', 'Test credits aren’t available on this deployment. Funding with real money isn’t enabled yet.');
+apps/api/src/config.ts:266:  const escrowFeeBps = env.POCKETQA_ESCROW_FEE_BPS === undefined ? 1000 : Number(env.POCKETQA_ESCROW_FEE_BPS);
+packages/domain/src/escrow.ts:53:export function quoteEscrow(input: { rewardUnits: number; slots: number; feeBps: number }): EscrowQuote {
+packages/domain/src/escrow.ts:58:  const perTestFeeUnits = Math.ceil((rewardUnits * input.feeBps) / MAX_FEE_BPS);
+apps/mobile/src/screens/CreditsScreen.tsx:133:  const topUp = useMutation({
+apps/mobile/src/screens/CreditsScreen.tsx:162:                  <Text variant="title">Add test credits (no cash value)</Text>
+live: /api/config features.testCredits=true (config.json in this folder)

@@ -42,3 +42,22 @@ export function planCors(current: readonly Partial<CorsRule>[] | null, desired: 
   if (!current || current.length === 0) return 'create';
   return norm(current) === norm(desired) ? 'same' : 'conflict';
 }
+
+/**
+ * Add-only merge (parent authorization 2026-10-06: a second exact origin, keeping every existing
+ * entry). The result is the current rules, unchanged and in order, followed by any desired rule
+ * that isn't already there. Nothing is removed or edited, so it is safe for a whole-configuration
+ * PutBucketCors. 'present' means nothing needs writing.
+ */
+export function mergeCors(current: readonly CorsRule[] | null, desired: readonly CorsRule[]): { plan: 'add' | 'present'; rules: CorsRule[] } {
+  const existing = [...(current ?? [])];
+  const have = new Set(existing.map((r) => norm([r])));
+  const missing = desired.filter((r) => !have.has(norm([r])));
+  return { plan: missing.length ? 'add' : 'present', rules: [...existing, ...missing] };
+}
+
+/** Readback check for an add: every previous rule is still there verbatim, and every desired rule is present. */
+export function mergedHolds(before: readonly CorsRule[] | null, after: readonly CorsRule[] | null, desired: readonly CorsRule[]): boolean {
+  const have = new Set((after ?? []).map((r) => norm([r])));
+  return [...(before ?? []), ...desired].every((r) => have.has(norm([r])));
+}

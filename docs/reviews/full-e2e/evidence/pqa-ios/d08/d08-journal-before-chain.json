@@ -1,0 +1,132 @@
+{
+  "readAt": "2026-10-06T19:38:09.012Z",
+  "allBefore": true,
+  "rows": [
+    {
+      "seq": 1,
+      "step": "multisig_create",
+      "signaturePrefix": "21XibmEPh5dD…",
+      "writtenAt": "2026-10-06T19:35:51.460Z",
+      "blockTime": "2026-10-06T19:35:51.000Z",
+      "slot": 508200264,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 2,
+      "step": "token_account_create:5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "signaturePrefix": "2adLSHsMiDUC…",
+      "writtenAt": "2026-10-06T19:35:52.878Z",
+      "blockTime": "2026-10-06T19:35:53.000Z",
+      "slot": 508200269,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 3,
+      "step": "runner:funding (builder wallet -> study vault)",
+      "signaturePrefix": "2KBNpFe5KFfE…",
+      "writtenAt": "2026-10-06T19:35:53.984Z",
+      "blockTime": "2026-10-06T19:35:54.000Z",
+      "slot": 508200273,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 4,
+      "step": "vault_transaction_create:1",
+      "signaturePrefix": "3RugGQiiL1h8…",
+      "writtenAt": "2026-10-06T19:36:06.482Z",
+      "blockTime": "2026-10-06T19:36:06.000Z",
+      "slot": 508200324,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 5,
+      "step": "proposal_create:1",
+      "signaturePrefix": "58Ndmavk8uhs…",
+      "writtenAt": "2026-10-06T19:36:08.546Z",
+      "blockTime": "2026-10-06T19:36:09.000Z",
+      "slot": 508200335,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 6,
+      "step": "proposal_approve:1:pocketqa",
+      "signaturePrefix": "3CUxQZmCdhXS…",
+      "writtenAt": "2026-10-06T19:36:11.992Z",
+      "blockTime": "2026-10-06T19:36:12.000Z",
+      "slot": 508200349,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 7,
+      "step": "proposal_approve:1:builder",
+      "signaturePrefix": "3e6jeNeDu4ky…",
+      "writtenAt": "2026-10-06T19:36:16.132Z",
+      "blockTime": "2026-10-06T19:36:16.000Z",
+      "slot": 508200364,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 8,
+      "step": "vault_transaction_execute:1",
+      "signaturePrefix": "2a6cktLFh1Cx…",
+      "writtenAt": "2026-10-06T19:36:19.593Z",
+      "blockTime": "2026-10-06T19:36:19.000Z",
+      "slot": 508200378,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 9,
+      "step": "vault_transaction_create:2",
+      "signaturePrefix": "4ZhfpQMwHbS8…",
+      "writtenAt": "2026-10-06T19:36:34.332Z",
+      "blockTime": "2026-10-06T19:36:34.000Z",
+      "slot": 508200441,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 10,
+      "step": "proposal_create:2",
+      "signaturePrefix": "3b6Y3MXBqpsq…",
+      "writtenAt": "2026-10-06T19:36:37.671Z",
+      "blockTime": "2026-10-06T19:36:38.000Z",
+      "slot": 508200459,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 11,
+      "step": "proposal_approve:2:pocketqa",
+      "signaturePrefix": "4xCKmLmG1Skr…",
+      "writtenAt": "2026-10-06T19:36:42.105Z",
+      "blockTime": "2026-10-06T19:36:42.000Z",
+      "slot": 508200473,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 12,
+      "step": "proposal_approve:2:builder",
+      "signaturePrefix": "24tyuYBmvJVf…",
+      "writtenAt": "2026-10-06T19:36:44.963Z",
+      "blockTime": "2026-10-06T19:36:45.000Z",
+      "slot": 508200485,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 13,
+      "step": "vault_transaction_execute:2",
+      "signaturePrefix": "7YixLDjrsLiu…",
+      "writtenAt": "2026-10-06T19:36:48.395Z",
+      "blockTime": "2026-10-06T19:36:48.000Z",
+      "slot": 508200499,
+      "journalBeforeBlock": true
+    },
+    {
+      "seq": 14,
+      "step": "runner:double_execute_refusal (index 1)",
+      "signaturePrefix": "4VHmGNzb15uu…",
+      "writtenAt": "2026-10-06T19:36:53.636Z",
+      "blockTime": "2026-10-06T19:36:54.000Z",
+      "slot": 508200524,
+      "journalBeforeBlock": true
+    }
+  ]
+}

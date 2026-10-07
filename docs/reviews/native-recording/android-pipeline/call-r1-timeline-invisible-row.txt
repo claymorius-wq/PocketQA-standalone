@@ -1,0 +1,13 @@
+[23:29:58 +1s] mode=call load={ 18.32 16.68 13.11 }
+[23:31:36 +99s] recording (projections=1)
+[23:31:59 +122s] away in Settings
+[23:32:01 +124s] call accepted
+[23:32:09 +132s] in call: projections=0
+[23:32:09 +132s] call ended
+[23:32:09 +132s] back to Pocket QA
+[23:32:39 +162s] projection already ended (stopped by the system, the mic watch, or death)
+[23:32:51 +174s] after stop: projections=0
+10-05 23:31:52.284  5625  6011 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=3023 video=2086 rejected=0 bytes=9111354
+[23:32:51 +174s] overrun lines: 0
+[23:33:22 +205s] upload flow FAILED (a voice-incomplete clip has no Keep)
+[23:33:23 +206s] EXIT=1

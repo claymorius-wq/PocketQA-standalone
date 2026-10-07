@@ -24,7 +24,12 @@ export default tseslint.config(
       '**/test-results/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Gradle/Xcode outputs of the native modules (e.g. the JVM test HTML report); git ignores them too.
+      'modules/*/android/build/**',
+      'modules/*/ios/build/**',
       '**/.data/**',
+      // Vercel Build Output (scripts/vercel/build.mjs): generated bundles, gitignored.
+      '.vercel/**',
     ],
   },
   js.configs.recommended,

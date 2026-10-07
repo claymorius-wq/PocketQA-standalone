@@ -1,6 +1,8 @@
 // Pocket QA API contract (lead-authored foundation; backend owns changes after the
 // foundation commit, and every change needs an entry in docs/decisions/contract-changes.md).
 // All request and response bodies are validated with these schemas on both sides.
+// Must stay the first import: see zodConfig.ts.
+import './zodConfig';
 import { z } from 'zod';
 
 export * from './siws';
@@ -66,6 +68,8 @@ export const ErrorCode = z.enum([
   'PROVIDER_UNSUPPORTED',
   /** Not offered on this deployment (e.g. test credits in production); never a fake success. */
   'FEATURE_UNAVAILABLE',
+  /** The same Idempotency-Key was sent with a different request (plan R10). */
+  'IDEMPOTENCY_KEY_REUSED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -431,7 +435,16 @@ export const UploadIntent = z.object({
 export type UploadIntent = z.infer<typeof UploadIntent>;
 
 /** Bound to one evidence item and the requesting user; single resource, short-lived. */
-export const PlaybackToken = z.object({ token: z.string().min(32), expiresAt: IsoDate });
+/**
+ * Bound to one evidence item and the requesting user; short-lived. Local storage: a token for
+ * GET /media/:token (the API streams the bytes). Private R2: a presigned GET on the bucket's S3
+ * endpoint (<= 5 min, no custom domain), issued after the same authorisation, so the bytes never
+ * pass through the API (Vercel body limit). Exactly one of the two.
+ */
+export const PlaybackToken = z
+  .object({ token: z.string().min(32).optional(), url: z.string().url().optional(), expiresAt: IsoDate })
+  .refine((v) => (v.token === undefined) !== (v.url === undefined), { message: 'exactly one of token or url' });
+export type PlaybackToken = z.infer<typeof PlaybackToken>;
 
 // ---------- findings / review ----------
 export const FindingSeverity = z.enum(['blocker', 'major', 'minor', 'info']);
@@ -508,7 +521,8 @@ export const AuditEntry = z.object({
   id: Id,
   actorId: Id,
   action: z.string(),
-  targetType: z.enum(['study', 'user', 'dispute', 'participation']),
+  // storage_object: a refused deletion outside the app's own keys (targetId = sha256 of the key, never the key).
+  targetType: z.enum(['study', 'user', 'dispute', 'participation', 'storage_object']),
   targetId: Id,
   reason: z.string(),
   createdAt: IsoDate,
@@ -746,6 +760,8 @@ export const ClientConfig = z.object({
       projectId: z.string().min(1),
       /** Set only for local emulator testing, e.g. http://127.0.0.1:9099 */
       authEmulatorUrl: z.string().url().nullable(),
+      /** Google sign-in is offered (the provider is enabled for this project). Off unless the server says so. */
+      googleSignIn: z.boolean().default(false),
     })
     .nullable(),
 });

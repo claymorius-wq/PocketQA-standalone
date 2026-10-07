@@ -71,7 +71,7 @@ describe('playback tokens and media', () => {
     const { token } = (await t.req('POST', `/evidence/${ev.id}/playback-token`, tester.token)).body;
     expect((await t.req('GET', `/media/${token}x`)).status).toBe(404);
     expect((await t.req('GET', `/media/not-a-token`)).status).toBe(404);
-    t.db.prepare(`UPDATE users SET status = 'suspended' WHERE id = ?`).run(tester.id);
+    await t.deps.repo.core.setStatus(tester.id, 'suspended');
     expect((await t.req('GET', `/media/${token}`)).status).toBe(404);
   });
 
@@ -82,6 +82,7 @@ describe('playback tokens and media', () => {
     const r = await t.req('POST', `/evidence/${ev.id}/playback-token`, stranger.token);
     expect(r.status).toBe(404);
     expect(r.body).toEqual({ code: 'NOT_FOUND', message: 'Evidence not found.' });
-    expect(t.db.prepare('SELECT COUNT(*) AS n FROM playback_tokens').get()).toEqual({ n: 0 });
+    const tokens = t.fs ? (await t.fs.collection('playbackTokens').get()).size : (t.db.prepare('SELECT COUNT(*) AS n FROM playback_tokens').get() as { n: number }).n;
+    expect(tokens).toBe(0);
   });
 });

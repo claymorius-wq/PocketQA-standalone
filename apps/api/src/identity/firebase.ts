@@ -1,5 +1,6 @@
 import { applicationDefault, getApps, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { serviceAccountCredential } from '../firestore/admin';
 import type { Config } from '../config';
 import { IdentityError, type IdentityProvider } from './types';
 
@@ -25,7 +26,13 @@ export function firebaseIdentity(firebase: NonNullable<Config['firebase']>): Ide
   const name = `pocketqa-${firebase.projectId}`;
   const app: App =
     getApps().find((a) => a.name === name) ??
-    initializeApp(firebase.authEmulatorHost ? { projectId: firebase.projectId } : { projectId: firebase.projectId, credential: applicationDefault() }, name);
+    initializeApp(
+      firebase.authEmulatorHost
+        ? { projectId: firebase.projectId }
+        : // Hosted: the server-only service account JSON; local: application default credentials.
+          { projectId: firebase.projectId, credential: serviceAccountCredential(process.env, firebase.projectId) ?? applicationDefault() },
+      name,
+    );
   const auth = getAuth(app);
 
   return {

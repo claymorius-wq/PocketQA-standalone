@@ -1,0 +1,383 @@
+[
+ {
+  "id": "WD-01",
+  "area": "auth",
+  "title": "Sign-in of both roles through the web UI; a mainnet-only wallet is not offered",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 1: builder and tester sign in with email/password on /sign-in (real Firebase Auth, project pocketqa-optijara; credentials read in memory from the 0600 e28 env files). A separate browser context whose only injected wallet announces solana:mainnet opens /sign-in.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Passed in segment 1 (23:54:23Z/23:54:25Z), segment 2 (23:57Z) and segment 3 (23:59Z): builder lands on Studies, tester on Discover. The mainnet-only wallet ('Mainnet-only test wallet (injected by Playwright)', no key material) is not offered on sign-in (no 'Continue with Mainnet-only' entry). No mainnet request in any run (mainnetBlocked = [] in every run.json).",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/01-builder-signed-in.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/02-tester-signed-in.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/03-wrong-network-wallet-not-offered.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/run.json"
+  ],
+  "notes": "The wallet is a Wallet Standard TEST wallet injected by Playwright, not an extension; this is NOT a wallet-compatibility claim (real extension/MWA = separate human/device row, QA G-W3)."
+ },
+ {
+  "id": "WD-02",
+  "area": "wallet",
+  "title": "Wallet link: tester disconnects the previous throwaway link, one in-wallet cancel, links the tester fixture via SIWS; builder already linked",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 2 under the lead's decision B: tester Settings shows the previous link 2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q (be2's last E-28 throwaway key); 'Unlink wallet' (DELETE /api/wallet); 'Link wallet' with the wallet refusing the SIWS signMessage once (User rejected, code 4001); 'Link wallet' again, signed by the tester fixture. Builder Settings: already linked to the builder fixture (recorded, no change).",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Previous link recorded verbatim 23:54:26.876Z; DELETE /api/wallet -> 200 at 23:54:27.866Z; the cancel showed the wallet error and linked nothing (23:54:30Z); POST /api/wallet/nonce 200 x2, POST /api/wallet/link 200; Settings shows 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs (~23:54:33Z). Tester wallet log: signMessage refused (policy), then signMessage approved; no transaction. Earlier attempt #3 (23:52Z) had STOPPED here on the unexpected link without any change. Segments 2 and 3 found both accounts already linked to their fixtures (no change).",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/05-tab-settings-wallet-previous-link.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/07-tab-settings-wallet-unlinked.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/08-tab-settings-wallet-link-cancelled.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/09-tab-settings-wallet-linked.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/tester-wallet-log.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-52-04-731Z/run.json"
+  ],
+  "notes": "The unlink (DELETE /api/wallet 200 on synthetic tester-1) was done under the lead's decision B BEFORE the parent's override 'do NOT unlink any account or wallet'; no link change since (the parent's no-unlink / no-deletions rules hold). 2bV3...Cz9q held 0.01 test USDC and 0 SOL (read-only) and was left untouched on chain."
+ },
+ {
+  "id": "WD-03",
+  "area": "escrow",
+  "title": "Builder escrow study, funding plan card checked in the bytes, one in-wallet cancel, signed funding on devnet",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 3 (segment 1): New study (Android+Web, en, API>=29), Wallet escrow (devnet pilot notice), reward 0.50 x 2 slots, Save draft -> quote 1.10 total (asserted <= 3); 'Fund ... from wallet' -> request; 'Review the transfer' (first try 409 vault still being created, then the plan); 'Sign and send' with the wallet refusing once (User rejected); 'Sign and send' again: the fixture signs, the harness sends the exact bytes to https://api.devnet.solana.com after a genesis check.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Funding plan card: amount, study vault token account, source, reference, mint all 'checked in this transaction' (CS1). Cancel: 'Not signed' error, nothing sent (23:54:49.578Z). Signed funding: signature prefix 23qD7jPT, sha256 38ae69bd44ff4f1334b823c7d23d658f6d185f01253431984fe94996f59c04b4, slot 508265229, finalized 23:54:49Z, err null, fee 5000 lamports: spl-token transferChecked 1100000 units (6 dec, mint 4zMMC9...) from builder ATA 3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux (16646000 -> 15546000) to study vault ATA Gup11F3SDfZc2SD8rCzJfqGbjbnGRDP4uzEv8RYNX8D9 (vault RgALyRMBcDbZLvnAC4CLiHrq4wN9NsGTKbnxqZUHo8t, 0 -> 1100000), reference 2aAraEszMbHCLFceCymK2rKdu1BKgEm98kvoEBWw4kqu as the 5th account. POST /api/escrow/fundings/328fe32d.../signature 200. Segment 1 was then stopped by the lead's override while waiting; segment 2 (23:57:07Z) showed 'Funded on devnet from 6XoD...dudn' (books: available 1.10) after the lead's settle loop. Builder SOL 49920000 -> 49915000.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/10-builder-new-escrow-study.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/11-builder-escrow-quote.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/12-builder-funding-plan-checked.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/13-builder-funding-cancelled-in-wallet.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/builder-wallet-log.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/builder-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-54-21-020Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/07-builder-funded.png"
+  ],
+  "notes": "QA read back 23qD7jPT on devnet. Test USDC moved: 1.10 (bound 3 per run). The 409 on the first transaction GET is the server's 'vault still being created' (expected), shown in the console log as one failed resource load."
+ },
+ {
+  "id": "WD-04",
+  "area": "escrow",
+  "title": "Publish the funded study",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 3 (segment 2, resume mode: no creation, the fund button never pressed): reload until 'Funded on devnet', then Publish -> confirm.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Status PUBLISHED (23:57:10Z). Segment 3 found it already published and did not publish again.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/06-builder-resumed-study.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/07-builder-funded.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/08-builder-published.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json"
+  ],
+  "notes": "Segments: 1 = creation + funding (stopped by the lead), 2 = resume (publish), 3 = resume (tester). Every run.json records the segment and the segment-1 evidence dir."
+ },
+ {
+  "id": "WD-05",
+  "area": "tester",
+  "title": "Tester finds the study in Discover and consents with the linked fixture wallet",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 4 (segment 3): Discover -> the study card -> consent checkbox + 'use my linked wallet for the reward' -> consent -> Start.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Study shown in Discover; consent 200 -> participation 85aff24a-5274-41a4-8711-b58962b09125, started (POST /start 200). Segment 2 had stopped here on a harness bug (see notes), not the product: GET /studies/eligible as the tester (read-only diagnosis) returned exactly this study.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/09-tester-study-detail.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "WD-06",
+  "area": "evidence",
+  "title": "Tester evidence upload (synthetic 64x64 PNG) to R2",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "apps/mobile/e2e-devnet/hosted-journey.spec.ts (project desktop) step 4: Attach evidence -> the synthetic PNG (generated flat 64x64, no personal content) -> Keep -> Upload kept.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "POST /api/participations/85aff24a.../evidence/upload-intents 200; the browser's direct PUT to https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/devnet/quarantine/c0526ef4-... failed 3x (net::ERR_FAILED); console: \"Access to fetch at ... from origin 'https://pocketqa-devnet.vercel.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present\". 'Uploaded (1)' never appeared. AFTER the R2 CORS fix (add-only rule {PUT, https://pocketqa-devnet.vercel.app, content-type, 3600} at 2026-10-07T04:56:29Z), segment 4b (04:58:39Z, option A: tester-1 found linked by pqa-be2's E-29 run to Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts, accepted as found, NO link change): the resumed participation uploaded the synthetic PNG ('Uploaded (1)').",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-59-36-484Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/segment3-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-58-39-930Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-58-39-930Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/segment-seg4b-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-57-02-480Z/run.json"
+  ],
+  "notes": "First attempt BLOCKED by the R2 bucket CORS (external gate, not routed around); PASS after the parent's add-only CORS rule. Segment 4 (04:57Z) had stopped without change on the unexpected tester link; the lead identified it as pqa-be2's finished E-29 run and chose option A (4755f24)."
+ },
+ {
+  "id": "WD-07",
+  "area": "tester",
+  "title": "Tester submits",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "hosted-journey.spec.ts step 4 (segment 4b): Submit -> confirm.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Session status AWAITING REVIEW; server submittedAt 2026-10-07T04:59:00.121Z. Segment 5 found it submitted and did not upload or submit again (c37e93d).",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-58-39-930Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-58-39-930Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/run.json"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "WD-08",
+  "area": "escrow",
+  "title": "Builder approves; reward vote (one cancel, then sign) checked on devnet; settled on devnet",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "hosted-journey.spec.ts step 5 (segment 5, 05:01:22Z): the study's participation row -> review -> Approve -> confirm; reward vote card (asserts the recipient is the consent-frozen tester fixture 6xof..., not the account's current link Bp8j...); 'Approve in your wallet' with the wallet refusing once; then sign; wait until 'Settled on devnet' (the lead's settle loop + inline slices).",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Reward vote card: every row 'checked in this transaction', incl. Amount 0.50, To 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs (frozen at consent; the builder API shows payoutAddress 6xof...), op id pqa-op1:f4f42422a781ed2605b640fa19436b890a7efe69e4f328548045dcf963c20b0a, multisig EXdAajefBpJ9wytaGG5UQuShsditotN8QZvRHW331DzQ, proposal #1 oDK4nwZCCGyND8Ugpx6mzXGLB7Je42b3xgXFstxszX1 (CS3: vault transaction read on devnet through the devnet-build CSP). Cancel: 'Not signed', nothing sent. Builder vote 27ozdg2Y sha256 19d6556f3b2863b62c0216a46bc00e36631d9c362e4da785b96337bdcbe79ddc finalized 05:02:55Z err null fee 5000; platform vote 5ioZs6GW (05:03:00Z); VaultTransactionExecute 2nhJgkA2 sha256 040a0d888209d31182a1e849299c9ab5437028cb2549a55fcadbbbf90fbb7d50 (05:03:13Z, memo = the op id): vault ATA owner RgALyR 1100000->600000, tester fixture 2000000->2500000. Both roles show 'Settled on devnet'.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/12-builder-reward-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/13-builder-reward-vote-cancelled-in-wallet.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/14-builder-reward-settled.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/15-tester-reward-settled.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/builder-wallet-log.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/run.json"
+  ],
+  "notes": "Segment 4b had stopped here on a harness wait bug (until() checked right after a reload, before render), fixed 463d313; nothing signed then."
+ },
+ {
+  "id": "WD-09",
+  "area": "escrow",
+  "title": "Close; refund and fee-sweep votes checked on devnet; finalized",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "hosted-journey.spec.ts step 6: Close -> confirm; refund vote card -> sign; fee-sweep vote card (b08f840) -> sign; wait until both are finalized.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Both cards 'checked on devnet'. Refund vote XSM2KiCV sha256 2a736f153483e070d90b987d3281a0103298eb34a032fc838bcd8dd2e0ace5f2 (05:04:55Z), fee vote 3G4WUPfQ sha256 59487dda3ac5be0b092ae03d3027bc867b64b2d0eaf26282886cc8512fb9756e (05:05:00Z), both err null, fee 5000. Platform votes 4XMufD6J, 2nXRmxtb. Refund execute 2oMMZxn7 sha256 587b7fe1f112a3125a01cc057b1a7ac5f10c1be86e56e88dcd1bfd6f634cc2ed memo pqa-op1:88cdc245811fcd970908ca5a88b016fa308ff4af46ed231ed0391cc52c3f13a6: vault 600000->50000, builder 15535000->16085000. Fee-sweep execute 4UVFGdCh sha256 ae05a0c3c80e03333749a3ffc86a190eb676fbf68960df33a0cbd59b28c7fb6c memo pqa-op1:9a80048627fcf2bee0407f001a619d39f646703c492dbd0170a2b67cd489b7bb: vault 50000->0, fee wallet (owner HS1mSC...) 5000->55000. UI: 'Refunded 0.55 ... finalized on devnet, no value', 'Platform fees of 0.05 ... sent to the platform fee wallet · finalized on devnet, no value'.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/16-builder-refund-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/17-builder-fee-sweep-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/18-builder-closed-books.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/builder-wallet-log.json"
+  ],
+  "notes": ""
+ },
+ {
+  "id": "WD-10",
+  "area": "escrow",
+  "title": "Balances: escrow books and read-only chain before/after",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "Escrow books in the UI after close; tester Credits screen; read-only devnet balances (finalized) before/after segment 5, plus the multisig's full history.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "Books: available 0.00, held 0.00, payable 0.00, settled to testers 0.50, fees sent to the platform 0.05, refunded 0.55 (sum 1.10 = funded). Chain before -> after segment 5: builder 49900000 -> 49885000 lamports (3 votes x 5000), 15535000 -> 16085000 units (+0.55 refund); tester fixture 0 -> 0 lamports, 2000000 -> 2500000 units (+0.50 reward). Multisig EXdAajefBpJ9wytaGG5UQuShsditotN8QZvRHW331DzQ: 16 finalized txs (MultisigCreateV2 23:54:41Z, 3x VaultTransactionCreate, 3x ProposalCreate, 6x ProposalApprove = builder + platform per payment, 3x VaultTransactionExecute), vault ATA 0 -> 1100000 -> 0. Whole run test USDC moved out of the builder 1.10 (bound 3), returned 0.55.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/18-builder-closed-books.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/19-tester-rewards.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T05-01-23-100Z/builder-console-network.json"
+  ],
+  "notes": "Builder lamports/units also moved between my segments by pqa-be2's E-29 run (-15000 lamports, -11000 units), identified by the lead; not counted here."
+ },
+ {
+  "id": "WD-11",
+  "area": "viewport",
+  "title": "The whole journey in Pixel 7 emulation on a NEW study (mobile viewport, NOT a physical-device wallet deep-link (MWA) test)",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 Pixel 7 emulation, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "hosted-journey.spec.ts project pixel7 (--no-deps), run #2 05:10:28-05:16:06Z, in one segment: sign-ins + mainnet-only wallet not offered; builder already linked; tester-1 linked to Bp8jEPny5Z2HUR9sm6gXbMTRBpdBeJii1rR4dqwoqfts accepted as found (lead option A, no link change; the new consent freezes it as the reward address: pqa-be2's keyless E-29 throwaway, devnet, valueless); new escrow study 0.50 x 2; funding card + one cancel + sign; publish; tester discover + consent + synthetic PNG upload + submit; approve; reward vote card (recipient asserted = Bp8j...) + one cancel + sign; settled; close; refund + fee votes; books + balances.",
+  "fixtures": {
+   "builder_account": "pqa-e2e-devnet-builder-1@example.test (E-28 synthetic, allow-listed)",
+   "tester_account": "pqa-e2e-devnet-tester-1@example.test (E-28 synthetic)",
+   "builder_wallet": "fixture builder 6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+   "tester_wallet": "fixture tester 6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+   "study": "i394010d41eea81b957d7513aea579bf ('Web devnet journey desktop muxc56fw', escrow squads_devnet, 0.50 x 2 slots, 10% fee, total 1.10 test USDC)",
+   "funding": "328fe32d-7a11-4083-8d8d-f771c96b7f0d",
+   "participation": "85aff24a-5274-41a4-8711-b58962b09125"
+  },
+  "observed": "6/6 passed. Study i85108647d4e9b98fc07685e9f556a99 ('Web devnet journey pixel7 muxnfql5'), funding 0f6b9279-df00-4771-bd5c-2622a0f12fe8, participation 430cd68c-c04b-4dc9-8ce3-a85669b8a315, settlements 35537881-97bd-40d9-b2a3-23209ef84d49 / 420b5fa2-a2d0-4aec-85cf-d83838ccd5b8 / 621b0ba8-1833-4690-a99b-96bc1d466564. Funding 3ZvnC6dK sha256 f24f3b881e4026ec8b3356d20126609ba632f13e47cad7a6934c6bb77d2b3a53 (05:10:52Z, 1100000 units to vault ATA ABDfRMVfpCfBfUx18oEmgXxtSLeeqepMXJkJ8V2JdKny, reference Bk9A5BV5Y4vTkaKVba73CqJSfwGAi2jRysES4uRjpSTw). Multisig AnTZ2S6go7i7frYkjfJHZF31sc9UbZ6ks2QEg1if6FrA, vault owner EZZ94C...: create sZ7wiTsN; reward: builder vote 5cjGy5Yy 34176cc9dbc40233d66c36ff429fbf89e08be95424312138c9a9cd60a84752e8, platform 4rBfgqde, execute Lmwjzy4V c7684884d454e02bf49d00663cc11bcc8d4e88ddf361152b57ae2f4ae41004a5 memo pqa-op1:5975159dc5c0862b197997dd0e7940871070d15f495d5f914ff327b4b4644c59 (vault 1100000->600000, Bp8j 10000->510000); fee: builder vote 4S7T7kZ3 7714ebc625d813473972aa1d88bf100aaff1829e2ef81710236064cc5da537ad, platform 2iW6FGF9, execute 341X3B9v b2cbb01253cce03e6ea870529b6b5008c4e455b952546d0a10867d1ed6d22942 memo pqa-op1:34756d1d351b2318992cbce22a64c4b100bf122e11ade035e1476d6eb2227007 (vault 600000->550000, fee wallet HS1mSC 55000->105000); refund: builder vote 3w5jo6mQ 8d2c6b542bde1f265b2029a119373390ecc69a1762ce8d575a50a40efdf3b885, platform 76SC9vpd, execute pxJqRhrn 7fb2ee3a364027ac9520a2cf1a6b5fd984f33cd741d07595d0a5551fa919a32e memo pqa-op1:7759542ed36f24f53be7e26d7d1fbe8a6205b84dddd3196dcce8e23faf5aaf4c (vault 550000->0, builder +550000). All err null, finalized. All three vote cards CHECKED on devnet. Chain before->after: builder 49885000->49865000 lamports (funding + 3 votes), 16085000->15535000 units (-1.10 +0.55); Bp8j 10000->510000. No mainnet request.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/builder-wallet-log.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/builder-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/tester-console-network.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-run2-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-09-11-938Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-run1-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/01-builder-signed-in.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/02-tester-signed-in.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/03-wrong-network-wallet-not-offered.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/04-tab-builder-settings-wallet-already-linked.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/05-tab-settings-wallet-linked-elsewhere-accepted.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/06-builder-new-escrow-study.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/07-builder-escrow-quote.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/08-builder-funding-plan-checked.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/09-builder-funding-cancelled-in-wallet.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/10-builder-funded.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/11-builder-published.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/12-tester-study-detail.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/13-tester-evidence-uploaded.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/14-tester-submitted.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/15-builder-review.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/16-builder-reward-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/17-builder-reward-vote-cancelled-in-wallet.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/18-builder-reward-settled.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/19-tester-reward-settled.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/20-builder-refund-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/21-builder-fee-sweep-vote-card.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/22-builder-closed-books.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/23-tester-rewards.png",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/pixel7-2026-10-07T05-10-29-465Z/synthetic-evidence.png"
+  ],
+  "notes": "Run #1 (05:09:11Z) stopped at step 3 on a harness click into a disabled (busy) review button; nothing signed; it left draft study i1075c430dd34bf6680116c0c30b7af1 unfunded with an open funding request (no transfer; not deleted). Fixed 3403c2b; run #2 = the one allowed retry. Mobile viewport emulation in installed Chrome 154, NOT a physical-device wallet deep-link (MWA) test; the wallet is the injected test wallet, not an extension."
+ },
+ {
+  "id": "WD-12",
+  "area": "escrow",
+  "title": "LOCAL journey on a FAKE chain: funding (tampered plan refused), reward vote checked, refund vote at close",
+  "status": "PASS",
+  "environment": "local-fake-chain (emulators + FakeDevnetChain), browser = Playwright Chromium, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "none (local, in-process connectors)",
+  "sha": "b5fa752",
+  "steps": "apps/mobile/e2e-devnet/journey.spec.ts on committed b5fa752 (no temporary merge): the real hosted app in POCKETQA_ENV=devnet through be3's test-only connectors (Firestore/Auth emulators on be1 ports, FakeS3, FakeDevnetChain with real transaction bytes), one virtual https origin in Playwright routing, everything else aborted.",
+  "fixtures": {
+   "accounts": "emulator-only synthetic builder/tester",
+   "wallets": "throwaway in-memory keys"
+  },
+  "observed": "3 passed (funding 6.6 s incl. a System-transfer plan refused in the browser with no wallet request; reward vote: vault tx read on the fake devnet, amount/recipient/op id checked, 2-of-3 executed; refund vote at close). Gates on b5fa752: mobile 1465, domain 301, api unit 779, api emulator 683.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/run.txt",
+   "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/02-funding-plan-checked.png",
+   "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/04-reward-vote-checked.png",
+   "docs/reviews/devnet/evidence/pqa-be1-local-journey-b5fa752/06-refund-vote-checked.png",
+   "docs/reviews/devnet/pqa-be1-journey-harness.md"
+  ],
+  "notes": "FAKE CHAIN: not evidence of a real devnet transfer. Run before b08f840 (fee-sweep vote), so the fee sweep is not covered there."
+ },
+ {
+  "id": "WD-N1",
+  "area": "harness",
+  "title": "Harness issues found and fixed during the desktop run (test-only)",
+  "status": "NOTE",
+  "environment": "loopback-devnet-artifact (real devnet, Firestore devnet namespace, R2 devnet/), browser = installed Chrome 154 desktop 1280x900, wallet = Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+  "deployment": "lead's loopback artifact http://127.0.0.1:8697 (build.mjs --env devnet, entry-6eda69395f3347162a8f0f889d9bd364.js), routed from the public origin https://pocketqa-devnet.vercel.app by Playwright",
+  "sha": "4ee4603",
+  "steps": "Attempts and segments on 2026-10-06/07, all under the lead's GO.",
+  "fixtures": {},
+  "observed": "(1) Attempt #1 23:50:52Z: the scratch dir under /private/tmp had been removed by the disk cleanup -> the shell failed on the output redirect; Playwright never started. (2) Attempt #2 23:51:27Z: the cleanup also removed ~/Library/Caches/ms-playwright -> no browser; re-downloading would be an install -> switched the hosted projects to the installed Google Chrome 154 (535a6f5). (3) Attempt #3 23:52:04Z: STOPPED on the tester's unexpected existing link 2bV3... (no change made). (4) Segment 2: a bare getByText(title) matched twice on the Discover card; the strict-mode error was swallowed by the wait as 'not visible' -> .first() (f78a74d). (5) Segment 1 was stopped by the parent's override; killed by exact PIDs, a zsh word-splitting slip meant the first kill hit only the parent shells (the rest exited with them, verified PID by PID). In every case the chain was inspected before any retry: nothing signed except the WD-03 funding. (6) Segment 4 (04:57Z): STOPPED without change on tester-1 linked by pqa-be2's E-29 run (Bp8j...); option A flag 4755f24. (7) Segment 4b: until() checked right after a reload, before the app rendered -> poll up to 10 s per load (463d313); a resumed participation already AWAITING REVIEW is not uploaded/submitted again (c37e93d). Segment 5: 6/6 passed.",
+  "evidence": [
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/attempt2-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/attempt3-playwright.txt",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-52-04-731Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-56-57-899Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-06T23-51-28-172Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-57-02-480Z/run.json",
+   "docs/reviews/devnet/evidence/pqa-be1/web-devnet/desktop-2026-10-07T04-58-39-930Z/run.json"
+  ],
+  "notes": "Evidence is copied from the gitignored apps/mobile/test-results/hosted-devnet (no secrets, no presigned URLs: query strings are dropped by the recorder)."
+ }
+]

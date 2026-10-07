@@ -1,0 +1,10 @@
+[00:02:20 +1s] mode=death load={ 12.49 12.08 11.56 }
+[00:03:45 +86s] recording (projections=1)
+[00:04:08 +109s] away in Settings
+[00:04:12 +113s] force-stopped: projections=0
+[00:04:12 +113s] back to Pocket QA
+[00:04:22 +123s] projection already ended (stopped by the system, the mic watch, or death)
+[00:04:24 +125s] after stop: projections=0
+[00:04:24 +125s] overrun lines: 0
+[00:04:24 +125s] death: interrupted notice shown and no clip offered: NO
+[00:04:25 +126s] EXIT=1

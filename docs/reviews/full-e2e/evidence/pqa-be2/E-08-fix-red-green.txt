@@ -1,0 +1,28 @@
+## RED (before the fix), 2026-10-06T19:01:08Z, HEAD 4fe9cea + uncommitted test only
+$ pnpm vitest run test/lifecycle.test.ts -t "closed study"   (SQLite)
+     × a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice 99ms
+     × an overturn never pays from a closed study (a dispute left open on one is refused, not credited) 41ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: promise resolved "{ …(10) }" instead of rejecting
+AssertionError: expected 200 to be 409 // Object.is equality
+      Tests  2 failed | 11 skipped (13)
+$ EMU_CONFIG=../../firebase.emu-be2.json EMU_FILES="test/emulator/regression.lifecycle.test.ts -t closed" pnpm test:emulator   (Firestore)
+     × a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice 3694ms
+     × an overturn never pays from a closed study (a dispute left open on one is refused, not credited) 260ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: promise resolved "{ …(11) }" instead of rejecting
+AssertionError: expected 200 to be 409 // Object.is equality
+      Tests  2 failed | 11 skipped (13)
+
+## GREEN (with the fix), 2026-10-06T19:01:49Z, HEAD 4fe9cea + uncommitted fix
+$ pnpm vitest run test/lifecycle.test.ts -t "closed study"   (SQLite)
+      Tests  2 passed | 11 skipped (13)
+$ EMU_CONFIG=../../firebase.emu-be2.json EMU_FILES="test/emulator/regression.lifecycle.test.ts -t closed" pnpm test:emulator   (Firestore)
+      Tests  2 passed | 11 skipped (13)
+$ pnpm typecheck
+> tsc -p tsconfig.json
+
+typecheck exit 0
+$ pnpm vitest run   (full API unit suite, SQLite)
+ Test Files  43 passed | 1 skipped (44)
+      Tests  682 passed | 2 skipped (684)

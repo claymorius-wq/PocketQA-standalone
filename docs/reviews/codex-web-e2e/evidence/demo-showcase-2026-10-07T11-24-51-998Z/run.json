@@ -1,0 +1,413 @@
+{
+  "label": "test-only hostname mapping, TLS errors ignored, NOT the hosted deployment",
+  "candidate": {
+    "branch": "feat/demo-showcase",
+    "sha": "6fb9e3e",
+    "entry": "entry-47f56763760474f397b9b75f007c8bb1.js",
+    "backend": "http://127.0.0.1:8697",
+    "origin": "https://pocketqa-devnet.vercel.app"
+  },
+  "auth": {
+    "user": "tester-3"
+  },
+  "desktop": {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "shots": {
+      "realRanking": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/desktop-1280x900-01-real-ranking-empty.png",
+      "demoOn": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/desktop-1280x900-02-demo-examples-on.png",
+      "demoOff": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/desktop-1280x900-03-demo-toggle-off.png",
+      "demoOnAgain": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/desktop-1280x900-04-demo-toggle-on.png"
+    },
+    "text": {
+      "realRanking": "No one yet",
+      "demoShowcase": "Demo examples (not real users)\nShow demo examples\nSynthetic sample profiles for the demo: no real work, ratings or rewards stand behind them.\nDemo testers\nStatus: \nDEMO\nDemo Maple\nDemo example · not a real user\nQuality 78 of 100 · 6 decided · 2 badges\nStatus: \nDEMO\nDemo River\nDemo example · not a real user\nQuality 64 of 100 · 3 decided · 1 badge\nStatus: \nDEMO\nDemo Pixel Pat\nDemo example · not a real user\nQuality 85 of 100 · 9 decided · 3 badges\nStatus: \nDEMO\nDemo Juniper\nDemo example · not a real user\nQuality 52 of 100 · 2 decided · 1 badge\nStatus: \nDEMO\nDemo Orbit\nDemo example · not a real user\nQuality 74 of 100 · 5 decided · 2 badges\nStatus: \nDEMO\nDemo Sage\nDemo example · not a real user\nQuality 70 of 100 · 4 decided · 1 badge\nStatus: \nDEMO\nDemo Tidal\nDemo example · not a real user\nQuality 68 of 100 · 7 decided · 2 badges\nStatus: \nDEMO\nDemo Clover\nDemo example · not a real user\nQuality 60 of 100 · 1 decided · 1 badge\nDemo builders\nStatus: \nDEMO\nDemo Lantern Labs\nDemo example · not a real user\n3 studies published\nStatus: \nDEMO\nDemo Birch Studio\nDemo example · not a real user\n1 study published\nStatus: \nDEMO\nDemo Fern Apps\nDemo example · not a real user\n2 studies published\nStatus: \nDEMO\nDemo Quarry Games\nDemo example · not a real user\n1 study published"
+    },
+    "consoleMessages": [
+      {
+        "at": "2026-10-07T11:24:52.629Z",
+        "type": "verbose",
+        "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+      }
+    ],
+    "consoleErrors": [],
+    "network": [
+      {
+        "at": "2026-10-07T11:24:52.387Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/sign-in",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.432Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-47f56763760474f397b9b75f007c8bb1.js",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.573Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.573Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.574Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.574Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.574Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.575Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.575Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:52.585Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/config",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:53.197Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:53.507Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.219Z",
+        "method": "POST",
+        "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.247Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/leaderboard",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.283Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-47f56763760474f397b9b75f007c8bb1.js",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.319Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.319Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.319Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.319Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.319Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.320Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.320Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.324Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/config",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:54.940Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:55.560Z",
+        "method": "POST",
+        "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:55.658Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/demo/showcase",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:56.166Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/leaderboard",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:56.781Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/me/reputation",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:24:56.906Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/demo/showcase",
+        "status": 200
+      }
+    ]
+  },
+  "mobile": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "shots": {
+      "realRanking": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/mobile-390x844-01-real-ranking-empty.png",
+      "demoOn": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/mobile-390x844-02-demo-examples-on.png",
+      "demoOff": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/mobile-390x844-03-demo-toggle-off.png",
+      "demoOnAgain": "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/demo-showcase-2026-10-07T11-24-51-998Z/mobile-390x844-04-demo-toggle-on.png"
+    },
+    "text": {
+      "realRanking": "No one yet",
+      "demoShowcase": "Demo examples (not real users)\nShow demo examples\nSynthetic sample profiles for the demo: no real work, ratings or rewards stand behind them.\nDemo testers\nStatus: \nDEMO\nDemo Maple\nDemo example · not a real user\nQuality 78 of 100 · 6 decided · 2 badges\nStatus: \nDEMO\nDemo River\nDemo example · not a real user\nQuality 64 of 100 · 3 decided · 1 badge\nStatus: \nDEMO\nDemo Pixel Pat\nDemo example · not a real user\nQuality 85 of 100 · 9 decided · 3 badges\nStatus: \nDEMO\nDemo Juniper\nDemo example · not a real user\nQuality 52 of 100 · 2 decided · 1 badge\nStatus: \nDEMO\nDemo Orbit\nDemo example · not a real user\nQuality 74 of 100 · 5 decided · 2 badges\nStatus: \nDEMO\nDemo Sage\nDemo example · not a real user\nQuality 70 of 100 · 4 decided · 1 badge\nStatus: \nDEMO\nDemo Tidal\nDemo example · not a real user\nQuality 68 of 100 · 7 decided · 2 badges\nStatus: \nDEMO\nDemo Clover\nDemo example · not a real user\nQuality 60 of 100 · 1 decided · 1 badge\nDemo builders\nStatus: \nDEMO\nDemo Lantern Labs\nDemo example · not a real user\n3 studies published\nStatus: \nDEMO\nDemo Birch Studio\nDemo example · not a real user\n1 study published\nStatus: \nDEMO\nDemo Fern Apps\nDemo example · not a real user\n2 studies published\nStatus: \nDEMO\nDemo Quarry Games\nDemo example · not a real user\n1 study published"
+    },
+    "consoleMessages": [
+      {
+        "at": "2026-10-07T11:25:27.326Z",
+        "type": "verbose",
+        "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+      }
+    ],
+    "consoleErrors": [],
+    "network": [
+      {
+        "at": "2026-10-07T11:25:27.082Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/sign-in",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.130Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-47f56763760474f397b9b75f007c8bb1.js",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.274Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.274Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.276Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.276Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.276Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.276Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.276Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.286Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/config",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:27.819Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:28.217Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.040Z",
+        "method": "POST",
+        "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.081Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/leaderboard",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.119Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-47f56763760474f397b9b75f007c8bb1.js",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.154Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.154Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.154Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.155Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.155Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.155Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.155Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.160Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/config",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.350Z",
+        "method": "POST",
+        "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:29.962Z",
+        "method": "POST",
+        "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:30.063Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/demo/showcase",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:30.577Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/leaderboard",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:31.088Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/demo/showcase",
+        "status": 200
+      },
+      {
+        "at": "2026-10-07T11:25:31.597Z",
+        "method": "GET",
+        "url": "https://pocketqa-devnet.vercel.app/api/me/reputation",
+        "status": 200
+      }
+    ]
+  }
+}

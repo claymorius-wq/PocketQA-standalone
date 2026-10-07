@@ -1,5 +1,6 @@
 import { API_DEFAULT_BASE_URL, buildPath, ErrorBody, routes, type RouteName } from '@pocket-qa/contracts';
 import type { z } from 'zod';
+import { newIdempotencyKey } from './idempotencyKey';
 
 /** Local API only. Android reaches it through `adb reverse tcp:8787 tcp:8787`. */
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || API_DEFAULT_BASE_URL;
@@ -33,10 +34,17 @@ export function configureClient(opts: { getToken: () => string | null; onUnauthe
   tokenRefresher = opts.refreshToken ?? null;
 }
 
-async function send(method: string, path: string, init: { body?: BodyInit; json?: unknown; token?: string | null }, retried = false): Promise<unknown> {
+export { newIdempotencyKey };
+
+type SendInit = { body?: BodyInit; json?: unknown; token?: string | null; idempotencyKey?: string };
+
+async function send(method: string, path: string, init: SendInit, retried = false): Promise<unknown> {
   const headers: Record<string, string> = {};
   const token = init.token === undefined ? tokenGetter() : init.token;
   if (token) headers.authorization = `Bearer ${token}`;
+  // Every mutation carries a key (pqa-qa early r1 P2-H). It is fixed before the first attempt, so
+  // the token-refresh retry below sends the same one and the server runs the effect at most once.
+  if (init.idempotencyKey) headers['idempotency-key'] = init.idempotencyKey;
   let body = init.body;
   if (init.json !== undefined) {
     headers['content-type'] = 'application/json';
@@ -80,12 +88,17 @@ async function send(method: string, path: string, init: { body?: BodyInit; json?
 /** Typed call against the shared route table; responses are validated with the contract schema. */
 export async function api<N extends RouteName>(
   name: N,
-  opts: { params?: Record<string, string>; body?: Body<N>; token?: string | null } = {},
+  /**
+   * `idempotencyKey`: one per user intent, reused when the user retries that intent (see
+   * `useIntentKey`). Without one, each call of a mutating route gets its own fresh key.
+   */
+  opts: { params?: Record<string, string>; body?: Body<N>; token?: string | null; idempotencyKey?: string } = {},
 ): Promise<Response<N>> {
   const def = routes[name];
   const data = await send(def.method, buildPath(def.path, opts.params), {
     ...(def.body && def.body !== 'multipart' ? { json: opts.body ?? {} } : {}),
     ...(opts.token !== undefined ? { token: opts.token } : {}),
+    ...(def.method !== 'GET' ? { idempotencyKey: opts.idempotencyKey ?? newIdempotencyKey() } : {}),
   });
   if (def.response === 'binary') return data as Response<N>;
   const parsed = def.response.safeParse(data);
@@ -103,7 +116,7 @@ export async function uploadEvidence(participationId: string, meta: Record<strin
   const form = new FormData();
   form.append('meta', JSON.stringify(meta)); // must precede `file`
   form.append('file', file, filename);
-  const data = await send('POST', buildPath(routes.uploadEvidence.path, { id: participationId }), { body: form });
+  const data = await send('POST', buildPath(routes.uploadEvidence.path, { id: participationId }), { body: form, idempotencyKey: newIdempotencyKey() });
   const parsed = routes.uploadEvidence.response.safeParse(data);
   if (!parsed.success) throw new ApiError('BAD_RESPONSE', 'Unexpected upload response.', 200);
   return parsed.data;

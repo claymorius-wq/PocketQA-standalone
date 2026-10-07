@@ -15,6 +15,7 @@ import {
   type Auth,
 } from 'firebase/auth';
 import { firebasePersistence } from './firebasePersistence';
+import { popupRedirectResolver } from './firebaseResolver';
 
 /**
  * Firebase client for `authMode: 'firebase'` deployments (ADR 0005 §1). Configured only
@@ -27,7 +28,9 @@ let auth: Auth | null = null;
 export function firebaseAuth(cfg: NonNullable<ClientConfig['firebase']>): Auth {
   if (auth) return auth;
   const app = getApps().find((a) => a.name === 'pocketqa') ?? initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId }, 'pocketqa');
-  // Web: tab-scoped sessionStorage. Native: the OS keystore, so sessions survive restarts.
+  // Web: tab-scoped sessionStorage. Native: the OS keystore, so sessions survive restarts. No
+  // popup resolver here: given at init, Firebase preloads Google's gapi for every visitor (blocked
+  // by a Google-off site's CSP); googleSignIn passes it to signInWithPopup, on the click.
   auth = initializeAuth(app, { persistence: firebasePersistence() });
   if (cfg.authEmulatorUrl) connectAuthEmulator(auth, cfg.authEmulatorUrl, { disableWarnings: true });
   return auth;
@@ -55,7 +58,7 @@ export const firebaseSession = {
   },
   /** Firebase sends the reset email; with enumeration protection on, it never says whether the account exists. */
   passwordReset: (a: Auth, email: string) => sendPasswordResetEmail(a, email),
-  googleSignIn: (a: Auth) => signInWithPopup(a, new GoogleAuthProvider()),
+  googleSignIn: (a: Auth) => signInWithPopup(a, new GoogleAuthProvider(), popupRedirectResolver),
   customTokenSignIn: (a: Auth, token: string) => signInWithCustomToken(a, token),
   onIdToken: (a: Auth, cb: (token: string | null) => void) => onIdTokenChanged(a, async (u) => cb(u ? await u.getIdToken() : null)),
   signOut: (a: Auth) => signOut(a),

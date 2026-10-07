@@ -1,0 +1,766 @@
+2026-10-06T18:35:18Z
+HEAD 6324e018787f5624257b5a37b0ccc1714b7ce4cd
+$ EMU_CONFIG=../../firebase.emu-be2.json EMU_FILES=--reporter=verbose pnpm test:emulator
+
+> @pocket-qa/api@0.1.0 test:emulator /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/apps/api
+> firebase emulators:exec --only firestore,auth --project demo-pocketqa --config ${EMU_CONFIG:-../../firebase.json} 'vitest run --config vitest.emulator.config.ts ${EMU_FILES:-}'
+
+i  emulators: Starting emulators: auth, firestore
+i  emulators: Detected demo project ID "demo-pocketqa", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator UI websocket is running on 9450.
+i  Running script: vitest run --config vitest.emulator.config.ts ${EMU_FILES:-}
+
+ RUN  v5.0.3 /Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/apps/api
+
+(node:68343) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > control: the admin can read the seeded documents 49ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in users 205ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in identities 12ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in sessions 9ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in evidence 7ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in participations 8ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in ledger 7ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in audit 12ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in idempotency 7ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > anonymous > cannot get, list, create, update or delete in storageObjects 6ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in users 7ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in identities 6ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in sessions 6ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in evidence 6ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in participations 5ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in ledger 5ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in audit 8ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in idempotency 5ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > a signed-in Firebase user > cannot get, list, create, update or delete in storageObjects 4ms
+ ✓ test/emulator/rules.test.ts > firestore.rules denies every client > nothing a client tried changed the data 47ms
+(node:68871) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > uploads, server-copies, verifies, registers, writes the documents; the post-run manifest equals the approved one 3468ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > a rerun is idempotent: no new upload or copy, identical documents, the same manifest 219ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > refuses a manifest other than the approved one, before any write 9ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > refuses a target holding an unplanned user, or a planned document with different content 22ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > a failed sha256 verify stops the run with that object unregistered and no evidence documents written 36ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > a live sign-up with a planned email after the pre-check: the run aborts, that account and its guard untouched; a rerun after removing it succeeds 183ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > refuses when the target already holds different content at an evidence key 17ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > the object helper cannot write outside evidence/{id} or copy from a non-archive key 4ms
+ ✓ test/emulator/studies.migration-real.test.ts > real run (plan §8.3–8.5) on the emulator + FakeS3 > the CLI: a full real run on a demo- project, and its refusals 5341ms
+ ✓ test/emulator/evidence.repo.test.ts > row 6: one open upload intent per segment (openSegments guard) > 20 concurrent intents for one segment: exactly one opens, the rest get a conflict 3698ms
+ ✓ test/emulator/evidence.repo.test.ts > row 6: one open upload intent per segment (openSegments guard) > expiry is enforced on read: an expired intent stops counting and its segment can open again 47ms
+ ✓ test/emulator/evidence.repo.test.ts > row 6: one open upload intent per segment (openSegments guard) > an expired intent still completing blocks the segment, as the SQLite partial index does 26ms
+ ✓ test/emulator/evidence.repo.test.ts > row 6: one open upload intent per segment (openSegments guard) > closing an intent (rejected) frees the segment and its reservation 43ms
+ ✓ test/emulator/evidence.repo.test.ts > row 5: upload_intents.object_key UNIQUE (doc id = sha256(key)) > 20 concurrent intents with one object key (different segments): exactly one 17717ms
+ ✓ test/emulator/evidence.repo.test.ts > row 4: evidence UNIQUE(participation, segment) (evidenceSegments guard) > 20 concurrent multipart uploads of one segment: exactly one evidence row 3608ms
+ ✓ test/emulator/evidence.repo.test.ts > row 4: evidence UNIQUE(participation, segment) (evidenceSegments guard) > 20 concurrent completions of one claimed intent: exactly one evidence row, intent completed 3605ms
+ ✓ test/emulator/evidence.repo.test.ts > row 4: evidence UNIQUE(participation, segment) (evidenceSegments guard) > a multipart upload and a completion racing for one segment: one evidence row 3635ms
+ ✓ test/emulator/evidence.repo.test.ts > claim and quota > 20 concurrent claims of one intent: exactly one wins 3555ms
+ ✓ test/emulator/evidence.repo.test.ts > claim and quota > concurrent intents never reserve more than the byte quota 3525ms
+ ✓ test/emulator/evidence.repo.test.ts > claim and quota > concurrent intents never exceed the item cap (stored evidence counts too) 7589ms
+ ✓ test/emulator/evidence.repo.test.ts > claim and quota > a submitted participation freezes evidence 25ms
+ ✓ test/emulator/evidence.repo.test.ts > submission vs completion (openIntentCountInTx composed into the studies transaction) > never ends with a submitted participation and an intent still open; never adds evidence after submission 569ms
+ ✓ test/emulator/evidence.repo.test.ts > transaction reruns > reruns under contention leave counters exactly equal to the documents (no duplicated effect) 3551ms
+ ✓ test/emulator/evidence.repo.test.ts > storage registry and deletion outbox > 20 concurrent registrations and enqueues of one key: one document each 50ms
+ ✓ test/emulator/evidence.repo.test.ts > R4: the deletion gate > the Seeker archive key is refused and audited, even when registered 10ms
+ ✓ test/emulator/evidence.repo.test.ts > R4: the deletion gate > an unregistered app-shaped key is refused and audited; a registered one is deleted 11ms
+ ✓ test/emulator/evidence.repo.test.ts > R4: the deletion gate > the sweep never acts on an outbox entry outside the app prefixes (audited as system) 26ms
+ ✓ test/emulator/evidence.repo.test.ts > R4: the deletion gate > a provider failure queues the key; the sweep retries it 20ms
+ ✓ test/emulator/evidence.repo.test.ts > sweep > expires due intents (guard and reservation released), deletes failed quarantine objects once, keeps completed copies 71ms
+ ✓ test/emulator/evidence.repo.test.ts > account export and purge > exports the evidence of the user’s own participations 701ms
+ ✓ test/emulator/evidence.repo.test.ts > account export and purge > purges in bounded transactions, queues every key, and is safe to rerun 817ms
+ ✓ test/emulator/evidence.repo.test.ts > account export and purge > a builder’s purge removes evidence in their studies 740ms
+ ✓ test/emulator/evidence.repo.test.ts > in-transaction reads for the studies domain > evidenceInParticipationInTx: true only for evidence of that participation 27ms
+ ✓ test/emulator/evidence.repo.test.ts > deterministic (Idempotency-Key) evidence ids > a reused evidence id is a clean conflict, never a second row or a raw ALREADY_EXISTS 23ms
+ ✓ test/emulator/evidence.repo.test.ts > sweep slices (R5) on Firestore > maxItems slices resume to completion; every object deleted exactly once 108ms
+ ✓ test/emulator/evidence.repo.test.ts > sweep slices (R5) on Firestore > a passed deadline does nothing; a stale fence stops; the current holder completes 85ms
+(node:71192) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/studies.guards.test.ts > row 2: participations UNIQUE(study_id, tester_id) → participationPairs/{study}_{tester} > 20 concurrent joins by one tester: one participation, the rest CONFLICT_STATE 11235ms
+ ✓ test/emulator/studies.guards.test.ts > row 2: participations UNIQUE(study_id, tester_id) → participationPairs/{study}_{tester} > a withdrawn tester still cannot join again (the guard outlives the slot, as the UNIQUE does) 116ms
+ ✓ test/emulator/studies.guards.test.ts > row 3: slots never oversold, budget never over-committed > 20 testers race for 3 slots: exactly 3 join, every study write reran consistently 7936ms
+ ✓ test/emulator/studies.guards.test.ts > row 3: slots never oversold, budget never over-committed > a slot freed by a withdrawal can be taken again 172ms
+ ✓ test/emulator/studies.guards.test.ts > row 8: ledger_one_reward (participation_id, kind) → ledgerRewards/{pid}:{kind} > 20 concurrent approvals of one submission: one reward credit, budget and balances exact 3692ms
+ ✓ test/emulator/studies.guards.test.ts > row 8: ledger_one_reward (participation_id, kind) → ledgerRewards/{pid}:{kind} > 20 concurrent approvals across 20 submissions of one study: every reward paid once, budget exact 13227ms
+ ✓ test/emulator/studies.guards.test.ts > row 7: disputes.participation_id UNIQUE → disputeByParticipation/{pid} > 20 concurrent disputes of one rejection: one dispute, the rest CONFLICT_STATE 3723ms
+ ✓ test/emulator/studies.guards.test.ts > row 7: disputes.participation_id UNIQUE → disputeByParticipation/{pid} > 20 concurrent overturns of one dispute: one dispute credit 3837ms
+ ✓ test/emulator/studies.guards.test.ts > row 11: task_notes PK(participation_id, task_id) → participations/{pid}/notes/{taskId} > 20 concurrent edits of one note: one document, one of the written values (last write wins) 64ms
+ ✓ test/emulator/studies.guards.test.ts > forced reruns never duplicate effects > 20 concurrent top-ups of one account rerun, yet each posts exactly one balanced pair 7475ms
+ ✓ test/emulator/studies.guards.test.ts > forced reruns never duplicate effects > a failed rule inside the transaction writes nothing (no guard, no entry, no participation) 49ms
+(node:72004) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/escrow.repo.test.ts > (a) export and purge > exportUser: the builder’s funding and the tester’s payout and points, in the shared export shape 3156ms
+ ✓ test/emulator/escrow.repo.test.ts > (a) export and purge > purgeUser: link, nonces, transfers, leaderboard go; a draft escrow is refunded by the arbiter; rerun is a no-op 119ms
+ ✓ test/emulator/escrow.repo.test.ts > (b) settlement worker over Firestore, simulator through the repo > pays once and settles once; books balance 102ms
+ ✓ test/emulator/escrow.repo.test.ts > (b) settlement worker over Firestore, simulator through the repo > 20 concurrent worker runs: one transfer per attempt key, one settle posting (rows 23, 28, 29) 7056ms
+ ✓ test/emulator/escrow.repo.test.ts > (b) settlement worker over Firestore, simulator through the repo > simRecordTransfer: 20 sends with one idempotency key record one transfer and agree on its signature (row 29) 3592ms
+ ✓ test/emulator/escrow.repo.test.ts > (b) settlement worker over Firestore, simulator through the repo > expires unpaid fundings past their expiry only 70ms
+ ✓ test/emulator/escrow.repo.test.ts > (c) fundings, leaderboard aliases, fraud > rule G: 20 concurrent funding requests for one study share one open request (row 18) 3507ms
+ ✓ test/emulator/escrow.repo.test.ts > (c) fundings, leaderboard aliases, fraud > 20 concurrent confirmations of one funding credit the vault once (rows 19–21) 3664ms
+ ✓ test/emulator/escrow.repo.test.ts > (c) fundings, leaderboard aliases, fraud > 20 users claiming one alias, any letter case: one wins (row 32); a rename frees it, opting out keeps it 3570ms
+ ✓ test/emulator/escrow.repo.test.ts > (c) fundings, leaderboard aliases, fraud > upholdFraud: 20 concurrent (retried) admin decisions reverse the points once (rows 30, 31) 3612ms
+ ✓ test/emulator/escrow.repo.test.ts > (d) wallet links and devnet transfers > 20 users linking one address: one link (row 13); relinking moves the guard; unlink frees it 3590ms
+ ✓ test/emulator/escrow.repo.test.ts > (d) wallet links and devnet transfers > a failed verification still burns the nonce and links nothing 14ms
+ ✓ test/emulator/escrow.repo.test.ts > (d) wallet links and devnet transfers > 20 transfers for one participation: one open (row 15); expiry releases it; signatures are unique (row 14) 3611ms
+ ✓ test/emulator/escrow.repo.test.ts > plan R12 retries (P2-F): an existing effect is returned, never repeated > createTransfer (rule D): the same id again returns the existing transfer, even after it moved on 30ms
+ ✓ test/emulator/escrow.repo.test.ts > plan R12 retries (P2-F): an existing effect is returned, never repeated > openFunding (rule G): a retry after commit returns the open request, with no second request or reference 53ms
+(node:72557) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/core.test.ts > users.email UNIQUE > 20 concurrent registrations with one email: exactly one account 6669ms
+ ✓ test/emulator/core.test.ts > users.email UNIQUE > emails compare exactly, as SQLite does 10ms
+ ✓ test/emulator/core.test.ts > identities (provider, subject) and one identity per user > 20 concurrent first sign-ins of one uid: one account and one identity 3603ms
+ ✓ test/emulator/core.test.ts > identities (provider, subject) and one identity per user > an email already held refuses the managed account (never merged) 11ms
+ ✓ test/emulator/core.test.ts > identities (provider, subject) and one identity per user > server-side revocation and recovery flags 22ms
+ ✓ test/emulator/core.test.ts > sessions (local mode) > a session is valid until it expires, and never for a deleted account 25ms
+ ✓ test/emulator/core.test.ts > audit > is listed newest first and redacted by target 12ms
+ ✓ test/emulator/core.test.ts > account deletion (core part) > anonymises the user, removes sessions and identities, frees the email, and is idempotent 39ms
+ ✓ test/emulator/core.test.ts > idempotency (plan R3/R10) > 20 concurrent first requests: one runs, the rest are in progress; then replay; a different body is a mismatch 3553ms
+ ✓ test/emulator/core.test.ts > idempotency (plan R3/R10) > an abandoned request can be retried, and records expire after 24 h 23ms
+ ✓ test/emulator/core.test.ts > shared rate limit (plan R6) > two app instances share one window: 30 hits, max 10 -> exactly 10 allowed 3565ms
+ ✓ test/emulator/core.test.ts > job leases with fencing (plan §5) > 20 concurrent acquirers: one fence; after expiry a new holder fences out the stale one 3561ms
+ ✓ test/emulator/core.test.ts > admin moderation is atomic with its audit (plan T6) > status and audit row commit together 23ms
+ ✓ test/emulator/core.test.ts > pqa-qa early review r1 > P2-E: a pending reservation whose request died is taken over after its short lease, not stuck for 24 h 12ms
+ ✓ test/emulator/core.test.ts > pqa-qa early review r1 > P2-G: a stale holder that checks its fence inside its item transaction after a takeover writes nothing 13ms
+ ✓ test/emulator/core.test.ts > pqa-qa early review r1 > P2-G: concurrent stale item transactions and a takeover serialise: no item commits after the takeover 3500ms
+ ✓ test/emulator/core.test.ts > P2-F: a retried moderation with the same audit id applies once > second call with the same audit id is a no-op 16ms
+ ✓ test/emulator/core.test.ts > plan §7(a): linkMigratedIdentity > 20 concurrent claims by different uids: exactly one links, and the rest get null 3539ms
+ ✓ test/emulator/core.test.ts > plan §7(a): linkMigratedIdentity > never links an admin, even one marked by mistake (pqa-qa r5 P3) 16ms
+ ✓ test/emulator/core.test.ts > plan §7(a): linkMigratedIdentity > matches the stored email exactly: a legacy mixed-case stored email is refused, never guessed (r5 P3) 11ms
+ ✓ test/emulator/core.test.ts > plan §7(a): linkMigratedIdentity > never links an unmarked, deleted or already-linked account 39ms
+stderr | test/emulator/regression.escrow.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A1: production refuses simulated settlement; settlement is off by default and reported in /config 58ms
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A1b (C1): the Squads devnet pilot needs a private key directory outside the repo, takes nothing else, and never runs in production 1ms
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A1c: the shared public demo never runs the devnet pilot (its server-held test keys would sign for any visitor) 0ms
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A2: no provider, mint, RPC or network can be configured in this phase (mainnet included) 0ms
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A3: the server settlement path holds no keys and has no signing or sending code 0ms
+(node:72912) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A4: every escrow amount, funding and payout is labelled simulated; settlement off refuses escrow studies 3157ms
+ ✓ test/emulator/regression.escrow.test.ts > A: scope, honesty and fail-closed > A7: the escrow ledger is separate: escrow studies never touch test credits 317ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B1/B5: the server fixes amount, mint and vault; publishing waits for confirmed, exact funding 191ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a wrong network transfer is refused and credits nothing 98ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a wrong mint transfer is refused and credits nothing 97ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a wrong vault transfer is refused and credits nothing 102ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a underpaid transfer is refused and credits nothing 96ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a overpaid transfer is refused and credits nothing 96ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a another funding request transfer is refused and credits nothing 96ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B2: a failed transfer transfer is refused and credits nothing 102ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > B4: one transfer signature funds one request only (resubmitted, or for another study) 201ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > only the owning builder can see or fund a study’s escrow (404 for others) 183ms
+ ✓ test/emulator/regression.escrow.test.ts > B: funding (simulated) and verification > funding needs the builder’s linked wallet (the funding source) and an unfunded study 51ms
+ ✓ test/emulator/regression.escrow.test.ts > C: reservation and concurrency > C1/C2: 20 concurrent consents for 3 funded slots reserve exactly 3; the books balance 3868ms
+ ✓ test/emulator/regression.escrow.test.ts > C: reservation and concurrency > C3: consent freezes the payout wallet; it must be the tester’s linked wallet, confirmed explicitly 307ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D1: double and concurrent approvals authorize one payout and settle once 3817ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D2: a crash after the provider accepted a payout but before it was recorded never pays twice 293ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D3/D5: a payout still processing is never settled early, and its late confirmation is counted once 400ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D4: a missing_token_account failure is failed with a reason, never settled, and a retry settles once 359ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D4: a frozen_account failure is failed with a reason, never settled, and a retry settles once 338ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D4: a relayer_underfunded failure is failed with a reason, never settled, and a retry settles once 356ms
+ ✓ test/emulator/regression.escrow.test.ts > D: payout and replay > D6: uploading or submitting never authorizes a payout; only approval does 242ms
+ ✓ test/emulator/regression.escrow.test.ts > E: payout wallet substitution > E1/E2: re-linking another wallet, or naming a destination in a request, never redirects the payout 320ms
+ ✓ test/emulator/regression.escrow.test.ts > E: payout wallet substitution > E3: an admin resolving a dispute decides the outcome only: amount and destination stay fixed 341ms
+ ✓ test/emulator/regression.escrow.test.ts > F: disputes, refunds and closure > F1/F2: a dispute holds only its reward; close refunds only unheld funds, once, to the funding wallet 3681ms
+ ✓ test/emulator/regression.escrow.test.ts > F: disputes, refunds and closure > F3: withdrawing releases the hold 235ms
+ ✓ test/emulator/regression.escrow.test.ts > F: disputes, refunds and closure > F4: review inactivity never auto-pays (settlement runs only approved payouts) 259ms
+ ✓ test/emulator/regression.escrow.test.ts > F: disputes, refunds and closure > F5: account deletion follows the existing rules; an authorized payout still settles to the frozen wallet 545ms
+ ✓ test/emulator/regression.escrow.test.ts > F5b: a builder deleting their account never strands escrowed funds (pqa-qa r1 P2-1) > a funded draft is closed and refunded to the funding wallet; an unpaid request expires 315ms
+ ✓ test/emulator/regression.escrow.test.ts > F5b: a builder deleting their account never strands escrowed funds (pqa-qa r1 P2-1) > a funding still in flight at deletion is credited and refunded once it confirms 274ms
+ ✓ test/emulator/regression.escrow.test.ts > P3: repeated payment failures escalate; a funding without a source wallet never confirms > after 5 failed attempts the worker raises an operator alert and keeps retrying with backoff 406ms
+ ✓ test/emulator/regression.escrow.test.ts > P3: repeated payment failures escalate; a funding without a source wallet never confirms > a transfer with no identifiable source wallet fails (refunds would have nowhere to go) 110ms
+ ✓ test/emulator/regression.escrow.test.ts > G: admin powers and audit > G1/G2: admins can list payouts but no route sets an amount or destination; money transitions are audited 360ms
+ ✓ test/emulator/regression.escrow.test.ts > I: ledger invariant under random operation sequences > I1: the books balance after every step of seeded random runs 1170ms
+ ✓ test/emulator/regression.escrow.test.ts > I: ledger invariant under random operation sequences > I2: one base unit and large rewards are exact integers end to end 462ms
+(node:73234) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/escrow.intx.test.ts > createEscrowInTx (row 16: one vault per study) > 20 studies claiming one vault: exactly one escrow is created 6712ms
+ ✓ test/emulator/escrow.intx.test.ts > reads > vault balance, canReserve against holds, funded and funding-started flags 43ms
+ ✓ test/emulator/escrow.intx.test.ts > authorizePayoutInTx (rows 22, 26) > 20 concurrent authorizations of one participation: one payout, one set of postings, balanced books 3606ms
+ ✓ test/emulator/escrow.intx.test.ts > authorizePayoutInTx (rows 22, 26) > refuses when other holds leave too little in the vault 23ms
+ ✓ test/emulator/escrow.intx.test.ts > authorizeRefundInTx (rows 24, 27) > 20 concurrent refunds on close: one refund of the whole vault to the funding wallet 7894ms
+ ✓ test/emulator/escrow.intx.test.ts > awardApprovalInTx (row 30: one award per participation and kind) > 20 concurrent approvals: one accepted and one helpful event, platform from the tester's device 3667ms
+ ✓ test/emulator/escrow.intx.test.ts > awardApprovalInTx (row 30: one award per participation and kind) > self-dealing: a wallet that funded the same builder earns no points and is flagged once 3676ms
+ ✓ test/emulator/escrow.intx.test.ts > awardApprovalInTx (row 30: one award per participation and kind) > composes with a payout authorization in one decide transaction 51ms
+(node:73741) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/tx-foundation.test.ts > uniqueness guards > 20 concurrent transactions claiming one guard: exactly one creates it, the rest see it 6834ms
+ ✓ test/emulator/tx-foundation.test.ts > transaction callbacks can rerun > a contended transaction reruns its callback, so side effects must happen after runTx returns 3649ms
+ ✓ test/emulator/tx-foundation.test.ts > TxCtx: composable transactions (reads pass through, writes buffered, no read-after-write) > two domains compose in one transaction: both read first or interleaved, writes land together 15ms
+ ✓ test/emulator/tx-foundation.test.ts > TxCtx: composable transactions (reads pass through, writes buffered, no read-after-write) > reading a document after writing it in the same transaction throws (read-your-writes would be stale) 8ms
+ ✓ test/emulator/tx-foundation.test.ts > TxCtx: composable transactions (reads pass through, writes buffered, no read-after-write) > 20 concurrent composite transactions claiming one guard: one effect 3658ms
+ ✓ test/emulator/tx-foundation.test.ts > contention past every attempt is a clean, retryable conflict (pqa-be1 finding) > 20 concurrent increments of one doc: each either commits or fails with CONFLICT_STATE, and the count matches the commits 12893ms
+stderr | test/emulator/regression.storage.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+(node:74428) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > intent → presigned PUT to a quarantine key → server-verified completion → private playback with ranges 3333ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > the multipart route is off in r2 mode, and intents are off in local mode 250ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > an intent is idempotent per segment, and only the owning tester can create or complete it 177ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > rejects a spoofed type or a size that differs from the declaration, and deletes the object 204ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > completing before the bytes arrive is a retryable conflict 174ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > pending reservations count toward the byte quota 227ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > submission is blocked while uploads are pending; completion after submission is refused 193ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > expired intents are refused and swept, including bytes re-uploaded after completion 218ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > bytes swapped after validation never become evidence (ETag pinning, review r1 P3) 201ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > a missing version tag is a retryable conflict, never an unpinned completion (review r2 P3) 171ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > concurrent completions of one intent create one evidence item 3339ms
+ ✓ test/emulator/regression.storage.test.ts > direct uploads to private storage (r2 mode) > account deletion removes stored objects, retrying through the outbox when the provider fails 573ms
+ ✓ test/emulator/regression.storage.test.ts > client config never exposes storage credentials > reports only the storage mode 7ms
+ ✓ test/emulator/regression.storage.test.ts > R2 deletion guard (default off) > with deletion not allowed, no object is ever deleted: deletes are kept in the outbox 185ms
+ ✓ test/emulator/regression.storage.test.ts > R2 deletion guard (default off) > with deletion not allowed, account deletion fails closed: refused, nothing changed, objects kept 181ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > objects the app did not create survive rejection, completion, the sweep and account deletion 300ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > an unregistered key is never deleted or queued, even when a caller names it 26ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > records why each retried deletion happens 952ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > a successful upload keeps its quarantine copy through every sweep; failed ones are removed (literal A5 scope) 264ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > account deletion removes the recording, its kept quarantine copy and open uploads; a late re-PUT is swept 291ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > no server module names an upload-staging deletion 3ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > the R2 adapter refuses keys outside evidence/ and quarantine/ before any request 7ms
+ ✓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > the R2 adapter can only send single-object commands: no listing, batch delete or lifecycle 3ms
+ ↓ test/emulator/regression.storage.test.ts > scoped deletion: only objects the app created > migration 4 registers the objects an existing database already created
+stderr | test/emulator/regression.reputation.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+(node:74530) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.reputation.test.ts > H1/H5/H6: points only for accepted work, once, with no cash value > approval earns 10 (+5 helpful); uploading, submitting, rejection and disputing earn or cost nothing 3523ms
+ ✓ test/emulator/regression.reputation.test.ts > H1/H5/H6: points only for accepted work, once, with no cash value > an overturned dispute earns the accepted points (but not the builder-only helpful mark) 319ms
+ ✓ test/emulator/regression.reputation.test.ts > H1/H5/H6: points only for accepted work, once, with no cash value > only the study owner can mark feedback helpful (approve is owner-scoped); duplicate awards are ignored by the database 236ms
+ ✓ test/emulator/regression.reputation.test.ts > H2: an upheld fraud finding reverses points, append-only > reverses once, keeps the history, and only admins can do it 281ms
+ ✓ test/emulator/regression.reputation.test.ts > H2: an upheld fraud finding reverses points, append-only > only accepted work can be marked fraudulent 236ms
+ ✓ test/emulator/regression.reputation.test.ts > H3: self-dealing withholds points and flags the work > a tester paid from a wallet that funded one of the same builder’s studies earns no points 466ms
+ ✓ test/emulator/regression.reputation.test.ts > H4: the leaderboard is opt-in, pseudonymous and quality-ranked > lists only opted-in testers with enough decided work, by alias, with no ids, wallets or emails 1138ms
+ ✓ test/emulator/regression.reputation.test.ts > H4: the leaderboard is opt-in, pseudonymous and quality-ranked > deleting the account removes the leaderboard pseudonym at once 111ms
+ ✓ test/emulator/regression.reputation.test.ts > H4: the leaderboard is opt-in, pseudonymous and quality-ranked > builders and admins have no leaderboard profile 29ms
+{"level":30,"time":1791312035630,"pid":74697,"hostname":"Mac.home","reqId":"req-1","req":{"method":"GET","url":"/config","host":"127.0.0.1:55994","remoteAddress":"127.0.0.1","remotePort":55995},"msg":"incoming request"}
+{"level":30,"time":1791312035633,"pid":74697,"hostname":"Mac.home","reqId":"req-1","res":{"statusCode":200},"responseTime":2.919832999999926,"msg":"request completed"}
+{"level":30,"time":1791312035636,"pid":74697,"hostname":"Mac.home","reqId":"req-2","req":{"method":"GET","url":"/jobs/sweep","host":"127.0.0.1:55994","remoteAddress":"127.0.0.1","remotePort":55996},"msg":"incoming request"}
+{"level":30,"time":1791312035636,"pid":74697,"hostname":"Mac.home","reqId":"req-2","res":{"statusCode":404},"responseTime":0.17725000000018554,"msg":"request completed"}
+{"level":30,"time":1791312035638,"pid":74697,"hostname":"Mac.home","reqId":"req-3","req":{"method":"GET","url":"/jobs/sweep","host":"127.0.0.1:55994","remoteAddress":"127.0.0.1","remotePort":55995},"msg":"incoming request"}
+ ✓ test/emulator/bundle.test.ts > built Vercel function on the emulators > serves the public client config under /api 60ms
+{"level":30,"time":1791312035727,"pid":74697,"hostname":"Mac.home","reqId":"req-3","res":{"statusCode":200},"responseTime":89.27399999999989,"msg":"request completed"}
+{"level":30,"time":1791312035729,"pid":74697,"hostname":"Mac.home","reqId":"req-4","req":{"method":"POST","url":"/auth/identity/session","host":"127.0.0.1:55994","remoteAddress":"127.0.0.1","remotePort":55996},"msg":"incoming request"}
+{"level":30,"time":1791312035730,"pid":74697,"hostname":"Mac.home","reqId":"req-4","res":{"statusCode":401},"responseTime":1.1019579999997404,"msg":"request completed"}
+{"level":30,"time":1791312035731,"pid":74697,"hostname":"Mac.home","reqId":"req-5","req":{"method":"GET","url":"/nope","host":"127.0.0.1:55994","remoteAddress":"127.0.0.1","remotePort":55995},"msg":"incoming request"}
+{"level":30,"time":1791312035731,"pid":74697,"hostname":"Mac.home","reqId":"req-5","res":{"statusCode":404},"responseTime":0.09112499999991996,"msg":"request completed"}
+ ✓ test/emulator/bundle.test.ts > built Vercel function on the emulators > runs a cron job with the secret, 404 without it 92ms
+ ✓ test/emulator/bundle.test.ts > built Vercel function on the emulators > parses a JSON body and verifies the Firebase token (a bad token is 401, not 500) 3ms
+ ✓ test/emulator/bundle.test.ts > built Vercel function on the emulators > unknown API paths are a JSON 404 1ms
+{"level":30,"time":1791312036166,"pid":74754,"hostname":"Mac.home","reqId":"req-1","req":{"method":"GET","url":"/jobs/settle","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-1","res":{"statusCode":404},"responseTime":2.091000000000008,"msg":"request completed"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-2","req":{"method":"GET","url":"/jobs/settle","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-2","res":{"statusCode":404},"responseTime":0.15874999999999773,"msg":"request completed"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-3","req":{"method":"GET","url":"/jobs/nope","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-3","res":{"statusCode":404},"responseTime":0.08291600000001154,"msg":"request completed"}
+{"level":30,"time":1791312036169,"pid":74754,"hostname":"Mac.home","reqId":"req-4","req":{"method":"GET","url":"/jobs/settle","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > has no SQLite and no local media 10ms
+{"level":30,"time":1791312036250,"pid":74754,"hostname":"Mac.home","reqId":"req-4","res":{"statusCode":200},"responseTime":81.13095900000002,"msg":"request completed"}
+{"level":30,"time":1791312036251,"pid":74754,"hostname":"Mac.home","reqId":"req-5","req":{"method":"GET","url":"/jobs/sweep","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312036271,"pid":74754,"hostname":"Mac.home","reqId":"req-5","res":{"statusCode":200},"responseTime":20.213166000000058,"msg":"request completed"}
+{"level":30,"time":1791312036279,"pid":74754,"hostname":"Mac.home","reqId":"req-6","req":{"method":"GET","url":"/jobs/sweep","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > jobs: 404 without the cron secret, with a wrong one, or for an unknown job; runs with it 112ms
+{"level":30,"time":1791312038307,"pid":74754,"hostname":"Mac.home","reqId":"req-6","res":{"statusCode":200},"responseTime":2027.9428749999997,"msg":"request completed"}
+{"level":30,"time":1791312038311,"pid":74754,"hostname":"Mac.home","reqId":"req-7","req":{"method":"GET","url":"/jobs/sweep","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312038329,"pid":74754,"hostname":"Mac.home","reqId":"req-7","res":{"statusCode":200},"responseTime":18.068499999999858,"msg":"request completed"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > jobs: a run finding the lease held past the wait does nothing; after release the next run works 2058ms
+{"level":30,"time":1791312038337,"pid":74754,"hostname":"Mac.home","reqId":"req-8","req":{"method":"GET","url":"/jobs/settle","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039369,"pid":74754,"hostname":"Mac.home","reqId":"req-8","res":{"statusCode":200},"responseTime":1031.4519999999998,"msg":"request completed"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > jobs: a cron run waits out a short holder (an inline slice) instead of skipping the day (r4 P3) 1039ms
+{"level":30,"time":1791312039394,"pid":74754,"hostname":"Mac.home","reqId":"req-9","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039418,"pid":74754,"hostname":"Mac.home","reqId":"req-9","res":{"statusCode":200},"responseTime":24.081916999999976,"msg":"request completed"}
+{"level":30,"time":1791312039419,"pid":74754,"hostname":"Mac.home","reqId":"req-a","req":{"method":"POST","url":"/me/credits/test-topup","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":50,"time":1791312039444,"pid":74754,"hostname":"Mac.home","reqId":"req-a","err":{"type":"Object","message":"simulated crash after commit","stack":""},"msg":"unhandled error"}
+{"level":30,"time":1791312039444,"pid":74754,"hostname":"Mac.home","reqId":"req-a","res":{"statusCode":500},"responseTime":25.239333000000443,"msg":"request completed"}
+{"level":30,"time":1791312039444,"pid":74754,"hostname":"Mac.home","reqId":"req-b","req":{"method":"POST","url":"/me/credits/test-topup","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039462,"pid":74754,"hostname":"Mac.home","reqId":"req-b","res":{"statusCode":200},"responseTime":17.968291999999565,"msg":"request completed"}
+{"level":30,"time":1791312039462,"pid":74754,"hostname":"Mac.home","reqId":"req-c","req":{"method":"POST","url":"/me/credits/test-topup","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039473,"pid":74754,"hostname":"Mac.home","reqId":"req-c","res":{"statusCode":200},"responseTime":10.804000000000087,"msg":"request completed"}
+{"level":30,"time":1791312039473,"pid":74754,"hostname":"Mac.home","reqId":"req-d","req":{"method":"GET","url":"/me/credits","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039483,"pid":74754,"hostname":"Mac.home","reqId":"req-d","res":{"statusCode":200},"responseTime":9.286874999999782,"msg":"request completed"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > a top-up whose completion write failed is retried with its key: one credit (R12 D, P2-H) 114ms
+{"level":30,"time":1791312039489,"pid":74754,"hostname":"Mac.home","reqId":"req-e","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039510,"pid":74754,"hostname":"Mac.home","reqId":"req-e","res":{"statusCode":200},"responseTime":20.471082999999908,"msg":"request completed"}
+{"level":30,"time":1791312039510,"pid":74754,"hostname":"Mac.home","reqId":"req-f","req":{"method":"POST","url":"/me/export","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039533,"pid":74754,"hostname":"Mac.home","reqId":"req-f","res":{"statusCode":200},"responseTime":23.207082999999784,"msg":"request completed"}
+{"level":30,"time":1791312039549,"pid":74754,"hostname":"Mac.home","reqId":"req-g","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039560,"pid":74754,"hostname":"Mac.home","reqId":"req-g","res":{"statusCode":404},"responseTime":11.467417000000296,"msg":"request completed"}
+{"level":30,"time":1791312039560,"pid":74754,"hostname":"Mac.home","reqId":"req-h","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039573,"pid":74754,"hostname":"Mac.home","reqId":"req-h","res":{"statusCode":409},"responseTime":12.637083000000075,"msg":"request completed"}
+{"level":30,"time":1791312039576,"pid":74754,"hostname":"Mac.home","reqId":"req-i","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039590,"pid":74754,"hostname":"Mac.home","reqId":"req-i","res":{"statusCode":200},"responseTime":13.437082999999802,"msg":"request completed"}
+{"level":30,"time":1791312039590,"pid":74754,"hostname":"Mac.home","reqId":"req-j","req":{"method":"GET","url":"/me","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039598,"pid":74754,"hostname":"Mac.home","reqId":"req-j","res":{"statusCode":200},"responseTime":8.170999999999822,"msg":"request completed"}
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > an export with a key stores no idempotency record (credential/size exemption) 52ms
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > plan §7(a): a migrated account is claimed once by its verified email; other accounts are never merged 67ms
+{"level":30,"time":1791312039612,"pid":74754,"hostname":"Mac.home","reqId":"req-k","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039626,"pid":74754,"hostname":"Mac.home","reqId":"req-k","res":{"statusCode":200},"responseTime":13.717249999999694,"msg":"request completed"}
+{"level":30,"time":1791312039632,"pid":74754,"hostname":"Mac.home","reqId":"req-l","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039637,"pid":74754,"hostname":"Mac.home","reqId":"req-l","res":{"statusCode":403},"responseTime":5.000042000000121,"msg":"request completed"}
+stderr | test/emulator/hosted.test.ts > hosted evidence path (pqa-be2) > consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > plan §7(a): a mixed-case sign-in email claims the lowercase stored account (r5 P3) 24ms
+ ✓ test/emulator/hosted.test.ts > hosted app on the emulators > plan §7(a): an unverified email never claims a migrated account 13ms
+{"level":30,"time":1791312039742,"pid":74754,"hostname":"Mac.home","reqId":"req-m","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039761,"pid":74754,"hostname":"Mac.home","reqId":"req-m","res":{"statusCode":200},"responseTime":19.683082999999897,"msg":"request completed"}
+{"level":30,"time":1791312039764,"pid":74754,"hostname":"Mac.home","reqId":"req-n","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039785,"pid":74754,"hostname":"Mac.home","reqId":"req-n","res":{"statusCode":200},"responseTime":20.909667000000354,"msg":"request completed"}
+{"level":30,"time":1791312039788,"pid":74754,"hostname":"Mac.home","reqId":"req-o","req":{"method":"POST","url":"/auth/identity/session","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039808,"pid":74754,"hostname":"Mac.home","reqId":"req-o","res":{"statusCode":200},"responseTime":20.375790999999936,"msg":"request completed"}
+{"level":30,"time":1791312039808,"pid":74754,"hostname":"Mac.home","reqId":"req-p","req":{"method":"POST","url":"/me/credits/test-topup","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039823,"pid":74754,"hostname":"Mac.home","reqId":"req-p","res":{"statusCode":200},"responseTime":14.430624999999964,"msg":"request completed"}
+{"level":30,"time":1791312039823,"pid":74754,"hostname":"Mac.home","reqId":"req-q","req":{"method":"POST","url":"/studies","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039841,"pid":74754,"hostname":"Mac.home","reqId":"req-q","res":{"statusCode":200},"responseTime":17.91379199999983,"msg":"request completed"}
+{"level":30,"time":1791312039841,"pid":74754,"hostname":"Mac.home","reqId":"req-r","req":{"method":"POST","url":"/studies/45e7b18a-5499-4ca5-b05c-51b8bbcfdde8/publish","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039861,"pid":74754,"hostname":"Mac.home","reqId":"req-r","res":{"statusCode":200},"responseTime":20.550083000000086,"msg":"request completed"}
+{"level":30,"time":1791312039861,"pid":74754,"hostname":"Mac.home","reqId":"req-s","req":{"method":"PUT","url":"/me/device","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039870,"pid":74754,"hostname":"Mac.home","reqId":"req-s","res":{"statusCode":200},"responseTime":8.843917000000147,"msg":"request completed"}
+{"level":30,"time":1791312039870,"pid":74754,"hostname":"Mac.home","reqId":"req-t","req":{"method":"POST","url":"/studies/45e7b18a-5499-4ca5-b05c-51b8bbcfdde8/consent","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039891,"pid":74754,"hostname":"Mac.home","reqId":"req-t","res":{"statusCode":200},"responseTime":20.745458000000326,"msg":"request completed"}
+{"level":30,"time":1791312039891,"pid":74754,"hostname":"Mac.home","reqId":"req-u","req":{"method":"POST","url":"/participations/20c40188-fdda-4a5f-916a-8f5f3472ddbf/start","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039906,"pid":74754,"hostname":"Mac.home","reqId":"req-u","res":{"statusCode":200},"responseTime":14.406624999999622,"msg":"request completed"}
+{"level":30,"time":1791312039906,"pid":74754,"hostname":"Mac.home","reqId":"req-v","req":{"method":"POST","url":"/participations/20c40188-fdda-4a5f-916a-8f5f3472ddbf/evidence/upload-intents","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039932,"pid":74754,"hostname":"Mac.home","reqId":"req-v","res":{"statusCode":200},"responseTime":26.4096669999999,"msg":"request completed"}
+{"level":30,"time":1791312039932,"pid":74754,"hostname":"Mac.home","reqId":"req-w","req":{"method":"POST","url":"/participations/20c40188-fdda-4a5f-916a-8f5f3472ddbf/evidence/upload-intents","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039941,"pid":74754,"hostname":"Mac.home","reqId":"req-w","res":{"statusCode":404},"responseTime":8.260541999999987,"msg":"request completed"}
+{"level":30,"time":1791312039942,"pid":74754,"hostname":"Mac.home","reqId":"req-x","req":{"method":"POST","url":"/evidence/upload-intents/a037cc13-0837-472e-b66e-30e7fb27e40a/complete","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039949,"pid":74754,"hostname":"Mac.home","reqId":"req-x","res":{"statusCode":404},"responseTime":7.059624999999869,"msg":"request completed"}
+{"level":30,"time":1791312039950,"pid":74754,"hostname":"Mac.home","reqId":"req-y","req":{"method":"POST","url":"/evidence/upload-intents/a037cc13-0837-472e-b66e-30e7fb27e40a/complete","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312039998,"pid":74754,"hostname":"Mac.home","reqId":"req-y","res":{"statusCode":200},"responseTime":48.54820800000016,"msg":"request completed"}
+{"level":30,"time":1791312040000,"pid":74754,"hostname":"Mac.home","reqId":"req-z","req":{"method":"POST","url":"/evidence/27da2f34-922c-4873-81d6-68bf688eaa75/playback-token","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040013,"pid":74754,"hostname":"Mac.home","reqId":"req-z","res":{"statusCode":200},"responseTime":12.982500000000073,"msg":"request completed"}
+{"level":30,"time":1791312040014,"pid":74754,"hostname":"Mac.home","reqId":"req-10","req":{"method":"POST","url":"/evidence/27da2f34-922c-4873-81d6-68bf688eaa75/playback-token","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040026,"pid":74754,"hostname":"Mac.home","reqId":"req-10","res":{"statusCode":200},"responseTime":12.218541999999616,"msg":"request completed"}
+{"level":30,"time":1791312040027,"pid":74754,"hostname":"Mac.home","reqId":"req-11","req":{"method":"POST","url":"/evidence/27da2f34-922c-4873-81d6-68bf688eaa75/playback-token","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040038,"pid":74754,"hostname":"Mac.home","reqId":"req-11","res":{"statusCode":404},"responseTime":11.318000000000211,"msg":"request completed"}
+{"level":30,"time":1791312040038,"pid":74754,"hostname":"Mac.home","reqId":"req-12","req":{"method":"GET","url":"/participations/20c40188-fdda-4a5f-916a-8f5f3472ddbf/evidence","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040048,"pid":74754,"hostname":"Mac.home","reqId":"req-12","res":{"statusCode":404},"responseTime":9.678667000000132,"msg":"request completed"}
+{"level":30,"time":1791312040048,"pid":74754,"hostname":"Mac.home","reqId":"req-13","req":{"method":"DELETE","url":"/me","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040171,"pid":74754,"hostname":"Mac.home","reqId":"req-13","res":{"statusCode":200},"responseTime":122.48199999999997,"msg":"request completed"}
+{"level":30,"time":1791312040175,"pid":74754,"hostname":"Mac.home","reqId":"req-14","req":{"method":"POST","url":"/evidence/27da2f34-922c-4873-81d6-68bf688eaa75/playback-token","host":"localhost:80","remoteAddress":"127.0.0.1"},"msg":"incoming request"}
+{"level":30,"time":1791312040184,"pid":74754,"hostname":"Mac.home","reqId":"req-14","res":{"statusCode":404},"responseTime":8.397374999999556,"msg":"request completed"}
+ ✓ test/emulator/hosted.test.ts > hosted evidence path (pqa-be2) > consent → upload intent → PUT → complete → presigned playback; others 404; deleteMe clears storage 544ms
+stderr | test/emulator/regression.escrow-retry.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.escrow-retry.test.ts > crash-after-commit retries, escrow domain (P2-F) > createEscrowFunding (rule G): the retry returns the same open request; one request exists 239ms
+ ✓ test/emulator/regression.escrow-retry.test.ts > crash-after-commit retries, escrow domain (P2-F) > createTransfer (rule D): the retry returns the same transfer; one transfer exists 285ms
+ ✓ test/emulator/regression.escrow-retry.test.ts > crash-after-commit retries, escrow domain (P2-F) > adminFraud (rule G): the retry is refused (409) and the points are reversed once 254ms
+stderr | test/emulator/regression.storage-r4.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.storage-r4.test.ts > R4: the deletion gate > the Seeker archive key is refused and audited by hash only, even when registered 108ms
+ ✓ test/emulator/regression.storage-r4.test.ts > R4: the deletion gate > an unregistered evidence/ key is refused and audited; a registered one is deleted 26ms
+ ✓ test/emulator/regression.storage-r4.test.ts > R4: the deletion gate > the sweep drops an outbox entry outside the prefixes without deleting it, audited as system 64ms
+ ✓ test/emulator/regression.storage-r4.test.ts > R4: the deletion gate > a caller without an actor is recorded as system 68ms
+stderr | test/emulator/regression.export-wallet.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.export-wallet.test.ts > tester export > has their own rewards (exact string units, their frozen wallet) and their reputation, nothing of others 3580ms
+ ✓ test/emulator/regression.export-wallet.test.ts > tester export > records its fraud finding and withheld-points flags on its own work 2395ms
+ ✓ test/emulator/regression.export-wallet.test.ts > builder export > has their studies’ fundings, refunds and per-test payments, with no tester wallet, email or user id 1424ms
+ ✓ test/emulator/regression.export-wallet.test.ts > builder export > includes the refund to their funding wallet, and nothing of another builder 1075ms
+ ✓ test/emulator/regression.export-wallet.test.ts > every export > a test-credit-only account gets empty payment and reputation sections (the shape is stable) 258ms
+stderr | test/emulator/regression.wallet.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+(node:77054) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.wallet.test.ts > wallet link (SIWS, devnet) > issues a devnet-bound, expiring SIWS input and links on a valid signature 3747ms
+ ✓ test/emulator/regression.wallet.test.ts > wallet link (SIWS, devnet) > rejects replay of a used nonce 122ms
+ ✓ test/emulator/regression.wallet.test.ts > wallet link (SIWS, devnet) > burns the nonce even when the first attempt fails 174ms
+ ✓ test/emulator/regression.wallet.test.ts > wallet link (SIWS, devnet) > rejects cross-account use, expiry, wrong domain and wrong network 239ms
+ ✓ test/emulator/regression.wallet.test.ts > wallet link (SIWS, devnet) > one address links to one account; unlink works 227ms
+ ✓ test/emulator/regression.wallet.test.ts > devnet demo transfer > refuses to start if the RPC is not devnet 424ms
+ ✓ test/emulator/regression.wallet.test.ts > devnet demo transfer > server fixes sender/recipient/amount; signature stays pending until the chain confirms 572ms
+ ✓ test/emulator/regression.wallet.test.ts > devnet demo transfer > marks a mismatched transaction failed, and refuses signature reuse 518ms
+ ✓ test/emulator/regression.wallet.test.ts > devnet demo transfer > expires when nothing lands on chain in time, and stays pending while RPC is down 554ms
+ ✓ test/emulator/regression.wallet.test.ts > devnet demo transfer > only for approved work, and only when both wallets are linked 460ms
+stderr | test/emulator/regression.evidence.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+(node:77482) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.evidence.test.ts > evidence upload > decides content type by file signature and rejects mismatches 4015ms
+ ✓ test/emulator/regression.evidence.test.ts > evidence upload > rejects duplicate segments, bad metadata and too many items 1092ms
+ ✓ test/emulator/regression.evidence.test.ts > evidence upload > refuses evidence before the tester starts 200ms
+ ✓ test/emulator/regression.evidence.test.ts > playback tokens and media > streams to the token holder, supports ranges, and expires 187ms
+ ✓ test/emulator/regression.evidence.test.ts > playback tokens and media > a token works only for its own evidence, and stops working when access is lost 441ms
+ ✓ test/emulator/regression.evidence.test.ts > playback tokens and media > a stranger cannot mint a token for someone else’s evidence 163ms
+stderr | test/emulator/regression.settlement-slice.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.settlement-slice.test.ts > runSettlement slices > maxItems bounds a run; the next runs resume and finish (complete reported) 930ms
+ ✓ test/emulator/regression.settlement-slice.test.ts > runSettlement slices > a deadline already passed starts no item 335ms
+ ✓ test/emulator/regression.settlement-slice.test.ts > runSettlement slices > a fenced-out holder stops before its next item; the live holder finishes 377ms
+ ✓ test/emulator/regression.settlement-slice.test.ts > SimulatedSettlement over the repository (hosted path) > submit is idempotent per key, getTransfer and status read through the repo 26ms
+stderr | test/emulator/regression.lifecycle.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.lifecycle.test.ts > study budget > cannot publish without enough test credits, and reserves reward × slots on publish 202ms
+ ✓ test/emulator/regression.lifecycle.test.ts > study budget > rejects earnings language in builder-entered text 30ms
+ ✓ test/emulator/regression.lifecycle.test.ts > study budget > only drafts are editable; consent text edits bump the consent version 85ms
+ ✓ test/emulator/regression.lifecycle.test.ts > tester flow > discovers only eligible studies and must consent to the current version 175ms
+ ✓ test/emulator/regression.lifecycle.test.ts > tester flow > a full study refuses more consents; withdrawal frees the slot 218ms
+ ✓ test/emulator/regression.lifecycle.test.ts > tester flow > freezes notes and evidence after submission 200ms
+ ✓ test/emulator/regression.lifecycle.test.ts > review and ledger > approval credits exactly once (idempotent) and never takes the budget negative 196ms
+ ↓ test/emulator/regression.lifecycle.test.ts > review and ledger > the database itself refuses a second reward posting and any ledger edit
+ ✓ test/emulator/regression.lifecycle.test.ts > review and ledger > rejection needs a reason; dispute overturned credits once; close is blocked until resolved 233ms
+ ✓ test/emulator/regression.lifecycle.test.ts > review and ledger > closing withdraws in-flight testers and releases the remaining budget to the builder 150ms
+ ↓ test/emulator/regression.lifecycle.test.ts > error mapping > a ledger invariant breach surfaces as 500, not as a routine 409
+stderr | test/emulator/regression.authz.matrix.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > logout: no session → 401 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > logout: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > identitySession: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > identitySession: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > me: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > me: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putDevice: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putDevice: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > credits: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > credits: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > topUp: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > topUp: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > exportMe: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > exportMe: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > deleteMe: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > deleteMe: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > eligibleStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > eligibleStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTesterStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTesterStudy: forged session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > updateStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > updateStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > publishStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > publishStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > pauseStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > pauseStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resumeStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resumeStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > closeStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > closeStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyParticipations: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyParticipations: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > studyDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > consent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > consent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myParticipations: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myParticipations: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > startParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > startParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > withdrawParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > withdrawParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putTaskNote: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putTaskNote: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitParticipation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitParticipation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > uploadEvidence: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > uploadEvidence: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listEvidence: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listEvidence: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > playbackToken: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > playbackToken: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createUploadIntent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createUploadIntent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > completeUploadIntent: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > completeUploadIntent: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listFindings: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > listFindings: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createFinding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createFinding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > approve: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > approve: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > reject: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > reject: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > openDispute: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > openDispute: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDisputes: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDisputes: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resolveDispute: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > resolveDispute: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStudies: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStudies: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateStudy: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateStudy: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateUser: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > moderateUser: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminAudit: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminAudit: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStuck: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminStuck: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDecide: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminDecide: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletNonce: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletNonce: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletLink: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletLink: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletUnlink: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > walletUnlink: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createTransfer: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createTransfer: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitTransferSignature: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitTransferSignature: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTransfer: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getTransfer: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > transferBlockhash: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > transferBlockhash: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > participationTransfers: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > participationTransfers: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > aiStatus: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > aiStatus: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createEscrowFunding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > createEscrowFunding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getEscrowFunding: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > getEscrowFunding: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > simulatedWalletPayment: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > simulatedWalletPayment: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitFundingSignature: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > submitFundingSignature: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myPayouts: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myPayouts: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminPayouts: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminPayouts: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myReputation: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > myReputation: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putLeaderboard: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > putLeaderboard: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > leaderboard: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > leaderboard: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminFraud: no session → 401 0ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > authentication > adminFraud: forged session → 401 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putDevice: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putDevice: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > topUp: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > topUp: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > listStudies: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > listStudies: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > eligibleStudies: builder → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > eligibleStudies: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getTesterStudy: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getTesterStudy: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > updateStudy: tester → 403 2ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > updateStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > publishStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > publishStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > pauseStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > pauseStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resumeStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resumeStudy: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > closeStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > closeStudy: admin → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyParticipations: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyParticipations: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyDisputes: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > studyDisputes: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > consent: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > consent: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myParticipations: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myParticipations: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > startParticipation: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > startParticipation: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > withdrawParticipation: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > withdrawParticipation: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putTaskNote: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putTaskNote: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitParticipation: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitParticipation: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > uploadEvidence: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > uploadEvidence: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createUploadIntent: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createUploadIntent: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > completeUploadIntent: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > completeUploadIntent: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createFinding: tester → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createFinding: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > approve: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > approve: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > reject: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > reject: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > openDispute: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > openDispute: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myDisputes: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myDisputes: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDisputes: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDisputes: builder → 403 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resolveDispute: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > resolveDispute: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStudies: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStudies: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateStudy: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateStudy: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateUser: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > moderateUser: builder → 403 3ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminAudit: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminAudit: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStuck: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminStuck: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDecide: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminDecide: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createTransfer: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createTransfer: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitTransferSignature: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitTransferSignature: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > transferBlockhash: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > transferBlockhash: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createEscrowFunding: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > createEscrowFunding: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getEscrowFunding: tester → 403 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > getEscrowFunding: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > simulatedWalletPayment: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > simulatedWalletPayment: admin → 403 11ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitFundingSignature: tester → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > submitFundingSignature: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myPayouts: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myPayouts: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminPayouts: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminPayouts: builder → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myReputation: builder → 403 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > myReputation: admin → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putLeaderboard: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > putLeaderboard: admin → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminFraud: tester → 403 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > role guard > adminFraud: builder → 403 4ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > covers every owner-scoped route in the contract 1ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getStudy: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > updateStudy: builderB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > publishStudy: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > pauseStudy: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > resumeStudy: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > closeStudy: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > studyParticipations: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > studyDisputes: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createFinding: builderB → 404 14ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > approve: builderB → 404 11ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > reject: builderB → 404 9ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createTransfer: builderB → 404 9ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitTransferSignature: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > transferBlockhash: builderB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createEscrowFunding: builderB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getEscrowFunding: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > simulatedWalletPayment: builderB → 404 9ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitFundingSignature: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > startParticipation: testerB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > withdrawParticipation: testerB → 404 7ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > putTaskNote: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > submitParticipation: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > uploadEvidence: testerB → 404 5ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > openDispute: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > createUploadIntent: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > completeUploadIntent: testerB → 404 6ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getParticipation: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getParticipation: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listEvidence: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listEvidence: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > playbackToken: testerB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > playbackToken: builderB → 404 10ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listFindings: testerB → 404 11ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > listFindings: builderB → 404 11ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getTransfer: testerB → 404 12ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > getTransfer: builderB → 404 15ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > participationTransfers: testerB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > participationTransfers: builderB → 404 8ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > admin may read participation evidence for disputes 35ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > list endpoints only return the caller’s own rows 24ms
+ ✓ test/emulator/regression.authz.matrix.test.ts > ownership: non-owners get 404, never 403 or data > suspended accounts are locked out except me/logout/export/delete 70ms
+stderr | test/emulator/regression.evidence-idempotency.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > uploadEvidence (local storage): evidence id from the Idempotency-Key > a retry after a committed upload returns the same evidence; one row 334ms
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > uploadEvidence (local storage): evidence id from the Idempotency-Key > the same key reused for a different segment after a crash is a clean 409 168ms
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > uploadEvidence (local storage): evidence id from the Idempotency-Key > without a key every upload gets a fresh id 166ms
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > completeUploadIntent (r2): a retry after a committed completion > with the same key: the same evidence, one row 191ms
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > completeUploadIntent (r2): a retry after a committed completion > without a key (or another key): the same evidence, one row 223ms
+ ✓ test/emulator/regression.evidence-idempotency.test.ts > completeUploadIntent (r2): a retry after a committed completion > another tester still gets 404 200ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > maps every row to the repositories’ documents and guards; all checks pass 153ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > the migrated documents are what the studies repository reads (same shapes) 112ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > a rerun is idempotent: identical documents and an identical manifest 94ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > the snapshot copy is opened immutable: unchanged, no side files 49ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > refuses a snapshot whose sha256 differs, and a Seeker receipt that does not match the media 4ms
+ ✓ test/emulator/studies.migration.test.ts > migration dry run (plan §8) > the CLI refuses --real without an approved manifest, a dry run without the emulator, and .preview 1791ms
+ ✓ test/emulator/studies.flows.test.ts > study lifecycle and the test-credit ledger > publish reserves reward × slots, close withdraws in-flight testers and releases the rest 215ms
+ ✓ test/emulator/studies.flows.test.ts > study lifecycle and the test-credit ledger > publish without enough credits fails and writes nothing 19ms
+ ✓ test/emulator/studies.flows.test.ts > study lifecycle and the test-credit ledger > only the owner can change a study (404, no existence leak); suspended studies cannot publish 39ms
+ ✓ test/emulator/studies.flows.test.ts > study lifecycle and the test-credit ledger > a draft edit replaces its tasks and bumps the consent version only when the text changes 31ms
+ ✓ test/emulator/studies.flows.test.ts > participations, notes, findings, disputes > consent rules: open study only, current consent version, device eligibility 61ms
+ ✓ test/emulator/studies.flows.test.ts > participations, notes, findings, disputes > tester flow: notes while in progress only, submit, reject, dispute window, uphold 171ms
+ ✓ test/emulator/studies.flows.test.ts > participations, notes, findings, disputes > an admin decides stuck work only, audited; lists are ordered as in SQLite 130ms
+ ✓ test/emulator/studies.flows.test.ts > participations, notes, findings, disputes > eligible studies: open, not joined, builder active, newest published first 78ms
+ ✓ test/emulator/studies.flows.test.ts > account export and deletion > exportUser returns own rows; purgeUser applies the deletion rules and is idempotent 196ms
+ ✓ test/emulator/studies.flows.test.ts > rule D (plan R12): a retried create with the same id returns the existing row, no second effect > createStudy, topUp, createFinding and moderateStudy are no-ops on an existing id 117ms
+stderr | test/emulator/regression.account.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.account.test.ts > auth > cannot self-register as admin; wrong password is 401; logout ends the session 152ms
+ ✓ test/emulator/regression.account.test.ts > auth > rate-limits repeated failed logins 134ms
+ ✓ test/emulator/regression.account.test.ts > auth > reports AI analysis as unavailable 27ms
+ ✓ test/emulator/regression.account.test.ts > export and deletion > export contains only the requester’s data 278ms
+ ✓ test/emulator/regression.account.test.ts > export and deletion > deletion removes media and personal data but keeps anonymized ledger rows 305ms
+ ✓ test/emulator/regression.account.test.ts > export and deletion > a builder must close live studies before deleting 129ms
+stderr | test/emulator/regression.storage-playback.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.storage-playback.test.ts > presigned playback (r2) > the owning tester gets a signed S3-endpoint GET: ≤ 5 min, dated now, served as the sniffed type, inline, not cached 321ms
+ ✓ test/emulator/regression.storage-playback.test.ts > presigned playback (r2) > the study’s builder and an admin are allowed; another tester and another builder get 404 247ms
+ ✓ test/emulator/regression.storage-playback.test.ts > presigned playback (r2) > presignGet refuses keys outside evidence/ and quarantine/ and TTLs above 5 minutes 2ms
+ ✓ test/emulator/regression.storage-playback.test.ts > local storage playback (unchanged) > still a token for /media, streamed by the API 183ms
+stderr | test/emulator/regression.idempotency-retry.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.idempotency-retry.test.ts > crash-after-commit retries (P2-F) > moderateUser: retried with the same key, one audit row 175ms
+ ✓ test/emulator/regression.idempotency-retry.test.ts > crash-after-commit retries, studies domain (P2-F rule D, pqa-be1) > createStudy: retried with the same key, one study with the same id 74ms
+ ✓ test/emulator/regression.idempotency-retry.test.ts > crash-after-commit retries, studies domain (P2-F rule D, pqa-be1) > createFinding: retried with the same key, one finding 175ms
+ ✓ test/emulator/regression.idempotency-retry.test.ts > crash-after-commit retries, studies domain (P2-F rule D, pqa-be1) > topUp: retried with the same key, credited once 71ms
+ ✓ test/emulator/regression.idempotency-retry.test.ts > crash-after-commit retries, studies domain (P2-F rule D, pqa-be1) > moderateStudy: retried with the same key, one audit row 168ms
+stderr | test/emulator/regression.storage-slice.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+ ✓ test/emulator/regression.storage-slice.test.ts > sweepStorage slices (SQLite) > maxItems slices resume to completion; every object is deleted exactly once 377ms
+ ✓ test/emulator/regression.storage-slice.test.ts > sweepStorage slices (SQLite) > a deadline already passed does nothing 13ms
+ ✓ test/emulator/regression.storage-slice.test.ts > sweepStorage slices (SQLite) > a stale fence stops before any item; the current holder completes 50ms
+ ✓ test/emulator/regression.storage-slice.test.ts > sweepStorage slices (SQLite) > a lease that lapses mid-slice stops at the next item 29ms
+ ✓ test/emulator/regression.storage-slice.test.ts > sweepStorage slices (SQLite) > no slice: everything in one run, complete 213ms
+stderr | test/emulator/regression.idempotency.test.ts
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+
+(node:77822) MetadataLookupWarning: received unexpected error = All promises were rejected code = ETIMEDOUT, ENOTFOUND
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key > a retried top-up with the same key runs once and replays the first response 3167ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key > the same key with a different body is 422 IDEMPOTENCY_KEY_REUSED, and nothing runs 68ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key > keys are scoped per user: another user with the same key runs their own request 84ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key > a malformed key is a 400; a request that failed can be retried with the same key 60ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key > GET requests and requests without a key are unaffected 67ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key from the web client (pqa-qa early r1 P2-H) > a browser preflight allows the idempotency-key header 28ms
+ ✓ test/emulator/regression.idempotency.test.ts > Idempotency-Key from the web client (pqa-qa early r1 P2-H) > without a key two identical top-ups are two intents; a retry with the key is one effect 72ms
+ ✓ test/emulator/regression.idempotency.test.ts > exempt routes never take a reservation (R12 N rows) > exportMe with a key runs, stores nothing, and a second call exports again 57ms
+ ✓ test/emulator/regression.idempotency.test.ts > exempt routes never take a reservation (R12 N rows) > a malformed key on an exempt route is ignored rather than validated 40ms
+
+ Test Files  29 passed (29)
+      Tests  563 passed | 3 skipped (566)
+   Start at  20:35:33
+   Duration  356.10s (tests 92%, import 7%)
+
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+exit 0
+2026-10-06T18:41:32Z

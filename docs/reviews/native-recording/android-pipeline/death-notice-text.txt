@@ -1,0 +1,1 @@
+text="A recording was interrupted (Android closed Pocket QA while it was recording) and couldn’t be saved. Nothing from it was uploaded. Record again."

@@ -1,6 +1,7 @@
 import { Children, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { appOffScreen } from '../../motion/visible';
 import { DUR } from '../../theme/motion';
 import { useTheme } from '../../theme/ThemeProvider';
 
@@ -78,16 +79,18 @@ export function GlideList({ children, gap = 10, style, testID }: { children: Rea
 
 function GlideItem({ children, leaving, fresh, onGone }: { children: ReactNode; leaving: boolean; fresh: boolean; onGone: () => void }) {
   const { motion } = useTheme();
-  // An item added after the list mounted rises in (10dp, 320ms ease-lens; reduced: a 120ms fade).
-  const y = useSharedValue(fresh ? motion.entrance.rise : 0);
-  const opacity = useSharedValue(fresh ? 0 : 1);
+  // An item added after the list mounted rises in (10dp, 320ms ease-lens; reduced: a 120ms fade),
+  // unless it arrives while Pocket QA is off screen: then it is simply there.
+  const [rises] = useState(() => fresh && !appOffScreen());
+  const y = useSharedValue(rises ? motion.entrance.rise : 0);
+  const opacity = useSharedValue(rises ? 0 : 1);
   const lastY = useRef<number | null>(null);
 
   useEffect(() => {
     if (!leaving) {
       // Arriving, or coming back while it was still fading out.
       if (opacity.value < 1) opacity.value = withTiming(1, motion.timing.enter);
-      if (fresh) y.value = withTiming(0, motion.timing.enter);
+      if (rises) y.value = withTiming(0, motion.timing.enter);
       return;
     }
     opacity.value = withTiming(0, { ...motion.timing.exit, duration: DUR.swap });

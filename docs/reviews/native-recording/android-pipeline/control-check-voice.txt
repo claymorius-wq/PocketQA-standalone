@@ -1,0 +1,8 @@
+# Gate re-run by hand: the harness's own gate call failed (bash 3.2 + set -u on an empty TAIL array: 'unbound variable'), so the scenario printed EXIT=1. Fixed in voice-stress.sh after this run.
+$ ./check-voice.py uploaded.mp4 --structure-only
+video 200.884 s, audio 200.829 s, |a-v| 0.055 s (limit 1.0 s)
+audio samples held 200.829 s of 200.829 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+rc=0
+37c3aa03c56dfd81c3d27035bada9096469b8230dab41a8439a5e2f5cfbfa31d  .results/p3/control/uploaded.mp4

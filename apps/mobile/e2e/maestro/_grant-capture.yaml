@@ -6,6 +6,11 @@ appId: com.reshareai.pocketqa
 - tapOn:
     text: "Allow"
     optional: true
+# Then the microphone (narration), asked in the foreground before screen consent. Maestro's launch
+# permission does not always pre-grant it, so the real system prompt is answered here.
+- tapOn:
+    text: "While using the app"
+    optional: true
 - assertVisible: "Share your screen with Pocket QA?"
 - takeScreenshot: os-consent-dialog
 - tapOn: "Share one app"

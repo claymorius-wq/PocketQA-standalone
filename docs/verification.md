@@ -670,6 +670,51 @@ Full outputs are in `docs/reviews/screen-recording/`.
 - **Public preview recorder smoke** (`scripts/preview/recorder-smoke.mjs`): synthetic and non-destructive. Rehearsed on an isolated local preview: the existing smoke passed before and after two recorder-smoke runs (`preview-smoke-rehearsal.txt`).
   - An earlier join-and-withdraw mode was **dropped**: withdrawing doesn't let the tester join that study again, so the demo tester was left with no studies. This happened only in the isolated rehearsal data.
 
+
+## 2026-10-05: native screen + voice recording across apps (lead, `feat/native-voice-recording`). EMULATOR/SIMULATOR ONLY
+Freeze candidate **`c5e629d`**. Gate ledger: `docs/reviews/native-recording/gates.md`. Install/backend guide: `docs/handoff/native-recording-device-install.md`.
+**Not "mobile ready"**: no physical Android, Seeker or iPhone was used, and no real speech was recorded.
+
+### Android APK (built at c5e629d)
+```
+$ ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4   (JAVA_HOME=Android Studio JBR)
+BUILD SUCCESSFUL in 35s
+apps/mobile/android/app/build/outputs/apk/release/app-release.apk  52416705 bytes
+sha256 074157921a1ea38662df280364b17c6bd6c36167cc5c3d84e24df4b2a4515c75
+apksigner: Signer #1 certificate DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US
+aapt2: package com.reshareai.pocketqa versionCode 1 versionName 0.1.0; targetSdkVersion 36
+on-device base.apk (emulator-5556) sha256 = 074157921a1ea38662df280364b17c6bd6c36167cc5c3d84e24df4b2a4515c75
+```
+
+### Unit tests and mutation
+- Kotlin (`./gradlew :pocketqa-screen-capture:testDebugUnitTest -Dpqa.voiceClips=<private dir>`): PendingStoreTest 10, VoiceCheckTest 8 (0 skipped: it ran on the real emulator clips), CaptureMathTest 2. RED first: the classes were missing, then the PendingStore API.
+  - VoiceCheck on the preserved emulator failure clip (sha256 f221c20c…cbccd): video 391.72 s, voice 202.69 s, so incomplete. Run 5 clip: complete.
+- Jest: participation-session 40, sign-out-recordings 1. RED: 6 failing, then the Android AppState race (1 failing), then GREEN.
+- Mutants: 8/8 Kotlin and 5/5 JS caught. One Kotlin survivor (empty-tag listing) was found, then caught by a new test.
+
+### Emulator evidence (emulator-5556: own AVD PocketQA_Recorder_API36, Android 16 / API 36; host mic OFF)
+- **r3 cross-app** (APK 07415792…): `voice-cross-app.yaml` rc=0.
+  - `check-voice.py`: video 276.108 s, audio 275.505 s, |a−v| 0.604 s; 56 × 5 s windows from −3.0 to −3.2 dBFS; PASS (`docs/reviews/native-recording/android-r3/`).
+- **Run 5 cross-app** (earlier APK): 230.366 / 229.645 s; PASS (`android-cross-app/probe.txt`).
+- **Signal:** the emulator HAL's 220 Hz built-in-mic tone fallback. The HAL logged "failed to create alsa source for 'AUDIO_DEVICE_IN_BUILTIN_MIC'; creating a tone source instead", observed live; the source is AOSP `device_port_source.cpp`. This is a **synthetic non-silent signal, not speech verification**. The gRPC `injectAudio` route crashed the emulator (`inject-tone.py`, KNOWN BLOCKER).
+- **r2 found a regression**, fixed in cc70f3c: Android's consent dialog returned the app to `active` before the service flagged itself, so the card showed Start while recording.
+- **mic-denied:** PASS ("…needs the microphone… Nothing was recorded.", no consent dialog, no projection).
+- **Lifecycle (rotation, lock, call, micoff, dka, death):** BLOCKED (infra) in r3 after one retry each.
+  - The cause was a new Maestro session failing to attach while a projection was live: "driver did not start up in time" and gRPC UNAVAILABLE (`android-r3/infra-blocked.txt`).
+  - pqa-qa has an exclusive emulator slot queued after the heavy builds.
+
+### Workspace checks (HEAD 8345bfd = c5e629d + one eslint ignore line + docs-only merges)
+- **`pnpm verify`** EXIT=0 (`docs/reviews/native-recording/verify.txt`), Node v24.21.0.
+  - Secrets: 963 committable files, no findings.
+  - Tests: scripts 60, contracts 17, domain 216, API 573 plus 2 skipped, mobile 55 suites / 1178 tests.
+  - The first attempt failed lint only on Gradle's JVM test HTML report (`modules/screen-capture/android/build/`, git-ignored). Fixed by ignoring native module build outputs in `eslint.config.mjs` (8345bfd).
+- **Playwright** `pnpm --filter @pocket-qa/mobile exec playwright test`: **21/21 passed**, EXIT=0 (`playwright.txt`). The screenshots it rewrote (gate-a, remaining-scope, screen-recording, wallet-rewards/browser) were restored from Git.
+
+### iOS (pqa-ios, frozen combined code c5e629d; `ios-build.txt` §12)
+- `expo prebuild --platform ios --clean`, `pod install`, `xcodebuild … -sdk iphonesimulator -configuration Debug -jobs 4 CODE_SIGNING_ALLOWED=NO build`: **BUILD SUCCEEDED**.
+  - 0 errors. 543 compiler warnings and 2 script warnings, all third-party; 0 in our sources.
+- Lead's check of the bundle: `PlugIns/PocketQaBroadcast.appex` is `com.reshareai.pocketqa.Broadcast`, broadcast-services-upload, SampleBuffer, x86_64 and arm64. The App Group is in both generated entitlements; the build is unsigned.
+- Swift tests: 27, 0 failures. **No broadcast was run:** the Simulator can't run one, and there's no iPhone or team.
 ## 2026-10-05: intro before Sign in, its opening and pager motion, intro reviews r1 and r2 (contributor session, claymorius-wq; Windows 11, Node v24.21.0, pnpm 10.32.1)
 Branch `feat/intro-walkthrough` at `1f33290` plus the r2 fixes (the working tree of the commit after this entry). Playwright ran through a git-ignored mirror of `playwright.config.ts` on private ports (API 8788, web 8091, fake RPC 8900), against a fresh `expo export` of the tree.
 - **Checks** (verbatim summary lines):
@@ -800,3 +845,288 @@ Branch `feat/lens-badges` at `3ba55de`, from main `ae0b501`. Playwright ran thro
     - `intro.spec.ts` "on a short screen…": "Target page, context or browser has been closed" mid-test.
     - `remaining-scope.spec.ts:99`: the devnet demo transfer's "CONFIRMED ON DEVNET" did not appear in time.
   - Both passed in every earlier run. Re-run alone on the same export: 10 passed (1.0m): intro.spec.ts 7 and remaining-scope.spec.ts 3.
+
+
+## 2026-10-06: native recording, new capture pipeline + main merged (lead, `feat/native-voice-recording` @ fe89787). EMULATOR/COMPILE ONLY
+Gate ledger: `docs/reviews/native-recording/gates.md`. Research and design: `docs/plans/native-capture-pipeline.md`.
+- **Pipeline** (`fdc8e95`, `30a98d9`): AudioRecord, MediaCodec (AAC, H.264 from a surface) and MediaMuxer replace MediaRecorder.
+  - Kotlin tests: PendingStore 10, VoiceCheck 9 (ran on the real emulator clips), PipelineLogic 10, CaptureMath 2; RED, then GREEN.
+  - pqa-qa's pipeline review r1 P2-C, P2-D and P3s were fixed, and r2 confirmed them.
+- **UI fix** (`44fea59`): entrances that start while the app is off screen render settled. Jest background-entrance 5, RED (3 failing), then GREEN.
+- **Emulator** (`-no-audio`: the guest mic is near-silence (codec noise floor), so the verdicts are **structure only**). Details: `docs/reviews/native-recording/android-pipeline/`.
+  - control, stress, call, dka and death PASS;
+  - micoff did not exercise mic loss;
+  - combined cross-app run with main's intro: rc=0, video 49.009 s, audio 49.017 s, gaps 0, `PqaCapture` gaps 0 / lost 0, overruns 0.
+- **Merge of origin/main `daf0c85`** (`fe89787`):
+  - conflicts in `_open-session.yaml` (intro skip plus the native mic permission) and docs; kept both sides;
+  - `pnpm install --frozen-lockfile` clean;
+  - **`pnpm verify` EXIT=0**: secrets 1017 files, no findings; scripts 60, contracts 17, domain 222, API 573 plus 2 skipped, mobile 63 suites / 1344 tests (`docs/reviews/native-recording/verify.txt`);
+  - **Playwright 28/28** (`playwright.txt`); the rewritten gate-a, remaining-scope, screen-recording and wallet-rewards/browser screenshots were restored from Git.
+- **APK** at fe89787: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`, sha256 `277e8744837819958af2e57acd37685bdc712e46c50755bc3224274e4b8b91a9`, 52483457 bytes, Android Debug cert.
+- **Not proven:** a non-silent signal through the new pipeline (BLOCKED (infra) on the emulator), speech, any real phone, the Seeker, or an iPhone broadcast.
+
+## 2026-10-06: Firebase/Firestore/R2/Vercel refactor, hosted entry (lead, `feat/firebase-vercel` @ 5c9d29d). EMULATOR ONLY
+```
+$ node scripts/vercel/build.mjs --skip-web
+secret check: 0 values, 3 files, 0 occurrences
+built .vercel/output (staging): api.func maxDuration 60s in fra1; 3 files; secret scan clean (0 server-only values checked)
+$ EMU_CONFIG=../../firebase.emu-lead.json EMU_FILES="test/emulator/hosted.test.ts test/emulator/bundle.test.ts test/emulator/core.test.ts test/emulator/tx-foundation.test.ts" pnpm test:emulator
+      Tests  32 passed (32)
+$ (apps/api) npx vitest run
+      Tests  637 passed | 2 skipped (639)
+$ (apps/mobile) npx jest --ci            # at e53f978
+Test Suites: 65 passed, 65 total
+Tests:       1361 passed, 1361 total
+$ firebase firestore:databases:list --project pocketqa-optijara --json
+  "error": "... HTTP Error: 403, Cloud Firestore API has not been used in project pocketqa-optijara before or it is disabled. ..."
+$ gcloud billing projects describe pocketqa-optijara --account=admin@optijara.ai
+ERROR: (gcloud.billing.projects.describe) There was a problem refreshing your current auth tokens: Reauthentication failed. cannot prompt during non-interactive execution.
+```
+
+## 2026-10-06: live USB API database after the lead's pkill incident (pqa-qa r4 request): read-only check
+The local API (`127.0.0.1:8787`, data `scratchpad/nv-api-data`) was SIGTERMed by a lead `pkill -f` for about 2 minutes. That signal goes through its clean-stop handler. It was restarted from the native-voice worktree with the same command and data dir.
+```
+$ python3 (sqlite3 'file:…/nv-api-data/pocketqa.sqlite?mode=ro', compared with ~/.local/share/pocketqa/backups/20261006T000054Z/manifest.json)
+integrity_check: ok
+tables compared: 31 | below manifest: none
+  users: backup 77 live 77
+  studies: backup 39 live 39
+  participations: backup 30 live 30
+  evidence: backup 11 live 11
+seeker evidence present: 1
+$ curl -s http://127.0.0.1:8787/health
+{"ok":true,"contractVersion":"0.6.1"}
+```
+From now on, stops are PID-scoped only (`$!` captured at start). Test servers use `POCKETQA_API_PORT` away from 8787.
+
+## 2026-10-06: Firebase/Vercel refactor FREEZE CANDIDATE gate (lead, `feat/firebase-vercel` @ 41ceba1). EMULATOR ONLY, nothing deployed
+```
+$ pnpm verify                      # exit 0
+check:secrets passed: 1110 committable files scanned, no findings.
+ℹ pass 76 / ℹ fail 0               # scripts/*.test.mjs
+packages/contracts   Tests  17 passed (17)
+packages/domain      Tests  222 passed (222)
+apps/api             Test Files 41 passed | 1 skipped (42); Tests 645 passed | 2 skipped (647)
+apps/mobile          Tests: 1362 passed, 1362 total
+$ POCKETQA_R2_ACCOUNT_ID=<dummy> POCKETQA_R2_BUCKET=pqa-test node scripts/vercel/build.mjs --skip-web
+built .vercel/output (staging): api.func maxDuration 60s in fra1; 3 files; secret scan clean (0/4 server-only variables, 0 values checked)
+$ (apps/api) EMU_CONFIG=../../firebase.emu-lead.json pnpm test:emulator     # exit 0, every emulator file incl. the 17 dual-backend regression files and the built-bundle test
+ Test Files  27 passed (27)
+      Tests  534 passed | 3 skipped (537)
+$ curl -s http://127.0.0.1:8787/health      # the USB local API, untouched by the gate
+{"ok":true,"contractVersion":"0.6.1"}
+```
+Also reported by the team at this round: the hosted web rehearsal (be2, 2492203 + ead2349) passes 2/2 with zero CSP violations. The migration dry-run manifest 686c435d…39a7 was APPROVED by pqa-qa (r6), reproduced byte-identical.
+
+## 2026-10-06: HOSTED deployment, Firebase + Firestore + private R2 + Vercel (lead, `feat/firebase-vercel` @ f66469f; code = ef18694, QA freeze APPROVE)
+Authorized by Hamza via the parent. Firestore was enabled and `(default)` created by the parent (eur3, Native, Standard, delete protection on, free tier, uid 749f9772-…); the Vercel project `pocketqa` was created and linked by the parent. Credentials are read only from `~/.config/pocketqa/{firebase.env,r2.env,pocketqa-api.json,cron.env}`, values never printed. `cron.env` was created by the lead (0600, `openssl rand -hex 32`).
+```
+$ firebase firestore:databases:list --project pocketqa-optijara --json
+  (default): eur3 FIRESTORE_NATIVE STANDARD DELETE_PROTECTION_ENABLED freeTier=true uid 749f9772-b802-4401-ac67-f8597cd4a6f9
+$ firebase deploy --only firestore:rules,firestore:indexes --project pocketqa-optijara --config firebase.json --dry-run    # ✔ Dry run complete
+$ firebase deploy --only firestore:rules,firestore:indexes --project pocketqa-optijara --config firebase.json --non-interactive
+Error: … collectionGroups/idempotency/fields/expireAt had HTTP Error: 403, Project pocketqa-optijara has billing disabled. Please enable it.
+$ firebase firestore:indexes --project pocketqa-optijara --json
+  indexes: audit(created_at,writtenAt) evidence(participation_id,created_at) uploadIntents(status,expires_at) uploadIntents(status,quarantine_swept,expires_at) uploadIntents(tester_id,status); fieldOverrides: []   # TTL NOT deployed
+$ firebase deploy --only firestore:rules --project pocketqa-optijara --config firebase.json --non-interactive
+✔  firestore: released rules firestore.rules to cloud.firestore
+$ (preflight, read-only) hostedConfig ok {staging, firestore, firebase, r2, allowDelete true, simulated, testCredits true, trustProxy true}; firestore users docs visible = 0; r2 auth ok (missing app key -> null)
+$ node push-env.mjs   # vercel env add <name> production --force --yes [--sensitive], values on stdin
+  16 × ok (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, CRON_SECRET, FIREBASE_SERVICE_ACCOUNT_JSON sensitive); then POCKETQA_PUBLIC_ORIGIN=https://pocketqa.vercel.app
+$ node scripts/vercel/build.mjs --env staging --deploy   (server-only values in the build process env only)
+built .vercel/output (staging, deploy): api.func maxDuration 60s in fra1; 32 files; secret scan clean (4/4 server-only variables, 7 values checked)
+$ vercel deploy --prebuilt --prod --yes --scope hamzadiaz-4939s-projects
+Production: https://pocketqa-bi07693wj-hamzadiaz-4939s-projects.vercel.app   Aliased: https://pocketqa.vercel.app
+$ vercel inspect pocketqa.vercel.app    →  status ● Ready  (dpl_9sSVSGkBhQbobdeRAdvR4xBQtbXn)
+$ vercel env ls production   → 17 names, all Encrypted, Production (see the list in docs/progress.md)
+$ curl https://pocketqa.vercel.app/api/health   → {"ok":true,"contractVersion":"0.6.1"} [200]
+$ curl https://pocketqa.vercel.app/api/config   → authMode firebase, storage r2, walletLogin false, features {testCredits:true, devnetTransfers:false, settlement:"simulated"} [200]
+$ curl /api/jobs/settle (no secret) → 404 ; with the secret → settle {"ran":true,"complete":true,"alerts":0}; sweep → 500, 500 (just after the index deploy), then 200 ×3 {"ran":true,"complete":true}
+$ curl /api/me, /api/studies/eligible, /api/me/credits, /api/admin/audit (no token) → 401 ×4 ; bad token → 401 ; /builder/study/x → 200 (SPA)
+$ curl -I /  → content-security-policy (app CSP + bucket path), coop same-origin, permissions-policy camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=(), referrer no-referrer, hsts, nosniff, DENY
+$ curl -I /api/config → cache-control no-store; content-security-policy default-src 'none'; sandbox; nosniff
+$ (r2:cors dry run, read-only) bucket pocketqa-evidence: current CORS PUT for https://pocketqa.optijara.ai only → plan: conflict → "Refusing: the bucket has other CORS rules. Nothing was changed."
+```
+
+### 2026-10-06: hosted gate r1 P1-H1 (stale Metro cache shipped http://127.0.0.1:18887): fix d58d918, redeploy
+```
+$ node scripts/vercel/bundle-check.mjs --expect /api .vercel/output/static/_expo     # the bundle deployed at f66469f
+bundle check failed (1 files): private/loopback API base http://127.0.0.1:18887
+$ (apps/mobile) EXPO_PUBLIC_API_URL=http://127.0.0.1:18887 npx expo export --platform web --output-dir dist-web   # prime a stale cache on purpose
+primed stale export files containing 18887: 1
+$ node scripts/vercel/build.mjs --env staging --deploy     # export --clear + bundle gate
+built .vercel/output (staging, deploy): api.func maxDuration 60s in fra1; 32 files; secret scan clean (4/4 server-only variables, 7 values checked)
+bundle check ok: 1 files call /api and no private API base
+$ vercel deploy --prebuilt --prod --yes --scope hamzadiaz-4939s-projects
+Production: https://pocketqa-mq91j756y-hamzadiaz-4939s-projects.vercel.app   Aliased: https://pocketqa.vercel.app   (dpl_DF68zX8zboPNNpfRYjVkDMFLPwSP, ● Ready)
+$ curl https://pocketqa.vercel.app/<served entry-12b859d1…js> | bundle-check --expect /api   → ok ; /api/health 200
+```
+
+### 2026-10-06: Android APK for the hosted API (built from feat/firebase-vercel at f4b887d; EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api, EXPO_PUBLIC_POCKETQA_ENV=staging)
+```
+$ (apps/mobile) npx expo prebuild --platform android --no-install && (android) ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4
+BUILD SUCCESSFUL in 2m 1s
+dist-native/pocketqa-hosted-f4b887d.apk  52497845 bytes  sha256 0098101f96df70f08b15e2dd01a4ec0f8b64e6df4c95f10b800aa0e4cfafc2be
+apksigner: Signer #1 certificate DN: CN=Android Debug (USB test build, like the earlier test APK)
+$ bundle-check --expect https://pocketqa.vercel.app/api assets/index.android.bundle   → ok (Hermes; no private API base)
+APK secret scan (5 server-only values incl. SA private key id and key line): 1455 files, 0 hits
+$ adb -s emulator-5556 install -r … && pm clear && launch   → Success; the intro screen renders (our own emulator; the connected Seeker was NOT touched)
+```
+
+## 2026-10-06: REAL MIGRATION to pocketqa-optijara (lead, at b8018ae; QA real-run review r2 APPROVE; manifest 686c435d approved r6)
+```
+$ shasum -a 256 ~/.local/share/pocketqa/backups/20261006T000054Z/pocketqa.sqlite   → 3501bc9e96436b10b58ba843509ff670dff08354ca61bfdf698429fbede610e3
+$ (read-only, just before) production collections: jobLeases 2   (0 users)
+$ npx tsx scripts/migrate-to-firestore.ts --real --approved-manifest 686c435d… --snapshot <0700 copy, 0400> --expect-sha256 3501bc9e… --media-dir <copy> --out <copy dir>/post-run-manifest.json
+  (env, scoped subshell, never printed: FIREBASE_SERVICE_ACCOUNT_JSON, POCKETQA_R2_ACCOUNT_ID/BUCKET/ACCESS_KEY_ID/SECRET_ACCESS_KEY; FIRESTORE_EMULATOR_HOST and POCKETQA_R2_ENDPOINT unset)
+real run pocketqa-optijara: pre-check 573 planned, 0 already identical, 0 conflicting, 0 unplanned users
+objects: 10 uploaded, 1 server-copied, 0 already present, 11 verified and registered
+documents: 573 created, 0 already identical, 0 conflicting
+post-run manifest 686c435dd8015e214315389e00db4e6c46f4825e43726f376124674d3c1639a7 MATCHES the approved 686c435dd8015e214315389e00db4e6c46f4825e43726f376124674d3c1639a7
+  accounts 77 · evidence 11 · evidenceSegments 11 · evidenceUsage 11 · ledger 154 · participationPairs 30 · participations 30 · storageObjects 11 · studies 39 · studies/*/tasks 43 · userEmails 77 · users 77 · walletAddresses 1 · walletLinks 1   (each: planned = found, checksum ok)
+relations: 19 checks, 0 unresolved · ledger: 77 accounts, 0 mismatches, sum 0, matches source true · users: 77/77 carry migrated_link, 0 admin(s) excluded
+seeker: server-copy, participation true, tester true, doc->target true, target registered true, archive registered false, playback true · ok true
+$ shasum -a 256 post-run-manifest.json → 4b8207efd60dbc89fc8c2719dbe0245922cefbad6c769ded1f0668c2e0b4178e ; cmp with the approved manifest file → IDENTICAL
+$ report: postMatchesApproved true, objects.failed null; both archived 0600 in ~/.local/share/pocketqa/migration/ (post-run-*-20261006T071831.json)
+snapshot copy re-hashed 3501bc9e… (no -wal/-shm); copies deleted; backup still 3501bc9e…; USB local API health ok
+```
+
+### 2026-10-06: hosted wiring + synthetic-tester e2e (parent authorization: Firebase auth domain, R2 CORS add-only, one labelled synthetic QA tester)
+```
+$ (Identity Toolkit admin v2, SA) authorizedDomains before: [pocketqa-optijara.firebaseapp.com, pocketqa-optijara.web.app, pocketqa.optijara.ai]
+  PATCH ?updateMask=authorizedDomains → after: [... , pocketqa.vercel.app]   kept all previous: true | added: true | count 3 -> 4
+$ r2-cors --origin https://pocketqa.vercel.app --add (dry run), then --add --apply
+  readback: [{PUT, https://pocketqa.optijara.ai, content-type, 3600}, {PUT, https://pocketqa.vercel.app, content-type, 3600}] → every previous rule kept, new origin present
+$ synthetic tester: Firebase uid NaALbDGFuMhg6aAjqNP3x5E8AQk2 (qa-hosted-synthetic-tester-20261006@example.test, emailVerified set for this synthetic address only), Pocket QA tester 30c92665-773f-4da7-84c3-a8336ab2720b "QA synthetic tester (hosted)"; credentials 0600 in ~/.config/pocketqa/qa-synthetic-tester.env; retained (not deleted)
+sign-in (synthetic tester, Firebase password provider): 200
+GET /me: 200 role=tester displayName="QA synthetic tester (hosted)"
+PUT /me/device (web): 200
+GET /studies/eligible: 200, 37 studies; chosen: a study with a synthetic (example.test) builder: yes
+GET /tester/studies/:id: 200 consentVersion=1
+POST consent: 200 participation status=consented
+POST start: 200
+POST upload-intent (6914699 bytes > 4.5 MB function limit): 200 PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/714cf5c0-7da6-4172-b7ee-ceaf873af802?<signed query redacted>
+browser PUT from https://pocketqa.vercel.app to R2: status 200
+POST complete: 200 evidence kind=screen_recording sizeBytes=6914699
+POST playback-token (own evidence): 200 url=https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/evidence/8c6db250-00f0-44d4-a365-0b82bcbda7b1?<signed query redacted> token=absent
+GET presigned playback: 6914699 bytes, sha256 a5e20d7bdf52bc55… == uploaded file
+cross-user: synthetic tester -> Seeker evidence playback-token: 404 NOT_FOUND (no url: true)
+no token -> own new evidence playback-token: 401
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+UI sign-in (synthetic tester) on https://pocketqa.vercel.app: tester home reached; after reload still signed in; Discover rendered 36 study cards
+CSP violations: 0
+console errors: 0
+HTTP >= 400 responses: 0
+```
+
+### 2026-10-06: Google sign-in + sign-out fixes deployed (dpl_5VmoJPPYfsncWcmcxpfZoL6DitfY, from 7beaad5)
+```
+$ (Identity Toolkit admin v2, read-only) defaultSupportedIdpConfigs = []  → Google provider NOT enabled; signIn.email enabled; subtype IDENTITY_PLATFORM
+$ live repro BEFORE (dpl_DF68…): "Continue with Google" → no popup, no request, UI "Google sign-in didn’t complete"; root cause initializeAuth without popupRedirectResolver
+$ pnpm verify @7beaad5 → exit 0 (secrets 1130/0, scripts 83, contracts 17, domain 222, api 680+2 skipped, mobile 1372)
+$ local proof (Google ON build, serve-local :8496, /api/config stubbed googleSignIn:true): popup https://pocketqa-optijara.firebaseapp.com/__/auth/handler; requests apis.google.com/js/api.js, gapi_iframes, /__/auth/iframe; UI "Google sign-in isn’t available on this site."; CSP violations []
+$ build.mjs --env staging --deploy → secret scan clean (4/4 server-only variables, 7 values checked); app COOP same-origin, no gapi (Google off)
+$ vercel deploy --prebuilt --prod → https://pocketqa-eplfy74xt-…vercel.app, aliased https://pocketqa.vercel.app, dpl_5VmoJPPYfsncWcmcxpfZoL6DitfY ● Ready
+$ /api/config firebase.googleSignIn = false ; served entry bundle-check ok (/api) ; contains "Use another account"
+GOOGLE: provider off -> button visible=false (expect false: no dead button)
+TESTER: signed in -> discover-screen shown; url /discover; pre-logout token /api/me 200
+TESTER: settings /settings -> sign-out button shown; url /settings
+TESTER: after sign-out -> sign-in shown; url /sign-in; storage {"ls":["pocketqa.introSeen"],"fbUsers":0}
+TESTER: pre-logout token /api/me after logout -> 401 (expect 401: server-side revocation)
+TESTER: Back -> url /sign-in; discover-screen visible=false; sign-in visible=true
+TESTER: Reload -> url /sign-in; discover-screen visible=false; sign-in visible=true
+TESTER: direct protected URL -> url /sign-in; discover-screen visible=false
+TESTER: CSP 0, console errors []
+BUILDER: signed in -> studies-screen shown; url /studies; pre-logout token /api/me 200
+BUILDER: settings /builder-settings -> sign-out button shown; url /builder-settings
+BUILDER: after sign-out -> sign-in shown; url /sign-in; storage {"ls":["pocketqa.introSeen"],"fbUsers":0}
+BUILDER: pre-logout token /api/me after logout -> 401 (expect 401: server-side revocation)
+BUILDER: Back -> url /sign-in; studies-screen visible=false; sign-in visible=true
+BUILDER: Reload -> url /sign-in; studies-screen visible=false; sign-in visible=true
+BUILDER: direct protected URL -> url /sign-in; studies-screen visible=false
+BUILDER: CSP 0, console errors []
+SWITCH: builder home shown; tester-only API calls after switching: []; discover visible=false
+SWITCH: api calls ["GET /api/config","POST /api/auth/identity/session","GET /api/studies"]
+```
+
+### 2026-10-06: branded Google buttons (532a435), local candidate before deploy
+```
+$ curl -sL https://developers.google.com/static/identity/images/signin-assets.zip | shasum -a 256 → ba884069e12093b06bcfd776915081254a7c95094b80d50be2c5dc6bac1c1da1
+$ shasum -a 256 "Android + Web/SVG/Light/Theme=Light, Show text=No, Shape=Square, Platform=Android+Web.svg" → 6587b180203a99da15c0a041018e15c94ffd9556c4b9855bdc69806081a93791 (= GOOGLE_G_SVG_SHA256, pinned in __tests__/google-button.test.tsx)
+$ npx jest __tests__/google-button.test.tsx → Tests: 11 passed, 11 total (first run: Cannot find module ../src/ui/patterns/GoogleButton)
+$ pnpm verify @532a435 → exit 0 (secrets 1134/0, scripts 83, contracts 17, domain 222, api 680+2 skipped, mobile 1385)
+$ build.mjs --env staging (POCKETQA_FIREBASE_GOOGLE=1 + auth domain from vercel-production.env) → app COOP same-origin-allow-popups; serve-local :8497, /api/config stubbed with the live config (googleSignIn true)
+$ playwright: sign-in + sign-up × light/dark × 390x844/1280x900 (chromium; webkit phone)
+live /api/config googleSignIn = true
+sign-in-light-phone-chromium: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-phone-chromium: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light phone): []
+sign-in-light-desktop-chromium: 680x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-desktop-chromium: 720x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light desktop): []
+sign-in-dark-phone-chromium: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-phone-chromium: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark phone): []
+sign-in-dark-desktop-chromium: 680x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-desktop-chromium: 720x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark desktop): []
+sign-in-light-phone-webkit: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-light-phone-webkit: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (light phone): []
+sign-in-dark-phone-webkit: 318x52 role=button label="Continue with Google" G drawn=true keyboardFocus=true
+sign-up-dark-phone-webkit: 358x52 role=button label="Sign up with Google" G drawn=true keyboardFocus=true
+  console errors (dark phone): []
+```
+Screenshots: docs/reviews/firebase-vercel/google-button/local/ (full screens, keyboard focus crops, WebKit phone).
+
+### 2026-10-06: branded Google buttons deployed (dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe from a9d0e7e, pqa-qa r3 APPROVE)
+```
+$ git worktree add --detach .worktrees/deploy-a9d0e7e a9d0e7e; pnpm install --offline --frozen-lockfile (clean tree: the shared worktree had pqa-be2 uncommitted E-08 work, not built)
+$ build-deploy-google.mjs → secret scan clean (4/4 server-only variables, 7 values checked); app COOP same-origin-allow-popups, gapi+frame-src present; api COOP same-origin; entry-d9b5472d9fac233b3df280ddb47bf7fa.js
+$ vercel deploy --prebuilt --prod → https://pocketqa-kv2cjkg61-…vercel.app, aliased https://pocketqa.vercel.app; vercel inspect: dpl_TRefQGTdR4A9VKMhUTAj3ib5meNe ● Ready
+$ live: entry-d9b5472d…; /api/config googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated; COOP same-origin-allow-popups; script-src 'self' https://apis.google.com; frame-src https://pocketqa-optijara.firebaseapp.com
+$ live playwright (no stubs), sign-in + sign-up × light/dark × 390/1280 (chromium):
+  sign-in-light-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  sign-up-light-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  console errors (light phone): []
+  sign-in-light-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  sign-up-light-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(255, 255, 255) / rgb(116, 119, 117)
+  console errors (light desktop): []
+  sign-in-dark-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  sign-up-dark-phone-chromium: google x=16 w=358 | primary x=16 w=358 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  console errors (dark phone): []
+  sign-in-dark-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  sign-up-dark-desktop-chromium: google x=280 w=720 | primary x=280 w=720 | fill/stroke rgb(19, 19, 20) / rgb(142, 145, 143)
+  console errors (dark desktop): []
+chromium google=on: Google requests before any click = 0; console errors = []; button shown = true
+  after click: aria-busy=true; popup=https://pocketqa-optijara.firebaseapp.com/__/auth/handler?apiK; Google requests now = 4
+chromium https://pocketqa.vercel.app: busy cleared after 8865 ms (aria-busy=false); message: []
+webkit google=on: Google requests before any click = 0; console errors = []; button shown = true
+  after click: aria-busy=true; popup=https://pocketqa-optijara.firebaseapp.com/__/auth/handler?apiK; Google requests now = 4
+webkit https://pocketqa.vercel.app: busy cleared after 8883 ms (aria-busy=false); message: []
+```
+Note (P3): after the Google popup is closed, the button stays busy ~9 s: Firebase waits for a late auth event before reporting popup-closed-by-user; it then returns to idle with no error. Real Google login completion remains human-only.
+
+**Correction (pqa-qa r4, 2026-10-06):** the "console errors = []" lines above cover page load and the click. After the popup opens, Chromium logs 2 console errors, "Cross-Origin-Opener-Policy policy would block the window.closed call.", from Google's popup pages, which set their own COOP. They are third-party and expected, and are why Firebase notices a closed popup only at its ~9 s timeout.
+
+### 2026-10-06: E-08 fix deployed (dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX from 31c2141, pqa-qa APPROVE)
+```
+$ git -C .worktrees/deploy-a9d0e7e checkout --detach 31c2141 (diff vs a9d0e7e: apps/api/src/repo/studies/{firestore,sqlite}.ts + test only); pnpm install --offline --frozen-lockfile
+$ build-deploy-google.mjs → secret scan clean (4/4 server-only variables, 7 values checked); Google-on headers present; entry-d9b5472d9fac233b3df280ddb47bf7fa.js (unchanged client)
+$ vercel deploy --prebuilt --prod → https://pocketqa-n29jca8ld-…vercel.app aliased https://pocketqa.vercel.app; dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX ● Ready
+$ live: entry-d9b5472d…; /api/config googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated; /api/health {"ok":true,"contractVersion":"0.6.1"}
+```
+
+### 2026-10-06: H-33 fix deployed (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi from 7bda3ce = merge of fix/e2e-h33 a3582c2, pqa-qa r2 APPROVE)
+```
+$ clean detached worktree at 7bda3ce; build-deploy-google.mjs → secret scan clean (4/4, 7 values); Google-on headers; entry-03fa1a9897a6fa8d485ac9bb9a680e2e.js
+$ vercel deploy --prebuilt --prod → https://pocketqa-7346kkqla-…vercel.app aliased https://pocketqa.vercel.app; dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi ● Ready
+$ live: entry-03fa1a98…; /api/config unchanged (googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated); /api/health ok 0.6.1; COOP same-origin-allow-popups
+```

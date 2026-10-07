@@ -1,0 +1,559 @@
+{
+  "label": "fresh devnet pilot run (SQLite, server-held pilot keys)",
+  "authorization": "Hamza, 2026-10-06, relayed by pocketqa-lead: bounded fresh devnet-only test transactions with the existing ~/.config/pocketqa-devnet-pilot fixtures; no secrets printed; not mainnet/real funds/billing/deletion.",
+  "disclosure": "Devnet test USDC and devnet SOL (no value). Test keys simulate every role (builder, Pocket QA, arbiter, tester); not independent custody; no physical wallet.",
+  "bounds": {
+    "maxFundingUnits": "3000000",
+    "maxSpendLamports": 50000000,
+    "stopAtLamports": 45000000
+  },
+  "checks": [
+    {
+      "id": "B0",
+      "claim": "devnet genesis, pinned mint (classic Token, 6 decimals), Squads v4 and Memo executable",
+      "observed": {
+        "at": "2026-10-06T19:35:50.673Z",
+        "rpc": "https://api.devnet.solana.com",
+        "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+        "mint": {
+          "address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "decimals": 6
+        },
+        "squadsProgram": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+        "squadsProgramExecutable": true,
+        "memoProgramExecutable": true,
+        "roles": {
+          "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+          "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+          "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+        },
+        "balances": {
+          "pocketqaLamports": 4959995240,
+          "builderUsdcUnits": "17790000",
+          "testerUsdcUnits": "1000000"
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "B0",
+      "claim": "enough test funds for the bounded run (>= 0.06 SOL, >= 2.2 test USDC)",
+      "observed": {
+        "at": "2026-10-06T19:35:50.673Z",
+        "rpc": "https://api.devnet.solana.com",
+        "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+        "mint": {
+          "address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "decimals": 6
+        },
+        "squadsProgram": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+        "squadsProgramExecutable": true,
+        "memoProgramExecutable": true,
+        "roles": {
+          "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+          "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+          "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+        },
+        "balances": {
+          "pocketqaLamports": 4959995240,
+          "builderUsdcUnits": "17790000",
+          "testerUsdcUnits": "1000000"
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "B1",
+      "claim": "funding quote within the bound (<= 3000000 units)",
+      "observed": 2200000,
+      "ok": true
+    },
+    {
+      "id": "B1",
+      "claim": "new autonomous 2-of-3 multisig for this study",
+      "observed": {
+        "createKey": "AeiQ18SZDCXnRGzasSHHzNHb4A9yQQizeBs4ziaZV6ec",
+        "configAuthority": "11111111111111111111111111111111",
+        "threshold": 2,
+        "timeLock": 0,
+        "transactionIndex": "0",
+        "rentCollector": null,
+        "members": [
+          {
+            "key": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+            "mask": 2
+          },
+          {
+            "key": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+            "mask": 2
+          },
+          {
+            "key": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+            "mask": 7
+          }
+        ]
+      },
+      "ok": true
+    },
+    {
+      "id": "B2",
+      "claim": "funding confirmed from the builder wallet and credited once",
+      "observed": {
+        "status": "confirmed",
+        "source": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn"
+      },
+      "ok": true
+    },
+    {
+      "id": "B3",
+      "claim": "recovery adopted the landed payout by operation id: confirmed, no re-send (0 sends during recovery, exactly 1 execute and 1 vault transaction for the operation)",
+      "observed": {
+        "status": "confirmed",
+        "sendsDuringRecovery": 0,
+        "executes": 1,
+        "creates": 1,
+        "adoptedSignatureMatchesExecute": true
+      },
+      "ok": true
+    },
+    {
+      "id": "B3",
+      "claim": "tester received exactly 1.00 test USDC",
+      "observed": "1000000",
+      "ok": true
+    },
+    {
+      "id": "B4",
+      "claim": "refund of 1.10 test USDC to the funding wallet",
+      "observed": "1100000",
+      "ok": true
+    },
+    {
+      "id": "B5",
+      "claim": "the Squads program refuses the second execute on chain; tester balance unchanged",
+      "observed": {
+        "err": "{\"InstructionError\":[0,{\"Custom\":6008}]}",
+        "tester": "2000000"
+      },
+      "ok": true
+    },
+    {
+      "id": "B6",
+      "claim": "books balanced: funded 2.20 = settled 1.00 + fees 0.10 + refunded 1.10",
+      "observed": {
+        "fundedUnits": 2200000,
+        "availableUnits": 0,
+        "heldUnits": 0,
+        "payableUnits": 0,
+        "settledUnits": 1000000,
+        "feesUnits": 100000,
+        "pendingRefundUnits": 0,
+        "refundedUnits": 1100000,
+        "ok": true
+      },
+      "ok": true
+    },
+    {
+      "id": "B6",
+      "claim": "the vault on chain holds exactly the fee",
+      "observed": "100000",
+      "ok": true
+    },
+    {
+      "id": "B7",
+      "claim": "every journaled send is finalized; only the deliberate refusal failed",
+      "observed": [
+        "1:finalized:ok",
+        "2:finalized:ok",
+        "3:finalized:ok",
+        "4:finalized:ok",
+        "5:finalized:ok",
+        "6:finalized:ok",
+        "7:finalized:ok",
+        "8:finalized:ok",
+        "9:finalized:ok",
+        "10:finalized:ok",
+        "11:finalized:ok",
+        "12:finalized:ok",
+        "13:finalized:ok",
+        "14:finalized:err"
+      ],
+      "ok": true
+    },
+    {
+      "id": "B7",
+      "claim": "fee payer of every send is the Pocket QA test key",
+      "observed": [
+        "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS"
+      ],
+      "ok": true
+    },
+    {
+      "id": "B7",
+      "claim": "chain token deltas equal the ledger integers (builder -2.20 +1.10, tester +1.00, vault +0.10 net)",
+      "observed": {
+        "builder": "-1100000",
+        "tester": "1000000",
+        "vault": "100000"
+      },
+      "ok": true
+    },
+    {
+      "id": "B8",
+      "claim": "within bounds: funding <= 3.00 test USDC; devnet SOL spent (fees + rent) <= 0.05 SOL",
+      "observed": {
+        "pocketqaStartLamports": 4959995240,
+        "pocketqaEndLamports": 4946311160,
+        "spentLamports": 13684080,
+        "feesLamports": 90000,
+        "rentLamports": 13594080,
+        "sends": 14,
+        "fundedUnits": "2200000"
+      },
+      "ok": true
+    }
+  ],
+  "preflight": {
+    "at": "2026-10-06T19:35:50.673Z",
+    "rpc": "https://api.devnet.solana.com",
+    "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "mint": {
+      "address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "decimals": 6
+    },
+    "squadsProgram": "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf",
+    "squadsProgramExecutable": true,
+    "memoProgramExecutable": true,
+    "roles": {
+      "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+      "pocketqa": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "arbiter": "5ZFcx5EBbbLWYL4GEQhzQQaLVzVxSq6JBoHU2nUgDwEm",
+      "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+    },
+    "balances": {
+      "pocketqaLamports": 4959995240,
+      "builderUsdcUnits": "17790000",
+      "testerUsdcUnits": "1000000"
+    }
+  },
+  "study": {
+    "id": "bd7614da-0cf8-4668-a0ae-b54ef9e34d4c",
+    "slots": 2,
+    "rewardUnits": 1000000,
+    "accounts": {
+      "createKey": "AeiQ18SZDCXnRGzasSHHzNHb4A9yQQizeBs4ziaZV6ec",
+      "multisig": "8Bsov1q6D5mhMhJsfVPVRXMpBa2Z6RtfJZb7B1CPTpCo",
+      "vaultAuthority": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "vaultAta": "28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv",
+      "builderUsdcAta": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+      "testerUsdcAta": "3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg"
+    }
+  },
+  "operations": {
+    "payout": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+    "refund": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+    "funding": "funding:59543f89-294a-4138-873d-583c80b654cb"
+  },
+  "books": {
+    "fundedUnits": 2200000,
+    "availableUnits": 0,
+    "heldUnits": 0,
+    "payableUnits": 0,
+    "settledUnits": 1000000,
+    "feesUnits": 100000,
+    "pendingRefundUnits": 0,
+    "refundedUnits": 1100000,
+    "ok": true
+  },
+  "settlementsLedger": [
+    {
+      "kind": "payout",
+      "status": "confirmed",
+      "amount_units": 1000000,
+      "destination": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+    },
+    {
+      "kind": "refund",
+      "status": "confirmed",
+      "amount_units": 1100000,
+      "destination": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn"
+    }
+  ],
+  "readback": [
+    {
+      "seq": 1,
+      "op": "setup:multisig:8Bsov1q6D5mhMhJsfVPVRXMpBa2Z6RtfJZb7B1CPTpCo",
+      "step": "multisig_create",
+      "signaturePrefix": "21XibmEPh5dD…",
+      "signatureSha256": "fe83a8870fb3ff9870103e2c346c796e30127c9705674b97ce8116528cb48ca9",
+      "confirmation": "finalized",
+      "slot": 508200264,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 10000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 2,
+      "op": "setup:token-account:5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "step": "token_account_create:5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "signaturePrefix": "2adLSHsMiDUC…",
+      "signatureSha256": "709c4093469bb4b209b56f83de8e199c6be8ca25c32e691607f82cede0fa10e4",
+      "confirmation": "finalized",
+      "slot": 508200269,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 3,
+      "op": "funding:59543f89-294a-4138-873d-583c80b654cb",
+      "step": "runner:funding (builder wallet -> study vault)",
+      "signaturePrefix": "2KBNpFe5KFfE…",
+      "signatureSha256": "6d418f5bbd17d0dd5ad014b317614aa3debde24b962c2111b027846926df2424",
+      "confirmation": "finalized",
+      "slot": 508200273,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 10000,
+      "err": null,
+      "tokenDeltas": [
+        {
+          "account": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "-2200000"
+        },
+        {
+          "account": "28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv",
+          "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "2200000"
+        }
+      ]
+    },
+    {
+      "seq": 4,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "vault_transaction_create:1",
+      "signaturePrefix": "3RugGQiiL1h8…",
+      "signatureSha256": "0b007883b77c8e7d6388b01a141e1e356a1f9b9dd6c0080fac0e86a90a4ee70d",
+      "confirmation": "finalized",
+      "slot": 508200324,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 5,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "proposal_create:1",
+      "signaturePrefix": "58Ndmavk8uhs…",
+      "signatureSha256": "854d361bc744368c3e2260738bc639402a3a86bee3efab069bd36e1ab3a2323e",
+      "confirmation": "finalized",
+      "slot": 508200335,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 6,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "proposal_approve:1:pocketqa",
+      "signaturePrefix": "3CUxQZmCdhXS…",
+      "signatureSha256": "24baa283a8477b034e93ea295eee35234612bb060c250f3ddb2a323029c87b6e",
+      "confirmation": "finalized",
+      "slot": 508200349,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 7,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "proposal_approve:1:builder",
+      "signaturePrefix": "3e6jeNeDu4ky…",
+      "signatureSha256": "1e324fa023e0f204de1a4e605a40f0cc59116ff40863f653af5acf855cb32a82",
+      "confirmation": "finalized",
+      "slot": 508200364,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 10000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 8,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "vault_transaction_execute:1",
+      "signaturePrefix": "2a6cktLFh1Cx…",
+      "signatureSha256": "08a8db388857d2b05e0201c5279c7f5c4433445212c69087f4e4dbd893edbf20",
+      "confirmation": "finalized",
+      "slot": 508200378,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": [
+        {
+          "account": "28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv",
+          "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "-1000000"
+        },
+        {
+          "account": "3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg",
+          "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "1000000"
+        }
+      ]
+    },
+    {
+      "seq": 9,
+      "op": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+      "step": "vault_transaction_create:2",
+      "signaturePrefix": "4ZhfpQMwHbS8…",
+      "signatureSha256": "36d715e687dd93dd98ba70eefa2c6feeb386b630474e5fb34429991eec7aa942",
+      "confirmation": "finalized",
+      "slot": 508200441,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 10,
+      "op": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+      "step": "proposal_create:2",
+      "signaturePrefix": "3b6Y3MXBqpsq…",
+      "signatureSha256": "46eebb260e19deaff42a991ede5d3a64e5cb87cc1d99ee21745def8e89e6ca42",
+      "confirmation": "finalized",
+      "slot": 508200459,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 11,
+      "op": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+      "step": "proposal_approve:2:pocketqa",
+      "signaturePrefix": "4xCKmLmG1Skr…",
+      "signatureSha256": "edc8f07af1bce2ad2c060b3e5745073d961ceee08319f3d9bac3e48a98a1f28f",
+      "confirmation": "finalized",
+      "slot": 508200473,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 12,
+      "op": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+      "step": "proposal_approve:2:builder",
+      "signaturePrefix": "24tyuYBmvJVf…",
+      "signatureSha256": "8735c806a98c7f4d5ec6c8a60f18972db289acb8f491f1fba12c2251c38b4c3e",
+      "confirmation": "finalized",
+      "slot": 508200485,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 10000,
+      "err": null,
+      "tokenDeltas": []
+    },
+    {
+      "seq": 13,
+      "op": "pqa-op1:152ebf597e000568686b4552d5f949c059b5f34f935f9257d53d1a49ce1ee136",
+      "step": "vault_transaction_execute:2",
+      "signaturePrefix": "7YixLDjrsLiu…",
+      "signatureSha256": "06c5bf1a29e12fd7be029157ab3b948fb5d32847fe18309232b01c9ac7182416",
+      "confirmation": "finalized",
+      "slot": 508200499,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": null,
+      "tokenDeltas": [
+        {
+          "account": "28opFqjF3NJMt4BptDpeJVoNba3EfjRuXbaAtcm2jnCv",
+          "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "-1100000"
+        },
+        {
+          "account": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "deltaUnits": "1100000"
+        }
+      ]
+    },
+    {
+      "seq": 14,
+      "op": "pqa-op1:f6800070b503c5198b6b3f0a9b3834cd99e2d5fd42516c88ab747d63b4dc5124",
+      "step": "runner:double_execute_refusal (index 1)",
+      "signaturePrefix": "4VHmGNzb15uu…",
+      "signatureSha256": "61b924e3397b78755aff1a195189f9433ba07f89dc2df71219206d067976f8b1",
+      "confirmation": "finalized",
+      "slot": 508200524,
+      "feePayer": "DoUXiXfn7dU5sL6NAWX4aiy9mJU9Nqy5edzCzoFFijwS",
+      "feeLamports": 5000,
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 6008
+          }
+        ]
+      },
+      "tokenDeltas": []
+    }
+  ],
+  "tokenMovements": [
+    {
+      "step": "runner:funding (builder wallet -> study vault)",
+      "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+      "delta": "-2200000"
+    },
+    {
+      "step": "runner:funding (builder wallet -> study vault)",
+      "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "delta": "2200000"
+    },
+    {
+      "step": "vault_transaction_execute:1",
+      "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "delta": "-1000000"
+    },
+    {
+      "step": "vault_transaction_execute:1",
+      "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+      "delta": "1000000"
+    },
+    {
+      "step": "vault_transaction_execute:2",
+      "owner": "5uecYyMckBA8fDvHJ9KjtYSnnrrQyzT3FgGeUA42Boi4",
+      "delta": "-1100000"
+    },
+    {
+      "step": "vault_transaction_execute:2",
+      "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+      "delta": "1100000"
+    }
+  ],
+  "costs": {
+    "pocketqaStartLamports": 4959995240,
+    "pocketqaEndLamports": 4946311160,
+    "spentLamports": 13684080,
+    "feesLamports": 90000,
+    "rentLamports": 13594080,
+    "sends": 14,
+    "fundedUnits": "2200000"
+  },
+  "outcome": "complete"
+}

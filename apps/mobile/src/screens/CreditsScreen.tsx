@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { CREDITS_DISCLAIMER } from '@pocket-qa/contracts';
 import { api, ApiError } from '../api/client';
+import { useIntentKey } from '../api/intentKey';
 import { useSession } from '../auth/SessionProvider';
 import { TesterRewards } from './TesterRewards';
 import { GlassSurface } from '../glass';
@@ -22,7 +23,7 @@ import { Amount, BalanceHero, DateText, EmptyPanel, GlideList, ListRow, SectionH
 //   new ledger row arrives 600ms after the roll starts; the rows below glide down one slot.
 // - U5 (tester only): approved credits landing in view light the balance (Earned, Mode A). A
 //   balance that already holds approved credits this app session has not shown opens at rest
-//   (0.45, no rise). A builder's top-up is local test credit and is never lit (§13).
+//   (0.45, no rise). A builder's top-up is test credit (no cash value) and is never lit (§13).
 
 const KIND_LABEL: Record<string, string> = {
   test_topup: 'Local test top-up',
@@ -127,10 +128,15 @@ export function CreditsScreen({ title }: { title: string }) {
   // The amount in flight: set at the tap (before the mutation's own pending state renders), so the
   // control shows what is being sent and can't be changed until the request settles.
   const [sending, setSending] = useState<'500' | '1000' | '5000' | null>(null);
+  // A retry of the same amount after a lost response replays it; a later top-up is a new intent.
+  const intent = useIntentKey();
   const topUp = useMutation({
-    mutationFn: (value: number) => api('topUp', { body: { amount: value } }),
+    mutationFn: (value: number) => api('topUp', { body: { amount: value }, idempotencyKey: intent.keyFor({ amount: value }) }),
     onSettled: () => setSending(null),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['credits'] }),
+    onSuccess: () => {
+      intent.done();
+      return qc.invalidateQueries({ queryKey: ['credits'] });
+    },
   });
   const builder = user?.role === 'builder';
   return (
@@ -153,8 +159,8 @@ export function CreditsScreen({ title }: { title: string }) {
                 </View>
               ) : builder ? (
                 <Card k={1} style={styles.topUp}>
-                  <Text variant="title">Add local test credits</Text>
-                  <Text variant="bodySm" tone="muted" style={styles.topUpBody}>Fund studies in this local build. No money changes hands.</Text>
+                  <Text variant="title">Add test credits (no cash value)</Text>
+                  <Text variant="bodySm" tone="muted" style={styles.topUpBody}>Test credits fund studies so you can try Pocket QA. They can’t be bought, sold or withdrawn, and no money changes hands.</Text>
                   <View style={styles.amounts}>
                     <Segmented
                       testID="topup-amount"

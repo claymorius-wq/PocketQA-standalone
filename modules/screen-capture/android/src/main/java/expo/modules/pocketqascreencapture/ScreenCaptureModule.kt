@@ -1,8 +1,10 @@
 package expo.modules.pocketqascreencapture
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import expo.modules.kotlin.Promise
@@ -16,14 +18,25 @@ class ConsentDeniedException : CodedException("ERR_CONSENT_DENIED", "Screen capt
 class AlreadyRecordingException : CodedException("ERR_ALREADY_RECORDING", "A recording is already in progress", null)
 class NotRecordingException : CodedException("ERR_NOT_RECORDING", "No recording is in progress", null)
 class UnsupportedException : CodedException("ERR_UNSUPPORTED", "Screen recording needs Android 10 or newer", null)
+class MicDeniedException : CodedException("ERR_MIC_DENIED", "Microphone permission is required: the recording includes your narration", null)
 
 /**
- * JS surface: startAsync() shows the system consent dialog EVERY time (no cached token,
- * no silent start); stopAsync() finalizes and returns the local clip; "onStopped" fires
- * when the system ends the session (status-bar chip, screen lock).
+ * JS surface (docs/plans/native-screen-voice-recording.md):
+ *  - startAsync(tag) needs RECORD_AUDIO already granted (narration is part of every recording) and
+ *    shows the system consent dialog EVERY time (no cached token, no silent start);
+ *  - stopAsync() finalises and returns the local clip;
+ *  - "onStopped" fires when a session ends any other way (notification Stop, system chip, lock,
+ *    microphone loss, error, cap);
+ *  - takePendingAsync(tag) lists that session's finished clips whose files still exist (the tester
+ *    was in another app, JS reloaded, or the screen was destroyed in the background); each clip
+ *    carries its voice verdict (voiceComplete, voiceMs, videoMs);
+ *  - takeInterruptedAsync(tag) counts that session's recordings lost to process death, once;
+ *  - clearAllAsync() stops and deletes everything (sign-out, account deletion).
  */
 class ScreenCaptureModule : Module() {
   private var pendingStart: Promise? = null
+  private var pendingTag = ""
+  private val store: PendingStore get() = recordingStore(context)
   private val context: Context get() = appContext.reactContext ?: throw IllegalStateException("React context lost")
 
   override fun definition() = ModuleDefinition {
@@ -31,9 +44,11 @@ class ScreenCaptureModule : Module() {
     Events("onStopped")
 
     OnCreate {
-      // Segments live only in JS memory, so any clip on disk from a previous JS context
-      // (reload, crash, process restart) can never be reviewed: delete it.
-      sweepOrphans()
+      // Truncated files (the process died mid-recording) and files JS lost track of are deleted;
+      // finished, unclaimed clips stay for their session to claim (expiring after a day).
+      store.sweep(active = RecorderBridge.currentFile)
+      // Builds before 2026-10-05 kept recordings in the evictable cache; nothing there is offered any more.
+      java.io.File(context.cacheDir, "recordings").deleteRecursively()
       RecorderBridge.onStopped = { reason, clip ->
         sendEvent("onStopped", mapOf("reason" to reason, "clip" to clip?.toMap()))
       }
@@ -42,25 +57,23 @@ class ScreenCaptureModule : Module() {
     Function("isRecording") { RecorderBridge.recording }
 
     /** Stops an active session (if any) and deletes its file: used when the session screen goes away. */
-    AsyncFunction("discardAsync") { promise: Promise ->
-      if (!RecorderBridge.recording) {
-        promise.resolve(null)
-        return@AsyncFunction
-      }
-      // If stopAsync() is already waiting, settle it too (its clip is being discarded).
-      val previous = RecorderBridge.pendingStop
-      RecorderBridge.pendingStop = { clip ->
-        clip?.file?.delete()
-        previous?.invoke(null)
+    AsyncFunction("discardAsync") { promise: Promise -> discard { promise.resolve(null) } }
+
+    /** Sign-out and account deletion: stop any session and delete every clip and notice. */
+    AsyncFunction("clearAllAsync") { promise: Promise ->
+      discard {
+        store.clearAll(active = RecorderBridge.currentFile)
         promise.resolve(null)
       }
-      context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
     }
 
-    AsyncFunction("startAsync") { promise: Promise ->
+    AsyncFunction("startAsync") { tag: String, promise: Promise ->
       if (Build.VERSION.SDK_INT < 29) throw UnsupportedException()
       if (RecorderBridge.recording || pendingStart != null) throw AlreadyRecordingException()
+      // No video-only fallback: without the microphone nothing is recorded.
+      if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) throw MicDeniedException()
       pendingStart = promise
+      pendingTag = tag
       val mpm = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
       // Default intent: on Android 14+ the user chooses a single app or the entire screen.
       appContext.throwingActivity.startActivityForResult(mpm.createScreenCaptureIntent(), CAPTURE_REQUEST)
@@ -78,6 +91,8 @@ class ScreenCaptureModule : Module() {
         .setAction(ScreenCaptureService.ACTION_START)
         .putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
         .putExtra(ScreenCaptureService.EXTRA_DATA, data)
+        .putExtra(ScreenCaptureService.EXTRA_TAG, pendingTag)
+      // Started now, while Pocket QA is in the foreground: a microphone FGS can't start from the background.
       context.startForegroundService(svc)
       promise.resolve(null)
     }
@@ -90,15 +105,32 @@ class ScreenCaptureModule : Module() {
       context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
     }
 
-    /** Deletes every recording on disk except an active session's: the session screen is gone. */
-    AsyncFunction("purgeAsync") { sweepOrphans() }
+    /** Finished clips of this session that JS hasn't deleted yet (uploaded or discarded). */
+    AsyncFunction("takePendingAsync") { tag: String ->
+      store.pending(tag).map { Clip.of(it).toMap() }
+    }
+
+    AsyncFunction("takeInterruptedAsync") { tag: String -> store.takeInterrupted(tag) }
+
+    /** The session screen is gone: delete truncated files and expired clips (finished clips stay for their session). */
+    AsyncFunction("purgeAsync") { store.sweep(active = RecorderBridge.currentFile) }
 
     OnDestroy { RecorderBridge.onStopped = null }
   }
 
-  private fun sweepOrphans() {
-    val dir = java.io.File(context.cacheDir, "recordings")
-    val keep = RecorderBridge.currentFile
-    dir.listFiles()?.forEach { f -> if (f != keep) f.delete() }
+  /** Stops an active session (if any) and deletes its file, then calls [done]. */
+  private fun discard(done: () -> Unit) {
+    if (!RecorderBridge.recording) {
+      done()
+      return
+    }
+    // If stopAsync() is already waiting, settle it too (its clip is being discarded).
+    val previous = RecorderBridge.pendingStop
+    RecorderBridge.pendingStop = { clip ->
+      clip?.let { store.forget(it.file) }
+      previous?.invoke(null)
+      done()
+    }
+    context.startService(Intent(context, ScreenCaptureService::class.java).setAction(ScreenCaptureService.ACTION_STOP))
   }
 }

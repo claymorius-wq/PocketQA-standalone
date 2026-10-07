@@ -14,11 +14,19 @@ export type Config = {
    */
   production: boolean;
   /**
+   * Hosted TEST deployment (POCKETQA_ENV=staging, plan R11): production's security rules (managed
+   * sign-in, private R2, exact public https origin, no demo/emulator paths) with labelled test
+   * credits and simulated settlement only. Never real money; no chain sends from the server.
+   */
+  staging: boolean;
+  /** Where application data lives: SQLite (local/USB, a data directory) or Firestore (hosted). */
+  dataBackend: 'sqlite' | 'firestore';
+  /**
    * Proxies whose X-Forwarded-For is trusted for the client address (per-client rate
    * limits). The API binds loopback only, so the only proxy that can exist is local:
    * `loopback` trusts 127.0.0.1 and ::1 and nothing else. Production defaults to it.
    */
-  trustProxy: false | string[];
+  trustProxy: boolean | string[];
   /** Local test features; both off in production (no fake funding, no demo transfers). */
   features: { testCredits: boolean; devnetTransfers: boolean; settlement: SettlementMode };
   /** Platform fee for escrow studies, basis points of each reward (provisional; ADR 0007 §5). */
@@ -37,7 +45,8 @@ export type Config = {
    * Firebase project settings. `webApiKey`/`authDomain` are public web config; the Admin
    * credential comes only from GOOGLE_APPLICATION_CREDENTIALS (never read or logged here).
    */
-  firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null } | null;
+  /** googleSignIn: the Google provider is enabled for this project (POCKETQA_FIREBASE_GOOGLE=1), so the web app offers it. */
+  firebase: { projectId: string; webApiKey: string; authDomain: string; authEmulatorHost: string | null; googleSignIn: boolean } | null;
   /** The shared synthetic demo (preview): never runs with real-data features. */
   sharedDemo: boolean;
   /** Wallet-first login (ADR 0005 §2); off unless POCKETQA_WALLET_LOGIN=1. */
@@ -90,22 +99,33 @@ function isGitIgnored(absDir: string): boolean {
  */
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const envName = env.POCKETQA_ENV ?? 'development';
-  if (envName !== 'development' && envName !== 'production') throw new ConfigError('POCKETQA_ENV must be development or production.');
+  if (envName !== 'development' && envName !== 'staging' && envName !== 'production') throw new ConfigError('POCKETQA_ENV must be development, staging or production.');
   const production = envName === 'production';
+  const staging = envName === 'staging';
+  // Security rules shared by production and the hosted test deployment.
+  const secured = production || staging;
+  const label = production ? 'Production' : 'Staging';
+  const dataBackend = (env.POCKETQA_DATA_BACKEND ?? 'sqlite') as Config['dataBackend'];
+  if (dataBackend !== 'sqlite' && dataBackend !== 'firestore') throw new ConfigError('POCKETQA_DATA_BACKEND must be sqlite or firestore.');
   const host = env.POCKETQA_API_HOST ?? '127.0.0.1';
   if (!LOOPBACK.has(host)) throw new ConfigError(`POCKETQA_API_HOST must be 127.0.0.1 or ::1 (local-only build); got a non-loopback value.`);
 
   const port = Number(env.POCKETQA_API_PORT ?? API_DEFAULT_PORT);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new ConfigError('POCKETQA_API_PORT must be an integer port.');
 
-  const dataDir = resolve(REPO_ROOT, env.POCKETQA_DATA_DIR ?? 'apps/api/.data');
-  const rel = relative(REPO_ROOT, dataDir);
-  const insideRepo = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
-  if (insideRepo && !isGitIgnored(dataDir)) {
-    throw new ConfigError('POCKETQA_DATA_DIR is inside the repo but not git-ignored; refusing to store data there.');
+  // SQLite needs a data directory (never a git-tracked one); Firestore has none, and a hosted
+  // function has no git checkout to ask.
+  let dataDir = '';
+  if (dataBackend === 'sqlite') {
+    dataDir = resolve(REPO_ROOT, env.POCKETQA_DATA_DIR ?? 'apps/api/.data');
+    const rel = relative(REPO_ROOT, dataDir);
+    const insideRepo = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+    if (insideRepo && !isGitIgnored(dataDir)) {
+      throw new ConfigError('POCKETQA_DATA_DIR is inside the repo but not git-ignored; refusing to store data there.');
+    }
+    // Production data never shares a directory with development or the demo (preview-data).
+    if (secured && insideRepo) throw new ConfigError(`In ${envName}, POCKETQA_DATA_DIR must be outside the repository.`);
   }
-  // Production data never shares a directory with development or the demo (preview-data).
-  if (production && insideRepo) throw new ConfigError('In production, POCKETQA_DATA_DIR must be outside the repository.');
 
   const rpcUrl = env.POCKETQA_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
   if (!/^https?:\/\//.test(rpcUrl)) throw new ConfigError('POCKETQA_SOLANA_RPC_URL must be an http(s) URL.');
@@ -123,31 +143,34 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (authEmulatorHost && !/^(127\.0\.0\.1|localhost):\d+$/.test(authEmulatorHost)) throw new ConfigError('POCKETQA_FIREBASE_AUTH_EMULATOR_HOST must be a loopback host:port.');
     // The emulator accepts unsigned tokens, so it is only allowed with a demo- project.
     if (authEmulatorHost && !projectId.startsWith('demo-')) throw new ConfigError('The Firebase Auth emulator may only be used with a demo- project id.');
-    firebase = { projectId, webApiKey, authDomain, authEmulatorHost };
+    firebase = { projectId, webApiKey, authDomain, authEmulatorHost, googleSignIn: env.POCKETQA_FIREBASE_GOOGLE === '1' };
   }
   // firebase-admin also honours the raw FIREBASE_AUTH_EMULATOR_HOST and then accepts
   // unsigned tokens: refuse it unless this is an explicit demo- emulator setup.
   if (env.FIREBASE_AUTH_EMULATOR_HOST && !(firebase?.authEmulatorHost && firebase.projectId.startsWith('demo-'))) {
     throw new ConfigError('FIREBASE_AUTH_EMULATOR_HOST is set outside an explicit demo- emulator setup; refusing to start.');
   }
-  if (production) {
-    if (authMode !== 'firebase') throw new ConfigError('Production needs POCKETQA_AUTH_MODE=firebase (no local password accounts).');
+  if (secured) {
+    if (authMode !== 'firebase') throw new ConfigError(`${label} needs POCKETQA_AUTH_MODE=firebase (no local password accounts).`);
     // Emulator hosts were refused above for non-demo projects; demo- projects are local-only.
-    if (firebase!.projectId.startsWith('demo-')) throw new ConfigError('Production cannot use a demo- Firebase project.');
+    if (firebase!.projectId.startsWith('demo-')) throw new ConfigError(`${label} cannot use a demo- Firebase project.`);
   }
   const sharedDemo = env.POCKETQA_SHARED_DEMO === '1';
-  if (production && sharedDemo) throw new ConfigError('The shared demo never runs in production.');
+  if (secured && sharedDemo) throw new ConfigError(`The shared demo never runs in ${envName}.`);
   if (sharedDemo && authMode !== 'local') throw new ConfigError('The shared demo runs only with local auth (synthetic demo accounts).');
   const walletLogin = env.POCKETQA_WALLET_LOGIN === '1';
   // ADR 0005 §2: the operator sets this only after Hamza's acceptance is recorded there.
-  if (production && walletLogin && env.POCKETQA_WALLET_LOGIN_RISK_ACCEPTED !== '1') {
+  if (secured && walletLogin && env.POCKETQA_WALLET_LOGIN_RISK_ACCEPTED !== '1') {
     throw new ConfigError('Wallet login in production needs the residual-risk acceptance recorded in ADR 0005 §2 (POCKETQA_WALLET_LOGIN_RISK_ACCEPTED=1).');
   }
   // Wallet login can create accounts; the shared demo has no self-registration.
   if (sharedDemo && walletLogin) throw new ConfigError('The shared demo cannot enable wallet login (it creates accounts).');
+  // Wallet-first account creation is SQLite-only for now: on Firestore it needs core's in-transaction
+  // user + identity writes (the escrow repo refuses it). Refuse at startup, not as a dead button.
+  if (walletLogin && dataBackend === 'firestore') throw new ConfigError('Wallet login is not available with POCKETQA_DATA_BACKEND=firestore yet; leave POCKETQA_WALLET_LOGIN unset.');
   let publicOrigin: string | null = null;
   // Required for wallet login; optional otherwise (web wallet linking uses it when set).
-  if (production && !env.POCKETQA_PUBLIC_ORIGIN) throw new ConfigError('Production needs POCKETQA_PUBLIC_ORIGIN (the exact https origin of the app).');
+  if (secured && !env.POCKETQA_PUBLIC_ORIGIN) throw new ConfigError(`${label} needs POCKETQA_PUBLIC_ORIGIN (the exact https origin of the app).`);
   if (walletLogin || env.POCKETQA_PUBLIC_ORIGIN) {
     const raw = env.POCKETQA_PUBLIC_ORIGIN ?? '';
     let u: URL | null;
@@ -159,7 +182,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     const loopback = u !== null && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
     const ok = u !== null && (u.protocol === 'https:' || (u.protocol === 'http:' && loopback)) && !u.username && !u.password && !u.hostname.includes('*') && raw === u.origin;
     if (!ok) throw new ConfigError('POCKETQA_PUBLIC_ORIGIN must be the exact https origin of the app (http only for localhost); wallet login requires it.');
-    if (production && (u!.protocol !== 'https:' || !isPublicHost(u!.hostname))) throw new ConfigError('In production, POCKETQA_PUBLIC_ORIGIN must be https on a public host (not localhost or a private address).');
+    if (secured && (u!.protocol !== 'https:' || !isPublicHost(u!.hostname))) throw new ConfigError(`In ${envName}, POCKETQA_PUBLIC_ORIGIN must be https on a public host (not localhost or a private address).`);
     publicOrigin = u!.origin;
   }
 
@@ -167,7 +190,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (storage !== 'local' && storage !== 'r2') throw new ConfigError('POCKETQA_STORAGE must be local or r2.');
   // Real uploads never go to the shared synthetic demo (its gate also refuses uploads).
   if (sharedDemo && storage !== 'local') throw new ConfigError('The shared demo runs only with local storage (no real uploads).');
-  if (production && storage !== 'r2') throw new ConfigError('Production stores evidence in private r2 (POCKETQA_STORAGE=r2).');
+  if (secured && storage !== 'r2') throw new ConfigError(`${label} stores evidence in private r2 (POCKETQA_STORAGE=r2).`);
   let r2: Config['r2'] = null;
   if (storage === 'r2') {
     const accountId = env.POCKETQA_R2_ACCOUNT_ID ?? '';
@@ -177,9 +200,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     if (!/^[a-f0-9]{32}$/.test(accountId)) throw new ConfigError('POCKETQA_R2_ACCOUNT_ID (32 hex) is required for r2 storage.');
     if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket)) throw new ConfigError('POCKETQA_R2_BUCKET is required for r2 storage.');
     const testServer = env.POCKETQA_R2_ENDPOINT !== undefined && env.POCKETQA_R2_ENDPOINT !== '';
-    if (production && testServer) throw new ConfigError('Production cannot use an R2 test server endpoint (POCKETQA_R2_ENDPOINT).');
+    if (secured && testServer) throw new ConfigError(`${label} cannot use an R2 test server endpoint (POCKETQA_R2_ENDPOINT).`);
     // Retention-only mode exists for synthetic data; real users need real deletion (ledger S5).
-    if (production && env.POCKETQA_R2_RETAIN_NONPROD === '1') throw new ConfigError('POCKETQA_R2_RETAIN_NONPROD is for synthetic data only and is refused in production.');
+    if (secured && env.POCKETQA_R2_RETAIN_NONPROD === '1') throw new ConfigError(`POCKETQA_R2_RETAIN_NONPROD is for synthetic data only and is refused in ${envName}.`);
     if (!accessKeyId || !secretAccessKey) throw new ConfigError('POCKETQA_R2_ACCESS_KEY_ID and POCKETQA_R2_SECRET_ACCESS_KEY are required for r2 storage.');
     let endpoint = `https://${accountId}.r2.cloudflarestorage.com`;
     if (env.POCKETQA_R2_ENDPOINT) {
@@ -220,6 +243,9 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     throw new ConfigError('POCKETQA_SETTLEMENT must be off, simulated or squads_devnet (the devnet pilot): no real settlement provider exists (ADR 0007).');
   }
   if (production && settlement !== 'off') throw new ConfigError('Simulated settlement and the devnet pilot never run in production (ADR 0007): set POCKETQA_SETTLEMENT=off.');
+  // The hosted test deployment may simulate settlement, but never runs the devnet pilot: its
+  // server-held test keys would sign from a public server.
+  if (staging && settlement === 'squads_devnet') throw new ConfigError('Staging never runs the devnet pilot (server-held test keys): use POCKETQA_SETTLEMENT=simulated or off.');
   // The shared public demo lets any visitor act as the synthetic builder or admin, and the pilot's
   // test keys sign on the server for every role: never combine them (pilot assets stay private).
   if (sharedDemo && settlement === 'squads_devnet') throw new ConfigError('The shared demo never runs the devnet pilot: its server-held test keys would sign for any visitor. Use POCKETQA_SETTLEMENT=simulated (labelled) or off.');
@@ -241,12 +267,20 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   if (!Number.isInteger(escrowFeeBps) || escrowFeeBps < 0 || escrowFeeBps > 10_000) throw new ConfigError('POCKETQA_ESCROW_FEE_BPS must be a whole number from 0 to 10000.');
 
   const trust = env.POCKETQA_TRUST_PROXY ?? (production ? 'loopback' : 'none');
-  if (trust !== 'loopback' && trust !== 'none') throw new ConfigError('POCKETQA_TRUST_PROXY must be loopback or none.');
+  if (trust !== 'loopback' && trust !== 'none' && trust !== 'vercel') throw new ConfigError('POCKETQA_TRUST_PROXY must be loopback, none or vercel.');
+  // Vercel's edge replaces any client-sent X-Forwarded-For with the real client address, so
+  // the first hop is trustworthy there, and only there: per-IP rate limits need it, or every
+  // caller would share Vercel's socket address. Refused anywhere Vercel isn't the runtime.
+  if (trust === 'vercel' && (env.VERCEL !== '1' || !secured)) throw new ConfigError('POCKETQA_TRUST_PROXY=vercel is only for the hosted (staging or production) deployment on Vercel.');
 
   return {
     production,
-    trustProxy: trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
-    features: { testCredits: !production, devnetTransfers: !production, settlement },
+    staging,
+    dataBackend,
+    trustProxy: trust === 'vercel' ? true : trust === 'loopback' ? ['127.0.0.1', '::1'] : false,
+    // Staging keeps labelled test credits (and simulated settlement) for hosted testing; demo
+    // devnet transfers stay local-only.
+    features: { testCredits: !production, devnetTransfers: !secured, settlement },
     escrowFeeBps,
     pilotKeysDir,
     host: host as Config['host'],

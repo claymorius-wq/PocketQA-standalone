@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { ParsedTx } from '@pocket-qa/domain';
 import type { Config } from './config';
 import type { DB } from './db';
+import type { Repos } from './repo';
 import type { IdentityProvider, VerifiedIdentity } from './identity/types';
 import type { SettlementProvider } from './settlement/types';
 import type { EvidenceStore } from './storage/types';
@@ -16,11 +17,15 @@ export type DevnetRpc = {
 };
 
 export type Deps = {
-  db: DB;
+  /** SQLite (local server and tests); null on the hosted Firestore deployment. */
+  db: DB | null;
+  /** Intent-level data access (docs/plans/firebase-vercel-refactor.md §2); sqlite or firestore. */
+  repo: Repos;
   config: Config;
   now: Clock;
   rpc: DevnetRpc;
-  mediaDir: string;
+  /** Local evidence directory; null when evidence lives in R2. */
+  mediaDir: string | null;
   /** Managed identity provider; null in local auth mode. */
   identity: IdentityProvider | null;
   /** Evidence object store (local media directory or R2). */
@@ -40,6 +45,13 @@ export type Ctx = {
   body: any;
   req: FastifyRequest;
   reply: FastifyReply;
+  /**
+   * An id for something this request creates (pqa-qa early r1 P2-F). Without an Idempotency-Key
+   * it is fresh; with one it is derived from the key's scope (user, route, key) and `purpose`, so a
+   * retry after a crash between commit and completion re-creates the SAME document, which the
+   * repository then returns instead of a duplicate (study, finding, top-up, funding, audit row).
+   */
+  idemId: (purpose: string) => string;
 };
 export type Handler = (ctx: Ctx) => unknown | Promise<unknown>;
 

@@ -1,0 +1,9 @@
+# Shared: leave Pocket QA for another app (synthetic emulator Settings, no user data).
+appId: com.reshareai.pocketqa
+---
+- pressKey: home
+- launchApp:
+    appId: com.android.settings
+    stopApp: false
+- waitForAnimationToEnd
+- takeScreenshot: away-in-settings

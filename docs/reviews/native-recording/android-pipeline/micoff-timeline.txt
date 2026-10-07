@@ -1,0 +1,18 @@
+[23:33:23 +0s] mode=micoff load={ 14.62 15.37 13.31 }
+[23:34:54 +91s] recording (projections=1)
+[23:35:18 +115s] away in Settings
+[23:35:18 +115s] appops before: Uid mode: RECORD_AUDIO: foreground RECORD_AUDIO: allow; time=+59s492ms ago (running) 
+[23:35:18 +115s] mic op ignored
+[23:35:26 +123s] mic ignored: projections=1
+[23:35:26 +123s] appops after: Uid mode: RECORD_AUDIO: foreground RECORD_AUDIO: allow; time=+5s290ms ago (running) 
+[23:35:26 +123s] back to Pocket QA
+[23:35:40 +137s] tapped Stop
+[23:35:48 +145s] after stop: projections=0
+10-05 23:35:28.681  6534  6896 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=3543 video=2515 rejected=0 bytes=11434689
+[23:35:49 +146s] overrun lines: 0
+[23:36:21 +178s] uploaded
+video 82.434 s, audio 82.268 s, |a-v| 0.165 s (limit 1.0 s)
+audio samples held 82.268 s of 82.268 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+[23:36:21 +178s] EXIT=0

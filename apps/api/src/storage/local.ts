@@ -37,5 +37,8 @@ export function localStore(mediaDir: string): EvidenceStore {
     async presignPut() {
       throw new Error('Direct uploads need POCKETQA_STORAGE=r2; local storage uses the multipart upload route.');
     },
+    async presignGet() {
+      throw new Error('Presigned playback needs POCKETQA_STORAGE=r2; local storage streams through /media.');
+    },
   };
 }

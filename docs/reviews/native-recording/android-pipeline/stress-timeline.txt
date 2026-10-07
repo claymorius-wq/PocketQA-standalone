@@ -1,0 +1,20 @@
+[23:24:16 +0s] mode=stress load={ 15.93 13.71 10.71 }
+[23:25:43 +87s] recording (projections=1)
+[23:26:03 +107s] rotate landscape
+[23:26:09 +113s] rotate portrait
+[23:26:19 +123s] 5 uiautomator dumps
+[23:26:38 +142s] dumps done
+[23:26:48 +152s] dexopt burst (compile -f speed deskclock)
+[23:27:06 +170s] dexopt done
+[23:27:16 +180s] lock
+[23:27:24 +188s] locked: projections=1
+[23:27:26 +190s] unlocked
+[23:27:36 +200s] 5 more dumps
+[23:27:54 +218s] dumps done
+[23:28:54 +278s] back to Pocket QA
+[23:29:09 +293s] tapped Stop
+[23:29:26 +310s] after stop: projections=0
+10-05 23:28:57.234  4649  5204 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=10255 video=7399 rejected=0 bytes=31098762
+[23:29:26 +310s] overrun lines: 0
+[23:29:57 +341s] uploaded
+[23:29:57 +341s] EXIT=1

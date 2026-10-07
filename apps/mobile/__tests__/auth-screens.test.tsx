@@ -484,7 +484,9 @@ describe('Sign in with managed identity (cloud auth)', () => {
     await renderIn('dark', <SignIn />);
     await advance(1000);
     expect(screen.getByText('Finish your account')).toBeTruthy();
-    expect(screen.getByText('You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.')).toBeTruthy();
+    // QA P2: the card names the identity (here none is known) and points a returning user to their account's email.
+    expect(screen.getByText('No Pocket QA account uses this sign-in yet. If you already have an account, sign in with the email it uses.')).toBeTruthy();
+    expect(screen.getByText('To create a new account, choose how you’ll use Pocket QA.')).toBeTruthy();
     expect(screen.getByTestId('finish-name').props.value).toBe('Fiona Firebase');
     expect(screen.getByTestId('finish-role-builder').props.accessibilityState).toMatchObject({ selected: true });
     // It rises into the room above the sign-in card (the same bottom-anchored wrapper), so that card never moves.
@@ -519,7 +521,7 @@ function noteOf(text: string) {
   return node!;
 }
 const TESTER_NOTE = 'Find studies that match your device, record consented sessions, and earn test credits when your work is approved.';
-const BUILDER_NOTE = 'Create studies, fund them with local test credits, and review testers’ evidence.';
+const BUILDER_NOTE = 'Create studies, fund them with test credits (no cash value), and review testers’ evidence.';
 
 describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   it('keeps the title, the role switch, the fields and the way back to Sign in', async () => {

@@ -12,7 +12,7 @@ describe('managed identity config', () => {
   });
 
   it('firebase mode needs a project id and the public web API key', () => {
-    expect(loadConfig(fb).firebase).toEqual({ projectId: 'pocketqa-staging', webApiKey: 'public-web-key', authDomain: 'pocketqa-staging.firebaseapp.com', authEmulatorHost: null }); // check-secrets: allow (placeholder public Firebase web config in tests)
+    expect(loadConfig(fb).firebase).toEqual({ projectId: 'pocketqa-staging', webApiKey: 'public-web-key', authDomain: 'pocketqa-staging.firebaseapp.com', authEmulatorHost: null, googleSignIn: false }); // check-secrets: allow (placeholder public Firebase web config in tests)
     expect(() => loadConfig({ ...fb, POCKETQA_FIREBASE_PROJECT_ID: '' })).toThrow(ConfigError);
     expect(() => loadConfig({ ...fb, POCKETQA_FIREBASE_WEB_API_KEY: '' })).toThrow(ConfigError);
     expect(() => loadConfig({ ...base, POCKETQA_AUTH_MODE: 'magic' })).toThrow(ConfigError);

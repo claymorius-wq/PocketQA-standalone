@@ -21,7 +21,17 @@ export interface EvidenceStore {
    * A presigned URL is a bearer capability until it expires (not single use).
    */
   presignPut(key: string, opts: { contentType: string; contentLength: number; expiresInSeconds: number }): Promise<{ url: string; headers: Record<string, string> }>;
+  /**
+   * Short-lived presigned GET for playback (plan §6), on the provider's own endpoint. Callers issue
+   * it only after the playback authorisation. Like any presigned URL it is a bearer capability until
+   * it expires, so the TTL is capped at PRESIGN_GET_MAX_SECONDS. The response is served with the
+   * given content type, inline, and not cached.
+   */
+  presignGet(key: string, opts: { contentType: string; expiresInSeconds: number; signingDate: Date }): Promise<{ url: string }>;
 }
+
+/** Longest life of a presigned playback URL (plan §4: GET URLs live ≤ 5 min). */
+export const PRESIGN_GET_MAX_SECONDS = 300;
 
 /** The object changed since it was inspected (ETag precondition failed). Retryable. */
 export class StorageChanged extends Error {}

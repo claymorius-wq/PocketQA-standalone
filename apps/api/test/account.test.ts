@@ -64,15 +64,15 @@ describe('export and deletion', () => {
     expect(readdirSync(t.mediaDir)).toHaveLength(1);
     expect((await t.req('DELETE', '/me', tester.token, { confirm: 'DELETE MY ACCOUNT' })).status).toBe(200);
     // A fixed-text audit row records the deletion, with no personal data (inc5).
-    const deletion = t.db.prepare(`SELECT actor_id, target_id, reason FROM audit WHERE action = 'user.deleted'`).get() as { actor_id: string; target_id: string; reason: string };
+    const deletion = (await t.deps.repo.core.listAudit()).find((a) => a.action === 'user.deleted')!;
     expect(deletion.reason).toBe('[account deleted by its owner]');
     expect(deletion.actor_id).toBe(deletion.target_id);
 
     expect(readdirSync(t.mediaDir)).toHaveLength(0);
-    const row = t.db.prepare('SELECT email, display_name, password_hash, device_json, status FROM users WHERE id = ?').get(tester.id);
+    const u = (await t.deps.repo.core.userById(tester.id))!;
+    const row = { email: u.email, display_name: u.display_name, password_hash: u.password_hash, device_json: u.device_json, status: u.status };
     expect(row).toEqual({ email: `deleted-${tester.id}@deleted.invalid`, display_name: 'Deleted user', password_hash: null, device_json: null, status: 'deleted' });
-    const ledger = t.db.prepare('SELECT COUNT(*) AS n FROM ledger WHERE account = ?').get(`user:${tester.id}`) as { n: number };
-    expect(ledger.n).toBe(1);
+    expect(await t.deps.repo.studies.ledgerEntries(`user:${tester.id}`)).toHaveLength(1);
     expect((await t.req('GET', '/me', tester.token)).status).toBe(401);
     expect((await t.req('POST', '/auth/login', undefined, { email: tester.email, password: 'correct horse battery staple' })).status).toBe(401);
   });

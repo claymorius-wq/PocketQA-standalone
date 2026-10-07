@@ -4,6 +4,7 @@ import { Wallet } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { api, ApiError } from '../api/client';
+import { useIntentKey } from '../api/intentKey';
 import { formatUnits, PILOT_DISCLOSURE, settlementTag, tokenAmount } from '../lib/money';
 import { Button, Card, Field, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
@@ -27,21 +28,26 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
   const [signature, setSignature] = useState('');
   const refresh = () => qc.invalidateQueries({ queryKey: ['study', study.id] });
   // One press stands in for the wallet: request → simulated wallet transfer → verification.
+  const intent = useIntentKey();
   const fund = useMutation({
     mutationFn: async () => {
-      const f = await api('createEscrowFunding', { params: { id: study.id } });
+      const f = await api('createEscrowFunding', { params: { id: study.id }, idempotencyKey: intent.keyFor(['fund', study.id]) });
       const paid = await api('simulatedWalletPayment', { params: { id: f.id } });
       return api('submitFundingSignature', { params: { id: f.id }, body: { signature: paid.signature } });
     },
     onSuccess: (f) => {
+      intent.done();
       setFunding(f);
       void refresh();
     },
   });
   // Devnet pilot: the request fixes the amount, vault and reference; the wallet sends on its own.
   const request = useMutation({
-    mutationFn: () => api('createEscrowFunding', { params: { id: study.id } }),
-    onSuccess: setFunding,
+    mutationFn: () => api('createEscrowFunding', { params: { id: study.id }, idempotencyKey: intent.keyFor(['request', study.id]) }),
+    onSuccess: (f) => {
+      intent.done();
+      setFunding(f);
+    },
   });
   const verify = useMutation({
     mutationFn: () => api('submitFundingSignature', { params: { id: funding!.id }, body: { signature: signature.trim() } }),

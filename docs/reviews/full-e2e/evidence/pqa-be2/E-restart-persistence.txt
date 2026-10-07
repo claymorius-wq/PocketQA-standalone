@@ -1,0 +1,161 @@
+2026-10-06T18:43:16Z
+HEAD 571ab48; apps/api+packages diff vs frozen 7beaad5: '' (empty = identical)
+env: POCKETQA_ENV=development POCKETQA_DATA_BACKEND=sqlite POCKETQA_AUTH_MODE=local POCKETQA_STORAGE=local POCKETQA_API_HOST=127.0.0.1 POCKETQA_API_PORT=8862 POCKETQA_DATA_DIR=<scratch>/restart-data (fresh, empty)
+start #1: launcher pid 79653, listener pid 79686
+$ node restart-persistence.mjs seed
+{
+  "seeded": true,
+  "studyId": "b912d2c6-3d84-43a9-ab09-e569bcac8ca0",
+  "adminSelfRegister": {
+    "status": 400,
+    "code": "VALIDATION"
+  },
+  "before": {
+    "builder": {
+      "id": "44053101-0085-45cc-be49-ee35ed63e4d3",
+      "role": "builder",
+      "email": "pqa-e2e-builder-mux1153s@example.test"
+    },
+    "tester": {
+      "id": "be86d7f7-fb91-48b2-a74e-7c658178ff4e",
+      "role": "tester",
+      "device": {
+        "platform": "android",
+        "osVersion": "15",
+        "androidApiLevel": 35,
+        "model": "QA synthetic device",
+        "languages": [
+          "en"
+        ]
+      }
+    },
+    "builderCredits": {
+      "balance": 380,
+      "entries": [
+        {
+          "id": "e634097e-5d71-475c-a396-b61b1904e484:0",
+          "kind": "study_reserve",
+          "amount": -120,
+          "studyId": "b912d2c6-3d84-43a9-ab09-e569bcac8ca0",
+          "participationId": null,
+          "createdAt": "2026-10-06T18:43:16.939Z"
+        },
+        {
+          "id": "c5a7c7ff-66ff-49d8-b3c7-568380b10445:1",
+          "kind": "test_topup",
+          "amount": 500,
+          "studyId": null,
+          "participationId": null,
+          "createdAt": "2026-10-06T18:43:16.934Z"
+        }
+      ],
+      "disclaimer": "Test credits · no cash value"
+    },
+    "study": {
+      "id": "b912d2c6-3d84-43a9-ab09-e569bcac8ca0",
+      "status": "published",
+      "slots": 3,
+      "rewardCredits": 40,
+      "budget": {
+        "reserved": 120,
+        "awarded": 0,
+        "committed": 40,
+        "available": 80
+      },
+      "tasks": 1
+    },
+    "participations": [
+      {
+        "id": "de9249c4-55d8-4cae-9f7e-1155eef3a100",
+        "status": "consented",
+        "testerId": "be86d7f7-fb91-48b2-a74e-7c658178ff4e"
+      }
+    ],
+    "testerParticipations": [
+      {
+        "id": "de9249c4-55d8-4cae-9f7e-1155eef3a100",
+        "status": "consented"
+      }
+    ]
+  }
+}
+seed exit 0
+$ kill 79686 79653   (recorded PIDs only)
+health while stopped: 000
+listeners on 8862 after kill: 0
+sqlite file bytes: 405504
+start #2: launcher pid 79745, new listener pid 79780
+$ node restart-persistence.mjs read   (same bearer tokens as before the restart)
+{
+  "identical": true,
+  "after": {
+    "builder": {
+      "id": "44053101-0085-45cc-be49-ee35ed63e4d3",
+      "role": "builder",
+      "email": "pqa-e2e-builder-mux1153s@example.test"
+    },
+    "tester": {
+      "id": "be86d7f7-fb91-48b2-a74e-7c658178ff4e",
+      "role": "tester",
+      "device": {
+        "platform": "android",
+        "osVersion": "15",
+        "androidApiLevel": 35,
+        "model": "QA synthetic device",
+        "languages": [
+          "en"
+        ]
+      }
+    },
+    "builderCredits": {
+      "balance": 380,
+      "entries": [
+        {
+          "id": "e634097e-5d71-475c-a396-b61b1904e484:0",
+          "kind": "study_reserve",
+          "amount": -120,
+          "studyId": "b912d2c6-3d84-43a9-ab09-e569bcac8ca0",
+          "participationId": null,
+          "createdAt": "2026-10-06T18:43:16.939Z"
+        },
+        {
+          "id": "c5a7c7ff-66ff-49d8-b3c7-568380b10445:1",
+          "kind": "test_topup",
+          "amount": 500,
+          "studyId": null,
+          "participationId": null,
+          "createdAt": "2026-10-06T18:43:16.934Z"
+        }
+      ],
+      "disclaimer": "Test credits · no cash value"
+    },
+    "study": {
+      "id": "b912d2c6-3d84-43a9-ab09-e569bcac8ca0",
+      "status": "published",
+      "slots": 3,
+      "rewardCredits": 40,
+      "budget": {
+        "reserved": 120,
+        "awarded": 0,
+        "committed": 40,
+        "available": 80
+      },
+      "tasks": 1
+    },
+    "participations": [
+      {
+        "id": "de9249c4-55d8-4cae-9f7e-1155eef3a100",
+        "status": "consented",
+        "testerId": "be86d7f7-fb91-48b2-a74e-7c658178ff4e"
+      }
+    ],
+    "testerParticipations": [
+      {
+        "id": "de9249c4-55d8-4cae-9f7e-1155eef3a100",
+        "status": "consented"
+      }
+    ]
+  }
+}
+read exit 0
+stopped #2 (recorded PIDs 79780 79745); listeners on 8862 at end: 0
