@@ -74,7 +74,39 @@ $ pnpm check:secrets                             check:secrets passed: 1444 comm
 ```
 
 ## Notes for review
-- **P-13 fix.** This branch starts from `c39828b` (fix/android-icon) and does **not** contain the P-13 fix `27608e9`, nor its `CaptureStartTest`. The vc3 build checkout must merge `27608e9` again, as `a854ed7` did. The files don't overlap: P-13 touches the Service and CaptureStart, while this branch touches PendingStore, the Module's `OnCreate` and the `purgeAsync` doc.
+- **P-13 fix** (corrected per pqa-qa B2 r1 P3-B1). This branch starts from `c39828b` and does not contain the P-13 fix `27608e9` or its `CaptureStartTest`. P-13 **does** touch `ScreenCaptureModule.kt` (+112/-, the CaptureStart state machine) and `ScreenCaptureService.kt` (+74/-). Its diff has no line in `OnCreate`'s sweep, the cacheDir wipe or `purgeAsync`. The merge is textually clean (pqa-qa merge-tree `ebe1be66`). The vc3 build checkout merges `27608e9` again, and the evidence cites the merged lines.
 - **Truncated MP4s** are now kept forever and are never listed. They stay on the device until a confirmed sign-out or account deletion. A tester-facing way to reach them is out of scope.
 - **Web** recordings are page-memory blobs. Leaving the screen or ending the session still releases them, because they can't outlive the page anyway.
 - **Privacy guardrail 1** still holds: `pending(tag)` lists clips only to their own participation, which the API authorises only for that account.
+
+## r2: pqa-qa B2 r1 B2-1 (P2), the finalise path deleted recordings
+The bug: `ScreenCaptureService.finish` called `store.forget(file)`, deleting the MP4, in three cases: when `p.stop()` failed, when `VoiceCheck` returned null (no readable index), and when `markComplete` couldn't write the `.meta` (for example a full disk). The start-error path also forgot `output`.
+
+The fix: new `PendingStore.settle(video, durationMs, tag, reason, voice)`, which is pure JVM and unit-tested.
+- A finalised clip whose meta is written becomes pending.
+- Any other outcome **keeps the MP4**: it is never listed or uploaded, its session gets one `.lost` notice, and its `.rec` is dropped.
+- Only an empty file, where nothing was captured, is deleted.
+- Both service paths now call `settle`: `finish` and the start-error catch.
+- The remaining `forget` callers are the tester's explicit discard (`ScreenCaptureModule.discard`) and the empty-file cases.
+
+Red: tests first, with `settle` stubbed to the old behaviour (`forget` on failure):
+```
+PendingStoreTest > aClipThatFailedToStopOrCantBeReadIsKeptAndReportedOnce FAILED
+PendingStoreTest > aClipWhoseMetaCantBeWrittenIsKeptAndReportedOnce FAILED
+38 tests completed, 2 failed, 1 skipped
+```
+The very first run had failed to compile (`Unresolved reference 'settle'`).
+
+Green:
+```
+$ ./gradlew :pocketqa-screen-capture:testDebugUnitTest :pocketqa-screen-capture:compileReleaseKotlin --no-daemon --max-workers=2 -Pkotlin.compiler.execution.strategy=in-process
+BUILD SUCCESSFUL in 33s
+PendingStoreTest tests="17" failures="0"; VoiceCheckTest 9 (1 skipped, pre-existing); PipelineLogicTest 10; CaptureMathTest 2
+```
+The new tests are:
+- a failed stop or unreadable file is kept and reported once;
+- a meta write that fails is kept and reported once (the meta target is a non-empty directory, so the rename fails);
+- a finalised clip is settled as pending;
+- an empty failed recording leaves nothing.
+
+P3-B2 is left as is, per the lead: noted for Hamza.

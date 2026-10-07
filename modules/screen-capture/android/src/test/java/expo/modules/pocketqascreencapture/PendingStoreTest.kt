@@ -101,6 +101,47 @@ class PendingStoreTest {
     assertEquals(0, store.takeInterrupted("p1"))
   }
 
+  // pqa-qa B2 r1 B2-1: the finalise path never deletes a recording. A clip that can't be finalised
+  // (a failed stop, an unreadable file: no voice verdict) or recorded (its meta can't be written,
+  // e.g. disk full) stays on the device, unlisted, and its session is told once.
+  @Test fun aClipThatFailedToStopOrCantBeReadIsKeptAndReportedOnce() {
+    val f = recorded(tag = "p1")
+    assertFalse(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = null))
+    assertTrue(f.exists())
+    assertTrue(store.pending("p1").isEmpty())
+    assertEquals(1, store.takeInterrupted("p1"))
+    store.sweep(active = null)
+    assertTrue(f.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun aClipWhoseMetaCantBeWrittenIsKeptAndReportedOnce() {
+    val f = recorded(tag = "p1")
+    // The meta's target is a non-empty directory, so the write-then-rename fails (as on a full disk).
+    File(dir, f.nameWithoutExtension + ".meta").apply { mkdirs(); File(this, "x").writeText("x") }
+    assertFalse(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = FULL))
+    assertTrue(f.exists())
+    assertEquals(1, store.takeInterrupted("p1"))
+    store.sweep(active = null)
+    assertTrue(f.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun aFinalisedClipIsSettledAsPending() {
+    val f = recorded(tag = "p1")
+    assertTrue(store.settle(f, durationMs = 7000, tag = "p1", reason = "user", voice = FULL))
+    assertEquals(listOf(f), store.pending("p1").map { it.file })
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
+  @Test fun anEmptyFailedRecordingLeavesNothing() {
+    // Nothing was captured (a start that failed before any frame): no file, no notice.
+    val f = recorded(bytes = 0, tag = "p1")
+    assertFalse(store.settle(f, durationMs = 0, tag = "p1", reason = "error", voice = null))
+    assertFalse(f.exists())
+    assertEquals(0, store.takeInterrupted("p1"))
+  }
+
   @Test fun anEmptyRecordingIsNeverOffered() {
     val empty = recorded(bytes = 0)
     assertFalse(store.markComplete(empty, 0, "p1", "user", FULL))

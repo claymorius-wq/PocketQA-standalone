@@ -118,7 +118,8 @@ class ScreenCaptureService : Service() {
       try { pipeline?.stop() } catch (_: Exception) {}
       pipeline = null
       cleanup()
-      output?.let(store::forget)
+      // Never deletes what was captured: an empty file goes, anything else is kept and reported once.
+      output?.let { store.settle(it, 0L, tag, "error", voice = null) }
       notifyStopped("error", null)
       stopForeground(STOP_FOREGROUND_REMOVE)
       stopSelf()
@@ -168,16 +169,15 @@ class ScreenCaptureService : Service() {
       val written = try { p.stop() } catch (_: Exception) { false }
       // The finished file is measured, then recorded as pending, BEFORE cleanup() stops protecting
       // it as the active file: a concurrent sweep can't take it in between (pqa-qa r1 P3-2). A file
-      // with no readable index can't be played and is dropped; a clip whose voice doesn't cover the
-      // video (including audio lost inside it) is kept for review but marked, and is never offered
-      // as narrated evidence.
+      // that failed to stop or has no readable index, or whose meta can't be written, is never
+      // offered but is KEPT on the device and reported once (PendingStore.settle; pqa-qa B2 r1 B2-1).
+      // A clip whose voice doesn't cover the video (including audio lost inside it) is kept for
+      // review but marked, and is never offered as narrated evidence.
       var clip: Clip? = null
       if (file != null) {
         val voice = if (written) VoiceCheck.inspect(file, lostAudioMs = p.lostAudioMs, maxGapMs = p.maxGapMs) else null
-        if (voice != null && store.markComplete(file, durationMs, tag, reason, voice)) {
+        if (store.settle(file, durationMs, tag, reason, voice) && voice != null) {
           clip = Clip(file, durationMs, voice.videoMs, voice.voiceMs, voice.complete, voice.lostMs)
-        } else {
-          store.forget(file)
         }
       }
       main.post {

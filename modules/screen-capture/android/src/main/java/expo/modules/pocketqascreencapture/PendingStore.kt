@@ -87,6 +87,27 @@ class PendingStore(private val dir: File, private val now: () -> Long = System::
     return ok
   }
 
+  /**
+   * The end of a recording (the service's finish): records the clip as pending when it was finalised
+   * ([voice] is null when the stop failed or the file can't be read) and its meta was written. Any
+   * other outcome keeps the file (pqa-qa B2 r1 B2-1, Hamza's preserve rule): it isn't offered or
+   * uploaded, and its session is told once through a `.lost` notice. Only an empty file (nothing was
+   * captured) is dropped. Returns whether the clip is pending.
+   */
+  fun settle(video: File, durationMs: Long, tag: String, reason: String, voice: VoiceCheck.Verdict?): Boolean {
+    if (!video.exists() || video.length() == 0L) {
+      forget(video)
+      return false
+    }
+    if (voice != null && markComplete(video, durationMs, tag, reason, voice)) return true
+    write(sibling(video, ".lost"), Properties().apply {
+      setProperty("tag", tag)
+      setProperty("createdAt", now().toString())
+    })
+    sibling(video, ".rec").delete()
+    return false
+  }
+
   private fun read(meta: File): Entry? {
     val p = load(meta) ?: return null
     return try {
