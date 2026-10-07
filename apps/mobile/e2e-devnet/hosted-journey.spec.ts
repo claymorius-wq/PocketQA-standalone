@@ -40,6 +40,12 @@ const RESUME_STUDY_ID = process.env.PQA_RESUME_STUDY_ID ?? '';
 const RESUME_PREVIOUS_EVIDENCE = process.env.PQA_RESUME_PREVIOUS_EVIDENCE ?? '';
 /** Resume the tester's existing participation (consented and started in an earlier segment): no second consent. */
 const RESUME_PARTICIPATION_ID = process.env.PQA_RESUME_PARTICIPATION_ID ?? '';
+/**
+ * Option A (lead): another lane relinked the tester account. The run accepts exactly this address as
+ * found (recorded verbatim, no change): the participation's reward address was frozen at consent and
+ * the tester signs nothing in the remaining steps. Any other link still stops the run.
+ */
+const TESTER_ACCEPT_LINK = process.env.PQA_TESTER_ACCEPT_LINK ?? '';
 if (RESUME_STUDY_ID && TESTER_PREVIOUS_LINK) throw new Error('resume mode never changes links: unset PQA_TESTER_PREVIOUS_LINK');
 const SETTLE_WAIT_MS = Number(process.env.PQA_SETTLE_WAIT_MS ?? 15 * 60_000);
 
@@ -165,7 +171,7 @@ async function signIn(p: Page, role: 'builder' | 'tester') {
   await p.waitForURL((u) => !u.pathname.startsWith('/sign-in'), { timeout: 60_000 });
 }
 /** Links the fixture wallet in Settings; with cancelFirst, the wallet refuses once and the app must say so. */
-async function linkWallet(pt: Party, settingsTab: string, cancelFirst: boolean, previousLink?: string) {
+async function linkWallet(pt: Party, settingsTab: string, cancelFirst: boolean, previousLink?: string, acceptLink?: string) {
   const p = pt.page;
   await p.getByTestId(settingsTab).click();
   await expect(p.getByTestId('wallet-section')).toBeVisible();
@@ -173,6 +179,10 @@ async function linkWallet(pt: Party, settingsTab: string, cancelFirst: boolean, 
     const shown = await p.getByTestId('wallet-address').innerText();
     if (shown.includes(pt.wallet.address)) {
       await shotOf(p, 'wallet-section', `${settingsTab}-wallet-already-linked`, 'already linked to the fixture address before this run');
+      return;
+    }
+    if (acceptLink && shown.includes(acceptLink)) {
+      await shotOf(p, 'wallet-section', `${settingsTab}-wallet-linked-elsewhere-accepted`, `linked by another lane to ${acceptLink}; accepted as found, NO change (lead option A)`);
       return;
     }
     // Linked elsewhere: only the address the lead named may be unlinked, through the product's own action.
@@ -254,7 +264,7 @@ test('1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not
 
 test('2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first)', async () => {
   await linkWallet(run.builder!, 'tab-builder-settings', true);
-  await linkWallet(run.tester!, 'tab-settings', true, TESTER_PREVIOUS_LINK || undefined);
+  await linkWallet(run.tester!, 'tab-settings', true, TESTER_PREVIOUS_LINK || undefined, TESTER_ACCEPT_LINK || undefined);
   const t = run.tester!.page;
   await t.getByTestId('device-platform-web').click();
   await t.getByTestId('device-save').click();
