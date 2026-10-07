@@ -1,0 +1,32 @@
+10-06 23:24:59.399 E/AndroidRuntime(13321): FATAL EXCEPTION: main
+10-06 23:24:59.399 E/AndroidRuntime(13321): Process: com.reshareai.pocketqa.e2e, PID: 13321
+10-06 23:24:59.399 E/AndroidRuntime(13321): java.lang.RuntimeException: Unable to start service expo.modules.pocketqascreencapture.ScreenCaptureService@54c910d with Intent { act=expo.modules.pocketqascreencapture.START xflg=0x4 cmp=com.reshareai.pocketqa.e2e/expo.modules.pocketqascreencapture.ScreenCaptureService (has extras) }: java.lang.SecurityException: Starting FGS with type microphone callerApp=ProcessRecord{d75a661 13321:com.reshareai.pocketqa.e2e/u0a178} targetSDK=36 requires permissions: all of the permissions allOf=true [android.permission.FOREGROUND_SERVICE_MICROPHONE] any of the permissions allOf=false [android.permission.CAPTURE_AUDIO_HOTWORD, android.permission.CAPTURE_AUDIO_OUTPUT, android.permission.CAPTURE_MEDIA_OUTPUT, android.permission.CAPTURE_TUNER_AUDIO_INPUT, android.permission.CAPTURE_VOICE_COMMUNICATION_OUTPUT, android.permission.RECORD_AUDIO]  and the app must be in the eligible state/exemptions to access the foreground only permission
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.ActivityThread.handleServiceArgs(ActivityThread.java:5513)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.ActivityThread.-$$Nest$mhandleServiceArgs(ActivityThread.java:0)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2689)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Handler.dispatchMessage(Handler.java:110)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Looper.loopOnce(Looper.java:248)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Looper.loop(Looper.java:338)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.ActivityThread.main(ActivityThread.java:9112)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at java.lang.reflect.Method.invoke(Native Method)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:614)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1022)
+10-06 23:24:59.399 E/AndroidRuntime(13321): Caused by: java.lang.SecurityException: Starting FGS with type microphone callerApp=ProcessRecord{d75a661 13321:com.reshareai.pocketqa.e2e/u0a178} targetSDK=36 requires permissions: all of the permissions allOf=true [android.permission.FOREGROUND_SERVICE_MICROPHONE] any of the permissions allOf=false [android.permission.CAPTURE_AUDIO_HOTWORD, android.permission.CAPTURE_AUDIO_OUTPUT, android.permission.CAPTURE_MEDIA_OUTPUT, android.permission.CAPTURE_TUNER_AUDIO_INPUT, android.permission.CAPTURE_VOICE_COMMUNICATION_OUTPUT, android.permission.RECORD_AUDIO]  and the app must be in the eligible state/exemptions to access the foreground only permission
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3339)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Parcel.createException(Parcel.java:3323)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Parcel.readException(Parcel.java:3306)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.os.Parcel.readException(Parcel.java:3248)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.IActivityManager$Stub$Proxy.setServiceForeground(IActivityManager.java:7332)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.Service.startForeground(Service.java:863)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at expo.modules.pocketqascreencapture.ScreenCaptureService.startForegroundCompat(ScreenCaptureService.kt:230)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at expo.modules.pocketqascreencapture.ScreenCaptureService.start(ScreenCaptureService.kt:86)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at expo.modules.pocketqascreencapture.ScreenCaptureService.onStartCommand(ScreenCaptureService.kt:63)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.ActivityThread.handleServiceArgs(ActivityThread.java:5495)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	... 9 more
+10-06 23:24:59.399 E/AndroidRuntime(13321): Caused by: android.os.RemoteException: Remote stack trace:
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.server.am.ActiveServices.validateForegroundServiceType(ActiveServices.java:2920)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.server.am.ActiveServices.setServiceForegroundInnerLocked(ActiveServices.java:2596)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.server.am.ActiveServices.setServiceForegroundLocked(ActiveServices.java:1850)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at com.android.server.am.ActivityManagerService.setServiceForeground(ActivityManagerService.java:13969)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:3664)
+10-06 23:24:59.399 E/AndroidRuntime(13321): 

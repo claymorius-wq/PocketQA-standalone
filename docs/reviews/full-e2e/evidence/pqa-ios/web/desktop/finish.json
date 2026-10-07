@@ -1,0 +1,40 @@
+[
+  {
+    "id": "W-20",
+    "observed": {
+      "approved": "Approved 50 test credits added to your balance. Test credits have no cash value.",
+      "findingVisible": true,
+      "testerAfter": "200 test credits",
+      "testerLedgerTop": "Approved work Oct 7, 12:55 AM +50",
+      "studyBudget": null,
+      "budget-reserved": null,
+      "budget-awarded": null,
+      "builderAfter": "730 test credits"
+    },
+    "log": {
+      "tester": [],
+      "builder": []
+    }
+  },
+  {
+    "id": "W-23",
+    "observed": {
+      "tester": {
+        "afterSignOut": "/sign-in",
+        "privateRouteNow": "/sign-in",
+        "balanceVisible": 0,
+        "signInVisible": 1
+      },
+      "builder": {
+        "afterSignOut": "/sign-in",
+        "privateRouteNow": "/sign-in",
+        "balanceVisible": 0,
+        "signInVisible": 1
+      }
+    },
+    "log": {
+      "tester": [],
+      "builder": []
+    }
+  }
+]

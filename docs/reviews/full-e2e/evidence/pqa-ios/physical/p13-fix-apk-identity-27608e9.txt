@@ -1,0 +1,8 @@
+# E2E APK identity (P-13 fix)
+code: 27608e9 (fix/e2e-p13-single-app-fgs = feat/firebase-vercel 7d2fe75 + fix); env EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api EXPO_PUBLIC_POCKETQA_ENV=staging; only applicationId/app_name changed after prebuild
+size 52525761
+sha256 3635ebad4ed70585369403832ec55b9d2d8edd8fcf11d33660c3d6e4e620f87d
+Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+package: name='com.reshareai.pocketqa.e2e' versionCode='1' versionName='0.1.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+application-label:'Pocket QA E2E'
+1

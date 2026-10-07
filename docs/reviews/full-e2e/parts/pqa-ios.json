@@ -6,7 +6,7 @@
     "status": "PASS",
     "environment": "static",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "Inspected apps/api/test-live/squads-devnet.pilot.live.test.ts (runner), test-live/squads-devnet.pilot-run1-complete.live.test.ts + run1Completion.ts (double-execute check), scripts/squads-pilot-readback.ts (read-only), src/settlement/squads/pins.ts, docs/reviews/wallet-rewards/devnet-pilot-* receipts and docs/verification.md (2026-10-05 sections) at firebase-vercel 6324e01.",
     "fixtures": {
       "multisig": "AHj8EXYGdzEvzCugchaUprdsjGaxs951weZLvd8g5KNE",
@@ -17,7 +17,8 @@
       "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json",
       "docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json"
     ],
-    "notes": "Receipts are historic artefacts; they are not a new E2E pass."
+    "notes": "Receipts are historic artefacts; they are not a new E2E pass.",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-02",
@@ -26,7 +27,7 @@
     "status": "PASS",
     "environment": "devnet",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). cd apps/api && tsx scripts/squads-pilot-readback.ts docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json <threshold-refusal sig> <completion sig> <R8 wrong-mint sig> at 2026-10-06T18:36:01Z against https://api.devnet.solana.com (no key loaded, nothing signed or sent); output converted by d-redact-signatures.py (signature prefix + sha256, bound to the pinned receipts).",
     "fixtures": {
       "roles": {
@@ -43,7 +44,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/d02-readback-at.txt",
       "docs/reviews/full-e2e/evidence/pqa-ios/d-redact-signatures.py"
     ],
-    "notes": "Public RPC answered several 429s; the script retried (stderr kept). Devnet SOL and test USDC have no value."
+    "notes": "Public RPC answered several 429s; the script retried (stderr kept). Devnet SOL and test USDC have no value.",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-03",
@@ -52,7 +54,7 @@
     "status": "PASS",
     "environment": "devnet",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). node evidence/pqa-ios/d03-read-amounts.mjs (getParsedTransaction pre/post token balances, getParsedAccountInfo; read-only) at 2026-10-06T18:37Z.",
     "fixtures": {},
     "observed": "Mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU on every USDC movement (units, 6 decimals): funding builder -> vault -3300000/+3300000; execute 1 vault -> testerA 1000000; execute 2 vault -> testerB 1000000 (arbiter-approved); execute 3 vault -> builder refund 1100000; unmatched deposit builder -> vault 10000. Balances now: vault 210000 (= 200000 fee + 10000 unmatched, alerted, not credited), testerA 1000000, testerB 1000000, builder 17790000. Matches receipt books: funded 3300000 = settled 2000000 + fees 200000 + refunded 1100000.",
@@ -60,7 +62,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json",
       "docs/reviews/full-e2e/evidence/pqa-ios/d03-read-amounts.mjs"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-04",
@@ -69,7 +72,7 @@
     "status": "PASS",
     "environment": "devnet",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "HISTORIC re-read of the finalized 2026-10-05 Squads v4 devnet pilot run 1 (a fresh chain read now, NOT a new E2E pass). Same reads as D-02/D-03.",
     "fixtures": {},
     "observed": "R8 wrong-mint funding 4CCcmmDeNDWB… slot 507704321: finalized, err null on chain (it moved 3300000 wSOL base units, mint So111…), and the API refused it as funding (\"The transfer is a different token.\", receipt refusal R8). Threshold refusal 4KNLFE1egjon… and second execute of index 1 3zNWsdDxaSwM…: both finalized with Custom 6008, zero token deltas.",
@@ -77,7 +80,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/d02-devnet-readback.json",
       "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-05",
@@ -86,28 +90,30 @@
     "status": "PASS",
     "environment": "devnet",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "Compared pins.ts PILOT_MINT (= DEVNET_USDC_MINT) with mainnet USDC; read the mint account fresh from devnet RPC (getParsedAccountInfo) at 2026-10-06T18:37Z.",
     "fixtures": {},
     "observed": "Pilot mint 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU != mainnet USDC EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (equalsMainnetUsdc false). On devnet the pilot mint is owned by TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, decimals 6, mintAuthority GrNg1XM2ctzeE2mXxXCfhcTUbejM8Z4z4wNVTy2FjMEz, freezeAuthority set; on devnet the EPjF… address is only a system-program-owned account (not a mint). RPC genesis EtWTRABZ… (devnet), never mainnet 5eykt4Us….",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/d03-devnet-amounts.json"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-06",
     "area": "devnet",
-    "title": "Fresh bounded devnet E2E (new operations, new receipts)",
-    "status": "BLOCKED",
+    "title": "Fresh bounded devnet E2E (new operations, new receipts): superseded by D-08",
+    "status": "PASS",
     "environment": "devnet",
     "deployment": null,
-    "sha": null,
+    "sha": "6324e01",
     "steps": "Checked whether an isolated valueless fixture exists that needs no private-key handling. Listed (names/sizes only, contents not read) ~/.config/pocketqa-devnet-pilot.",
     "fixtures": {},
-    "observed": "The only devnet fixture is the pilot key dir ~/.config/pocketqa-devnet-pilot (arbiter.json, builder.json, outsider.json, pocketqa.json, tester.json, create-seed.bin; mode 600, outside the repo). Every fresh run (squads-devnet.pilot.live.test.ts) loads those secret keys and signs ~26 transactions; earlier runs each needed explicit approval (docs/verification.md: \"No further sends\", parent hold). Read-only balances: pocketqa test key 4959995240 lamports, builder 17790000 test-USDC units, so funds are not the blocker. Not run.",
+    "observed": "Superseded: after Hamza's explicit authorization (2026-10-06) the fresh bounded run was done as D-08 (PASS: 14 sends finalized, funding 2.20 test USDC, 0.0137 devnet SOL incl. rent, write-ahead journal before every send, crash-after-submit adopted with 0 re-sends, on-chain refusal 6008, chain deltas = ledger integers), and further fresh devnet operations are recorded in E-28/E-29 (other lane). HISTORY (original BLOCKED observation, verbatim): The only devnet fixture is the pilot key dir ~/.config/pocketqa-devnet-pilot (arbiter.json, builder.json, outsider.json, pocketqa.json, tester.json, create-seed.bin; mode 600, outside the repo). Every fresh run (squads-devnet.pilot.live.test.ts) loads those secret keys and signs ~26 transactions; earlier runs each needed explicit approval (docs/verification.md: \"No further sends\", parent hold). Read-only balances: pocketqa test key 4959995240 lamports, builder 17790000 test-USDC units, so funds are not the blocker. Not run.",
     "evidence": [],
-    "notes": "BLOCKED: needs explicit authorization to load and sign with the existing pilot keys. If granted, the bounded run is: cd apps/api && POCKETQA_LIVE_SQUADS_DEVNET=1 POCKETQA_LIVE_SQUADS_KEYS_DIR=~/.config/pocketqa-devnet-pilot npx vitest run --config vitest.live.config.ts test-live/squads-devnet.pilot.live.test.ts (new multisig + new operation ids; originals preserved). Historic receipts are NOT substituted for this row. Superseded by D-08 after Hamza's explicit authorization (2026-10-06); this row stays as the record of the earlier block."
+    "notes": "Status from D-08 (and E-28/E-29). The earlier BLOCKED reason (needed authorization to sign with the pilot keys) is kept above as history; it is no longer current.",
+    "build": "read-only scripts and pins at feat/firebase-vercel 6324e01 (apps/api/scripts/squads-pilot-readback.ts, src/settlement/squads/pins.ts) + evidence/pqa-ios/d03-read-amounts.mjs; the transactions read are from pilot run 1 (commit 18962e3) and its completion (commit 0b66267)"
   },
   {
     "id": "D-07",
@@ -129,49 +135,74 @@
     "id": "P-01",
     "area": "physical",
     "title": "Physical Android attached and reachable over adb",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
-    "sha": null,
+    "sha": "7bda3ce",
     "steps": "adb devices -l (read-only).",
     "fixtures": {},
-    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "observed": "Superseded by P-10/P-11 (2026-10-06 ~20:57Z onwards): adb devices -l shows \"SM02E4072811963 device usb:3-1 product:seeker_eea model:Seeker device:seeker\", reachable over adb (Android 16, SDK 36). HISTORY (original BLOCKED observation, verbatim): adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
     ],
-    "notes": "BLOCKED (human): someone at the device must accept the USB-debugging prompt. Serial only; whether it is the Seeker is unknown while unauthorized. Nothing was sent to the device."
+    "notes": "Status from the later evidence: P-10 (inspection) and P-11 (install of the E2E package). The earlier BLOCKED reading is kept above as history.",
+    "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; Hamza's installed app read only: base.apk sha256 6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9 = pocketqa-native-0aaa89b.apk (code 0aaa89b)"
   },
   {
     "id": "P-02",
     "area": "physical",
     "title": "Seeker: installed Pocket QA build and app launch (non-destructive read)",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
-    "sha": null,
+    "sha": "7bda3ce",
     "steps": "Planned: adb shell dumpsys package com.reshareai.pocketqa (versionName/versionCode), am start with launcher intent, screenshot.",
     "fixtures": {},
-    "observed": "adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
+    "observed": "Superseded by P-10/P-11: Hamza's installed com.reshareai.pocketqa 0.1.0 (1), first install = last update 2026-10-06 01:16:50 (device time), base.apk sha256 6bd0d35a…095b9 = pocketqa-native-0aaa89b.apk, calls http://127.0.0.1:8787 (loopback default); never launched or modified. The launch was proven on the side-by-side E2E package of the candidate (P-11/P-12: launched to the intro, then sign-in). HISTORY (original BLOCKED observation, verbatim): adb devices -l at 2026-10-06T18:43:12Z: \"SM02E4072811963        unauthorized usb:3-1 transport_id:1\". The USB-debugging RSA prompt on the device has not been accepted, so adb cannot read the model, packages or launch anything.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p11-apk-identity-7bda3ce.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/01-launch.png"
     ],
-    "notes": "BLOCKED (human): adb unauthorized (see P-01). Hamza's Seeker submission and recording were not touched."
+    "notes": "Status from P-10 (installed build read-only) and P-11/P-12 (launch of the candidate as com.reshareai.pocketqa.e2e). Hamza's own app was deliberately never launched (its backend is his live local data). Earlier BLOCKED kept as history.",
+    "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; Hamza's installed app read only: base.apk sha256 6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9 = pocketqa-native-0aaa89b.apk (code 0aaa89b)"
   },
   {
     "id": "P-03",
     "area": "physical",
-    "title": "Seeker: screen/mic consent, deny, stop, interruption, review, retain/discard",
-    "status": "BLOCKED",
+    "title": "Seeker: screen/mic consent, stop, review, retain (proven parts)",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
-    "sha": null,
+    "sha": "7bda3ce",
     "steps": "Not run.",
     "fixtures": {},
-    "observed": "Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "observed": "Proven later on the Seeker (E2E package of 7bda3ce): consent = in-app consent v1 gate + Android notifications/microphone grants + the MediaProjection dialog (P-14, P-15); capture with microphone, entire screen: projection TYPE_SCREEN_CAPTURE + FGS mediaProjection|microphone (P-15); stop: the capture service ended and the clip landed in review (P-15), stop verification (P-22); review + retain: Keep -> explicit upload, builder private playback (P-17); lifecycle background/foreground (P-18); real narration in the uploaded clip (P-16). HISTORY (original BLOCKED observation, verbatim): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p01-adb-devices.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/18-projection-dialog.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration-analysis.txt"
     ],
-    "notes": "BLOCKED (human). No emulator result is substituted for the physical row."
+    "notes": "Split of the original P-03 (see P-03b for what stays open). Earlier BLOCKED kept as history.",
+    "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
+  },
+  {
+    "id": "P-03b",
+    "area": "physical",
+    "title": "Seeker: deny, interruption, discard (not yet proven)",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": null,
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {},
+    "observed": "Still open after the device window: deny of the OS consent / microphone on purpose (NOT RUN), interruptions during capture (notification Stop, call taking the mic, screen lock: NOT RUN, see P-21), discard/Remove of a clip (NOT RUN, see P-20; the only removable clips are Hamza's, pending his decision), single-app sharing (FAIL P-13, fix re-check pending), submit (BLOCKED P-19). Current gate: not exercised: device capture paused by Hamza; deny/interruption/discard need a human at the Seeker.",
+    "evidence": [],
+    "notes": "Split of the original P-03; cites P-13, P-19, P-20, P-21. HISTORY (original BLOCKED observation, verbatim, superseded): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
   },
   {
     "id": "P-04",
@@ -180,12 +211,13 @@
     "status": "BLOCKED",
     "environment": "static",
     "deployment": null,
-    "sha": null,
+    "sha": "fe89787",
     "steps": "Build-only evidence on the native branch: simulator xcodebuild of the app + PocketQaBroadcast extension at fe89787 (docs/reviews/native-recording/ios-build.txt section 14, commit cf7073a).",
     "fixtures": {},
     "observed": "BUILD SUCCEEDED, appex com.reshareai.pocketqa.Broadcast (com.apple.broadcast-services-upload, RPBroadcastProcessModeSampleBuffer) embedded; 0 warnings in our sources. System broadcast cannot run in the iOS Simulator.",
     "evidence": [],
-    "notes": "BLOCKED: needs a physical iPhone plus an Apple team whose provisioning profiles include group.com.reshareai.pocketqa for the app and .Broadcast. Not part of the frozen web deployment."
+    "notes": "BLOCKED: needs a physical iPhone plus an Apple team whose provisioning profiles include group.com.reshareai.pocketqa for the app and .Broadcast. Not part of the frozen web deployment.",
+    "build": "simulator-only build of fe89787 (app + PocketQaBroadcast.appex, unsigned); evidence commit cf7073a (branch ios-freeze2-evidence), docs/reviews/native-recording/ios-build.txt section 14"
   },
   {
     "id": "B-01",
@@ -194,7 +226,7 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "web-rec-privacy shows \"Everything visible in what you share is recorded\"; getDisplayMedia calls before the click: 0; after: [{\"active\":true}] (inside user activation); getUserMedia (mic) calls: 1.",
@@ -202,7 +234,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-consent-light.png"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-02",
@@ -211,7 +244,7 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "Status \"Recording · 00:0x / 15:00\"; after Stop: \"Recording ready\", tracks [video:ended, audio:ended]. Downloaded pocketqa-recording-20261006-203818.webm 116813 bytes: stream0 opus audio 48000 Hz 1 ch, stream1 vp9 video 1280x720, matroska/webm; ffmpeg decode exit 0, problems []; volumedetect mean -21.2 dB, max 0 dB (synthetic tone, not silence). In-page replay: duration 3.852 s, played 0.364 s, error null, src blob:, 1280x720. Requests carrying data during record/stop/replay/download: [] (local only).",
@@ -221,7 +254,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-light.png",
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-light.png"
     ],
-    "notes": "The web recorder is local-only (download, never uploaded); upload of evidence files is covered by other rows."
+    "notes": "The web recorder is local-only (download, never uploaded); upload of evidence files is covered by other rows.",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-03",
@@ -230,14 +264,15 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "After Discard: Start visible again; fetch(old blob URL) -> \"revoked\".",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-04",
@@ -246,7 +281,7 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "web-rec-error: \"Microphone access was blocked … nothing was recorded\"; tracks [video:ended] (screen released); no review panel; Start enabled (retry possible).",
@@ -254,7 +289,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-denied-light.png"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-05",
@@ -263,7 +299,7 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "web-rec-ended: \"You stopped sharing from the browser\"; draft kept: \"Recording ready\"; tracks [video:ended, audio:ended].",
@@ -272,7 +308,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-recording-dark.png",
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-review-dark.png"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-06",
@@ -281,7 +318,7 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "While \"Allow the microphone\" pending, tracks [video:live]; Cancel -> \"Cancelled. Nothing was recorded.\", tracks [video:ended]. Stop sharing while pending -> \"You stopped sharing before recording started\", tracks [video:ended]. Start enabled in both.",
@@ -289,7 +326,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log",
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/web-recorder-mic-pending-light.png"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "B-07",
@@ -298,14 +336,15 @@
     "status": "PASS",
     "environment": "desktop-browser",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree .worktrees/pqa-ios-e2e at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=desktop-recorder (local Chromium 1.63 project, --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture; synthetic test-pattern screen + tone microphone; loopback API with a throwaway data dir and seeded synthetic tester/study). 6/6 passed in 36.7s, 2026-10-06T18:38Z.",
     "fixtures": {},
     "observed": "Recorder unmounted in the same document (performance.timeOrigin unchanged, not a reload); screen and microphone released; nothing kept.",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/desktop-browser/playwright-desktop-recorder.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; fake media flags --use-fake-ui-for-media-stream --use-fake-device-for-media-stream --auto-accept-this-tab-capture"
   },
   {
     "id": "W-01",
@@ -334,14 +373,15 @@
     "status": "PASS",
     "environment": "local-api",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
     "fixtures": {},
     "observed": "First visit: \"Create an account with this wallet\", 2 signIn signatures with fresh nonces, input {domain localhost:8090, uri http://localhost:8090, chainId solana:devnet, version 1}, statement \"Only sign this on localhost:8090\", signMessage 0; second visit: same address, 1 signIn, lands on discover.",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, devnet JSON-RPC test double on 127.0.0.1:8899"
   },
   {
     "id": "W-03",
@@ -350,14 +390,15 @@
     "status": "PASS",
     "environment": "local-api",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
     "fixtures": {},
     "observed": "sign-in-error \"doesn’t support Sign In With Solana\"; signMessage 0, signIn 0.",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, devnet JSON-RPC test double on 127.0.0.1:8899"
   },
   {
     "id": "W-04",
@@ -366,14 +407,15 @@
     "status": "PASS",
     "environment": "local-api",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
     "fixtures": {},
     "observed": "register 200; wallet-address shows the linked address; signMessage 1, signIn 0.",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, devnet JSON-RPC test double on 127.0.0.1:8899"
   },
   {
     "id": "W-05",
@@ -382,14 +424,15 @@
     "status": "PASS",
     "environment": "local-api",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
     "fixtures": {},
     "observed": "\"Continue with Alpha Wallet\" chooser; only the chosen wallet signed (2 signIn, other wallet 0); chosen wallet disconnect 2, other 0.",
     "evidence": [
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/playwright-wallet.log"
     ],
-    "notes": ""
+    "notes": "",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, devnet JSON-RPC test double on 127.0.0.1:8899"
   },
   {
     "id": "W-06",
@@ -398,7 +441,7 @@
     "status": "PASS",
     "environment": "local-api",
     "deployment": null,
-    "sha": null,
+    "sha": "7beaad5",
     "steps": "Own worktree at 7beaad5; PQA_E2E_API_PORT=8788 npx playwright test --project=mobile-web e2e/wallet-login.spec.ts e2e/wallet-rewards.spec.ts (loopback API with POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, origin http://localhost:8090; injected synthetic Wallet Standard test wallets; devnet JSON-RPC TEST DOUBLE on 127.0.0.1:8899, not real devnet). 5/5 passed in 55.1s.",
     "fixtures": {},
     "observed": "Builder: escrow-sim-notice \"no funds move\", pool \"3.00 simulated USDC\", total \"3.30 simulated USDC\", \"Funded (simulated)\", PUBLISHED. Tester: reward-disclaimer \"Simulation in this build: no funds move\"; AWAITING REVIEW -> Approved; payment-state \"Settled · simulation, no funds moved\" (never \"paid\"); tester rewards \"1.50 simulated USDC\", reputation 15, badge first_accepted Earned; builder escrow settled \"1.50\", available \"1.65 simulated USDC\"; export payments.received [{amountUnits 1500000, settlement simulated, status confirmed}].",
@@ -407,7 +450,8 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/builder-review-settled-light.png",
       "docs/reviews/full-e2e/evidence/pqa-ios/local-wallet/tester-session-settled-dark.png"
     ],
-    "notes": "Simulated settlement on loopback; no devnet transaction. Not offered on hosted (W-01)."
+    "notes": "Simulated settlement on loopback; no devnet transaction. Not offered on hosted (W-01).",
+    "build": "local Expo web export of 7beaad5 + local API (own worktree .worktrees/pqa-ios-e2e, detached at 7beaad5), Chromium via Playwright 1.63; POCKETQA_WALLET_LOGIN=1, POCKETQA_SETTLEMENT=simulated, devnet JSON-RPC test double on 127.0.0.1:8899"
   },
   {
     "id": "D-08",
@@ -450,18 +494,850 @@
     "id": "P-05",
     "area": "physical",
     "title": "Physical readiness: what must be accepted on the device",
-    "status": "BLOCKED",
+    "status": "PASS",
     "environment": "physical-android",
     "deployment": null,
-    "sha": null,
+    "sha": "7bda3ce",
     "steps": "adb version; adb devices -l at 2026-10-06T19:38:16Z; MD5 fingerprint of the host's PUBLIC adb key (~/.android/adbkey.pub; the private key was not read).",
     "fixtures": {
       "serial": "SM02E4072811963"
     },
-    "observed": "SM02E4072811963 still \"unauthorized\" (usb:3-1). Host adb key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF. Needed at the device: unlock, accept \"Allow USB debugging?\" for that fingerprint with \"Always allow from this computer\"; if no dialog, confirm Developer options > USB debugging is on and replug.",
+    "observed": "Gate cleared: Hamza accepted USB debugging for this Mac (host key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF); 2026-10-06 20:57:47Z adb devices -l: \"SM02E4072811963 device usb:3-1 product:seeker_eea model:Seeker device:seeker transport_id:1\" (P-10). HISTORY (original BLOCKED observation, verbatim): SM02E4072811963 still \"unauthorized\" (usb:3-1). Host adb key fingerprint 64:08:83:62:FE:03:33:13:9C:D9:F9:E4:5E:5C:0F:EF. Needed at the device: unlock, accept \"Allow USB debugging?\" for that fingerprint with \"Always allow from this computer\"; if no dialog, confirm Developer options > USB debugging is on and replug.",
     "evidence": [
-      "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt"
+      "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
     ],
-    "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device."
+    "notes": "Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker). HISTORY (original notes while BLOCKED, verbatim, superseded): BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device.",
+    "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; Hamza's installed app read only: base.apk sha256 6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9 = pocketqa-native-0aaa89b.apk (code 0aaa89b)"
+  },
+  {
+    "id": "P-10",
+    "area": "physical",
+    "title": "Seeker read-only inspection: installed build, backend, data size",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "adb devices -l; getprop; adb reverse --list; dumpsys package com.reshareai.pocketqa; adb pull base.apk (copy) + shasum/apksigner; bundle strings; dumpsys diskstats; lsof :8787. Nothing driven.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36"
+    },
+    "observed": "Seeker Android 16 (SDK 36). Hamza's com.reshareai.pocketqa 0.1.0 (1), installed 2026-10-06 01:16:50 (device time), sideloaded, RECORD_AUDIO + POST_NOTIFICATIONS granted. base.apk sha256 6bd0d35a…095b9 = pocketqa-native-0aaa89b.apk (debug key, cert SHA-256 fac61745…3b9c). Bundle has no https API base, only the loopback default -> http://127.0.0.1:8787 via adb reverse = the Mac's live USB API (PID 28574, Hamza's local data); adb reverse/forward empty. App data 1,257,472 B, cache 1,134,592 B.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
+    ],
+    "notes": "Decision: never drive the installed app (its backend is Hamza's live local data; a sign-out would clear its local clips) -> side-by-side E2E package."
+  },
+  {
+    "id": "P-11",
+    "area": "physical",
+    "title": "E2E APK of the candidate built and installed as a NEW package (identity)",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Clean detached checkout of 7bda3ce in scratch; pnpm install --frozen-lockfile; EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api EXPO_PUBLIC_POCKETQA_ENV=staging npx expo prebuild --platform android --clean --no-install; edit ONLY applicationId + app_name; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4; adb install (no -r).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "BUILD SUCCESSFUL 2m30s; 52,525,761 B; sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3; signer CN=Android Debug cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; aapt2 com.reshareai.pocketqa.e2e 0.1.0 (1) arm64-v8a; bundle https://pocketqa.vercel.app/api x1, 127.0.0.1:8787 x0. Install: Success. Hamza's app unchanged (lastUpdateTime 2026-10-06 01:16:50). Hosted /api/config at 21:03:47Z: firebase, r2, walletLogin false, settlement simulated.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p11-apk-identity-7bda3ce.txt"
+    ],
+    "notes": "versionCode is 1 (identity = SHA + APK sha256 + cert). Debug-signed, sideload only, no store."
+  },
+  {
+    "id": "P-12",
+    "area": "physical",
+    "title": "Synthetic tester signs in on the Seeker; Android device profile saved; study becomes eligible",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Intro Skip; credentials typed from ~/.config/pocketqa/qa-synthetic-tester.env in memory via adb input (never printed or screenshotted); Settings > device profile Android / \"Android 16\" / API 36 / \"Solana Seeker\" / en-US; Save device profile; Discover.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Sign-in -> Discover (device chip \"Web · Chromium (QA synthetic)\", 36 open studies; study i4bbaf… absent). After save: \"Device profile saved\"; chip \"Android · Android 16\", 38 open studies, card \"QA synthetic study be1 B (android only)\" first.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/02-sign-in-empty.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/03-discover-before-profile.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/05-device-profile-filled.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/06-device-profile-saved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/07-discover-android.png"
+    ],
+    "notes": "Observation (P3 UX): at the default scroll the profile \"Save\" button sits under the floating tab bar (Save y2355-2511, tab bar y2361-2541); taps land on the tab bar (two of my taps opened Credits) until the form is scrolled. My first fill put \"Solana Seeker\" into the API field (keyboard covered the next field); corrected before any save."
+  },
+  {
+    "id": "P-13",
+    "area": "physical",
+    "title": "Screen share with \"A single app\" on Android 14+: app crashes",
+    "status": "FAIL",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "E2E APK = candidate code 7bda3ce (feat/firebase-vercel, live as dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi) with ONLY applicationId -> com.reshareai.pocketqa.e2e and app label -> 'Pocket QA E2E' changed (so Hamza's own install and data were never touched); EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api (hosted: Firebase auth, private R2, settlement simulated). Record screen and voice -> notifications Allow + microphone allowed (Hamza) -> MediaProjection dialog -> \"A single app\" -> Chrome.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Device 23:24:58.175 local: system launched Chrome to the foreground; 23:24:59.4 FATAL in com.reshareai.pocketqa.e2e: SecurityException \"Starting FGS with type microphone … targetSDK=36 … the app must be in the eligible state/exemptions to access the foreground only permission\" at ScreenCaptureService.startForegroundCompat (ScreenCaptureService.kt:230) <- start():86 <- onStartCommand:63; \"Application Error\". Nothing recorded. The app's own recorder copy tells testers to choose \"Share one app\", i.e. the crashing path.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-sequence-logcat.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p13-crash-androidruntime.txt",
+      "docs/reviews/full-e2e/bugs/P-13-single-app-share-crash.md",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/15-dialog-notifications.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png"
+    ],
+    "notes": "P1. FIX on branch fix/e2e-p13-single-app-fgs @ 27608e9 (native-ios worktree; from feat/firebase-vercel 7d2fe75): CaptureStart puts the service in the foreground with MICROPHONE while Pocket QA is in front BEFORE the consent dialog, adds MEDIA_PROJECTION after consent; every startForeground guarded (clean ERR_FOREGROUND_REFUSED/ERR_START_FAILED, never a crash). Tests: CaptureStartTest 8/8 (RED first), all module JVM tests pass (p13-fix-tests.txt). Fix APK sha256 3635ebad4ed70585369403832ec55b9d2d8edd8fcf11d33660c3d6e4e620f87d (p13-fix-apk-identity-27608e9.txt) installed over the E2E package only at 22:39:09Z. Device re-verification with \"A single app\": NOT RUN yet (paused; needs Hamza + lead go). Supporting evidence: Hamza's own later attempts with the app in front ran with uidState TOP and did not crash."
+  },
+  {
+    "id": "P-14",
+    "area": "physical",
+    "title": "Join (consent v1), start session, task notes persist",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Open study i4bbaf…; tick \"I have read and agree to this consent text.\"; Consent and join; Start session; type a QA synthetic note; Save note; later reopen the participation from My work after an app crash/restart.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Consent and join\" disabled until ticked; after: \"Status: Consented\"; Start session -> \"Status: In progress\"; note saved: after the process restart the note text is still there and the button reads \"Saved\".",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/08-study-detail.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/09-consent.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/10-consent-checked.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/11-consented.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/12-session-started.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/13-task-note-saved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/17-participation-reopened.png"
+    ],
+    "notes": "Observation: the Save note button showed \"busy\" for >30 s in the UI tree while the note had already persisted (stale busy state; not data loss)."
+  },
+  {
+    "id": "P-15",
+    "area": "physical",
+    "title": "Entire-screen capture with microphone runs and stops; clip lands in local review",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Record screen and voice -> system dialog \"Share your screen with Pocket QA E2E?\" -> Hamza chose entire screen and confirmed at 22:19:17Z; adb readings during capture; capture ended on the device (stop by Hamza, method not observed by me).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "At 22:19:27Z: dumpsys media_projection \"(com.reshareai.pocketqa.e2e, uid=10178): TYPE_SCREEN_CAPTURE\"; ScreenCaptureService isForeground=true types=0x000000A0 (mediaProjection|microphone), ongoing notification with 1 action (Stop); FGS start logged \"Allowed … uidState: TOP\". Service gone by 22:19:50Z. Review row \"recording-2026-10-06T22:19:34.883Z.mp4 · NOT REVIEWED · video/mp4 · 7.6 MB\", 00:17, Keep/Remove; no upload until chosen.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/18-projection-dialog.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+    ],
+    "notes": "Two earlier on-device-started recordings (21:49/21:50Z) captured Hamza's own Google search: kept LOCAL only, never uploaded, not committed anywhere; screenshots of them were deleted. The first attempt (21:38Z) died with the 60 s screen timeout before the dialog was answered (environment, not product)."
+  },
+  {
+    "id": "P-16",
+    "area": "physical",
+    "title": "Uploaded Seeker clip: audio track present with voiced speech energy (signal-level)",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "pqa-be1 downloaded the uploaded evidence via the builder private playback grant; pqa-ios: sha256 check, ffprobe, decode, volumedetect, per-0.544 s RMS (full and 300-3400 Hz), spectrogram (p16-narration.sh). The audio file is NOT committed (a real person's voice).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "sha256 92c5c6caf3f9661da9e6773375fc05fe4393724038cbc5f0e6382051ba0ca87c, 7,936,696 B = declared. AAC 44.1 kHz mono 16.53 s + H.264 574x1280 16.61 s; decode exit 0. mean -24.6 dB, max -4.0 dB. Voice band ~-80 dB for the first 1.2 s, then bursts of -15 to -30 dB at 1.7-5.1, 6.6-8.3, 9.4-13.2, 14.8, 15.9 s with pauses -57 to -83 dB; 59 dB dynamic range; spectrogram shows harmonic stacks (pitched fundamental + harmonics, formants) in syllabic bursts = real voiced speech.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration-analysis.txt",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-spectrogram.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p16-narration.sh"
+    ],
+    "notes": "Signal-level only: an audio track that decodes and carries voiced speech energy (harmonic stacks, syllabic bursts, 59 dB above the floor). The words are NOT claimed; the narration/known-phrase protocol is P-16b."
+  },
+  {
+    "id": "P-16b",
+    "area": "physical",
+    "title": "Narration protocol: known phrase spoken on request and identified in the clip",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "pqa-be1 downloaded the uploaded evidence via the builder private playback grant; pqa-ios: sha256 check, ffprobe, decode, volumedetect, per-0.544 s RMS (full and 300-3400 Hz), spectrogram (p16-narration.sh). The audio file is NOT committed (a real person's voice).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Not run: the capture (22:19:17.9 to ~22:19:34.5Z) ended before the phrase request (22:19:41Z), and Hamza asked not to repeat the capture. No transcript or word-level check was made; no claim about the words.",
+    "evidence": [],
+    "notes": "Split from P-16 (pqa-qa final matrix r1 item 1)."
+  },
+  {
+    "id": "P-17",
+    "area": "physical",
+    "title": "Keep and explicit upload to private R2; builder-side private playback",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "On the new clip: Keep -> \"Upload 1 kept item\". Builder check by pqa-be1 (QA synthetic builder, Chrome): playback token + R2 range requests.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "App: \"Uploaded (1): Recording · video/mp4 · 7.6 MB · Oct 7, 12:23 AM\" (22:23Z); the 2 other local clips untouched. be1: evidence 66b75ea5-26c4-4117-bdfb-d0b33f4e7c9a screen_recording video/mp4 7936696 B, durationMs 16585, capturedOn android; POST /evidence/:id/playback-token 200; R2 206 video/mp4; readyState 4; duration 16.649 s; 574x1280; audio decodes; no media error. Participation still in_progress (not submitted).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+    ],
+    "notes": "Upload was explicit (tapped); nothing uploaded automatically. Tester-side playback of the uploaded item: NOT OFFERED (the uploaded row has no player; tap does nothing)."
+  },
+  {
+    "id": "P-18",
+    "area": "physical",
+    "title": "Lifecycle: background and foreground keep the session state",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "HOME; wait 20 s; bring Pocket QA E2E back (am start, task to front).",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Same process (PID 17218), no crash/kill in logcat; after return \"Uploaded (1): Recording · 7.6 MB\" and \"upload or remove 2 items\" unchanged.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/23-after-lifecycle-bottom.png"
+    ],
+    "notes": "Rotation: NOT RUN (needs Hamza to rotate; capture paused)."
+  },
+  {
+    "id": "P-19",
+    "area": "physical",
+    "title": "Submit the participation for review",
+    "status": "BLOCKED",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Submit for review\" stays disabled: \"Stop any recording, then upload or remove 2 items before submitting.\" The 2 items are Hamza's own Google-search clips (must never be uploaded).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/shots/20-third-clip-review.png"
+    ],
+    "notes": "BLOCKED (human decision): needs Hamza's explicit yes to Remove those 2 local clips; until then no remove, no submit."
+  },
+  {
+    "id": "P-20",
+    "area": "physical",
+    "title": "Discard/Remove of a local clip",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Remove exists on every unreviewed clip; not exercised (the only removable clips are Hamza's, pending his decision).",
+    "evidence": [],
+    "notes": ""
+  },
+  {
+    "id": "P-21",
+    "area": "physical",
+    "title": "Interruptions: notification Stop, mic taken by a call, screen lock during capture",
+    "status": "NOT RUN",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Not run.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "Capture testing paused by Hamza/lead after the window.",
+    "evidence": [],
+    "notes": "Emulator evidence exists elsewhere; physical not claimed."
+  },
+  {
+    "id": "P-22",
+    "area": "physical",
+    "title": "Stop verification after the user reported \"still recording\"",
+    "status": "PASS",
+    "environment": "physical-android",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Read-only: dumpsys media_projection, dumpsys activity services (all apps + both Pocket QA packages), dumpsys audio RecordActivityMonitor, dumpsys notification (Pocket QA / record / cast only), dumpsys statusbar, at 22:39:19Z.",
+    "fixtures": {
+      "device": "Solana Seeker SM02E4072811963 (product seeker_eea), Android 16 / API 36",
+      "app": "com.reshareai.pocketqa.e2e \"Pocket QA E2E\" (E2E APK sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3)",
+      "tester": "QA synthetic tester (hosted)",
+      "study": "i4bbaf30706c493edcacc8c3ec61a5af",
+      "participation": "0d9f4289-fec4-45c2-8d99-1659a937021e"
+    },
+    "observed": "\"Media Projection: null\"; com.reshareai.pocketqa.e2e and com.reshareai.pocketqa: 0 foreground services; no FGS with mediaProjection/microphone type on the device; no active recording client; no Pocket QA, screen-record or cast notification; status bar icons none. Nothing was stopped because nothing was running (the capture service had ended ~22:19:50Z).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/physical/p1x-timeline.txt"
+    ],
+    "notes": "Personal notifications seen in the dump were not recorded or relayed."
+  },
+  {
+    "id": "W-10",
+    "area": "web",
+    "title": "Sign-in (builder) with the Google button visible (not used)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | mobile viewport: {\"googleButtonVisible\": true, \"landed\": \"studies-screen\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-10-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-10-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-11",
+    "area": "web",
+    "title": "Builder test-credit balance before",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"builderBalance\": \"780 test credits\", \"budgetCard\": null} | mobile viewport: {\"builderBalance\": \"730 test credits\", \"budgetCard\": null} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-11-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-11-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-12",
+    "area": "web",
+    "title": "Builder creates a small test-credit study (1 slot) and publishes it",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"title\": \"QA synthetic web regression desktop-muxa0p92\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i5b95f5fc9bf4f57fa53d65471f156c4\"} | mobile viewport: {\"title\": \"QA synthetic web regression mobile-muxa6n9k\", \"rewardField\": \"50\", \"pool\": null, \"statusAfterSave\": \"Status: DRAFT\", \"statusAfterPublish\": \"Status: PUBLISHED\", \"budgetReserved\": \"50\", \"url\": \"/builder/study/i15bd4c262534189dc7b3d6053d9d3aa\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-12-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-12-builder.png"
+    ],
+    "notes": "Default reward 50 test credits; reserved 50 at publish."
+  },
+  {
+    "id": "W-13",
+    "area": "web",
+    "title": "Tester sign-in; tester balance before",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"testerBalance\": \"150 test credits\"} | mobile viewport: {\"testerBalance\": \"200 test credits\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-13-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-13-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-14",
+    "area": "web",
+    "title": "Eligibility: web-only study hidden for an Android profile, shown after a web profile",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"chipBefore\": \"MATCHED TO Android · Android 16 Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | mobile viewport: {\"chipBefore\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardBeforeWebProfile\": 0, \"chipAfter\": \"MATCHED TO Web · Chromium (QA synthetic) Edit\", \"studyCardAfterWebProfile\": 1} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-14-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-14-tester.png"
+    ],
+    "notes": "Mobile run: the profile was already web (the desktop run had saved it), and the \"before\" count was taken before the Discover list had loaded, so it is not an eligibility signal. The negative eligibility proof is the desktop run: Android 16 profile -> 0 cards for the web-only study; after saving the web profile -> 1 card."
+  },
+  {
+    "id": "W-15",
+    "area": "web",
+    "title": "Study detail, consent checkbox gate, join",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | mobile viewport: {\"disclaimer\": \"Reward if approved · Not guaranteed. Test credits have no cash value.\", \"consentSubmitDisabledBeforeTick\": true, \"ariaCheckedAfterTick\": \"true\", \"status\": \"Status: CONSENTED\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-15-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-15-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-16",
+    "area": "web",
+    "title": "Session start; task note saved and persisted after reload",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | mobile viewport: {\"status\": \"Status: IN PROGRESS\", \"noteAfterReload\": \"QA synthetic note (web regression): the home screen loaded; \"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-16-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-16-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-17",
+    "area": "web",
+    "title": "Web evidence upload: synthetic PNG -> keep -> upload to private R2",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:55 AM\"} | mobile viewport: {\"pendingBeforeKeep\": \"Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.\", \"submitDisabledWhilePending\": true, \"uploaded\": \"Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:59 AM\"} | console/network issues: tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/b666f9dc-427b-463d-9123-b4e8886dd52b net::ERR_; tester failed: PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/ed18cb42-af60-4702-b097-12157ce3f817 net::ERR_",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-17-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-17-tester.png"
+    ],
+    "notes": "The single failed request in each upload (PUT …/quarantine/<id> net::ERR_ABORTED) is explained in W-24: one PUT, completion 200, no retry; Chromium logs the unread response as aborted."
+  },
+  {
+    "id": "W-18",
+    "area": "web",
+    "title": "Submit the participation",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | mobile viewport: {\"status\": \"Status: AWAITING REVIEW\", \"awaiting\": \"Awaiting review The builder will approve or reject your work. You’ll see the decision here.\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-18-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-18-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-19",
+    "area": "web",
+    "title": "Builder review: note, AI unavailable, private evidence image, finding, approve",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 12:55 AM\"} | mobile viewport: {\"note\": \"QA synthetic note (web regression): the home screen loaded; the main button labe\", \"ai\": \"Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.\", \"evidenceItems\": 1, \"evidenceMedia\": {\"tag\": \"img\", \"complete\": true, \"naturalWidth\": 24, \"srcHost\": \"8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com\"}, \"decided\": \"Decision: Approved Decided Oct 7, 1:00 AM\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-19-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-19-builder.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-21",
+    "area": "web",
+    "title": "Tester reputation page",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"points\": \"65\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 65 points Earned only when a builder accepts your work. Points are reputation, no\"} | mobile viewport: {\"points\": \"75\", \"hero\": \"TOP BADGE Reliable tester Earned · NEW 75 points Earned only when a builder accepts your work. Points are reputation, no\"} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-21-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-21-tester.png"
+    ],
+    "notes": ""
+  },
+  {
+    "id": "W-22",
+    "area": "web",
+    "title": "Tester data export",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"exportDone\": \"Export ready 11 participations, 0 studies, 4 evidence items, 6 ledger entries, 0 wallet escrow records (each labelled with its settlement), 7 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 16253}} | mobile viewport: {\"exportDone\": \"Export ready 12 participations, 0 studies, 5 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 8 reputation events.\", \"download\": {\"suggested\": \"pocket-qa-export.json\", \"topKeys\": [\"exportedAt\", \"user\", \"studies\", \"participations\", \"evidence\", \"findings\", \"ledger\", \"disputes\", \"payments\", \"reputation\"], \"bytes\": 18386}} | console/network issues: none",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-22-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+    ],
+    "notes": "The export file was saved, its top-level keys recorded, and its content NOT kept in evidence."
+  },
+  {
+    "id": "W-20",
+    "area": "web",
+    "title": "Test-credit ledger after approval: tester credited once, builder debited once; tester sees approval and the finding",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop (completed by finish.mjs on the same approved participation): tester 150 -> 200 (\"Approved 50 test credits added to your balance\", top ledger row \"Approved work Oct 7, 12:55 AM +50\"); builder 780 -> 730; finding visible to the tester. | mobile viewport: tester 200 -> 250, builder 730 -> 680, approval notice same text. | desktop trace run: tester 250 -> 300, builder 680 -> 630. Each journey = exactly one +50 for the tester and one -50 for the builder (reserved 50 at publish). Console/network issues: none.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-approved.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-tester-credits.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-20-builder-budget.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-20-builder.png"
+    ],
+    "notes": "The first desktop attempt FAILED in MY runner (it looked for a budget tab on the study screen; the builder budget is the /budget route), recorded in desktop/results.json; the runner was fixed and the step completed read-only. Not a product defect. Ledger values can also move if another agent uses the same synthetic pair concurrently; none of the deltas here deviated from +50/-50."
+  },
+  {
+    "id": "W-23",
+    "area": "web",
+    "title": "Sign-out (both roles) and private-route denial after sign-out",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop: {\"tester\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOut\": \"/sign-in\", \"privateRouteNow\": \"/sign-in\", \"balanceVisible\": 0, \"signInVisible\": 1}} | mobile viewport: {\"tester\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}, \"builder\": {\"afterSignOutUrl\": \"/sign-in\", \"creditsVisible\": 0, \"signInVisible\": 1}} (tester /credits and builder /budget redirect to /sign-in, no balance rendered). Console/network issues: none.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop/W-23-builder.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-tester.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-23-builder.png"
+    ],
+    "notes": "First desktop attempt failed in MY runner (it opened /settings for the builder, whose route is /builder-settings); completed by finish.mjs. Not a product defect."
+  },
+  {
+    "id": "W-24",
+    "area": "web",
+    "title": "Upload request trace: one PUT to private R2, completion verified server-side (explains the logged ERR_ABORTED)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "desktop trace run: t=0 POST /api/participations/700a3313…/evidence/upload-intents -> 200 (613 ms); t=613 PUT /pocketqa-evidence/quarantine/1ba50da7… (one PUT only); t=942 POST /api/evidence/upload-intents/1ba50da7…/complete issued (the client only completes when the PUT returned ok, apps/mobile/src/api/client.ts:151-163) and at t=942 Chromium logs the PUT as net::ERR_ABORTED; t=2270 complete -> 200; builder GET /pocketqa-evidence/evidence/4f59c370… -> 200. No retry, no lost upload; the abort is the unread response body being torn down.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/r2-trace.json",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/desktop-trace/results.json"
+    ],
+    "notes": "Benign log artefact (could be silenced by reading/cancelling the PUT response body)."
+  },
+  {
+    "id": "W-25",
+    "area": "web",
+    "title": "Tester sees builder findings on the approved participation (both viewports)",
+    "status": "PASS",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "findcheck.mjs on participations 125d94e6 (mobile run) and fa5abae9 (desktop run), at Pixel 7 and 1280x900: \"Findings from the builder\" > \"QA synthetic finding: main button label\" + \"Synthetic web regression finding; no real issue.\" visible (1 match each).",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-mobile-125d94e6.png",
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/findcheck-desktop-fa5abae9.png"
+    ],
+    "notes": "The mobile W-20 check reported findingVisible false because it ran right after reload before the section rendered (runner timing); confirmed visible after the page settled."
+  },
+  {
+    "id": "W-26",
+    "area": "web",
+    "title": "Copy observation: hosted Settings mentions linking a devnet wallet",
+    "status": "NOT OFFERED",
+    "environment": "hosted-simulated",
+    "deployment": "dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi",
+    "sha": "7bda3ce",
+    "steps": "Production https://pocketqa.vercel.app (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi, settlement simulated, test credits), real UI in headless Chromium (Playwright 1.63) at desktop 1280x900 AND Pixel 7 emulation (\"mobile viewport\"); synthetic pair QA synthetic builder/tester (hosted) from the env files in memory (never printed; no screenshot while a sign-in field held text); runner evidence/pqa-ios/web/regression.mjs. Per step: full-page screenshot per role, console errors/warnings, page errors, failed requests, HTTP >= 400.",
+    "fixtures": {
+      "builder": "QA synthetic builder (hosted)",
+      "tester": "QA synthetic tester (hosted)",
+      "studies": {
+        "desktop": "i5b95f5fc9bf4f57fa53d65471f156c4",
+        "mobile": "i15bd4c262534189dc7b3d6053d9d3aa",
+        "desktop-trace": "i8c416b2330d1d0916208a3cab9b9c14"
+      },
+      "participations": {
+        "desktop": "fa5abae9-1da5-4a3d-8972-a103edf46ac5",
+        "mobile": "125d94e6-4af5-449a-8a49-5ec90039f80a",
+        "desktop-trace": "700a3313-7aaf-49df-adef-40e141721833"
+      }
+    },
+    "observed": "Production Settings (tester, mobile viewport): \"Unavailable on this device · No Solana wallet extension found. Install one to link a devnet wallet.\" while hosted walletLogin=false and devnetTransfers=false.",
+    "evidence": [
+      "docs/reviews/full-e2e/evidence/pqa-ios/web/mobile/W-22-tester.png"
+    ],
+    "notes": "Not a functional defect; flagged for the copy/economics owner (devnet wording on the production site)."
   }
 ]

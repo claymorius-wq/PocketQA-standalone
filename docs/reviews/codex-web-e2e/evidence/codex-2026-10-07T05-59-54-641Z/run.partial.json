@@ -1,0 +1,650 @@
+{
+  "label": "test-only hostname mapping, TLS errors ignored, NOT the hosted deployment",
+  "walletClass": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension; NOT extension compatibility",
+  "target": {
+    "origin": "https://pocketqa-devnet.vercel.app",
+    "proxyPort": 9443,
+    "backend": "http://127.0.0.1:8697",
+    "artifact": "4ee4603"
+  },
+  "mode": "resume",
+  "resume": {
+    "studyId": "i6e0cf44ec9c8297d06d282afc553946",
+    "title": "Codex devnet journey muxosrqy",
+    "noCreationFundingOrPublish": true
+  },
+  "fundingFacts": {
+    "escrow": {
+      "id": "i6e0cf44ec9c8297d06d282afc553946",
+      "study_id": "i6e0cf44ec9c8297d06d282afc553946",
+      "settlement": "squads_devnet",
+      "network": "solana:devnet",
+      "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "vault": "GJNTrTktAMSMhCzPa6YP3hrDVTukJs2qMvueUpQAQzsz",
+      "fee_bps": 1000,
+      "created_at": "2026-10-07T05:48:38.341Z",
+      "builder_id": "7b05628c-3654-46f8-aef2-17bebab22a35",
+      "multisig": null,
+      "vault_authority": null,
+      "funding_wallet": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn"
+    },
+    "funding": {
+      "id": "65503611-1e64-45d8-9798-5674e6019e6c",
+      "study_id": "i6e0cf44ec9c8297d06d282afc553946",
+      "amount_units": 1100000,
+      "reference": "BtytnEsmD4wzpjUQ5XZ9zDaeppzuPHEjMjLDd2NuU3FE",
+      "failure_reason": null,
+      "created_at": 1791352123351,
+      "expires_at": 1791353923351,
+      "signature": "4TyVGsoCE6… sha256 96f59695d403dd1b88ff27d38b80af93d4588c5657bf5a6dd9e8b82a711b15f1",
+      "source": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+      "confirmed_at": 1791352131977,
+      "status": "confirmed"
+    }
+  },
+  "ids": {
+    "testerWalletLink": "already-linked",
+    "studyId": "i6e0cf44ec9c8297d06d282afc553946"
+  },
+  "signatures": {
+    "builder": [],
+    "tester": []
+  },
+  "screenshots": [
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/00-first-navigation.png",
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/01-builder-signed-in.png",
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/02-tester3-signed-in.png",
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/03-tester3-wallet-linked.png",
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/04-tester3-device-profile.png",
+    "/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/evidence/codex-2026-10-07T05-59-54-641Z/05-resume-builder-study-published.png"
+  ],
+  "walletLogs": {
+    "builder": [],
+    "tester": []
+  },
+  "wallets": {
+    "builder": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "tester": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+  },
+  "firstNavigation": {
+    "url": "https://pocketqa-devnet.vercel.app/",
+    "title": "Pocket QA"
+  },
+  "title": "Codex devnet journey muxosrqy",
+  "error": {
+    "message": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('study-screen') to be visible\u001b[22m\n",
+    "stack": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('study-screen') to be visible\u001b[22m\n\n    at waitVisible (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/browser-devnet-run.mjs:356:13)\n    at main (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/firebase-vercel/docs/reviews/codex-web-e2e/browser-devnet-run.mjs:569:11)"
+  },
+  "consoleLog": [
+    {
+      "at": "2026-10-07T05:59:57.558Z",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    },
+    {
+      "at": "2026-10-07T05:59:59.693Z",
+      "type": "verbose",
+      "text": "[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o"
+    }
+  ],
+  "network": [
+    {
+      "at": "2026-10-07T05:59:55.885Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:55.927Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.108Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.108Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.109Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.109Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.109Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.110Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.110Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.170Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.239Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/sign-in",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.277Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.394Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.395Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.395Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.397Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.397Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.397Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.397Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:57.416Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:58.066Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:58.376Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:58.936Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.433Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/sign-in",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.488Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.633Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.633Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.633Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.634Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.634Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.634Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.634Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.644Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T05:59:59.947Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.114Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.397Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/studies",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.512Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.607Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/settings",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.649Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.690Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.690Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.691Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.691Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.691Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.691Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.691Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.699Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:00.872Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.309Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.523Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/settings",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.563Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.607Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.607Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.608Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.608Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.608Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.608Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.608Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.616Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:01.855Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:02.424Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:02.889Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/ai/status",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:03.787Z",
+      "method": "PUT",
+      "url": "https://pocketqa-devnet.vercel.app/api/me/device",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.179Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/me",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.377Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/builder/study/i6e0cf44ec9c8297d06d282afc553946",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.413Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.557Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.557Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.558Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.559Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.559Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.559Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.559Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:04.995Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:05.219Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:05.744Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:06.724Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/studies/i6e0cf44ec9c8297d06d282afc553946/disputes",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:06.772Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/studies/i6e0cf44ec9c8297d06d282afc553946/participations",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.360Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/studies/i6e0cf44ec9c8297d06d282afc553946",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.757Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/discover",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.800Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/_expo/static/js/web/entry-6eda69395f3347162a8f0f889d9bd364.js",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.843Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/300Light/RedHatDisplay_300Light.4b0d17338c206bd9b5d3766c6aa80150.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/400Regular/RedHatDisplay_400Regular.b08afd469af8692fc04bec286f4a1f1c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/red-hat-display/500Medium/RedHatDisplay_500Medium.f43470571d5f33565496ed47d605b197.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/400Regular/DMMono_400Regular.cb9880dcf9a05f61aa6aa7356a649bd2.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/400Regular/InstrumentSans_400Regular.2b81d5b6a0ff6239ab299c80e4fcceb7.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/instrument-sans/600SemiBold/InstrumentSans_600SemiBold.b0c4d14368e931d548bddc090025985c.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.844Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/assets/__node_modules/@expo-google-fonts/dm-mono/500Medium/DMMono_500Medium.9471d48e180ae37ead56e619929a5a37.ttf",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:08.850Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/config",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:09.030Z",
+      "method": "POST",
+      "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:09.443Z",
+      "method": "POST",
+      "url": "https://pocketqa-devnet.vercel.app/api/auth/identity/session",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:10.258Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/studies/eligible",
+      "status": 200
+    },
+    {
+      "at": "2026-10-07T06:00:11.555Z",
+      "method": "GET",
+      "url": "https://pocketqa-devnet.vercel.app/api/tester/studies/i6e0cf44ec9c8297d06d282afc553946",
+      "status": 200
+    }
+  ]
+}

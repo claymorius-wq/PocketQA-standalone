@@ -1123,3 +1123,10 @@ $ build-deploy-google.mjs → secret scan clean (4/4 server-only variables, 7 va
 $ vercel deploy --prebuilt --prod → https://pocketqa-n29jca8ld-…vercel.app aliased https://pocketqa.vercel.app; dpl_GPVCsNcfhQ6RufakYjqA18GmUkBX ● Ready
 $ live: entry-d9b5472d…; /api/config googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated; /api/health {"ok":true,"contractVersion":"0.6.1"}
 ```
+
+### 2026-10-06: H-33 fix deployed (dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi from 7bda3ce = merge of fix/e2e-h33 a3582c2, pqa-qa r2 APPROVE)
+```
+$ clean detached worktree at 7bda3ce; build-deploy-google.mjs → secret scan clean (4/4, 7 values); Google-on headers; entry-03fa1a9897a6fa8d485ac9bb9a680e2e.js
+$ vercel deploy --prebuilt --prod → https://pocketqa-7346kkqla-…vercel.app aliased https://pocketqa.vercel.app; dpl_DfajPV9SaXdbJ8TrCdujU5kr1bvi ● Ready
+$ live: entry-03fa1a98…; /api/config unchanged (googleSignIn true, walletLogin false, testCredits true, devnetTransfers false, settlement simulated); /api/health ok 0.6.1; COOP same-origin-allow-popups
+```

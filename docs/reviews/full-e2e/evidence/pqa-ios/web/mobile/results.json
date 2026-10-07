@@ -1,0 +1,386 @@
+[
+  {
+    "id": "W-10",
+    "viewport": "mobile",
+    "title": "Builder signs in (Google button visible, not used)",
+    "at": "2026-10-06T22:59:30.409Z",
+    "status": "PASS",
+    "observed": {
+      "googleButtonVisible": true,
+      "landed": "studies-screen"
+    },
+    "error": null,
+    "shots": [
+      "W-10-builder.png"
+    ],
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "builder": "/studies"
+    }
+  },
+  {
+    "id": "W-11",
+    "viewport": "mobile",
+    "title": "Builder budget before (test-credit ledger)",
+    "at": "2026-10-06T22:59:33.956Z",
+    "status": "PASS",
+    "observed": {
+      "builderBalance": "730 test credits",
+      "budgetCard": null
+    },
+    "error": null,
+    "shots": [
+      "W-11-builder.png"
+    ],
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "builder": "/budget"
+    }
+  },
+  {
+    "id": "W-12",
+    "viewport": "mobile",
+    "title": "Builder creates a small test-credit study (1 slot) and publishes it",
+    "at": "2026-10-06T22:59:35.673Z",
+    "status": "PASS",
+    "observed": {
+      "title": "QA synthetic web regression mobile-muxa6n9k",
+      "rewardField": "50",
+      "pool": null,
+      "statusAfterSave": "Status: DRAFT",
+      "statusAfterPublish": "Status: PUBLISHED",
+      "budgetReserved": "50",
+      "url": "/builder/study/i15bd4c262534189dc7b3d6053d9d3aa"
+    },
+    "error": null,
+    "shots": [
+      "W-12-builder.png"
+    ],
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "builder": "/builder/study/i15bd4c262534189dc7b3d6053d9d3aa"
+    }
+  },
+  {
+    "id": "W-13",
+    "viewport": "mobile",
+    "title": "Tester signs in; ledger before",
+    "at": "2026-10-06T22:59:40.195Z",
+    "status": "PASS",
+    "observed": {
+      "testerBalance": "200 test credits"
+    },
+    "error": null,
+    "shots": [
+      "W-13-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/credits"
+    }
+  },
+  {
+    "id": "W-14",
+    "viewport": "mobile",
+    "title": "Eligibility: web-only study hidden for an Android profile, shown after saving a web profile",
+    "at": "2026-10-06T22:59:46.293Z",
+    "status": "PASS",
+    "observed": {
+      "chipBefore": "MATCHED TO Web · Chromium (QA synthetic) Edit",
+      "studyCardBeforeWebProfile": 0,
+      "chipAfter": "MATCHED TO Web · Chromium (QA synthetic) Edit",
+      "studyCardAfterWebProfile": 1
+    },
+    "error": null,
+    "shots": [
+      "W-14-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/discover"
+    }
+  },
+  {
+    "id": "W-15",
+    "viewport": "mobile",
+    "title": "Tester opens the study, consents (checkbox gate) and joins",
+    "at": "2026-10-06T22:59:49.861Z",
+    "status": "PASS",
+    "observed": {
+      "disclaimer": "Reward if approved · Not guaranteed. Test credits have no cash value.",
+      "consentSubmitDisabledBeforeTick": true,
+      "ariaCheckedAfterTick": "true",
+      "status": "Status: CONSENTED"
+    },
+    "error": null,
+    "shots": [
+      "W-15-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/participation/125d94e6-4af5-449a-8a49-5ec90039f80a"
+    }
+  },
+  {
+    "id": "W-16",
+    "viewport": "mobile",
+    "title": "Tester starts the session and saves a task note",
+    "at": "2026-10-06T22:59:53.102Z",
+    "status": "PASS",
+    "observed": {
+      "status": "Status: IN PROGRESS",
+      "noteAfterReload": "QA synthetic note (web regression): the home screen loaded; "
+    },
+    "error": null,
+    "shots": [
+      "W-16-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/participation/125d94e6-4af5-449a-8a49-5ec90039f80a"
+    }
+  },
+  {
+    "id": "W-17",
+    "viewport": "mobile",
+    "title": "Tester attaches a synthetic PNG, keeps it and uploads it to private R2",
+    "at": "2026-10-06T22:59:58.050Z",
+    "status": "PASS",
+    "observed": {
+      "pendingBeforeKeep": "Evidence not uploaded yet Stop any recording, then upload or remove 1 item before submitting. Submitting locks your evidence.",
+      "submitDisabledWhilePending": true,
+      "uploaded": "Uploaded (1) Screenshot · image/png · 88 B · Oct 7, 12:59 AM"
+    },
+    "error": null,
+    "shots": [
+      "W-17-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [
+        "PUT https://8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com/pocketqa-evidence/quarantine/ed18cb42-af60-4702-b097-12157ce3f817 net::ERR_ABORTED"
+      ],
+      "http": []
+    },
+    "url": {
+      "tester": "/participation/125d94e6-4af5-449a-8a49-5ec90039f80a"
+    }
+  },
+  {
+    "id": "W-18",
+    "viewport": "mobile",
+    "title": "Tester submits the participation",
+    "at": "2026-10-06T23:00:02.106Z",
+    "status": "PASS",
+    "observed": {
+      "status": "Status: AWAITING REVIEW",
+      "awaiting": "Awaiting review The builder will approve or reject your work. You’ll see the decision here."
+    },
+    "error": null,
+    "shots": [
+      "W-18-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/participation/125d94e6-4af5-449a-8a49-5ec90039f80a"
+    }
+  },
+  {
+    "id": "W-19",
+    "viewport": "mobile",
+    "title": "Builder reviews: note, private evidence playback, finding, approve",
+    "at": "2026-10-06T23:00:06.157Z",
+    "status": "PASS",
+    "observed": {
+      "note": "QA synthetic note (web regression): the home screen loaded; the main button labe",
+      "ai": "Analysis unavailable No AI provider is configured. Review the evidence and write findings yourself.",
+      "evidenceItems": 1,
+      "evidenceMedia": {
+        "tag": "img",
+        "complete": true,
+        "naturalWidth": 24,
+        "srcHost": "8e2ef86d0d56ab1f9e3ee677c3a2f64d.r2.cloudflarestorage.com"
+      },
+      "decided": "Decision: Approved Decided Oct 7, 1:00 AM"
+    },
+    "error": null,
+    "shots": [
+      "W-19-builder.png"
+    ],
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "builder": "/builder/review/125d94e6-4af5-449a-8a49-5ec90039f80a"
+    }
+  },
+  {
+    "id": "W-20",
+    "viewport": "mobile",
+    "title": "Ledger after: tester credited once, builder awarded; tester sees approval + finding",
+    "at": "2026-10-06T23:00:15.279Z",
+    "status": "PASS",
+    "observed": {
+      "approved": "Approved 50 test credits added to your balance. Test credits have no cash value.",
+      "findingVisible": false,
+      "testerBefore": "200 test credits",
+      "testerAfter": "250 test credits",
+      "builderBefore": "730 test credits",
+      "builderAfter": "680 test credits",
+      "studyBudgetAwarded": null,
+      "studyBudgetReserved": null
+    },
+    "error": null,
+    "shots": [
+      "W-20-tester.png",
+      "W-20-builder.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/credits",
+      "builder": "/budget"
+    }
+  },
+  {
+    "id": "W-21",
+    "viewport": "mobile",
+    "title": "Tester reputation page",
+    "at": "2026-10-06T23:00:22.165Z",
+    "status": "PASS",
+    "observed": {
+      "points": "75",
+      "hero": "TOP BADGE Reliable tester Earned · NEW 75 points Earned only when a builder accepts your work. Points are reputation, no"
+    },
+    "error": null,
+    "shots": [
+      "W-21-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/reputation"
+    }
+  },
+  {
+    "id": "W-22",
+    "viewport": "mobile",
+    "title": "Tester settings: data export",
+    "at": "2026-10-06T23:00:25.455Z",
+    "status": "PASS",
+    "observed": {
+      "exportDone": "Export ready 12 participations, 0 studies, 5 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 8 reputation events.",
+      "download": {
+        "suggested": "pocket-qa-export.json",
+        "topKeys": [
+          "exportedAt",
+          "user",
+          "studies",
+          "participations",
+          "evidence",
+          "findings",
+          "ledger",
+          "disputes",
+          "payments",
+          "reputation"
+        ],
+        "bytes": 18386
+      }
+    },
+    "error": null,
+    "shots": [
+      "W-22-tester.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/settings"
+    }
+  },
+  {
+    "id": "W-23",
+    "viewport": "mobile",
+    "title": "Sign-out (both roles) and private-route denial after sign-out",
+    "at": "2026-10-06T23:00:58.688Z",
+    "status": "PASS",
+    "observed": {
+      "tester": {
+        "afterSignOutUrl": "/sign-in",
+        "creditsVisible": 0,
+        "signInVisible": 1
+      },
+      "builder": {
+        "afterSignOutUrl": "/sign-in",
+        "creditsVisible": 0,
+        "signInVisible": 1
+      }
+    },
+    "error": null,
+    "shots": [
+      "W-23-tester.png",
+      "W-23-builder.png"
+    ],
+    "testerLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "builderLog": {
+      "console": [],
+      "failed": [],
+      "http": []
+    },
+    "url": {
+      "tester": "/sign-in",
+      "builder": "/sign-in"
+    }
+  }
+]
