@@ -1,0 +1,15 @@
+# P-13 fix tests (branch fix/e2e-p13-single-app-fgs @ 27608e9, native-ios worktree)
+$ ./gradlew :pocketqa-screen-capture:testDebugUnitTest --tests "*CaptureStartTest*"   # RED, before CaptureStart existed
+e: modules/screen-capture/android/src/test/java/expo/modules/pocketqascreencapture/CaptureStartTest.kt:15:27 Unresolved reference 'CaptureStart'.
+e: modules/screen-capture/android/src/test/java/expo/modules/pocketqascreencapture/CaptureStartTest.kt:27:13 Unresolved reference 'CaptureStart'.
+e: modules/screen-capture/android/src/test/java/expo/modules/pocketqascreencapture/CaptureStartTest.kt:39:13 Unresolved reference 'CaptureStart'.
+BUILD FAILED in 26s
+
+$ ./gradlew :pocketqa-screen-capture:compileReleaseKotlin :pocketqa-screen-capture:testDebugUnitTest   # GREEN
+BUILD SUCCESSFUL in 8s
+testsuite name="expo.modules.pocketqascreencapture.CaptureMathTest" tests="2" skipped="0" failures="0" errors="0"
+testsuite name="expo.modules.pocketqascreencapture.CaptureStartTest" tests="8" skipped="0" failures="0" errors="0"
+testsuite name="expo.modules.pocketqascreencapture.PendingStoreTest" tests="10" skipped="0" failures="0" errors="0"
+testsuite name="expo.modules.pocketqascreencapture.PipelineLogicTest" tests="10" skipped="0" failures="0" errors="0"
+testsuite name="expo.modules.pocketqascreencapture.VoiceCheckTest" tests="9" skipped="1" failures="0" errors="0"
+(VoiceCheckTest's 1 skip = the private real-clip test, -Dpqa.voiceClips not set)

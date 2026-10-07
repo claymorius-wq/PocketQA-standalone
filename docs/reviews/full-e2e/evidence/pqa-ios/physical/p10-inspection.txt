@@ -1,0 +1,28 @@
+# P-10 Seeker read-only inspection (pqa-ios)
+2026-10-06T20:59:15Z
+$ adb devices -l
+List of devices attached
+SM02E4072811963        device usb:3-1 product:seeker_eea model:Seeker device:seeker transport_id:1
+
+$ getprop ro.product.model / ro.build.version.release / sdk
+Seeker
+16
+36
+$ adb reverse --list (empty = none)
+
+$ dumpsys package com.reshareai.pocketqa (selected lines)
+        android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.RECORD_AUDIO: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+      firstInstallTime=2026-10-06 01:16:50
+    installerPackageName=com.google.android.packageinstaller
+    lastUpdateTime=2026-10-06 01:16:50
+    signatures=PackageSignatures{7cb3f1e version:2, signatures:[51ed3f60], past signatures:[]}
+    versionCode=1 minSdk=24 targetSdk=36
+    versionName=0.1.0
+$ adb pull <base.apk> && shasum -a 256 && apksigner verify --print-certs
+6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9  installed base.apk (52483477 bytes)
+Signer DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US; cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+= docs/handoff/native-recording-device-test.md: pocketqa-native-0aaa89b.apk (feat/native-voice-recording @ 0aaa89b), API http://127.0.0.1:8787 (EXPO_PUBLIC_API_URL not set)
+$ strings in assets/index.android.bundle (Hermes): no https API base; "http://127.0.0.1:" template only (loopback default 8787)
+$ dumpsys diskstats (com.reshareai.pocketqa): App 171759104 B, App Data 1257472 B, Cache 1134592 B
+$ lsof :8787 -> node PID 28574 (live USB API, not touched)

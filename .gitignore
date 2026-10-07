@@ -65,3 +65,8 @@ firebase-debug.*.log
 
 # Local cloud-integration material (public web config, server credentials): never committed
 .cloud-local/
+
+# Vercel Build Output (scripts/vercel/build.mjs) and local project link
+.vercel/
+.vercel
+.env*.local

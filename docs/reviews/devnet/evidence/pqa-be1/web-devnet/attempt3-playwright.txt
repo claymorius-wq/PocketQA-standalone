@@ -1,0 +1,51 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:192:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.8s)
+  ✘  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:223:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (20.8s)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [desktop] › e2e-devnet/hosted-journey.spec.ts:223:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByTestId('wallet-address')
+    Expected substring: "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs"
+    Received string:    "2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q"
+    Timeout: 20000ms
+
+    Call log:
+      - Expect "toContainText" getByTestId('wallet-address') with timeout 20000ms
+      - waiting for getByTestId('wallet-address')
+        44 × locator resolved to <div dir="auto" data-testid="wallet-address" class="css-146c3p1 r-14yzgew">2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q</div>
+           - unexpected value "2bV3iDXY6RHct5g6yhDNaQoqU7GBZM4j7CmqwvkjCz9q"
+
+
+      155 |   await expect(p.getByTestId('wallet-section')).toBeVisible();
+      156 |   if (await p.getByTestId('wallet-address').isVisible()) {
+    > 157 |     await expect(p.getByTestId('wallet-address')).toContainText(pt.wallet.address);
+          |                                                   ^
+      158 |     await shotOf(p, 'wallet-section', `${settingsTab}-wallet-already-linked`, 'already linked to the fixture address before this run');
+      159 |     return;
+      160 |   }
+        at linkWallet (/Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:157:51)
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:225:3
+
+    Error Context: test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/error-context.md
+
+    Error Context: test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-desktop/hosted-journey-2-·-wallets-85035-cancel-in-the-wallet-first--desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [desktop] › e2e-devnet/hosted-journey.spec.ts:223:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) 
+  4 did not run
+  1 passed (27.5s)
+  1 error was not a part of any test, see above for details

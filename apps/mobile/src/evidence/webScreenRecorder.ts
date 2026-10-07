@@ -364,7 +364,13 @@ export function webRecordingCapability(g: Globals = globalThis as unknown as Glo
   const nav = g.navigator ?? {};
   const ua = nav.userAgent ?? '';
   const mobile = nav.userAgentData?.mobile === true || /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && (nav.maxTouchPoints ?? 0) > 1);
-  if (mobile) return { available: false, reason: 'Screen recording in the browser works on a computer only; mobile browsers don’t support it. Use the Android app to record on a phone, or attach screenshots or clips.' };
+  // Browsers (and installed web apps) on phones can't record other apps; say what does work.
+  if (mobile)
+    return {
+      available: false,
+      reason:
+        'Screen recording in the browser works on a computer only: a phone browser, or a web app added to the home screen, can’t record other apps. On a phone, use the Pocket QA Android app (records other apps with your narration) or the Pocket QA iPhone app (screen broadcast), or record with your phone’s built-in screen recorder and attach the file here.',
+    };
   if (!g.isSecureContext) return { available: false, reason: 'Screen recording needs a secure (HTTPS) page.' };
   const md = nav.mediaDevices;
   if (typeof md?.getDisplayMedia !== 'function' || typeof md?.getUserMedia !== 'function') return { available: false, reason: `This browser doesn’t support screen sharing. ${ALTERNATIVE}` };

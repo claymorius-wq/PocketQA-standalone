@@ -1,0 +1,17 @@
+[23:58:11 +1s] mode=call load={ 15.69 12.57 11.59 }
+[23:59:29 +79s] recording (projections=1)
+[23:59:52 +102s] away in Settings
+[23:59:54 +104s] call accepted
+[00:00:02 +112s] in call: projections=0
+[00:00:02 +112s] call ended
+[00:00:02 +112s] back to Pocket QA
+[00:01:21 +191s] projection already ended (stopped by the system, the mic watch, or death)
+[00:01:33 +203s] after stop: projections=0
+10-05 23:59:45.490 10934 11244 I PqaCapture: stop ok=true audioGaps=0 audioLostMs=0 backlogDropped=0 written audio=2613 video=2042 rejected=0 bytes=8854734
+[00:01:33 +203s] overrun lines: 0
+[00:01:55 +225s] uploaded
+video 60.943 s, audio 60.674 s, |a-v| 0.269 s (limit 1.0 s)
+audio samples held 60.674 s of 60.674 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+[00:01:56 +226s] EXIT=0

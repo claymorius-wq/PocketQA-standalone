@@ -2,6 +2,7 @@ import { NavigationContext } from 'expo-router/react-navigation';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 import Animated, { ReduceMotion, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { appOffScreen } from '../motion/visible';
 import { causticDelay, ENTRANCE_WINDOW, entranceDelay, joinWave, type EntranceStep, type Wave } from '../motion';
 import type { Handoff, InitialArrival } from '../motion/entrance';
 import { useMotion } from '../theme/motion';
@@ -79,6 +80,9 @@ export function Enter({ step, delay, children, style, collapse }: {
     if (screen && screen.staggered === false && delay === undefined && now <= (screen.settledAt ?? 0)) {
       return { still: true, delay: 0, rise: 0, duration: 0, causticAt: screen.causticAt ?? now };
     }
+    // Mounting while Pocket QA is off screen (a notice after a recording the system stopped while the
+    // tester was in another app): render settled, since nobody can see the entrance.
+    if (appOffScreen()) return { still: true, delay: 0, rise: 0, duration: 0, causticAt: now };
     const elapsed = screen ? joinWave(screen.wave, now) : 0;
     const header = step === 'title' || step === 'subtitle';
     return {
@@ -123,6 +127,9 @@ export function Enter({ step, delay, children, style, collapse }: {
 export function useEntranceDelay(at: number): number | null {
   const screen = useContext(ScreenContext);
   const [delay] = useState<number | null>(() => {
+    // Mounting while Pocket QA is off screen (Welcome after a sign-out or a session end that happened
+    // while the tester was in another app): don't move, as with Enter (pqa-qa fe89787 P3).
+    if (appOffScreen()) return null;
     if (!screen) return 0;
     const now = Date.now();
     if (screen.staggered === false && now <= (screen.settledAt ?? 0)) return null;

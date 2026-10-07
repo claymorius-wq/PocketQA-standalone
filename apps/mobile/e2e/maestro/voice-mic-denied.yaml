@@ -1,0 +1,29 @@
+# Native screen + voice: a refused microphone means NOTHING is recorded; no screen-capture dialog,
+# no video-only clip (docs/plans/native-screen-voice-recording.md). Run with -e MIC=deny.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+# Notifications are asked first (allowed here); then the microphone. Maestro's launch permissions are
+# not always applied, so Android may show its own microphone prompt, which is refused here; either
+# way the app must explain and stop.
+- tapOn:
+    text: "Allow"
+    optional: true
+- tapOn:
+    text: "Don.t allow"
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: evidence-error
+    direction: UP
+- assertVisible: .*needs the microphone.*Nothing was recorded.*
+- assertNotVisible: "Share your screen with Pocket QA?"
+- takeScreenshot: mic-denied-nothing-recorded
+# Still idle: Start is offered again, and there is no clip to review.
+- scrollUntilVisible:
+    element:
+      id: record-start
+- assertNotVisible:
+    id: segment-recorded

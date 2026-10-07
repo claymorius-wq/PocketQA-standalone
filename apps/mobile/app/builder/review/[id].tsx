@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import type { Evidence } from '@pocket-qa/contracts';
+import { SettlementApproval, type Evidence } from '@pocket-qa/contracts';
 import { api, ApiError } from '../../../src/api/client';
+import { useIntentKey } from '../../../src/api/intentKey';
 import { PASS_THROUGH, useSvgId } from '../../../src/glass/paint';
-import { credits } from '../../../src/lib/format';
+import { credits, statusLabel } from '../../../src/lib/format';
 import { rewardText } from '../../../src/lib/money';
 import { PaymentStateCard } from '../../../src/screens/PaymentState';
 import { useAiStatus, useEvidence, useFindings, useParticipation, useStudy, useStudyDisputes } from '../../../src/lib/queries';
@@ -20,6 +21,7 @@ import { layout } from '../../../src/theme/tokens';
 import { Button, Checkbox, ConfirmSheet, Field, Notice, QueryState, Screen, Segmented, Text } from '../../../src/ui';
 import { DecisionBar, SectionHeader } from '../../../src/ui/patterns';
 import { TransferCard } from '../../../src/wallet/TransferCard';
+import { ServerTxSign } from '../../../src/wallet/ServerTxSign';
 import { useSession } from '../../../src/auth/SessionProvider';
 
 // Builder review (A-Review, Direction A v2). The participant head with the reward well, the AI
@@ -41,9 +43,14 @@ function FindingForm({ participationId, evidence }: { participationId: string; e
   const [severity, setSeverity] = useState<'blocker' | 'major' | 'minor' | 'info'>('major');
   const [description, setDescription] = useState('');
   const [evidenceId, setEvidenceId] = useState<string>('none');
+  const intent = useIntentKey();
   const create = useMutation({
-    mutationFn: () => api('createFinding', { params: { id: participationId }, body: { title, severity, description, ...(evidenceId !== 'none' ? { evidenceId } : {}) } }),
+    mutationFn: () => {
+      const body = { title, severity, description, ...(evidenceId !== 'none' ? { evidenceId } : {}) };
+      return api('createFinding', { params: { id: participationId }, body, idempotencyKey: intent.keyFor([participationId, body]) });
+    },
     onSuccess: () => {
+      intent.done();
       setTitle('');
       setDescription('');
       qc.invalidateQueries({ queryKey: ['findings', participationId] });
@@ -108,6 +115,10 @@ function ReviewInner() {
   const [passing, setPassing] = useState(false);
   // In-session approvals: each one lands the U7 tail on the Decision notice once.
   const [landed, setLanded] = useState(0);
+  // H-33: the decision attempted when the server answered CONFLICT_STATE and the refetch showed the
+  // submission no longer awaiting review. The screen then shows where it stands (refetched)
+  // instead of an error to retry. Null otherwise.
+  const [conflictOf, setConflictOf] = useState<DecisionKind | null>(null);
   const lit = glass.enabled && motion.play.uplightCommit;
   const decide = useMutation({
     // The decision carries its own fields, so a request always sends what was confirmed, even one
@@ -125,6 +136,20 @@ function ReviewInner() {
       qc.invalidateQueries({ queryKey: ['studyParticipations', p.studyId] });
       qc.invalidateQueries({ queryKey: ['study', p.studyId] });
     },
+    // CONFLICT_STATE: the server refused because the submission's state changed. Refetch it (awaited,
+    // so the mutation settles after the fresh state is in); if it is no longer awaiting review, it was
+    // decided elsewhere: close the sheet and show that decision. Anything else keeps the sheet and its
+    // message. Nothing is re-sent: the money path is the server's single decision.
+    onError: async (e, d) => {
+      if (!(e instanceof ApiError) || e.code !== 'CONFLICT_STATE') return;
+      await qc.refetchQueries({ queryKey: ['participation', id] });
+      const fresh = qc.getQueryData<{ status: string; studyId: string }>(['participation', id]);
+      if (!fresh || fresh.status === 'submitted') return;
+      setConflictOf(d.kind);
+      setOpen(false);
+      qc.invalidateQueries({ queryKey: ['studyParticipations', fresh.studyId] });
+      qc.invalidateQueries({ queryKey: ['study', fresh.studyId] });
+    },
   });
   const openSheet = (k: DecisionKind) => {
     // While a decision is still being sent (Cancel works again after the pending escape), Approve
@@ -140,6 +165,7 @@ function ReviewInner() {
       return;
     }
     decide.reset();
+    setConflictOf(null);
     setKind(k);
     setOpen(true);
   };
@@ -195,8 +221,23 @@ function ReviewInner() {
                   </ReviewSection>
                 ) : null}
                 {canAddFinding(p.status) ? <FindingForm participationId={p.id} evidence={ev.data?.items ?? []} /> : null}
+                {conflictOf ? <AlreadyDecided attempted={conflictOf} status={p.status} hasNotice={view.notice} /> : null}
                 {view.notice ? <DecisionNotice p={p} land={landed} testID="review-decided" /> : null}
                 {p.payout ? <PaymentStateCard payout={p.payout} /> : null}
+                {/* Devnet pilot: the payment's Squads proposal waits for the builder's vote (2 of 3). The
+                    server builds the vote for this payment only; the plan is shown before the wallet signs. */}
+                {p.payout && p.payout.settlement === 'squads_devnet' && p.payout.status === 'awaiting_approval' ? (
+                  <ServerTxSign
+                    testID="reward-approval"
+                    settlement="squads_devnet"
+                    expectedApproval={{ settlementId: p.payout.id, kind: SettlementApproval.shape.kind.enum.payout, amountUnits: p.payout.amountUnits, destination: p.payout.destination }}
+                    reviewLabel="Review this payment to approve in your wallet"
+                    signLabel="Approve in your wallet"
+                    load={() => api('settlementApproval', { params: { id: p.payout!.id } })}
+                    submit={(signature, plan) => api('submitSettlementApproval', { params: { id: p.payout!.id }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+                    onDone={() => void qc.invalidateQueries({ queryKey: ['participation', id] })}
+                  />
+                ) : null}
                 {dispute ? <DisputeCard dispute={dispute} /> : null}
                 {features.devnetTransfers && !passing && (p.status === 'approved' || (p.status === 'resolved' && dispute?.outcome === 'overturned')) ? (
                   <TransferCard participationId={p.id} role="builder" canStart />
@@ -233,12 +274,37 @@ function ReviewInner() {
                       <Checkbox checked={helpful} onChange={setHelpful} label="Mark the feedback helpful (adds reputation points)" testID="approve-helpful" />
                     </>
                   )}
-                  {decide.error ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
+                  {decide.error && !conflictOf ? <Notice tone="danger" title="Decision not saved" testID="decision-error">{(decide.error as ApiError).message}</Notice> : null}
                 </ConfirmSheet>
               </>
             )}
           </QueryState>
     </Screen>
+  );
+}
+
+/**
+ * H-33: why the screen shows a decision instead of the one just confirmed. When the refetched outcome
+ * is the attempted one, the decision is simply in (often this builder's own earlier request, whose
+ * answer was lost: crash after commit, E-05), so the copy is neutral. When it differs, the
+ * submission was decided elsewhere and this decision was not applied. Without a Decision notice for
+ * the current state (e.g. withdrawn), the notice names where it stands.
+ */
+function AlreadyDecided({ attempted, status, hasNotice }: { attempted: DecisionKind; status: string; hasNotice: boolean }) {
+  const outcome: DecisionKind | null = status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : null;
+  const where = hasNotice ? '' : ` It is no longer awaiting review: ${statusLabel[status] ?? status}.`;
+  if (outcome === attempted) {
+    const done = outcome === 'approve' ? 'approved' : 'rejected';
+    return (
+      <Notice tone="info" title={`Already ${done}`} testID="review-already-decided">
+        {`This submission is already ${done}. Nothing more to do.${where}`}
+      </Notice>
+    );
+  }
+  return (
+    <Notice tone="info" title="Already decided" testID="review-already-decided">
+      {`This submission was decided elsewhere (another tab or device) before your decision arrived, so yours wasn’t applied.${hasNotice ? ' Its decision is shown below.' : where}`}
+    </Notice>
   );
 }
 

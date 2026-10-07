@@ -1,0 +1,31 @@
+2026-10-06T21:11:35Z
+2026-10-06T21:11:42Z launched E2E app
+2026-10-06T21:12:34Z sign-in submitted (synthetic tester)
+2026-10-06T21:14:15Z device profile saved (android 16 / API 36 / Solana Seeker / en-US)
+2026-10-06T21:16:26Z device profile saved: android, Android 16, API 36, Solana Seeker, en-US
+2026-10-06T21:17:14Z device profile saved: android, Android 16, API 36, Solana Seeker, en-US
+2026-10-06T21:18:43Z consent v1 ticked + Consent and join tapped
+2026-10-06T21:19:03Z Start session tapped
+2026-10-06T21:19:38Z task note typed and saved
+2026-10-06T21:20:59Z device locked again (keyguard) while note save was pending
+2026-10-06T21:24:43Z Record screen and voice tapped
+2026-10-06T21:25:15Z notifications Allow + mic granted; then Application Error dialog for E2E app
+2026-10-06T21:38:37Z reopened participation 0d9f4289 from My work
+2026-10-06T21:38:51Z Record tapped (attempt 2)
+2026-10-06T21:39:55Z projection dialog answered; focus: mCurrentFocus=null
+2026-10-06T21:40:22Z projection dialog unanswered; device slept on 60 s timeout at 21:39:49Z; dialog dismissed
+2026-10-06T21:50:56Z phone unlocked; Hamza navigating (launcher, then Google app in front); pqa-ios paused driving
+2026-10-06T21:52:57Z found: a 6 s entire-screen clip recorded ~21:50Z by on-device action (not pqa-ios), content = personal Google search; 2 pending items; screenshot deleted; awaiting lead
+2026-10-06T22:09:46Z
+2026-10-06T22:10:35Z Record tapped (attempt 3, pqa-ios)
+2026-10-06T22:19:41Z CAPTURE ACTIVE: projection TYPE_SCREEN_CAPTURE + FGS types 0xA0 (mediaProjection|microphone); dialog closed 22:19:20Z; narration request sent
+2026-10-06T22:22:50Z Keep tapped on recording-2026-10-06T22:19:34.883Z.mp4 (17 s, 7.6 MB)
+2026-10-06T22:23:03Z Upload 1 kept item tapped
+2026-10-06T22:23:36Z UPLOADED (1): Recording video/mp4 7.6 MB (participation 0d9f4289-fec4-45c2-8d99-1659a937021e)
+2026-10-06T22:23:46Z tapped uploaded Recording row (private playback)
+2026-10-06T22:24:04Z tester-side uploaded row: no playback action (tap does nothing); builder-side playback via be1 pending
+2026-10-06T22:24:26Z note: recorder help copy says 'choose "Share one app" and pick the app you're testing' -> recommended path is the crashing one (P-13)
+2026-10-06T22:24:58Z lifecycle: HOME
+2026-10-06T22:25:19Z lifecycle: back to foreground after 20 s
+2026-10-06T22:39:10Z installed fix APK 3635ebad over E2E package (-r, data kept)
+2026-10-06T22:39:43Z STOP CHECK (user reported still recording): media_projection null; pocketqa + pocketqa.e2e 0 foreground services; no FGS with mediaProjection/microphone on device; no Pocket QA/recording/cast notification; statusbar mIcons empty

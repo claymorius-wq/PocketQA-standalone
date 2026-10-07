@@ -1,12 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <!-- Required for a mediaProjection foreground service when targeting Android 14+. -->
+  <!-- Screen + microphone capture across apps (docs/plans/native-screen-voice-recording.md):
+       a foreground service of types mediaProjection|microphone, each with its permission
+       (required when targeting Android 14+); RECORD_AUDIO is asked at runtime before every session. -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <application>
     <service
       android:name="expo.modules.pocketqascreencapture.ScreenCaptureService"
       android:exported="false"
-      android:foregroundServiceType="mediaProjection" />
+      android:foregroundServiceType="mediaProjection|microphone" />
   </application>
 </manifest>

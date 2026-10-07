@@ -1,0 +1,28 @@
+read 2026-10-06T18:37:32Z no Authorization header
+GET    /api/me                                          401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/me/credits                                  401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/me/credits/test-topup                       401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/me/export                                   401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+DELETE /api/me                                          401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/studies                                     401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/studies                                     401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/studies/eligible                            401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/studies/x                                   401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/tester/studies/x                            401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/studies/x/consent                           401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/participations                              401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/participations/x                            401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/participations/x/approve                    401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/participations/x/evidence/upload-intents    401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/evidence/x/playback-token                   401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/disputes                                    401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/admin/disputes                              401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/admin/audit                                 401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/admin/moderation/users/x                    401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/me/reputation                               401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/leaderboard                                 401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+PUT    /api/me/leaderboard                              401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+POST   /api/wallet/nonce                                401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/me/payouts                                  401 {"code":"UNAUTHENTICATED","message":"Sign in to continue."}
+GET    /api/jobs/settle                                 404 {"code":"NOT_FOUND","message":"Route not found."}
+GET    /api/jobs/sweep                                  404 {"code":"NOT_FOUND","message":"Route not found."}

@@ -8,6 +8,7 @@ import {
   escrowInvariant,
   planAuthorizeRefund,
   planSettlePayout,
+  planSettleFee,
   planSettleRefund,
   quoteEscrow,
   transitionPayout,
@@ -203,5 +204,30 @@ describe('escrowInvariant: every funded unit is accounted for in exactly one pla
   it('detects a posting outside the escrow accounts', () => {
     const bad: EscrowPosting[] = [...planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: 100 }), { account: 'vault:s1', amount: -1, kind: 'refund_authorized', studyId: 's1', participationId: null }];
     expect(escrowInvariant({ studyId: 's1', postings: bad, quote: q, holdingCount: 0 }).ok).toBe(false);
+  });
+});
+
+describe('the fee sweep on close (devnet decision (a)): earned fees leave the vault to the platform fee wallet', () => {
+  const q = quoteEscrow({ rewardUnits: 1_000_000, slots: 3, feeBps: 1000 });
+  const closed: EscrowPosting[] = [
+    ...planFunding({ studyId: 's1', fundingId: 'f1', amountUnits: q.totalUnits }),
+    ...planAuthorizePayout({ studyId: 's1', participationId: 'p1', quote: q, vaultAvailableIncludingThis: q.totalUnits }),
+    ...planSettlePayout({ studyId: 's1', participationId: 'p1', testerId: 't1', amountUnits: q.rewardUnits }),
+    ...planAuthorizeRefund({ studyId: 's1', vaultBalanceUnits: 2 * q.perTestTotalUnits }),
+    ...planSettleRefund({ studyId: 's1', funder: 'W1', amountUnits: 2 * q.perTestTotalUnits }),
+  ];
+  it('a balanced fee_settled pair: fees:platform to out:fees:<wallet>', () => {
+    expect(planSettleFee({ studyId: 's1', feeWallet: 'FEE', amountUnits: 100_000 })).toEqual([
+      { account: 'fees:platform', amount: -100_000, kind: 'fee_settled', studyId: 's1', participationId: null },
+      { account: 'out:fees:FEE', amount: 100_000, kind: 'fee_settled', studyId: 's1', participationId: null },
+    ]);
+  });
+  it('the invariant holds after the sweep, with the swept fees in their own bucket and nothing left earned-but-unswept', () => {
+    const swept = [...closed, ...planSettleFee({ studyId: 's1', feeWallet: 'FEE', amountUnits: q.perTestFeeUnits })];
+    expect(escrowInvariant({ studyId: 's1', postings: closed, quote: q, holdingCount: 0 })).toMatchObject({ feesUnits: 100_000, sweptFeesUnits: 0, ok: true });
+    expect(escrowInvariant({ studyId: 's1', postings: swept, quote: q, holdingCount: 0 })).toMatchObject({ fundedUnits: 3_300_000, feesUnits: 0, sweptFeesUnits: 100_000, settledUnits: 1_000_000, refundedUnits: 2_200_000, ok: true });
+  });
+  it('refuses a non-positive or unsafe amount', () => {
+    for (const amountUnits of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) expect(() => planSettleFee({ studyId: 's1', feeWallet: 'FEE', amountUnits })).toThrow();
   });
 });

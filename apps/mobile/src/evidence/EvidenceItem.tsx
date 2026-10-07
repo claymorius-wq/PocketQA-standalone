@@ -2,17 +2,18 @@ import { useMutation } from '@tanstack/react-query';
 import { Eye } from 'lucide-react-native';
 import { useState } from 'react';
 import type { Evidence } from '@pocket-qa/contracts';
-import { api, ApiError, mediaUrl } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { bytes } from '../lib/format';
 import { Button, Card, Notice, Row, Text } from '../ui';
 import { MediaPreview } from './MediaPreview';
+import { playbackUri } from './playback';
 
-/** One evidence item with on-demand playback (short-lived token; builder or admin). */
+/** One evidence item with on-demand playback (short-lived link; builder or admin). */
 export function EvidenceItem({ e }: { e: Evidence }) {
   const [url, setUrl] = useState<string | null>(null);
   const open = useMutation({
     mutationFn: () => api('playbackToken', { params: { id: e.id } }),
-    onSuccess: (t) => setUrl(mediaUrl(t.token)),
+    onSuccess: (t) => setUrl(playbackUri(t)),
   });
   return (
     <Card testID="evidence-item">

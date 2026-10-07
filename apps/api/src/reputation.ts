@@ -8,8 +8,8 @@ import type { ParticipationRow, StudyRow } from './views';
  * Reputation on the API side: points for accepted work, fraud reversals, self-dealing flags and
  * the opt-in leaderboard. Separate from money (escrow) and from test credits.
  */
-type EventRow = { id: string; user_id: string; participation_id: string; kind: PointsEvent['kind']; points: number; reverses_id: string | null; platform: string | null; created_at: string };
-const toEvent = (r: EventRow): PointsEvent => ({ id: r.id, participationId: r.participation_id, kind: r.kind, points: r.points, reversesId: r.reverses_id, platform: r.platform });
+export type EventRow = { id: string; user_id: string; participation_id: string; kind: PointsEvent['kind']; points: number; reverses_id: string | null; platform: string | null; created_at: string };
+export const toEvent = (r: EventRow): PointsEvent => ({ id: r.id, participationId: r.participation_id, kind: r.kind, points: r.points, reversesId: r.reverses_id, platform: r.platform });
 
 function append(db: DB, userId: string, events: NewPointsEvent[], nowMs: number) {
   const ins = db.prepare('INSERT INTO points_events (id, user_id, participation_id, kind, points, reverses_id, platform, created_at) VALUES (?,?,?,?,?,?,?,?)');
@@ -52,6 +52,19 @@ export function reverseForFraud(db: DB, p: ParticipationRow, nowMs: number) {
   append(db, p.tester_id, planReversal(events, p.id), nowMs);
 }
 
+/** One participation as reputation reads it (participations + dispute outcome + fraud + platform). */
+export type DecidedRow = { id: string; status: string; decided_at: string | null; outcome: 'upheld' | 'overturned' | null; resolved_at: string | null; fraud: string | null; platform: string | null };
+
+/** A tester's decided work, as reputation counts it (pure; both backends feed it). */
+export const decidedWorkFrom = (rows: DecidedRow[]): DecidedWork[] =>
+  rows.map((r) => ({
+    participationId: r.id,
+    outcome: r.status === 'approved' || (r.status === 'resolved' && r.outcome === 'overturned') ? 'accepted' : 'rejected',
+    decidedAtMs: Date.parse((r.status === 'resolved' ? r.resolved_at : r.decided_at) ?? new Date(0).toISOString()),
+    platform: r.platform,
+    reversed: r.fraud !== null,
+  }));
+
 /** A tester's decided work, as reputation counts it (see domain `reputationStats`). */
 function decidedWork(db: DB, userId: string): DecidedWork[] {
   const rows = db
@@ -63,59 +76,73 @@ function decidedWork(db: DB, userId: string): DecidedWork[] {
        LEFT JOIN fraud_findings f ON f.participation_id = p.id
        WHERE p.tester_id = ? AND p.status IN ('approved','rejected','resolved')`,
     )
-    .all(userId) as { id: string; status: string; decided_at: string | null; outcome: 'upheld' | 'overturned' | null; resolved_at: string | null; fraud: string | null; platform: string | null }[];
-  return rows.map((r) => ({
-    participationId: r.id,
-    outcome: r.status === 'approved' || (r.status === 'resolved' && r.outcome === 'overturned') ? 'accepted' : 'rejected',
-    decidedAtMs: Date.parse((r.status === 'resolved' ? r.resolved_at : r.decided_at) ?? new Date(0).toISOString()),
-    platform: r.platform,
-    reversed: r.fraud !== null,
-  }));
+    .all(userId) as DecidedRow[];
+  return decidedWorkFrom(rows);
 }
 
 const eventsOf = (db: DB, userId: string) => (db.prepare('SELECT * FROM points_events WHERE user_id = ? ORDER BY created_at, rowid').all(userId) as EventRow[]);
 
+export type LeaderboardEntry = { userId: string; alias: string; work: DecidedWork[]; events: EventRow[] };
+export const leaderboardFrom = (entries: LeaderboardEntry[], nowMs: number) =>
+  rankLeaderboard(
+    entries.map((x) => ({ userId: x.userId, alias: x.alias, optedIn: true, work: x.work, events: x.events.map(toEvent) })),
+    nowMs,
+  );
+
 export function leaderboardRows(db: DB, nowMs: number) {
   const profiles = db.prepare(`SELECT l.user_id, l.alias FROM leaderboard_profiles l JOIN users u ON u.id = l.user_id WHERE l.opted_in = 1 AND l.alias IS NOT NULL AND u.status = 'active'`).all() as { user_id: string; alias: string }[];
-  return rankLeaderboard(
-    profiles.map((x) => ({ userId: x.user_id, alias: x.alias, optedIn: true, work: decidedWork(db, x.user_id), events: eventsOf(db, x.user_id).map(toEvent) })),
+  return leaderboardFrom(
+    profiles.map((x) => ({ userId: x.user_id, alias: x.alias, work: decidedWork(db, x.user_id), events: eventsOf(db, x.user_id) })),
     nowMs,
   );
 }
 
-/** The reputation part of the user's own data export (least data; the deciding admin isn't named). */
-export function reputationExport(db: DB, userId: string, nowMs: number) {
-  const rows = eventsOf(db, userId);
-  const events = rows.map(toEvent);
-  const profile = db.prepare('SELECT opted_in, alias FROM leaderboard_profiles WHERE user_id = ?').get(userId) as { opted_in: 0 | 1; alias: string | null } | undefined;
-  const own = (table: 'fraud_findings' | 'points_flags') =>
-    db.prepare(`SELECT f.participation_id AS participationId, f.reason, f.created_at AS createdAt FROM ${table} f JOIN participations p ON p.id = f.participation_id WHERE p.tester_id = ? ORDER BY f.created_at`).all(userId) as { participationId: string; reason: string; createdAt: string }[];
+export type ProfileRow = { opted_in: 0 | 1; alias: string | null };
+export type OwnFinding = { participationId: string; reason: string; createdAt: string };
+
+/** The reputation part of the user's own data export (pure). */
+export function reputationExportFrom(input: { rows: EventRow[]; work: DecidedWork[]; profile: ProfileRow | undefined; fraudFindings: OwnFinding[]; withheld: OwnFinding[]; nowMs: number }) {
+  const events = input.rows.map(toEvent);
   return {
     points: pointsTotal(events),
     noCashValue: true as const,
-    events: rows.map((r) => ({ participationId: r.participation_id, kind: r.kind, points: r.points, createdAt: r.created_at })),
-    badges: badgesFor({ work: decidedWork(db, userId), events, nowMs }),
-    leaderboard: { optedIn: profile?.opted_in === 1, alias: profile?.alias ?? null },
-    fraudFindings: own('fraud_findings'),
-    withheldPoints: own('points_flags'),
+    events: input.rows.map((r) => ({ participationId: r.participation_id, kind: r.kind, points: r.points, createdAt: r.created_at })),
+    badges: badgesFor({ work: input.work, events, nowMs: input.nowMs }),
+    leaderboard: { optedIn: input.profile?.opted_in === 1, alias: input.profile?.alias ?? null },
+    fraudFindings: input.fraudFindings,
+    withheldPoints: input.withheld,
+  };
+}
+
+/** The reputation part of the user's own data export (least data; the deciding admin isn't named). */
+export function reputationExport(db: DB, userId: string, nowMs: number) {
+  const profile = db.prepare('SELECT opted_in, alias FROM leaderboard_profiles WHERE user_id = ?').get(userId) as ProfileRow | undefined;
+  const own = (table: 'fraud_findings' | 'points_flags') =>
+    db.prepare(`SELECT f.participation_id AS participationId, f.reason, f.created_at AS createdAt FROM ${table} f JOIN participations p ON p.id = f.participation_id WHERE p.tester_id = ? ORDER BY f.created_at`).all(userId) as OwnFinding[];
+  return reputationExportFrom({ rows: eventsOf(db, userId), work: decidedWork(db, userId), profile, fraudFindings: own('fraud_findings'), withheld: own('points_flags'), nowMs });
+}
+
+/** The tester's reputation view (pure). `rank`: their leaderboard rank when opted in. */
+export function reputationFrom(input: { rows: EventRow[]; work: DecidedWork[]; profile: ProfileRow | undefined; rank: number | null; titles: Map<string, string>; nowMs: number }): Reputation {
+  const { rows, work, profile, nowMs } = input;
+  const events = rows.map(toEvent);
+  return {
+    points: pointsTotal(events),
+    noCashValue: true,
+    events: rows.map((r) => ({ kind: r.kind, points: r.points, createdAt: r.created_at, studyTitle: input.titles.get(r.participation_id)! })),
+    badges: badgesFor({ work, events, nowMs }),
+    progress: badgeProgress({ work, events, nowMs }),
+    stats: { ...reputationStats(work, nowMs), windowDays: REPUTATION_WINDOW_DAYS },
+    leaderboard: { optedIn: profile?.opted_in === 1, alias: profile?.alias ?? null, rank: input.rank, minDecided: LEADERBOARD_MIN_DECIDED },
   };
 }
 
 export function reputationView(db: DB, userId: string, nowMs: number): Reputation {
   const rows = eventsOf(db, userId);
-  const events = rows.map(toEvent);
-  const work = decidedWork(db, userId);
-  const profile = db.prepare('SELECT opted_in, alias FROM leaderboard_profiles WHERE user_id = ?').get(userId) as { opted_in: 0 | 1; alias: string | null } | undefined;
+  const profile = db.prepare('SELECT opted_in, alias FROM leaderboard_profiles WHERE user_id = ?').get(userId) as ProfileRow | undefined;
   const optedIn = profile?.opted_in === 1;
   const rank = optedIn ? (leaderboardRows(db, nowMs).find((r) => r.alias === profile!.alias)?.rank ?? null) : null;
   const titleOf = db.prepare('SELECT s.title FROM participations p JOIN studies s ON s.id = p.study_id WHERE p.id = ?');
-  return {
-    points: pointsTotal(events),
-    noCashValue: true,
-    events: rows.map((r) => ({ kind: r.kind, points: r.points, createdAt: r.created_at, studyTitle: (titleOf.get(r.participation_id) as { title: string }).title })),
-    badges: badgesFor({ work, events, nowMs }),
-    progress: badgeProgress({ work, events, nowMs }),
-    stats: { ...reputationStats(work, nowMs), windowDays: REPUTATION_WINDOW_DAYS },
-    leaderboard: { optedIn, alias: profile?.alias ?? null, rank, minDecided: LEADERBOARD_MIN_DECIDED },
-  };
+  const titles = new Map(rows.map((r) => [r.participation_id, (titleOf.get(r.participation_id) as { title: string }).title]));
+  return reputationFrom({ rows, work: decidedWork(db, userId), profile, rank, titles, nowMs });
 }

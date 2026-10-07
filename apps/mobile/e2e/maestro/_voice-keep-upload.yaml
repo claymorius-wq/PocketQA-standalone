@@ -1,0 +1,18 @@
+# Shared: keep the clip waiting for review and upload it through the explicit path (local API only).
+appId: com.reshareai.pocketqa
+---
+- scrollUntilVisible:
+    element:
+      id: segment-keep
+- tapOn:
+    id: segment-keep
+- scrollUntilVisible:
+    element:
+      id: upload-kept
+- tapOn:
+    id: upload-kept
+- scrollUntilVisible:
+    element:
+      id: uploaded-evidence
+    timeout: 60000
+- assertVisible: .*Uploaded \(1\).*

@@ -1,0 +1,19 @@
+{
+  "project": "pocketqa-optijara",
+  "readAt": "2026-10-06T19:31:26.107Z",
+  "readOnly": true,
+  "counts": {
+    "studies": 48,
+    "closedStudies": 4,
+    "participations": 38,
+    "disputedParticipations": 2,
+    "disputes": 2,
+    "accounts": 86,
+    "ledgerEntries": 180,
+    "ledgerTx": 90,
+    "rewardGuards": 3,
+    "escrowPostings": 0
+  },
+  "violations": {},
+  "ok": true
+}

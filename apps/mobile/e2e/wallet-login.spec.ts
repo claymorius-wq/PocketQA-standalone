@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installWallet, ORIGIN_HOST } from './testWallet';
+import { API } from './api';
 
 // Web wallet-first login against the real local API (ADR 0005 §2/§4). A fake Wallet
 // Standard wallet behaves like a real one: it builds the SIWS text itself with the
@@ -48,7 +49,7 @@ test('a wallet without Sign In With Solana is refused honestly (no signMessage f
 test('web wallet linking: the link message carries this origin, so a domain-checking wallet signs it', async ({ page, request }) => {
   const email = `link-${Date.now()}@example.test`;
   const pw = 'correct horse battery staple';
-  const reg = await request.post('http://127.0.0.1:8787/auth/register', { data: { email, password: pw, displayName: 'Linda Link', role: 'tester' } });
+  const reg = await request.post(`${API}/auth/register`, { data: { email, password: pw, displayName: 'Linda Link', role: 'tester' } });
   expect(reg.status()).toBe(200);
   const { address, log } = await installWallet(page, { signIn: true, allowSignMessage: true });
   await page.goto('/sign-in');

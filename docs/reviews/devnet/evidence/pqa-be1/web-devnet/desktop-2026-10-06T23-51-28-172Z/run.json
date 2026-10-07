@@ -1,0 +1,34 @@
+{
+ "label": "desktop",
+ "viewportNote": "desktop 1280x900",
+ "wallet": "Pocket QA Test Wallet (devnet): injected by Playwright, not an extension",
+ "title": "Web devnet journey desktop muxc1h2k",
+ "steps": [],
+ "chain": {
+  "before": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49920000,
+    "testUsdcUnits": 16646000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  },
+  "after": {
+   "builder": {
+    "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+    "lamports": 49920000,
+    "testUsdcUnits": 16646000
+   },
+   "tester": {
+    "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+    "lamports": 0,
+    "testUsdcUnits": 2000000
+   }
+  }
+ },
+ "mainnetBlocked": []
+}

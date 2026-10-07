@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '../../api/client';
 import { ThemeProvider, useTheme, type ThemePreference } from '../../theme/ThemeProvider';
@@ -144,6 +144,103 @@ describe('SettingsScreen states', () => {
     expect(mockSession.refreshUser).toHaveBeenCalled();
   });
 
+  /** Settings for a tester whose saved profile is the production trace's (saved on the web as Android, API null). */
+  const FROM_WEB = { platform: 'android', osVersion: 'Browser', androidApiLevel: null, model: 'Web preview', languages: ['en'] };
+  async function renderWithDevice(device: Record<string, unknown>) {
+    mockSession.user = { ...userFor('tester'), device };
+    return render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })}>
+        <SafeAreaProvider initialMetrics={METRICS}>
+          <ThemeProvider fonts="system">
+            <SettingsScreen />
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('native Android: a saved Android profile with no API level pre-fills it from this phone; saved only on Save', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    api.mockResolvedValue({});
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('34');
+    expect(api).not.toHaveBeenCalled(); // pre-filled, not saved
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: { platform: 'android', osVersion: 'Browser', androidApiLevel: 34, model: 'Web preview', languages: ['en'] } });
+  });
+
+  it('no API-level pre-fill on the web (unchanged)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('');
+  });
+
+  it('no API-level pre-fill from a phone of another platform (an iPhone)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue('17.5' as never);
+    await renderWithDevice(FROM_WEB);
+    expect(screen.getByTestId('device-api').props.value).toBe('');
+  });
+
+  it('a saved API level is kept as saved (never overwritten by this phone’s)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    await renderWithDevice({ ...FROM_WEB, androidApiLevel: 29 });
+    expect(screen.getByTestId('device-api').props.value).toBe('29');
+  });
+
+  it.each([
+    ['blank', ''],
+    ['zero', '0'],
+    ['100', '100'],
+    ['not a number', 'abc'],
+    ['a fraction', '34.5'],
+  ])('web: Android with an API level that is %s shows an inline error and does NOT save', async (_n, value) => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-android'));
+    await fireEvent.changeText(screen.getByTestId('device-api'), value);
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.getByTestId('device-api-error')).toHaveTextContent(/Enter your Android API level \(1–99\)/);
+    expect(screen.queryByTestId('device-saved')).toBeNull();
+  });
+
+  it('web: Android with API level 34 saves it', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    api.mockResolvedValue({});
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-android'));
+    await fireEvent.changeText(screen.getByTestId('device-api'), '34');
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: expect.objectContaining({ platform: 'android', androidApiLevel: 34 }) });
+    expect(screen.queryByTestId('device-api-error')).toBeNull();
+  });
+
+  it('native Android: clearing the API level blocks Save the same way', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    jest.spyOn(Platform, 'Version', 'get').mockReturnValue(34 as never);
+    await renderWithDevice(FROM_WEB);
+    await fireEvent.changeText(screen.getByTestId('device-api'), '');
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).not.toHaveBeenCalled();
+    expect(screen.getByTestId('device-api-error')).toBeTruthy();
+  });
+
+  it('iOS and web platforms never ask for an API level (saved with null)', async () => {
+    api.mockResolvedValue({});
+    await renderSettings('tester');
+    await fireEvent.press(screen.getByTestId('device-platform-ios'));
+    await fireEvent.press(screen.getByTestId('device-save'));
+    await settle();
+    expect(api).toHaveBeenCalledWith('putDevice', { body: expect.objectContaining({ platform: 'ios', androidApiLevel: null }) });
+  });
+
   it('a failed save shows "Couldn’t save" with the server message', async () => {
     api.mockRejectedValue(new ApiError('OFFLINE', 'Can’t reach the Pocket QA server.', 0));
     await renderSettings('tester');
@@ -186,6 +283,7 @@ describe('SettingsScreen states', () => {
     await fireEvent.press(screen.getByTestId('delete-account'));
     expect(screen.getByTestId('confirm-sheet')).toBeTruthy();
     expect(screen.getByText('Delete your account?')).toBeTruthy();
+    expect(screen.getByTestId('confirm-sheet')).toHaveTextContent(/recordings on this phone that you haven.t uploaded/i);
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true });
     await fireEvent.changeText(screen.getByTestId('delete-phrase'), 'delete');
     expect(screen.getByTestId('confirm-ok').props.accessibilityState).toMatchObject({ disabled: true });
@@ -208,11 +306,25 @@ describe('SettingsScreen states', () => {
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await settle();
     expect(api).toHaveBeenCalledWith('deleteMe', { body: { confirm: 'DELETE MY ACCOUNT' } });
-    expect(mockSession.signOut).toHaveBeenCalledTimes(1);
+    // Deleting the account also deletes its recordings on this device; the sheet says so.
+    expect(mockSession.signOut).toHaveBeenCalledWith({ deleteRecordings: true });
     expect(await AsyncStorage.getItem('pocketqa.badgesSeen.u1')).toBeNull();
   });
 
-  it('Sign out signs out directly (no sheet)', async () => {
+  it('phone: Sign out asks first and says the recordings not uploaded are deleted; Cancel keeps everything', async () => {
+    await renderSettings('builder');
+    await fireEvent.press(screen.getByTestId('sign-out'));
+    expect(mockSession.signOut).not.toHaveBeenCalled();
+    expect(screen.getByTestId('confirm-sheet')).toHaveTextContent(/recordings on this phone that you haven.t uploaded are deleted/i);
+    await fireEvent.press(screen.getByTestId('confirm-cancel'));
+    expect(mockSession.signOut).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('sign-out'));
+    await fireEvent.press(screen.getByTestId('confirm-ok'));
+    expect(mockSession.signOut).toHaveBeenCalledWith({ deleteRecordings: true });
+  });
+
+  it('web: Sign out signs out directly (no sheet; no recordings are kept on a web device)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
     await renderSettings('builder');
     await fireEvent.press(screen.getByTestId('sign-out'));
     expect(mockSession.signOut).toHaveBeenCalledTimes(1);

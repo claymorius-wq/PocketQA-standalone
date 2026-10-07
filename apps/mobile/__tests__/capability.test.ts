@@ -1,11 +1,12 @@
 import { recordingCapability, walletCapability, transferSignCapability } from '../src/lib/capability';
 
 describe('capability matrix', () => {
-  it('records only on Android 10+ builds with the recorder module', () => {
-    expect(recordingCapability('android', 34, () => true)).toEqual({ available: true });
+  it('records other apps on Android 10+ (MediaProjection) and on iPhone (system broadcast), only with the native module', () => {
+    expect(recordingCapability('android', 34, () => true)).toEqual({ available: true, mode: 'projection' });
     expect(recordingCapability('android', 34, () => false).available).toBe(false);
     expect(recordingCapability('android', 28, () => true).available).toBe(false);
-    expect(recordingCapability('ios', '18.0', () => true).available).toBe(false);
+    expect(recordingCapability('ios', '18.0', () => true)).toEqual({ available: true, mode: 'broadcast' });
+    expect(recordingCapability('ios', '18.0', () => false)).toMatchObject({ available: false, reason: expect.stringMatching(/iPhone app/) });
     expect(recordingCapability('web', 0, () => true).available).toBe(false);
   });
   it('explains every unavailable state', () => {

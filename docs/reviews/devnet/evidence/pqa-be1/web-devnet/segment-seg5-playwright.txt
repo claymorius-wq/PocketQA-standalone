@@ -1,0 +1,11 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:237:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.6s)
+  ✓  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:268:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.9s)
+  ✓  3 [desktop] › e2e-devnet/hosted-journey.spec.ts:277:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (3.3s)
+  ✓  4 [desktop] › e2e-devnet/hosted-journey.spec.ts:344:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits (2.9s)
+  ✓  5 [desktop] › e2e-devnet/hosted-journey.spec.ts:383:5 › 5 · builder: reviews and approves; votes on the reward in the wallet (cancel once, then sign); the payment settles on devnet (2.1m)
+  ✓  6 [desktop] › e2e-devnet/hosted-journey.spec.ts:419:5 › 6 · builder: closes the study; votes on the refund and the fee sweep; balances (UI and chain) (2.6m)
+
+  6 passed (4.9m)

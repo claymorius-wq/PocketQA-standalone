@@ -1,4 +1,4 @@
-import Fastify, { type FastifyRequest, type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest, type FastifyServerOptions } from 'fastify';
 import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import { MAX_EVIDENCE_BYTES, redactPath, routes, type RouteName } from '@pocket-qa/contracts';
@@ -13,7 +13,7 @@ import { participationHandlers } from './handlers/participations';
 import { studyHandlers } from './handlers/studies';
 import { walletHandlers } from './handlers/wallet';
 import { walletLoginHandlers } from './handlers/walletLogin';
-import { HTTP_STATUS, fail, sha256 } from './util';
+import { HTTP_STATUS, fail, newId, sha256 } from './util';
 import { IdentityError, isRecoverableSignIn, type VerifiedIdentity } from './identity/types';
 import type { UserRow } from './views';
 
@@ -29,6 +29,27 @@ const handlers: Record<RouteName, Handler> = {
   ...escrowHandlers,
   ...reputationHandlers,
 };
+
+/**
+ * Mutating routes that never take an idempotency reservation (plan R12 rows N/G, pqa-qa r1 P2-H
+ * follow-up). Their response is either a credential (a session, a nonce, a playback URL or token, a
+ * presigned upload URL), which must never be persisted in the idempotency store, or too large
+ * to store (an account export can pass Firestore's 1 MiB document limit). Each one is
+ * safe to run again: it is read-only, a delete, a fresh short-lived credential, or guarded.
+ */
+export const IDEMPOTENCY_EXEMPT = new Set<RouteName>([
+  'register',
+  'login',
+  'logout',
+  'identitySession',
+  'walletLoginChallenge',
+  'walletLogin',
+  'walletNonce',
+  'exportMe',
+  'deleteMe',
+  'playbackToken',
+  'createUploadIntent',
+]);
 
 /** Routes a suspended account may still use: see itself, leave, export or delete its data. */
 const SUSPENDED_ALLOWED = new Set<RouteName>(['me', 'logout', 'exportMe', 'deleteMe']);
@@ -54,22 +75,26 @@ export function logUrl(request: Pick<FastifyRequest, 'url'> & { routeOptions?: {
 
 const LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions['logger'] } = {}) {
+export async function buildApp(
+  deps: Deps,
+  opts: { logger?: FastifyServerOptions['logger']; /** Runs before the routes are registered, so its hooks apply to them. */ setup?: (app: FastifyInstance) => void | Promise<void> } = {},
+) {
   const app = Fastify({
     logger: opts.logger ?? false,
     // Only a local reverse proxy (tunnel or gate) can sit in front of a loopback-bound API.
     trustProxy: deps.config.trustProxy,
   });
   await app.register(cors, {
-    origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin)),
+    // Local dev origins, and the deployment's own public origin (same-origin on Vercel anyway).
+    origin: (origin, cb) => cb(null, !origin || LOCAL_ORIGIN.test(origin) || origin === deps.config.publicOrigin),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['authorization', 'content-type', 'range'],
+    allowedHeaders: ['authorization', 'content-type', 'range', 'idempotency-key'],
   });
   await app.register(multipart, { limits: { fileSize: MAX_EVIDENCE_BYTES, files: 1, fields: 4, fieldSize: 4096 } });
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof DomainError) {
-      return reply.code(HTTP_STATUS[err.code]).send({ code: err.code, message: err.message });
+      return reply.code((err as { status?: number }).status ?? HTTP_STATUS[err.code]).send({ code: err.code, message: err.message });
     }
     const e = err as { code?: string; statusCode?: number; message: string };
     // A raced unique constraint (e.g. duplicate segment) is a state conflict. Other constraint
@@ -87,6 +112,7 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
     return reply.code(500).send({ code: 'INTERNAL', message: 'Something went wrong.' });
   });
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ code: 'NOT_FOUND', message: 'Route not found.' }));
+  await opts.setup?.(app);
 
   /**
    * Resolves the caller. Firebase mode: a verified Firebase ID token (revocation checked)
@@ -108,27 +134,17 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
         if (e instanceof IdentityError) return none;
         throw e; // provider outage etc.: a server error, not a silent sign-out
       }
-      const found = deps.db
-        .prepare(
-          `SELECT u.*, i.valid_after_ms AS identity_valid_after_ms FROM identities i JOIN users u ON u.id = i.user_id
-           WHERE i.provider = 'firebase' AND i.subject = ? AND u.status != 'deleted'`,
-        )
-        .get(identity.uid) as (UserRow & { identity_valid_after_ms: number }) | undefined;
+      const found = await deps.repo.core.userByIdentity(identity.uid);
       // Server-side revocation (logout): tokens from sign-ins at or before it are dead.
-      if (found && identity.authTimeMs <= found.identity_valid_after_ms) return none;
-      const user: UserRow | undefined = found ? (({ identity_valid_after_ms: _v, ...u }) => u)(found) : undefined;
+      if (found && identity.authTimeMs <= found.validAfterMs) return none;
+      const user: UserRow | undefined = found?.user;
       if (user && isRecoverableSignIn(identity)) {
         // Signed in with a verified email/Google identity: the wallet is no longer the only way in.
-        deps.db.prepare(`UPDATE identities SET has_recovery = 1 WHERE provider = 'firebase' AND subject = ? AND has_recovery = 0`).run(identity.uid);
+        await deps.repo.core.markRecovery(identity.uid);
       }
       return { user: user ?? null, identity };
     }
-    const row = deps.db
-      .prepare(
-        `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-         WHERE s.token_hash = ? AND s.expires_at > ? AND u.status != 'deleted'`,
-      )
-      .get(sha256(token), deps.now()) as UserRow | undefined;
+    const row = await deps.repo.core.userBySession(sha256(token), deps.now());
     return { user: row ?? null, identity: null };
   }
 
@@ -137,6 +153,8 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
     app.route({
       method: def.method,
       url: def.path,
+      // The contract's route name, for hooks (the hosted inline settlement slice, R5).
+      config: { pqaRoute: name },
       handler: async (req, reply) => {
         let user: UserRow | null = null;
         let identity: VerifiedIdentity | null = null;
@@ -160,22 +178,64 @@ export async function buildApp(deps: Deps, opts: { logger?: FastifyServerOptions
           }
           body = parsed.data;
         }
-        const ctx: Ctx = { deps, user, identity, params: req.params as Record<string, string>, body, req, reply };
-        const result = await handler(ctx);
-        if (def.response === 'binary') return reply;
-        // Responses are parsed through the contract schema: unknown fields are stripped,
-        // so internal columns can never leak, and drift fails loudly in tests.
-        const out = def.response.safeParse(result);
-        if (!out.success) {
-          req.log.error({ route: name, issues: out.error.issues.slice(0, 3) }, 'response violated contract');
-          throw fail('INTERNAL', 'Response did not match the API contract.');
+        const ctx: Ctx = { deps, user, identity, params: req.params as Record<string, string>, body, req, reply, idemId: () => newId() };
+        // Idempotency (plan R10): a retried mutation with the same Idempotency-Key replays the first
+        // response instead of running again. The invariants themselves are guarded in the data layer.
+        const idemKey = req.headers['idempotency-key'];
+        const idem =
+          typeof idemKey === 'string' && def.method !== 'GET' && (def.response as unknown) !== 'binary' && user && !IDEMPOTENCY_EXEMPT.has(name)
+            ? { scope: `${user.id}:${name}:${idemKey}`, fingerprint: sha256(canonicalJson({ params: req.params ?? {}, body: body ?? null })) }
+            : null;
+        if (idem) {
+          if (!/^[A-Za-z0-9_-]{8,128}$/.test(idemKey as string)) throw fail('VALIDATION', 'Idempotency-Key must be 8–128 letters, digits, _ or -.');
+          // Deterministic ids for this request's creates (32 hex: within the contract's Id limit).
+          ctx.idemId = (purpose) => `i${sha256(`${idem.scope}:${purpose}`).slice(0, 31)}`;
+          const hit = await deps.repo.core.beginIdempotency(idem.scope, idem.fingerprint, deps.now());
+          if (hit.kind === 'mismatch') throw fail('IDEMPOTENCY_KEY_REUSED', 'This Idempotency-Key was already used for a different request.');
+          if (hit.kind === 'in_progress') throw fail('CONFLICT_STATE', 'The first request with this Idempotency-Key is still running.');
+          if (hit.kind === 'replay') {
+            reply.code(hit.status);
+            return hit.body;
+          }
         }
-        return out.data;
+        // Whatever happens after the reservation (handler error, contract violation, a failed
+        // completion write), it is either completed or abandoned: never left pending (P2-E).
+        let completed = false;
+        try {
+          const result = await handler(ctx);
+          if (def.response === 'binary') return reply;
+          // Responses are parsed through the contract schema: unknown fields are stripped,
+          // so internal columns can never leak, and drift fails loudly in tests.
+          const out = def.response.safeParse(result);
+          if (!out.success) {
+            req.log.error({ route: name, issues: out.error.issues.slice(0, 3) }, 'response violated contract');
+            throw fail('INTERNAL', 'Response did not match the API contract.');
+          }
+          if (idem) {
+            await deps.repo.core.completeIdempotency(idem.scope, reply.statusCode, out.data);
+            completed = true;
+          }
+          return out.data;
+        } finally {
+          if (idem && !completed) await deps.repo.core.abandonIdempotency(idem.scope).catch(() => undefined);
+        }
       },
     });
   }
 
   return app;
+}
+
+/** JSON with object keys sorted, so equal requests always hash the same (idempotency fingerprint). */
+function canonicalJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as Record<string, unknown>)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonicalJson((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'null';
 }
 
 /** Logger options for the real server; tests pass their own stream with these serializers. */

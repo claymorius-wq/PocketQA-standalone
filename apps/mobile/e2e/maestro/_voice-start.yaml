@@ -1,0 +1,9 @@
+# Shared: open a fresh session and start recording screen + voice (entire screen).
+appId: com.reshareai.pocketqa
+---
+- runFlow: _open-session.yaml
+- tapOn:
+    id: record-start
+- runFlow: _grant-capture.yaml
+- assertVisible:
+    id: record-stop

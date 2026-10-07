@@ -4,6 +4,72 @@ Build lead: `pocketqa-lead` (Herdr pane `wX:p1`, `claude-opus-5-5`). Newest entr
 
 **Team topology (Hamza's decision, 2026-10-02): lead builds solo.** The lead writes all code. `pqa-qa` (pane `wX:p2`, `claude-opus-5-5`) does only read-only independent reviews. No backend, mobile or wallet worker panes, and no per-role worktrees. Why: the auto-mode classifier denied launching children with autonomous permissions. Details are in `docs/reviews/team-launch.md`. Owners in the table below mean the lead in that role's hat, reviewed by `pqa-qa`.
 
+## Current work (2026-10-06): HOSTED at https://pocketqa.vercel.app (Vercel `pocketqa`, Firestore `pocketqa-optijara` eur3, R2 `pocketqa-evidence`)
+- **Live:** dpl_DF68zX8zboPNNpfRYjVkDMFLPwSP, READY. Staging env: Firebase sign-in, private R2, labelled test credits, simulated settlement. Evidence is in `docs/verification.md`.
+- **Migration:** the local data was migrated (post-run manifest = the QA-approved 686c435d). The Seeker recording was server-copied to `evidence/4aef8a84…`; the archive is untouched.
+- **QA:**
+  - freeze APPROVE (code);
+  - hosted gate PASS (no-account scope, r2);
+  - migration accepted at the data level;
+  - unrelated-tester denial plus a browser upload >4.5 MB, playback and expiry PASSED (QA post-run r2).
+- **Labelled synthetic data in production (do not misread counts/exports):**
+  - Firebase user `NaALbDGFuMhg6aAjqNP3x5E8AQk2` / Pocket QA tester `30c92665-773f-4da7-84c3-a8336ab2720b` "QA synthetic tester (hosted)" (`qa-hosted-synthetic-tester-20261006@example.test`);
+  - one participation in a migrated synthetic-builder study;
+  - evidence `8c6db250-00f0-44d4-a365-0b82bcbda7b1` (6,914,699-byte ffmpeg test pattern) in R2 `evidence/`.
+  - Retained as authorized; any removal is Hamza's call.
+- **Pending Hamza:**
+  - a normal sign-in with his own email, which claims the migrated account; then owner playback of the Seeker recording (sha 3ee5d78c…a73);
+  - TTL (billing);
+  - installing the hosted APK on the Seeker;
+  - the merge.
+
+## Current work (2026-10-06): Firebase Auth + Firestore + private R2 + Vercel refactor (`feat/firebase-vercel`, EMULATOR ONLY, nothing deployed)
+- **Team:** lead `wX:p1`; pqa-be1/be2/be3 (`wX:p4`–`p6`, proof in `docs/reviews/team-launch.md`); pqa-qa `wX:p2`. This supersedes the solo-lead note below for this refactor. Plan: `docs/plans/firebase-vercel-refactor.md` (QA approved through r2, plus R9–R12).
+- **Done (emulator-verified):**
+  - repositories per domain (core, studies, evidence, escrow) on SQLite and Firestore;
+  - idempotency reservations (R10); R12 retry table, with deterministic ids on every D route;
+  - the client sends a key per user intent (P2-H, `e53f978`); credential and export routes are exempt (`fe91b8a`);
+  - contention past 10 attempts becomes a retryable 409 (`36d0804`);
+  - indexes and TTL policies declared, with a static coverage test (`5e16e25`);
+  - presigned R2 playback (`07ec4b9`); bounded, fenced sweep and settlement slices (`d605eed`, `d5c8427`).
+- **Hosted (`5c9d29d`):**
+  - `src/hosted/` plus `scripts/vercel/build.mjs` give a Build Output API v3 artifact for `vercel deploy --prebuilt`: nodejs24.x, maxDuration 60 s, fra1, cron jobs, and an output secret scan;
+  - the BUILT function runs on the emulators (`test/emulator/bundle.test.ts`).
+- **Blocked (cloud):**
+  - billing for `pocketqa-optijara` can't be read: gcloud `admin@optijara.ai` needs `gcloud auth login`, or Hamza checks the console;
+  - the Firestore API is still disabled (403, re-checked 2026-10-06);
+  - no provisioning, deploy or Vercel project until then.
+- **Freeze candidate (41ceba1+docs):**
+  - `pnpm verify` green; emulator 27 files, 534 passed / 3 skipped; the dual-backend regression is green;
+  - the migration dry-run manifest 686c435d is approved by QA;
+  - the hosted web rehearsal has zero CSP violations;
+  - awaiting the pqa-qa freeze verdict.
+- **Then (needs cloud):**
+  - billing verified;
+  - Firestore enabled (eur3), rules, indexes and TTL deployed;
+  - the Vercel project `pocketqa`, server-only envs, then `build.mjs --deploy` + `vercel deploy --prebuilt`;
+  - hosted tests and a header readback;
+  - the real migration plus QA's post-run check;
+  - the APK rebuilt against the https API.
+- **Incident (2026-10-06, about 2 min):** a lead `pkill -f` stopped the USB-testing local API on 8787. It was restarted from the native-voice worktree with the same data dir, health ok. The memory rule now forbids pattern kills.
+
+## Current work (2026-10-06): native recording, new capture pipeline, merged with main (`feat/native-voice-recording` @ fe89787)
+- **Why:** MediaRecorder's audio stopped for good mid-recording on the emulator, three times, and reported nothing.
+- **Fix:** our own AudioRecord + MediaCodec + MediaMuxer pipeline. The design follows WebRTC's reference mic capture, Zoom's documented MediaProjection + microphone FGS route, and Android's input-sharing rules, all cited in `docs/plans/native-capture-pipeline.md`. Meet's internals are not claimed.
+- **Also fixed:**
+  - voice lost mid-clip now has its own bound;
+  - an evidence gate that couldn't see timestamp gaps;
+  - clip rows and notices that stayed invisible when they arrived while the app was off screen.
+- **main `daf0c85`** (intro, badges) is merged in this worktree, not into main: verify passes and Playwright is 28/28; the combined cross-app run passes with the intro.
+- **Emulator results are structure only** (its mic is silence). A non-silent signal, speech, real phones, the Seeker and an iPhone broadcast are gates (`docs/reviews/native-recording/gates.md`). **Not merged; awaiting pqa-qa's verdict and pqa-ios's iOS compile at fe89787.**
+
+## Current work (2026-10-05): native screen + voice recording across apps (`feat/native-voice-recording`, from main `ae0b501`)
+- **Scope:** Hamza authorised it, relayed by the parent. A tester starts recording in Pocket QA, switches to OTHER apps and narrates, then reviews, keeps or discards the clip back in Pocket QA. Upload happens only through the explicit existing path. Android/Seeker uses MediaProjection plus a `mediaProjection|microphone` foreground service; iPhone uses a ReplayKit Broadcast Upload Extension with an App Group (built by pqa-ios, `wX:p3`, and merged). Mobile web says honestly that it can't capture other apps.
+- **Freeze candidate `c5e629d`**, awaiting pqa-qa's verdict. pqa-qa reviewed the code and found no new P0–P2; its verdict is blocked on the lifecycle evidence. **Not merged.**
+- **Release blocker found and fixed:** an emulator rotation run produced video 391.7 s with the microphone track ending at 202.7 s, and nothing noticed. Every finished clip now has its own track durations measured. A clip whose voice doesn't cover the video within max(1 s, 2 %) is shown as "Voice stops at m:ss of m:ss…" and can only be removed. The same rule applies on iOS.
+- **pqa-qa r1** P2-A (a screen destroyed in the background deleted the recording) and P3 1–6 are fixed. A regression the emulator found (cc70f3c) is fixed.
+- **Proven on the emulator:** cross-app capture, the notification Stop, review, keep and upload, with the synthetic mic signal covering the whole clip, plus mic-denied. **BLOCKED (infra):** the six lifecycle scenarios. **Hardware gates:** a real Android phone or Seeker with speech; an iPhone with a team and App Group profiles; an https backend for untethered phones (`docs/reviews/native-recording/gates.md`).
+- **APK** sha256 `07415792…5c75` (`docs/verification.md`); install guide `docs/handoff/native-recording-device-install.md`.
 ## Badges and leaderboard in the Lens design (2026-10-05, `feat/lens-badges` from main `ae0b501`, contributor session)
 - **Why:** Hamza asked for "the leaderboard and badges" in the reputation design (`docs/design/reputation-layer.md`); the shipped v1 used stand-in glyph tiles.
 - **Built on the live rules** (points, quality score, the four badges, the opt-in leaderboard): no rule, value or threshold changes.

@@ -5,11 +5,11 @@ import { join } from 'node:path';
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { base58 } from '@scure/base';
 import { buildSiwsMessage } from '@pocket-qa/contracts';
+import { API } from './api';
 
 // Remaining local scope: devnet transfer screen states, builder dispute view, admin
 // stuck-submission resolution. Setup goes through the real local API; assertions are made
 // in the browser UI. The chain is the loopback test double e2e/fake-devnet-rpc.mjs.
-const API = 'http://127.0.0.1:8787';
 const RPC = 'http://127.0.0.1:8899';
 const SHOTS = join(__dirname, '../../../docs/reviews/remaining-scope');
 mkdirSync(SHOTS, { recursive: true });

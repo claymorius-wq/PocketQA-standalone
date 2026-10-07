@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { API } from './api';
 
 // End-to-end builder review loop on the web preview against the real local API.
 const SHOTS = join(__dirname, '../../../docs/reviews/gate-a');
@@ -219,11 +220,11 @@ test('offline state when the API is unreachable', async ({ browser }) => {
   const page = await ctx.newPage();
   await signUp(page, 'tester', 'Olive');
   await expect(page.getByTestId('discover-screen')).toBeVisible();
-  await ctx.route('http://127.0.0.1:8787/**', (r) => r.abort('internetdisconnected'));
+  await ctx.route(`${API}/**`, (r) => r.abort('internetdisconnected'));
   await page.getByTestId('tab-work').click();
   await expect(page.getByTestId('offline-state')).toBeVisible();
   await shot(page, 'tester-offline-light');
-  await ctx.unroute('http://127.0.0.1:8787/**');
+  await ctx.unroute(`${API}/**`);
   await page.getByTestId('retry-button').click();
   // Scoped to My work: Discover stays mounted in its tab scene, and when the new tester matches no
   // study it shows its own empty-state too (then an unscoped lookup finds two and fails, as it does

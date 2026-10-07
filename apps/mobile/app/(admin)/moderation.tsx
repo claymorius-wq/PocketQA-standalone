@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text as RNText, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { api, ApiError } from '../../src/api/client';
+import { useIntentKey } from '../../src/api/intentKey';
 import { GlassSurface } from '../../src/glass';
 import { PASS_THROUGH } from '../../src/glass/paint';
 import { useFocusRefetch, useAdminStudies } from '../../src/lib/queries';
@@ -143,11 +144,13 @@ export default function Moderation() {
   const [shown, setShown] = useState(target);
   if (target && target !== shown) setShown(target);
   const action = (target ?? shown)?.action;
+  const intent = useIntentKey();
   const mod = useMutation({
     // Bound to what was confirmed (the study, the action and the reason), never to the sheet's
     // latest state: a request the browser holds while offline still moderates the right study.
-    mutationFn: (m: ModerationRequest) => api('moderateStudy', { params: { id: m.id }, body: { action: m.action, reason: m.reason } }),
+    mutationFn: (m: ModerationRequest) => api('moderateStudy', { params: { id: m.id }, body: { action: m.action, reason: m.reason }, idempotencyKey: intent.keyFor(m) }),
     onSuccess: (study) => {
+      intent.done();
       // The reason stays while the sheet animates out; the next open() clears it.
       setTarget(null);
       qc.invalidateQueries({ queryKey: ['adminStudies'] });

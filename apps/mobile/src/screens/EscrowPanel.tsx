@@ -4,9 +4,11 @@ import { Wallet } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { api, ApiError } from '../api/client';
+import { useIntentKey } from '../api/intentKey';
 import { formatUnits, PILOT_DISCLOSURE, settlementTag, tokenAmount } from '../lib/money';
 import { Button, Card, Field, Notice, Text } from '../ui';
 import { KeyValue, KeyValueList, SectionHeader } from '../ui/patterns';
+import { ServerTxSign, VERIFY_VALUE } from '../wallet/ServerTxSign';
 
 type EscrowPayment = Extract<Study['payment'], { mode: 'escrow' }>;
 
@@ -27,21 +29,26 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
   const [signature, setSignature] = useState('');
   const refresh = () => qc.invalidateQueries({ queryKey: ['study', study.id] });
   // One press stands in for the wallet: request → simulated wallet transfer → verification.
+  const intent = useIntentKey();
   const fund = useMutation({
     mutationFn: async () => {
-      const f = await api('createEscrowFunding', { params: { id: study.id } });
+      const f = await api('createEscrowFunding', { params: { id: study.id }, idempotencyKey: intent.keyFor(['fund', study.id]) });
       const paid = await api('simulatedWalletPayment', { params: { id: f.id } });
       return api('submitFundingSignature', { params: { id: f.id }, body: { signature: paid.signature } });
     },
     onSuccess: (f) => {
+      intent.done();
       setFunding(f);
       void refresh();
     },
   });
   // Devnet pilot: the request fixes the amount, vault and reference; the wallet sends on its own.
   const request = useMutation({
-    mutationFn: () => api('createEscrowFunding', { params: { id: study.id } }),
-    onSuccess: setFunding,
+    mutationFn: () => api('createEscrowFunding', { params: { id: study.id }, idempotencyKey: intent.keyFor(['request', study.id]) }),
+    onSuccess: (f) => {
+      intent.done();
+      setFunding(f);
+    },
   });
   const verify = useMutation({
     mutationFn: () => api('submitFundingSignature', { params: { id: funding!.id }, body: { signature: signature.trim() } }),
@@ -98,10 +105,21 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
             <Card k={0.64} style={styles.card} testID="escrow-pilot-request">
               <KeyValueList>
                 <KeyValue label="Send exactly" value={amount(funding.amountUnits)} valueTestID="escrow-pilot-amount" />
-                <KeyValue label="To the study vault (token account)" value={funding.vault} valueTestID="escrow-pilot-vault" />
-                <KeyValue label="Reference (include it in the transfer)" value={funding.reference} valueTestID="escrow-pilot-reference" />
+                <KeyValue label="To the study vault (token account)" value={funding.vault} valueTestID="escrow-pilot-vault" valueStyle={VERIFY_VALUE} />
+                <KeyValue label="Reference (include it in the transfer)" value={funding.reference} valueTestID="escrow-pilot-reference" valueStyle={VERIFY_VALUE} />
               </KeyValueList>
-              <Text variant="small" tone="muted">From your linked wallet, on Solana devnet, as a TransferChecked of devnet test USDC. Then paste the transaction signature.</Text>
+              {/* The server builds this exact transfer; the wallet signs and sends it after the plan is shown. */}
+              <ServerTxSign
+                testID="escrow-wallet"
+                settlement={p.settlement}
+                expectedDestination={funding.vault}
+                reviewLabel="Review the transfer to sign in your wallet"
+                signLabel="Sign and send in your wallet"
+                load={() => api('escrowFundingTransaction', { params: { id: funding.id } })}
+                submit={(sig) => api('submitFundingSignature', { params: { id: funding.id }, body: { signature: sig } }).then((f) => setFunding(f))}
+                onDone={() => void refresh()}
+              />
+              <Text variant="small" tone="muted">Or send it yourself from your linked wallet, on Solana devnet, as a TransferChecked of devnet test USDC, then paste the transaction signature.</Text>
               <Field label="Transaction signature" value={signature} onChangeText={setSignature} autoCapitalize="none" testID="escrow-pilot-signature" />
               <Button label="Verify transfer" icon={Wallet} onPress={() => verify.mutate()} loading={verify.isPending} testID="escrow-pilot-verify" />
             </Card>
@@ -130,6 +148,7 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
               <KeyValue label="Approved, payment pending" value={amount(b.payableUnits)} valueTestID="escrow-payable" />
               <KeyValue label={`Settled to testers (${tag})`} value={amount(b.settledUnits)} valueTestID="escrow-settled" />
               <KeyValue label="Platform fees" value={amount(b.feesUnits)} />
+              {b.sweptFeesUnits !== undefined ? <KeyValue label={`Fees sent to the platform (${tag})`} value={amount(b.sweptFeesUnits)} valueTestID="escrow-swept-fees" /> : null}
               <KeyValue label="Refund pending" value={amount(b.pendingRefundUnits)} />
               <KeyValue label={`Refunded (${tag})`} value={amount(b.refundedUnits)} valueTestID="escrow-refunded" />
             </KeyValueList>
@@ -140,6 +159,41 @@ export function EscrowPanel({ study }: { study: Study & { payment: EscrowPayment
                 ? `Refunded ${amount(p.refund.amountUnits)} to the funding wallet · ${pilot ? 'finalized on devnet, no value' : 'simulation, no funds moved'}.`
                 : `Refund of ${amount(p.refund.amountUnits)} to the funding wallet: ${p.refund.status} · ${tag}.`}
             </Text>
+          ) : null}
+          {pilot && p.refund?.status === 'awaiting_approval' ? (
+            // Devnet pilot: the refund waits for the builder's vote (2 of 3) in their wallet.
+            <ServerTxSign
+              testID="escrow-refund-approval"
+              settlement={p.settlement}
+              expectedApproval={{ settlementId: p.refund.settlementId, kind: 'refund', amountUnits: p.refund.amountUnits, destination: p.fundingWallet }}
+              reviewLabel="Review the refund vote to sign in your wallet"
+              signLabel="Approve in your wallet"
+              load={() => api('settlementApproval', { params: { id: p.refund!.settlementId } })}
+              submit={(signature, plan) => api('submitSettlementApproval', { params: { id: plan.settlementId }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+              onDone={() => void refresh()}
+            />
+          ) : null}
+          {p.feeSweep ? (
+            <Text variant="small" tone="muted" testID="escrow-fee-sweep">
+              {p.feeSweep.status === 'confirmed'
+                ? `Platform fees of ${amount(p.feeSweep.amountUnits)} sent to the platform fee wallet · ${pilot ? 'finalized on devnet, no value' : 'simulation, no funds moved'}.`
+                : `Platform fees of ${amount(p.feeSweep.amountUnits)} to the platform fee wallet: ${p.feeSweep.status.replace('_', ' ')} · ${tag}.`}
+            </Text>
+          ) : null}
+          {pilot && p.feeSweep?.status === 'awaiting_approval' ? (
+            // Devnet pilot: at close the earned fees leave the vault to the platform fee wallet, also
+            // co-signed by the builder (be3 E-24). The app doesn't know the fee wallet: the recipient
+            // is the plan's, checked against the vault transaction on devnet when it can be read.
+            <ServerTxSign
+              testID="escrow-fee-approval"
+              settlement={p.settlement}
+              expectedApproval={{ settlementId: p.feeSweep.settlementId, kind: 'fee', amountUnits: p.feeSweep.amountUnits, destination: null }}
+              reviewLabel="Review the platform fee vote to sign in your wallet"
+              signLabel="Approve in your wallet"
+              load={() => api('settlementApproval', { params: { id: p.feeSweep!.settlementId } })}
+              submit={(signature, plan) => api('submitSettlementApproval', { params: { id: plan.settlementId }, body: { signature, txIndex: plan.txIndex, opId: plan.opId } })}
+              onDone={() => void refresh()}
+            />
           ) : null}
         </Card>
       )}

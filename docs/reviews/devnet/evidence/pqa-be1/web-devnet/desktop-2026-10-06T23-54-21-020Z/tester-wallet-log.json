@@ -1,0 +1,31 @@
+[
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signMessage",
+  "chain": "solana:devnet",
+  "bytes": 379,
+  "approved": false,
+  "refused": "policy"
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signMessage",
+  "chain": "solana:devnet",
+  "bytes": 379,
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ }
+]

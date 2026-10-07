@@ -1,15 +1,21 @@
 import { randomBytes } from 'node:crypto';
 import type { DB } from '../db';
+import type { Repos } from '../repo';
+import { sqliteEscrowRepo } from '../repo/escrow/sqlite';
+import type { EscrowRepo, SimTransferRow } from '../repo/escrow/types';
 import { SettlementFailure, type SettlementProvider } from './types';
 
 /**
- * SIMULATED settlement (ADR 0007 §4): a local table stands in for a chain. Nothing here holds a
+ * SIMULATED settlement (ADR 0007 §4): a stored table stands in for a chain. Nothing here holds a
  * key, signs, or touches a network, and SIM-USDC has no value. Every API response that comes from
  * it says `settlement: 'simulated'`, and the app labels it as a simulation, never as paid.
  *
  * It enforces what a real provider must: an idempotent `submit` per key, finality before a
  * transfer counts, and failures that send nothing. Test hooks (`holdProcessing`, `payoutFault`,
  * `crashAfterSubmit`) exercise the worker's retry and reconciliation paths.
+ *
+ * Storage goes through the escrow repository (sim chain transfers, plus the `simIdempotency`
+ * guard on Firestore), so hosted deployments can run it; a SQLite `db` is accepted too.
  */
 export const SIM_NETWORK = 'simulated';
 export const SIM_MINT = 'SIM-USDC';
@@ -30,6 +36,7 @@ export type SimTransfer = {
   reference: string;
   status: 'processing' | 'finalized' | 'failed';
 };
+type SimInput = Partial<SimTransfer> & Pick<SimTransfer, 'source' | 'destination' | 'amountUnits' | 'reference'>;
 
 export class SimulatedSettlement implements SettlementProvider {
   readonly mode = 'simulated' as const;
@@ -40,10 +47,14 @@ export class SimulatedSettlement implements SettlementProvider {
   payoutFault: SimFault | null = null;
   crashAfterSubmit = false;
 
+  private readonly chain: EscrowRepo;
+
   constructor(
-    private readonly db: DB,
+    source: DB | Pick<Repos, 'escrow'>,
     private readonly now: () => number,
-  ) {}
+  ) {
+    this.chain = 'prepare' in source ? sqliteEscrowRepo(source) : source.escrow;
+  }
 
   vaultFor(studyId: string) {
     return `sim-vault:${studyId}`;
@@ -53,55 +64,79 @@ export class SimulatedSettlement implements SettlementProvider {
     return `ref${randomBytes(16).toString('hex')}`;
   }
 
+  private row(t: SimInput, kind: SimTransferRow['kind'], key: string | null): SimTransferRow {
+    return {
+      signature: `sim${randomBytes(24).toString('hex')}`,
+      network: t.network ?? SIM_NETWORK,
+      mint: t.mint ?? SIM_MINT,
+      source: t.source,
+      destination: t.destination,
+      amount_units: t.amountUnits,
+      reference: t.reference,
+      kind,
+      status: t.status ?? (this.holdProcessing ? 'processing' : 'finalized'),
+      idempotency_key: key,
+      block_time_ms: this.now(),
+    };
+  }
+
   /** Records a simulated transfer as if a wallet had sent it; returns its signature. */
-  recordTransfer(t: Partial<SimTransfer> & Pick<SimTransfer, 'source' | 'destination' | 'amountUnits' | 'reference'>, kind: 'funding' | 'payout' | 'refund' | 'other' = 'other', key: string | null = null): string {
-    const signature = `sim${randomBytes(24).toString('hex')}`;
-    this.db
-      .prepare(
-        `INSERT INTO sim_chain_transfers (signature, network, mint, source, destination, amount_units, reference, kind, status, idempotency_key, block_time_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      )
-      .run(signature, t.network ?? SIM_NETWORK, t.mint ?? SIM_MINT, t.source, t.destination, t.amountUnits, t.reference, kind, t.status ?? (this.holdProcessing ? 'processing' : 'finalized'), key, this.now());
-    return signature;
+  async sendTransfer(t: SimInput, kind: SimTransferRow['kind'] = 'other', key: string | null = null): Promise<string> {
+    return this.chain.simRecordTransfer(this.row(t, kind, key));
+  }
+
+  /** The signature of the simulated funding transfer already sent for this reference, if any. */
+  fundingSignatureFor(reference: string): Promise<string | null> {
+    return this.chain.simFundingSignature(reference);
   }
 
   /** Processing transfers finalize once the hold is lifted (a late confirmation). */
-  private settleProcessing(signature: string) {
-    if (!this.holdProcessing) this.db.prepare(`UPDATE sim_chain_transfers SET status = 'finalized' WHERE signature = ? AND status = 'processing'`).run(signature);
+  private async settleProcessing(signature: string) {
+    if (!this.holdProcessing) await this.chain.simFinalizeProcessing(signature);
   }
 
   async getTransfer(signature: string, _expect?: { vault: string; reference: string }) {
-    this.settleProcessing(signature);
-    const r = this.db.prepare('SELECT * FROM sim_chain_transfers WHERE signature = ?').get(signature) as
-      | { network: string; mint: string; source: string; destination: string; amount_units: number; reference: string; status: SimTransfer['status']; block_time_ms: number }
-      | undefined;
+    await this.settleProcessing(signature);
+    const r = await this.chain.simTransfer(signature);
     if (!r) return null;
     return { status: r.status, network: r.network, mint: r.mint, destination: r.destination, amountUnits: r.amount_units, reference: r.reference, blockTimeMs: r.block_time_ms, source: r.source };
   }
 
-  async submit(req: { key: string; kind: 'payout' | 'refund'; vault: string; destination: string; amountUnits: number }) {
+  async submit(req: { key: string; kind: 'payout' | 'refund' | 'fee'; vault: string; destination: string; amountUnits: number }) {
     // Idempotent per attempt key, as the worker persists it before sending (simulation).
-    const existing = this.db.prepare('SELECT signature FROM sim_chain_transfers WHERE idempotency_key = ?').get(req.key) as { signature: string } | undefined;
-    if (existing) return { signature: existing.signature };
+    const existing = await this.chain.simSignatureForKey(req.key);
+    if (existing) return { signature: existing };
     if (req.kind === 'payout' && this.payoutFault) throw new SettlementFailure(FAULT_REASONS[this.payoutFault]);
-    const signature = this.recordTransfer({ source: req.vault, destination: req.destination, amountUnits: req.amountUnits, reference: req.key }, req.kind, req.key);
+    // The fee sweep is devnet-only; were one ever simulated it is recorded as 'other' (no new sim kind).
+    const signature = await this.sendTransfer({ source: req.vault, destination: req.destination, amountUnits: req.amountUnits, reference: req.key }, req.kind === 'fee' ? 'other' : req.kind, req.key);
     if (this.crashAfterSubmit) throw new Error('simulated crash after the transfer was sent, before it was recorded');
     return { signature };
   }
 
   async status(signature: string) {
-    this.settleProcessing(signature);
-    const r = this.db.prepare('SELECT status FROM sim_chain_transfers WHERE signature = ?').get(signature) as { status: SimTransfer['status'] } | undefined;
+    await this.settleProcessing(signature);
+    const r = await this.chain.simTransfer(signature);
     return r ? r.status : 'not_found';
   }
 
-  /** Test and evidence helpers: landed transfers by kind and destination. */
-  payoutCount(opts: { landed?: boolean } = {}) {
-    return (this.db.prepare(`SELECT COUNT(*) AS n FROM sim_chain_transfers WHERE kind = 'payout'${opts.landed ? ` AND status = 'finalized'` : ''}`).get() as { n: number }).n;
+  // ── Test and evidence helpers (either backend) ─────────────────────────────────────────
+
+  /** Records a simulated transfer as a wallet would have sent it (tests); returns its signature. */
+  recordTransfer(t: SimInput, kind: SimTransferRow['kind'] = 'other', key: string | null = null): Promise<string> {
+    return this.sendTransfer(t, kind, key);
+  }
+
+  /** Payout transfers sent (`landed`: finalized only). */
+  async payoutCount(opts: { landed?: boolean } = {}) {
+    return (await this.chain.simTransfersOfKind('payout')).filter((x) => !opts.landed || x.status === 'finalized').length;
+  }
+  private async landedTo(kind: 'payout' | 'refund', destination: string) {
+    return (await this.chain.simTransfersOfKind(kind)).filter((x) => x.status === 'finalized' && x.destination === destination).reduce((s, x) => s + x.amount_units, 0);
   }
   payoutsTo(destination: string) {
-    return (this.db.prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM sim_chain_transfers WHERE kind = 'payout' AND status = 'finalized' AND destination = ?`).get(destination) as { s: number }).s;
+    return this.landedTo('payout', destination);
   }
   refundsTo(destination: string) {
-    return (this.db.prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM sim_chain_transfers WHERE kind = 'refund' AND status = 'finalized' AND destination = ?`).get(destination) as { s: number }).s;
+    return this.landedTo('refund', destination);
   }
 }

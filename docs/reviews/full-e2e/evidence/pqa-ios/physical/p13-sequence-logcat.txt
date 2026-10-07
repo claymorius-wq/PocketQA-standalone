@@ -1,0 +1,24 @@
+10-06 23:24:41.701 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.google.android.permissioncontroller, pid:2236, uid:10206
+10-06 23:24:41.702 I/MTK_APPList(  980): [notifyAPPstate] pc:1, com.reshareai.pocketqa.e2e => com.google.android.permissioncontroller
+10-06 23:24:49.945 I/GrantPermissionsViewModel( 2236): Logged buttons presented and clicked permissionGroupName=android.permission-group.NOTIFICATIONS ...
+10-06 23:24:49.963 I/GrantPermissionsViewModel( 2236): Permission grant result requestId=3622710044453723931 callingUid=10178 callingPackage=com.reshareai.pocketqa.e2e permission=android.permission.POST_NOTIFICATIONS isImplicit=false result=4 isPermissionRationaleShown=falseisPackageRestrictedByEnhancedConfirmation=false
+10-06 23:24:49.982 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.reshareai.pocketqa.e2e, pid:13321, uid:10178
+10-06 23:24:49.983 I/MTK_APPList(  980): [notifyAPPstate] pc:0, com.google.android.permissioncontroller => com.reshareai.pocketqa.e2e
+10-06 23:24:49.986 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.reshareai.pocketqa.e2e, pid:13321, uid:10178
+10-06 23:24:50.036 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.google.android.permissioncontroller, pid:2236, uid:10206
+10-06 23:24:50.037 I/MTK_APPList(  980): [notifyAPPstate] pc:0, com.reshareai.pocketqa.e2e => com.google.android.permissioncontroller
+10-06 23:24:51.360 I/GrantPermissionsViewModel( 2236): Logged buttons presented and clicked permissionGroupName=android.permission-group.MICROPHONE ...
+10-06 23:24:51.378 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.reshareai.pocketqa.e2e, pid:13321, uid:10178
+10-06 23:24:51.379 I/MTK_APPList(  980): [notifyAPPstate] pc:0, com.google.android.permissioncontroller => com.reshareai.pocketqa.e2e
+10-06 23:24:51.380 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.reshareai.pocketqa.e2e, pid:13321, uid:10178
+10-06 23:24:51.441 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.android.systemui, pid:1792, uid:10149
+10-06 23:24:51.443 I/MTK_APPList(  980): [notifyAPPstate] pc:0, com.reshareai.pocketqa.e2e => com.android.systemui
+10-06 23:24:54.451 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.android.systemui, pid:1792, uid:10149
+10-06 23:24:58.193 I/MTK_APPList(  980): [notifyAPPstate] foreground:com.android.chrome, pid:18707, uid:10119
+10-06 23:24:58.194 I/MTK_APPList(  980): [notifyAPPstate] pc:0, com.android.systemui => com.android.chrome
+10-06 23:24:59.399 E/AndroidRuntime(13321): FATAL EXCEPTION: main
+10-06 23:24:59.399 E/AndroidRuntime(13321): Process: com.reshareai.pocketqa.e2e, PID: 13321
+10-06 23:24:59.399 E/AndroidRuntime(13321): java.lang.RuntimeException: Unable to start service expo.modules.pocketqascreencapture.ScreenCaptureService@54c910d with Intent { act=expo.modules.pocketqascreencapture.START xflg=0x4 cmp=com.reshareai.pocketqa.e2e/expo.modules.pocketqascreencapture.ScreenCaptureService (has extras) }:
+10-06 23:24:59.399 E/AndroidRuntime(13321): Caused by: java.lang.SecurityException: Starting FGS with type microphone callerApp=ProcessRecord{d75a661 13321:com.reshareai.pocketqa.e2e/u0a178} targetSDK=36 requires permissions: all of the permissions allOf=true [android.permission.FOREGROUND_SERVICE_MICROPHONE] any of the permissi
+10-06 23:24:59.452 W/WindowManager( 1515): Changing focus from Window{efe2c8f u0 com.android.chrome/com.google.android.apps.chrome.Main} to Window{3f3f84a u0 Application Error: com.reshareai.pocketqa.e2e} displayId=0 Callers=com.android.server.wm.RootWindowContainer.updateFocusedWindowLocked:466 com.android.server.wm.WindowManag
+10-06 23:24:59.774 I/SurfaceFlinger( 1011): onHandleDestroyed: layerId=2637, name=Surface(name=3f3f84a Application Error: com.reshareai.pocketqa.e2e)/@0x22e2b9e - animation-leash of window_animation#2637

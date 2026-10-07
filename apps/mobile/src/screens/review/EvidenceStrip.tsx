@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { StyleSheet, Text as RNText, View, type LayoutChangeEvent } from 'react-native';
 import Animated, { interpolate, ReduceMotion, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import type { Evidence } from '@pocket-qa/contracts';
-import { api, ApiError, mediaUrl } from '../../api/client';
+import { api, ApiError } from '../../api/client';
+import { playbackUri } from '../../evidence/playback';
 import { GlassSurface, Well } from '../../glass';
 import { GlassTile } from '../../icons';
 import { bytes } from '../../lib/format';
@@ -92,10 +93,10 @@ export function EvidenceStrip({ items }: { items: Evidence[] }) {
 function EvidenceTile({ e, index, width, onError }: { e: Evidence; index: number; width: number; onError: ErrorReport }) {
   const { colors, type } = useTheme();
   const [url, setUrl] = useState<string | null>(null);
-  // The same request EvidenceItem makes: a short-lived playback token for this item only.
+  // The same request EvidenceItem makes: a short-lived playback link for this item only.
   const open = useMutation({
     mutationFn: () => api('playbackToken', { params: { id: e.id } }),
-    onSuccess: (t) => setUrl(mediaUrl(t.token)),
+    onSuccess: (t) => setUrl(playbackUri(t)),
   });
   const message = open.error ? (open.error as ApiError).message : null;
   useEffect(() => onError(e.id, message), [e.id, message, onError]);

@@ -4,13 +4,13 @@ import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { decodeProblems, knownWarnings } from './ffmpegCheck';
+import { API } from './api';
 
 // The desktop web recorder in REAL Chromium (MediaRecorder, getDisplayMedia, getUserMedia), with
 // SYNTHETIC media from the browser's fake-device flags (playwright.config.ts, desktop-recorder):
 // a test-pattern screen and a tone for the microphone. No real screen, window, tab content or
 // microphone is captured, and the real OS/browser chooser UI is NOT exercised (it is auto-accepted).
 // The downloaded file is checked with ffprobe/ffmpeg (docs/plans/web-screen-audio-recording.md).
-const API = 'http://127.0.0.1:8787';
 const OUT = join(__dirname, '../../../docs/reviews/screen-recording');
 mkdirSync(OUT, { recursive: true });
 const PROBE = join(OUT, 'ffprobe.txt');

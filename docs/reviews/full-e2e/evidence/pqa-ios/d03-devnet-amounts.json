@@ -1,0 +1,256 @@
+{
+  "readAt": "2026-10-06T18:36:36.835Z",
+  "rpc": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "mint": {
+    "address": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+    "parsed": {
+      "decimals": 6,
+      "freezeAuthority": "CJtyoKSLrktozQzjERTiK3btQtiTK3nN4QrqGHLidyCT",
+      "isInitialized": true,
+      "mintAuthority": "GrNg1XM2ctzeE2mXxXCfhcTUbejM8Z4z4wNVTy2FjMEz",
+      "supply": "16286767457357285858"
+    },
+    "equalsMainnetUsdc": false,
+    "mainnetUsdc": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  },
+  "mainnetUsdcAddressOnDevnet": {
+    "exists": true,
+    "owner": "11111111111111111111111111111111"
+  },
+  "tokenMovements": [
+    {
+      "step": "runner:wrong_mint_funding (wSOL with the funding reference)",
+      "signaturePrefix": "4CCcmmDeNDWB…",
+      "signatureSha256": "956623141b81e809477e689a01c231d614c810fbd1c131ded489ecb4a1f3729d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704321,
+      "blockTime": "2026-10-05T10:39:49.000Z",
+      "err": null,
+      "feeLamports": 10000,
+      "tokenDeltas": [
+        {
+          "account": "48hU6p91U1RfHVu17V8jdqnFDA2G9qnQ8A7JpmKPST3Q",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "So11111111111111111111111111111111111111112",
+          "preUnits": "10000000",
+          "postUnits": "6700000",
+          "deltaUnits": "-3300000"
+        },
+        {
+          "account": "8xZrHyPdu6DSHprGWq2asnNXNt9KMdWGxYhcM2stcyf",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "So11111111111111111111111111111111111111112",
+          "preUnits": "0",
+          "postUnits": "3300000",
+          "deltaUnits": "3300000"
+        }
+      ]
+    },
+    {
+      "step": "runner:funding (builder wallet → study vault, 3.30 devnet test USDC)",
+      "signaturePrefix": "5dp18gzHJoXy…",
+      "signatureSha256": "b0deb67a5629e3f4acc37abba9148d4e0a6f906bdcf704c0f086950714a22675",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704351,
+      "blockTime": "2026-10-05T10:39:56.000Z",
+      "err": null,
+      "feeLamports": 10000,
+      "tokenDeltas": [
+        {
+          "account": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "20000000",
+          "postUnits": "16700000",
+          "deltaUnits": "-3300000"
+        },
+        {
+          "account": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "0",
+          "postUnits": "3300000",
+          "deltaUnits": "3300000"
+        }
+      ]
+    },
+    {
+      "step": "vault_transaction_execute:1",
+      "signaturePrefix": "5nquBJWmx3rh…",
+      "signatureSha256": "6b521a431f5af2366779e7c8f2af479b74d368d3dfe0e514f88d51475b9530ba",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704452,
+      "blockTime": "2026-10-05T10:40:20.000Z",
+      "err": null,
+      "feeLamports": 5000,
+      "tokenDeltas": [
+        {
+          "account": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "3300000",
+          "postUnits": "2300000",
+          "deltaUnits": "-1000000"
+        },
+        {
+          "account": "3zQEpQEmTnPUS6anchYEqoticQN52uZYjsoaXEbdVejg",
+          "owner": "6xofkwscPCYuKszrmNrx7EGvQ1xhTKu7CgTohfuRmPBs",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "0",
+          "postUnits": "1000000",
+          "deltaUnits": "1000000"
+        }
+      ]
+    },
+    {
+      "step": "vault_transaction_execute:2",
+      "signaturePrefix": "4V7HR6dezRgF…",
+      "signatureSha256": "745d0632934012b3caa199097349051f6d2d2718fd36de5bc8fbce6823c93e07",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704560,
+      "blockTime": "2026-10-05T10:40:46.000Z",
+      "err": null,
+      "feeLamports": 5000,
+      "tokenDeltas": [
+        {
+          "account": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "2300000",
+          "postUnits": "1300000",
+          "deltaUnits": "-1000000"
+        },
+        {
+          "account": "FTKn1SeYNgA6MXuAfr3PApRdZEPpJZwPTW9HvXGsAmsT",
+          "owner": "8nXQhLjv2s9fiYaShK49aQcVZAX5YLQKesXGSiCMwjAH",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "0",
+          "postUnits": "1000000",
+          "deltaUnits": "1000000"
+        }
+      ]
+    },
+    {
+      "step": "vault_transaction_execute:3",
+      "signaturePrefix": "5D1cJ9TVcEpp…",
+      "signatureSha256": "207e9b55d6c5e82c3e6014099874395826c113f3d6cadf85fdc653d5042d100c",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704660,
+      "blockTime": "2026-10-05T10:41:10.000Z",
+      "err": null,
+      "feeLamports": 5000,
+      "tokenDeltas": [
+        {
+          "account": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "1300000",
+          "postUnits": "200000",
+          "deltaUnits": "-1100000"
+        },
+        {
+          "account": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "16700000",
+          "postUnits": "17800000",
+          "deltaUnits": "1100000"
+        }
+      ]
+    },
+    {
+      "step": "runner:unmatched_deposit (builder → vault, 0.01 devnet test USDC, no reference)",
+      "signaturePrefix": "3njTpvNH46p1…",
+      "signatureSha256": "d7eeee7971666991d8a9d1f2ab3bcd21f4b5f9544bf32731c310554cce5568ac",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704683,
+      "blockTime": "2026-10-05T10:41:15.000Z",
+      "err": null,
+      "feeLamports": 10000,
+      "tokenDeltas": [
+        {
+          "account": "3pnsfDdyaUF6DKAcRp1QtzcJ2hFHiPkj3BqjfgK5Pzux",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "17800000",
+          "postUnits": "17790000",
+          "deltaUnits": "-10000"
+        },
+        {
+          "account": "FoCyeMeazy7oy8riDkNKZqx5uHtAAVSDKSfFhRKQDpaz",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+          "preUnits": "200000",
+          "postUnits": "210000",
+          "deltaUnits": "10000"
+        }
+      ]
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "4KNLFE1egjon…",
+      "signatureSha256": "1e61833b4813ddd9ba8ff47f5d35f26dae42a7e46d142d4007b0613240585645",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-run1-readback.json (pinned)",
+      "slot": 507704742,
+      "blockTime": "2026-10-05T10:41:30.000Z",
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 6008
+          }
+        ]
+      },
+      "feeLamports": 5000,
+      "tokenDeltas": []
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "3zNWsdDxaSwM…",
+      "signatureSha256": "38ac272210b9996f8eaa8c643d9f84baac9f1131f876e2c677657da80e30f20d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-run1-completion.json send.signature (pinned)",
+      "slot": 507709054,
+      "blockTime": "2026-10-05T10:58:42.000Z",
+      "err": {
+        "InstructionError": [
+          0,
+          {
+            "Custom": 6008
+          }
+        ]
+      },
+      "feeLamports": 5000,
+      "tokenDeltas": []
+    },
+    {
+      "step": "extra (chain readback)",
+      "signaturePrefix": "4CCcmmDeNDWB…",
+      "signatureSha256": "956623141b81e809477e689a01c231d614c810fbd1c131ded489ecb4a1f3729d",
+      "signatureSource": "docs/reviews/wallet-rewards/devnet-pilot-receipt-run1.json (steps[].signature, refusals[].signature; pinned)",
+      "slot": 507704321,
+      "blockTime": "2026-10-05T10:39:49.000Z",
+      "err": null,
+      "feeLamports": 10000,
+      "tokenDeltas": [
+        {
+          "account": "48hU6p91U1RfHVu17V8jdqnFDA2G9qnQ8A7JpmKPST3Q",
+          "owner": "6XoDNcAjSscq5bGhZoEX7q8kUfjkJHJb1YuDeEFgdudn",
+          "mint": "So11111111111111111111111111111111111111112",
+          "preUnits": "10000000",
+          "postUnits": "6700000",
+          "deltaUnits": "-3300000"
+        },
+        {
+          "account": "8xZrHyPdu6DSHprGWq2asnNXNt9KMdWGxYhcM2stcyf",
+          "owner": "BoYeczYjiQMoC7XW7rkjQj27iyS2RADqWuSo9FLD9g7c",
+          "mint": "So11111111111111111111111111111111111111112",
+          "preUnits": "0",
+          "postUnits": "3300000",
+          "deltaUnits": "3300000"
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,9 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer, request as httpRequest } from 'node:http';
 import { isIP } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
+import { API_CSP, appCsp, connectOrigins, securityHeaders } from './security-headers.mjs';
+
+export { appCsp, connectOrigins, FIREBASE_AUTH_ORIGINS } from './security-headers.mjs';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -24,20 +27,6 @@ const TYPES = {
   '.svg': 'image/svg+xml',
   '.map': 'application/json',
 };
-
-// Firebase Auth (email/password, ID-token refresh). Google sign-in would also need the auth
-// domain as frame-src; it is not enabled (ledger I9), so it is not allowed here.
-export const FIREBASE_AUTH_ORIGINS = ['https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com'];
-
-/**
- * connect-src sources for a deployment: Firebase Auth plus this account's R2 S3 endpoint, narrowed
- * to the one bucket's path (presigned URLs are path-style: /<bucket>/<key>).
- */
-export function connectOrigins(r2AccountId, bucket) {
-  if (!/^[a-f0-9]{32}$/.test(r2AccountId ?? '')) throw new Error('R2 account id must be 32 hex characters');
-  if (!/^[a-z0-9][a-z0-9-]{2,62}$/.test(bucket ?? '')) throw new Error('R2 bucket name is required');
-  return [...FIREBASE_AUTH_ORIGINS, `https://${r2AccountId}.r2.cloudflarestorage.com/${bucket}/`];
-}
 
 // Hop-by-hop headers (RFC 9110 §7.6.1), plus any named in `Connection`, never cross the proxy.
 // Cookies don't either: the app authenticates with a bearer token and sets no cookies.
@@ -63,27 +52,6 @@ function stripSet(headers) {
     .map((x) => x.trim().toLowerCase())
     .filter(Boolean);
   return new Set([...HOP, ...named]);
-}
-
-function securityHeaders() {
-  return {
-    'x-content-type-options': 'nosniff',
-    'x-frame-options': 'DENY',
-    'referrer-policy': 'no-referrer',
-    // Microphone and screen capture for this origin only: the local-only web recorder
-    // (docs/plans/web-screen-audio-recording.md). The camera stays off.
-    'permissions-policy': 'camera=(), microphone=(self), display-capture=(self), geolocation=(), payment=()',
-    'cross-origin-opener-policy': 'same-origin',
-    'strict-transport-security': 'max-age=31536000',
-  };
-}
-
-// API responses (JSON and uploaded media) are never documents to render.
-const API_CSP = "default-src 'none'; sandbox";
-// React Native Web needs inline styles, not inline scripts (the export has none).
-export function appCsp(connect) {
-  for (const o of connect) if (!/^https:\/\/[a-z0-9.-]+(\/[a-z0-9-]+\/)?$/.test(o)) throw new Error(`connect-src source must be an https origin, optionally with one /path/: ${o}`);
-  return `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' ${connect.join(' ')}; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'`;
 }
 
 /**

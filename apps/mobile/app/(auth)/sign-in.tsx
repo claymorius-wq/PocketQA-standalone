@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { KeyRound, LogIn, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
+import { KeyRound, LogIn, LogOut, Mail, RefreshCw, UserPlus, Wallet } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { API_BASE_URL, ApiError } from '../../src/api/client';
@@ -7,13 +7,14 @@ import { isLoopbackApi, signInFooter } from '../../src/auth/footer';
 import { useSession } from '../../src/auth/SessionProvider';
 import { GlassSurface, useUplight } from '../../src/glass';
 import { loadDemoAccounts, PREVIEW_BUILD, type DemoAccount, type DemoRole } from '../../src/preview/demoAccounts';
-import { armU1, BrandHero, CardRule, disarmU1, SignInDock, signInMoment, u1PassAt, UnderlinedLink, UplitPrimary } from '../../src/screens/authParts';
+import { armU1, BrandHero, CardRule, disarmU1, OrRule, SignInDock, signInMoment, u1PassAt, UnderlinedLink, UplitPrimary } from '../../src/screens/authParts';
 import { UPLIGHT } from '../../src/theme/motion';
 import type { GlyphName } from '../../src/icons';
 import { layout, radius } from '../../src/theme/tokens';
 import type { StandardWallet } from '../../src/wallet/standard';
 import { useWallets } from '../../src/wallet/useWallets';
 import { Button, Card, Field, Notice, Row, Screen, Segmented, Text, useKeyboardShown } from '../../src/ui';
+import { GoogleButton } from '../../src/ui/patterns';
 import { Enter } from '../../src/ui/screen';
 
 const ROLE_LABEL: Record<DemoRole, string> = { tester: 'Tester', builder: 'Builder', admin: 'Admin' };
@@ -37,6 +38,9 @@ export default function SignIn() {
     walletLogin,
     features,
     needsAccount,
+    signedInEmail,
+    googleSignIn,
+    signOut,
     pendingProfile,
     signInWithGoogle,
     signInWithWallet,
@@ -60,7 +64,8 @@ export default function SignIn() {
   const canReset = authMode === 'firebase';
   const [resetOpen, setResetOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const canGoogle = authMode === 'firebase' && web;
+  // Google only where the deployment has the provider enabled (/config firebase.googleSignIn).
+  const canGoogle = authMode === 'firebase' && web && googleSignIn;
   const [role, setRole] = useState<'tester' | 'builder'>('tester');
   const [displayName, setDisplayName] = useState('');
   // Wallet sign-in found no account for this wallet: offer to create one (a second signature).
@@ -123,6 +128,8 @@ export default function SignIn() {
     };
   }, []); // load once on mount
 
+  const [googlePending, setGooglePending] = useState(false);
+
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError(null);
@@ -168,6 +175,24 @@ export default function SignIn() {
     // Each response once; needsAccount is read as that response left it.
   }, [answered]);
 
+  /**
+   * "Use another account" on Finish your account (QA P2): a managed sign-in that no Pocket QA
+   * account uses may simply be the wrong identity, so leaving must be as easy as creating a new
+   * account. Signs out of the app only (API logout, Firebase sign-out here, local session cleared;
+   * never the Google account itself) and returns to an empty sign-in form. A wallet with no account
+   * has no session yet: leaving just closes the card.
+   */
+  function useAnotherAccount() {
+    void run(async () => {
+      if (walletNew) setWalletNew(false);
+      else await signOut();
+      setDisplayName('');
+      setRole('tester');
+      setEmail('');
+      setPassword('');
+    });
+  }
+
   /** Google, the wallet and "Create account": the plain `replace` once signed in, never U1. */
   function runPlain(action: () => Promise<void>) {
     if (accepted.current) return;
@@ -179,8 +204,8 @@ export default function SignIn() {
   const moment = signInMoment(ready, signedIn);
   const light = useUplight(moment.grade, moment.active, { level: UPLIGHT.pilot.signIn });
   // Local build (A-SignIn sp.top 1): the content fills the screen and the form card sits low, just
-  // above "New here?". While the keyboard is up (native) the card goes back under the hero, so the
-  // fields stay above the keyboard (the content then fits and cannot scroll them into view).
+  // above "New here?". While the keyboard is up (native) the card goes back under the hero, and Screen
+  // reserves the riding dock's keyboard lift so the fields can scroll above the dock.
   const keyboard = useKeyboardShown(!PREVIEW_BUILD);
   const anchored = !PREVIEW_BUILD && !keyboard;
   // With the keyboard up, Sign in rides on it (dockKeyboard "ride"); bring the form's end into view
@@ -293,11 +318,20 @@ export default function SignIn() {
             <Card testID="finish-account" style={styles.finish}>
               <View style={styles.finishHead}>
                 <Text variant="heading">{walletNew ? 'Create an account with this wallet' : 'Finish your account'}</Text>
-                <Text variant="small" tone="muted">
-                  {walletNew
-                    ? 'No Pocket QA account uses this wallet yet. Choose how you’ll use Pocket QA; your wallet will ask you to sign in once more.'
-                    : 'You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.'}
-                </Text>
+                {walletNew ? (
+                  <Text variant="small" tone="muted">
+                    No Pocket QA account uses this wallet yet. Choose how you’ll use Pocket QA; your wallet will ask you to sign in once more.
+                  </Text>
+                ) : (
+                  <>
+                    <Text variant="small" tone="muted" testID="finish-identity">
+                      {`No Pocket QA account uses ${signedInEmail ?? 'this sign-in'} yet. If you already have an account, sign in with the email it uses.`}
+                    </Text>
+                    <Text variant="small" tone="muted">
+                      To create a new account, choose how you’ll use Pocket QA.
+                    </Text>
+                  </>
+                )}
               </View>
               <Segmented
                 testID="finish-role"
@@ -317,6 +351,7 @@ export default function SignIn() {
                 disabled={!displayName.trim()}
                 testID="finish-submit"
               />
+              <Button label="Use another account" icon={LogOut} variant="secondary" onPress={useAnotherAccount} disabled={busy} testID="finish-sign-out" />
             </Card>
           </Enter>
         ) : null}
@@ -343,8 +378,8 @@ export default function SignIn() {
             {/* Return submits too: Sign in lives in the bottom dock, which a phone browser's keyboard can cover. */}
             <Field label="Password" value={password} onChangeText={setPassword} secure returnKeyType="go" onSubmitEditing={() => (ready && !busy ? submit() : undefined)} testID="sign-in-password" />
           </View>
-          {canGoogle || canWallet || canReset ? (
-            // Secondary glass under the fields, behind the card's divider: never lit (U1 is Sign in's).
+          {canReset ? (
+            // Password recovery under the fields, behind the card's divider: never lit (U1 is Sign in's).
             <View>
               <CardRule />
               <View style={styles.others}>
@@ -372,35 +407,60 @@ export default function SignIn() {
                     Enter your email above, then send the link.
                   </Text>
                 ) : null}
-                {canGoogle ? <Button label="Continue with Google" variant="secondary" onPress={() => runPlain(signInWithGoogle)} disabled={busy} testID="sign-in-google" /> : null}
-                {canWallet
-                  ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
-                    (android ? [undefined] : wallets).map((w, i) => (
-                      <Button
-                        key={w?.name ?? 'mwa'}
-                        label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
-                        icon={Wallet}
-                        variant="secondary"
-                        onPress={() =>
-                          runPlain(async () => {
-                            setChosenWallet(w);
-                            try {
-                              await signInWithWallet(undefined, w);
-                            } catch (e) {
-                              if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
-                              throw e;
-                            }
-                          })
-                        }
-                        disabled={busy}
-                        testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
-                      />
-                    ))
-                  : null}
               </View>
             </View>
           ) : null}
         </GlassSurface>
+        {canGoogle || canWallet ? (
+          // The other ways in, out of the form card and under an "or" rule: full width on the
+          // screen's edges, like Sign in in the dock (QA google-button r1 B3/B4). Never lit.
+          <View style={styles.others} testID="sign-in-others">
+            <OrRule testID="sign-in-or" />
+          {canGoogle ? (
+              <GoogleButton
+                intent="continue"
+                onPress={() =>
+                  runPlain(async () => {
+                    // Busy (spinner, aria-busy) while the Google popup is open, until it answers.
+                    setGooglePending(true);
+                    try {
+                      await signInWithGoogle();
+                    } finally {
+                      setGooglePending(false);
+                    }
+                  })
+                }
+                loading={googlePending}
+                disabled={busy && !googlePending}
+                testID="sign-in-google"
+              />
+            ) : null}
+          {canWallet
+            ? // Sign In With Solana: the wallet shows where the request comes from; nothing is paid or sent.
+              (android ? [undefined] : wallets).map((w, i) => (
+                <Button
+                  key={w?.name ?? 'mwa'}
+                  label={w && wallets.length > 1 ? `Continue with ${w.name}` : 'Continue with wallet'}
+                  icon={Wallet}
+                  variant="secondary"
+                  onPress={() =>
+                    runPlain(async () => {
+                      setChosenWallet(w);
+                      try {
+                        await signInWithWallet(undefined, w);
+                      } catch (e) {
+                        if (e instanceof ApiError && e.code === 'NOT_FOUND') return setWalletNew(true);
+                        throw e;
+                      }
+                    })
+                  }
+                  disabled={busy}
+                  testID={i === 0 ? 'sign-in-wallet' : `sign-in-wallet-${i}`}
+                />
+              ))
+            : null}
+          </View>
+        ) : null}
       </View>
     </Screen>
   );

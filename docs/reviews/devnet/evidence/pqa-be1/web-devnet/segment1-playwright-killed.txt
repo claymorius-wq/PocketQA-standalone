@@ -1,0 +1,5 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [desktop] › e2e-devnet/hosted-journey.spec.ts:213:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.0s)
+  ✓  2 [desktop] › e2e-devnet/hosted-journey.spec.ts:244:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (9.4s)

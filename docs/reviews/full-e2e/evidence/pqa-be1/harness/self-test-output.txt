@@ -1,0 +1,60 @@
+{
+ "discovered": [
+  "Pocket QA Test Wallet (devnet)"
+ ],
+ "features": [
+  "standard:connect",
+  "standard:disconnect",
+  "standard:events",
+  "solana:signMessage",
+  "solana:signIn",
+  "solana:signTransaction",
+  "solana:signAndSendTransaction"
+ ],
+ "addressMatches": true,
+ "signMessageVerifies": true,
+ "signTransactionVerifies": true,
+ "mainnetRefused": "refusing signTransaction: chain solana:mainnet is not solana:devnet",
+ "policyRefused": "User rejected the request.",
+ "signInVerifies": true,
+ "signInFirstLine": "pqa-harness.test wants you to sign in with your Solana account:",
+ "noSecretInPage": true,
+ "log": [
+  {
+   "kind": "connect"
+  },
+  {
+   "kind": "signMessage",
+   "chain": "solana:devnet",
+   "bytes": 27,
+   "approved": true
+  },
+  {
+   "kind": "signTransaction",
+   "chain": "solana:devnet",
+   "bytes": 215,
+   "approved": true
+  },
+  {
+   "kind": "signTransaction",
+   "chain": "solana:mainnet",
+   "bytes": 215,
+   "approved": false,
+   "refused": "chain solana:mainnet is not solana:devnet"
+  },
+  {
+   "kind": "signMessage",
+   "chain": "solana:devnet",
+   "bytes": 2000,
+   "approved": false
+  },
+  {
+   "kind": "signIn",
+   "chain": "solana:devnet",
+   "bytes": 179,
+   "domain": "pqa-harness.test",
+   "approved": true
+  }
+ ]
+}
+SELF-TEST PASS

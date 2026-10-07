@@ -1,10 +1,31 @@
-import { useQuery } from '@tanstack/react-query';
+import { focusManager, useQuery } from '@tanstack/react-query';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { api } from '../api/client';
 
 // Query keys are arrays rooted at the resource; mutations invalidate by root.
-export const useEligible = () => useQuery({ queryKey: ['eligible'], queryFn: () => api('eligibleStudies') });
+/**
+ * The studies this tester can join. Scoped by user (one account's list is never shown to another),
+ * and refetched when the app returns to the foreground (useAppFocus), not only on a tab focus: a
+ * study published while Discover was open used to stay invisible (study ia2ed9db).
+ */
+export const useEligible = (userId: string | undefined) =>
+  useQuery({ queryKey: ['eligible', userId], queryFn: () => api('eligibleStudies'), enabled: !!userId, refetchOnWindowFocus: true });
+
+/**
+ * React Native has no window focus: React Query's "focus" becomes the app being in the foreground
+ * (AppState active), so queries that opt into refetchOnWindowFocus refetch on resume. Called once
+ * by the root layout; the app-wide default stays refetchOnWindowFocus false.
+ */
+export function useAppFocus() {
+  useEffect(() => {
+    focusManager.setEventListener((handleFocus) => {
+      const sub = AppState.addEventListener('change', (state) => handleFocus(state === 'active'));
+      return () => sub.remove();
+    });
+  }, []);
+}
 export const useTesterStudy = (id: string) => useQuery({ queryKey: ['testerStudy', id], queryFn: () => api('getTesterStudy', { params: { id } }), enabled: !!id });
 export const useMyParticipations = () => useQuery({ queryKey: ['participations'], queryFn: () => api('myParticipations') });
 export const useParticipation = (id: string) => useQuery({ queryKey: ['participation', id], queryFn: () => api('getParticipation', { params: { id } }) });
@@ -31,6 +52,8 @@ export const useParticipationTransfers = (id: string) =>
 /** A tester's own reputation. Testers only: anyone else passes `enabled: false` (the route would refuse them). */
 export const useReputation = ({ enabled = true }: { enabled?: boolean } = {}) => useQuery({ queryKey: ['reputation'], queryFn: () => api('myReputation'), enabled });
 export const useLeaderboard = () => useQuery({ queryKey: ['leaderboard'], queryFn: () => api('leaderboard') });
+/** The labelled demo showcase (devnet demo deployment only): fetched only while it is on and shown. */
+export const useDemoShowcase = ({ enabled }: { enabled: boolean }) => useQuery({ queryKey: ['demo-showcase'], queryFn: () => api('demoShowcase'), enabled });
 /** Escrow payment states move on their own (the settlement worker): poll while one is still open. */
 export const useMyPayouts = () =>
   useQuery({ queryKey: ['rewards'], queryFn: () => api('myPayouts'), refetchInterval: (q) => (q.state.data?.items.some((x) => x.status !== 'confirmed') ? 5000 : false) });

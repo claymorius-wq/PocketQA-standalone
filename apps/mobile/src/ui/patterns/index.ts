@@ -41,6 +41,7 @@ export { BAR_WIDTH, BudgetMeter, layoutPips, PIP_GAP, planBudgetBar, planBudgetM
 export { RecordControl, type RecordControlProps } from './RecordControl';
 export { ClipRow, clipPill, ReviewNotice, type ClipRowProps, type ClipState } from './ClipRow';
 export { GlideList } from './GlideList';
+export { GoogleButton, type GoogleButtonProps } from './GoogleButton';
 export { DecisionBar, SheetActions, SheetFailure, type DecisionAction, type DecisionBarProps, type SheetActionsProps } from './DecisionBar';
 export { EmptyPanel, ErrorPanel, type EmptyPanelProps, type ErrorPanelProps, type StateIcon } from './EmptyPanel';
 export { LensShimmer, type LensShimmerProps } from './LensShimmer';

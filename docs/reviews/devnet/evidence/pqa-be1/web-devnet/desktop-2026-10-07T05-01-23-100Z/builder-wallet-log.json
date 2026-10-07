@@ -1,0 +1,89 @@
+[
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "approved": false,
+  "refused": "policy"
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signaturePrefix": "27ozdg2YXS",
+  "signatureSha256": "19d6556f3b2863b62c0216a46bc00e36631d9c362e4da785b96337bdcbe79ddc",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signaturePrefix": "XSM2KiCVtF",
+  "signatureSha256": "2a736f153483e070d90b987d3281a0103298eb34a032fc838bcd8dd2e0ace5f2",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ },
+ {
+  "kind": "connect",
+  "approved": true
+ },
+ {
+  "kind": "signAndSendTransaction",
+  "chain": "solana:devnet",
+  "bytes": 247,
+  "programs": [
+   "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+  ],
+  "approved": true
+ },
+ {
+  "kind": "sent",
+  "chain": "solana:devnet",
+  "signaturePrefix": "3G4WUPfQPH",
+  "signatureSha256": "59487dda3ac5be0b092ae03d3027bc867b64b2d0eaf26282886cc8512fb9756e",
+  "approved": true
+ },
+ {
+  "kind": "disconnect",
+  "approved": true
+ }
+]

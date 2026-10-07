@@ -79,7 +79,8 @@ describe('contracts', () => {
     // clientConfig returns only public configuration (ADR 0005); identitySession needs a
     // verified provider token (auth 'identity'), so it is not open either.
     // walletLoginChallenge/walletLogin prove control of a key instead (ADR 0005 §2).
-    expect(open).toEqual(['clientConfig', 'health', 'login', 'media', 'register', 'walletLogin', 'walletLoginChallenge']);
+    // demoShowcase serves only labelled demo fixtures (staging's fixed cohort; devnet with the flag; 404 otherwise).
+    expect(open).toEqual(['clientConfig', 'demoShowcase', 'health', 'login', 'media', 'register', 'walletLogin', 'walletLoginChallenge']);
   });
 
   it('transfer intents take no client-chosen recipient or amount', () => {

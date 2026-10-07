@@ -1,0 +1,17 @@
+# E2E APK identity
+code: 7bda3ce (feat/firebase-vercel), clean detached checkout, pnpm install --frozen-lockfile
+env: EXPO_PUBLIC_API_URL=https://pocketqa.vercel.app/api EXPO_PUBLIC_POCKETQA_ENV=staging
+$ npx expo prebuild --platform android --clean --no-install; then ONLY:
+-        applicationId 'com.reshareai.pocketqa'
++        applicationId 'com.reshareai.pocketqa.e2e'
+-  <string name="app_name">Pocket QA</string>
++  <string name="app_name">Pocket QA E2E</string>
+$ ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=4  -> BUILD SUCCESSFUL in 2m 30s
+size 52525761 bytes
+sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3
+Signer #1 certificate DN: CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US
+Signer #1 certificate SHA-256 digest: fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+package: name='com.reshareai.pocketqa.e2e' versionCode='1' versionName='0.1.0' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'
+application-label:'Pocket QA E2E'
+native-code: 'arm64-v8a'
+bundle: https://pocketqa.vercel.app/api x1; 127.0.0.1:8787 x0

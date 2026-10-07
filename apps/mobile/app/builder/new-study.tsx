@@ -9,6 +9,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { CreateStudyBody, type Platform as P } from '@pocket-qa/contracts';
 import { lintCopy } from '@pocket-qa/domain';
 import { api, ApiError } from '../../src/api/client';
+import { useIntentKey } from '../../src/api/intentKey';
 import { useSession } from '../../src/auth/SessionProvider';
 import { formatUnits, parseUnits, PILOT_DISCLOSURE, unitName } from '../../src/lib/money';
 import { GlassBlur, GlassSurface, useSweepOnEnable, Well } from '../../src/glass';
@@ -88,9 +89,12 @@ function NewStudyInner() {
   };
   const parsed = CreateStudyBody.safeParse(body);
   const copyIssues = [title, objective, consent, ...live.map((t) => t.text)].flatMap((t) => lintCopy(t, 'study'));
+  // One key per draft: a retry after a lost response can't create the study twice.
+  const intent = useIntentKey();
   const create = useMutation({
-    mutationFn: () => api('createStudy', { body }),
+    mutationFn: () => api('createStudy', { body, idempotencyKey: intent.keyFor(body) }),
     onSuccess: (s) => {
+      intent.done();
       qc.invalidateQueries({ queryKey: ['studies'] });
       router.replace(`/builder/study/${s.id}`);
     },

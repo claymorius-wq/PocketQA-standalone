@@ -1,0 +1,63 @@
+{
+  "at": "2026-10-06T18:39:31.761Z",
+  "res": {
+    "/welcome": {
+      "url": "https://pocketqa.vercel.app/welcome",
+      "walletMentions": [
+        "connect"
+      ],
+      "googleButton": false,
+      "firstLines": [
+        "POCKET QA",
+        "FOR TESTERS",
+        "FOR BUILDERS",
+        "Skip",
+        "Usability",
+        "tests",
+        "on",
+        "real",
+        "phones",
+        "Pocket QA connects people who build apps with people who test them on their own devices. Every session is consented, and every result is reviewed by a person.",
+        "Test apps on your own phone",
+        "Try an app, think out loud, and tell the builder what got in your way."
+      ]
+    },
+    "/sign-in": {
+      "url": "https://pocketqa.vercel.app/sign-in",
+      "walletMentions": [],
+      "googleButton": true,
+      "firstLines": [
+        "POCKET QA",
+        "Real-device usability tests",
+        "Builders fund studies with test credits. Testers record consented sessions. Every reward needs approval.",
+        "EMAIL",
+        "PASSWORD",
+        "Forgot password?",
+        "Continue with Google",
+        "New here?",
+        "Create an account",
+        "Sign-in is managed by Firebase · evidence is stored privately in cloud storage",
+        "Sign in"
+      ]
+    },
+    "/sign-up": {
+      "url": "https://pocketqa.vercel.app/sign-up",
+      "walletMentions": [],
+      "googleButton": false,
+      "firstLines": [
+        "Create account",
+        "Choose how you’ll use Pocket QA.",
+        "I test apps",
+        "I build apps",
+        "Find studies that match your device, record consented sessions, and earn test credits when your work is approved.",
+        "Create studies, fund them with local test credits, and review testers’ evidence.",
+        "DISPLAY NAME",
+        "EMAIL",
+        "PASSWORD",
+        "At least 12 characters.",
+        "Create account",
+        "Already have an account?"
+      ]
+    }
+  }
+}

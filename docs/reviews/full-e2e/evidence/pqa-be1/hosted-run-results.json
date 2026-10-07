@@ -1,0 +1,1443 @@
+{
+ "p1": {
+  "tester": {
+   "landed": "/discover",
+   "afterReload": "/discover",
+   "otherRoleRoute": "/studies",
+   "otherRoleLanded": "/discover",
+   "me": {
+    "status": 200,
+    "id": "30c92665-773f-4da7-84c3-a8336ab2720b",
+    "role": "tester",
+    "displayName": "QA synthetic tester (hosted)",
+    "device": {
+     "platform": "web",
+     "osVersion": "Chromium (QA synthetic)",
+     "androidApiLevel": null,
+     "model": "Desktop browser",
+     "languages": [
+      "en-US"
+     ]
+    },
+    "wallet": null
+   },
+   "sessionCall": {
+    "method": "POST",
+    "path": "/api/auth/identity/session",
+    "status": 200
+   }
+  },
+  "builder": {
+   "landed": "/studies",
+   "afterReload": "/studies",
+   "otherRoleRoute": "/discover",
+   "otherRoleLanded": "/studies",
+   "me": {
+    "status": 200,
+    "id": "5be86f7a-5def-4b3f-867c-26a9f3ddd549",
+    "role": "builder",
+    "displayName": "QA synthetic builder (hosted)",
+    "device": null,
+    "wallet": null
+   },
+   "sessionCall": {
+    "method": "POST",
+    "path": "/api/auth/identity/session",
+    "status": 200
+   }
+  },
+  "builderBefore": {
+   "balance": 0,
+   "entries": 0,
+   "disclaimer": "Test credits \u00b7 no cash value",
+   "studies": []
+  },
+  "testerBefore": {
+   "balance": 0,
+   "entries": 0,
+   "participations": [
+    {
+     "id": "62f25138-9f3a-4fc9-89f5-2bcac5a04bc6",
+     "studyId": "36f4f75c-67d0-47ef-b8d6-dda0b7da1de8",
+     "status": "in_progress"
+    }
+   ]
+  }
+ },
+ "p2": {
+  "before": {
+   "os": "Chromium (QA synthetic)",
+   "langs": "en-US"
+  },
+  "saved": 1,
+  "putCall": {
+   "method": "PUT",
+   "path": "/api/me/device",
+   "status": 200
+  },
+  "afterReload": {
+   "os": "Chromium (QA synthetic be1 edit)",
+   "langs": "en-US, fr"
+  },
+  "apiAfterSave": {
+   "platform": "web",
+   "osVersion": "Chromium (QA synthetic be1 edit)",
+   "androidApiLevel": null,
+   "model": "Desktop browser",
+   "languages": [
+    "en-US",
+    "fr"
+   ]
+  },
+  "restored": {
+   "platform": "web",
+   "osVersion": "Chromium (QA synthetic)",
+   "androidApiLevel": null,
+   "model": "Desktop browser",
+   "languages": [
+    "en-US"
+   ]
+  }
+ },
+ "p3": {
+  "before": {
+   "balance": 0,
+   "entries": []
+  },
+  "A_detail": {
+   "title": "QA synthetic study be1 A (web)",
+   "status": "draft",
+   "tasks": [
+    "Open the app and find the cart",
+    "Buy any item and reach the receipt"
+   ],
+   "deviceCriteria": {
+    "platforms": [
+     "web"
+    ],
+    "minAndroidApi": null,
+    "languages": [
+     "en"
+    ]
+   },
+   "rewardCredits": 50,
+   "slots": 2,
+   "consentVersion": 1,
+   "payment": {
+    "mode": "test_credits"
+   }
+  },
+  "A": {
+   "id": "i91e7158f895626c7d28e9cb62e72846",
+   "resumed": true,
+   "status": "draft"
+  },
+  "publishNoBudget": {
+   "status": "draft",
+   "credits": {
+    "balance": 0,
+    "entries": []
+   }
+  },
+  "topUp": {
+   "call": {
+    "method": "POST",
+    "path": "/api/me/credits/test-topup",
+    "status": 200
+   },
+   "credits": {
+    "balance": 1000,
+    "entries": [
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   },
+   "screenText": "Budget Test credits \u00b7 no cash value BALANCE 1,000 test credits Test credits \u00b7 no cash value"
+  },
+  "publishA": {
+   "status": "draft",
+   "budget": {
+    "reserved": 0,
+    "awarded": 0,
+    "committed": 0,
+    "available": 0
+   },
+   "slots": 2,
+   "rewardCredits": 50,
+   "credits": {
+    "balance": 1000,
+    "entries": [
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  },
+  "B": {
+   "id": "i4bbaf30706c493edcacc8c3ec61a5af",
+   "status": "draft",
+   "criteria": {
+    "platforms": [
+     "android"
+    ],
+    "minAndroidApi": 29,
+    "languages": [
+     "en"
+    ]
+   },
+   "budget": {
+    "reserved": 0,
+    "awarded": 0,
+    "committed": 0,
+    "available": 0
+   },
+   "credits": {
+    "balance": 1000,
+    "entries": [
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  },
+  "E": {
+   "id": "ibba3f110ddeafe4c7ecb40f0d5204e2",
+   "uiBudget": "",
+   "uiPool": "2.00 simulated USDC",
+   "status": "draft",
+   "payment": {
+    "mode": "escrow",
+    "settlement": "simulated",
+    "quote": {
+     "rewardUnits": 1000000,
+     "slots": 2,
+     "feeBps": 1000,
+     "perTestFeeUnits": 100000,
+     "perTestTotalUnits": 1100000,
+     "rewardPoolUnits": 2000000,
+     "platformFeeUnits": 200000,
+     "totalUnits": 2200000
+    },
+    "funded": false
+   },
+   "reward": {
+    "kind": "token",
+    "asset": "USDC",
+    "decimals": 6,
+    "units": 1000000,
+    "settlement": "simulated"
+   },
+   "credits": {
+    "balance": 1000,
+    "entries": [
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  }
+ },
+ "p4": {
+  "before": {
+   "balance": 1000,
+   "entries": [
+    [
+     "test_topup",
+     1000
+    ]
+   ]
+  },
+  "publishA": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i91e7158f895626c7d28e9cb62e72846/publish",
+    "status": 200
+   },
+   "status": "published",
+   "budget": {
+    "reserved": 100,
+    "awarded": 0,
+    "committed": 0,
+    "available": 100
+   },
+   "error": null,
+   "credits": {
+    "balance": 900,
+    "entries": [
+     [
+      "study_reserve",
+      -100
+     ],
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  },
+  "publishB": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i4bbaf30706c493edcacc8c3ec61a5af/publish",
+    "status": 200
+   },
+   "status": "published",
+   "budget": {
+    "reserved": 10,
+    "awarded": 0,
+    "committed": 0,
+    "available": 10
+   },
+   "error": null,
+   "credits": {
+    "balance": 890,
+    "entries": [
+     [
+      "study_reserve",
+      -10
+     ],
+     [
+      "study_reserve",
+      -100
+     ],
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  },
+  "editC": {
+   "patch1": 200,
+   "after1": {
+    "title": "QA synthetic study be1 C (over budget, edited)",
+    "tasks": 3,
+    "slots": 3,
+    "consentVersion": 1
+   },
+   "patch2": 200,
+   "after2": {
+    "consentVersion": 2
+   }
+  },
+  "publishC": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/if8979a6f75321ddf9e296310ed3f104/publish",
+    "status": 409
+   },
+   "status": "draft",
+   "budget": {
+    "reserved": 0,
+    "awarded": 0,
+    "committed": 0,
+    "available": 0
+   },
+   "error": "Action failed Publishing needs 3000 test credits; you have 890.",
+   "credits": {
+    "balance": 890,
+    "entries": [
+     [
+      "study_reserve",
+      -10
+     ],
+     [
+      "study_reserve",
+      -100
+     ],
+     [
+      "test_topup",
+      1000
+     ]
+    ]
+   }
+  },
+  "C": "if8979a6f75321ddf9e296310ed3f104",
+  "editPublished": {
+   "status": 409,
+   "code": "CONFLICT_STATE",
+   "message": "Only draft studies can be edited.",
+   "titleNow": "QA synthetic study be1 A (web)"
+  }
+ },
+ "p5": {
+  "eligible": {
+   "status": 200,
+   "count": 37,
+   "hasA": true,
+   "hasB": false
+  },
+  "testerStudyB": {
+   "status": 200
+  },
+  "consentB": {
+   "status": 409,
+   "code": "CONFLICT_STATE",
+   "message": "Not eligible: Needs android."
+  },
+  "discoverShows": {
+   "A": true,
+   "B": false
+  },
+  "consentA": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i91e7158f895626c7d28e9cb62e72846/consent",
+    "status": 200
+   },
+   "url": "/participation/44d0e05e-7787-43b0-b440-883b961d4c89"
+  },
+  "pid": "44d0e05e-7787-43b0-b440-883b961d4c89",
+  "start": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/start",
+    "status": 200
+   },
+   "status": "in_progress"
+  },
+  "noteSave": {
+   "method": "PUT",
+   "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/tasks/i586e0e0eceb5129c54efe2695230948/note",
+   "status": 200
+  },
+  "noteAfterReload": "QA synthetic note be1: the cart icon is below the fold on a 1280x900 screen.",
+  "apiNotes": [
+   {
+    "taskId": "i586e0e0eceb5129c54efe2695230948",
+    "note": "QA synthetic note be1: the cart icon is below the fold on a 1280x900 screen."
+   }
+  ],
+  "afterAttach": {
+   "testids": [
+    "attach-evidence",
+    "segment-recorded",
+    "segment-keep",
+    "segment-remove",
+    "pending-evidence"
+   ],
+   "text": "Your session Status: IN PROGRESS QA synthetic study be1 A (web) 50 test credits \u00b7 Reward if approved \u00b7 Not guaranteed Tasks TASK 1 Open the app and find the cart YOUR NOTES Saved TASK 2 Buy any item and reach the receipt YOUR NOTES Saved Evidence Record this session in your browser Everything visible in what you share is recorded, including other apps, notifications and passwords. Choose a single tab or window rather than your whole screen, and close anything private first. Your microphone records your narration; the tab\u2019s or computer\u2019s own sound isn\u2019t recorded. The recording stays on this device in this page: it\u2019s not uploaded. Downloading it is your choice, and Discard deletes it from this page. For this session, I agree to share a screen I choose and to record my microphone for narration. The browser asks what to share every time, then for the microphone. Stop here, or with the browse"
+  }
+ },
+ "p6": {
+  "localBytes": 31457280,
+  "localSha": "da1278640092f9c849f1a6dac04a918cff6b32b388cd150bb0f607adc8b2a108",
+  "submitDisabledBeforeUpload": 1,
+  "apiCalls": [
+   {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/evidence/upload-intents",
+    "status": 200
+   },
+   {
+    "method": "POST",
+    "path": "/api/evidence/upload-intents/958ad16f-8547-4c24-bc49-7eb80cbb3d7d/complete",
+    "status": 200
+   },
+   {
+    "method": "GET",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/evidence",
+    "status": 200
+   }
+  ],
+  "r2": [
+   {
+    "method": "PUT",
+    "host": "r2 S3 endpoint",
+    "pathPrefix": "/pocketqa-evidence/quarantine",
+    "signed": true
+   },
+   {
+    "status": 200
+   }
+  ],
+  "evidence": [
+   {
+    "id": "7a034806-8e22-4700-8018-69dd8ba23271",
+    "kind": "screen_recording",
+    "mimeType": "video/mp4",
+    "sizeBytes": 31457280
+   }
+  ],
+  "playback": {
+   "status": 200,
+   "hasUrl": true,
+   "host": "<account>.r2.cloudflarestorage.com",
+   "keyPrefix": "/pocketqa-evidence/evidence",
+   "expiresSeconds": 300,
+   "responseType": "video/mp4",
+   "disposition": "inline",
+   "cache": "no-store"
+  },
+  "download": {
+   "status": 200,
+   "bytes": 31457280,
+   "sha256": "da1278640092f9c849f1a6dac04a918cff6b32b388cd150bb0f607adc8b2a108",
+   "contentType": "video/mp4",
+   "equalsLocal": true
+  },
+  "playbackUrlIssuedAt": 1791313118314,
+  "expiry": {
+   "status": 403,
+   "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Error><Code>ExpiredRequest</Code><Message>Request has expired</Message></Error>"
+  }
+ },
+ "p7": {
+  "ledger": [
+   {
+    "label": "before submit",
+    "builder": 890,
+    "tester": 0,
+    "studyBudget": {
+     "reserved": 100,
+     "awarded": 0,
+     "committed": 50,
+     "available": 50
+    }
+   },
+   {
+    "label": "after submit",
+    "builder": 890,
+    "tester": 0,
+    "studyBudget": {
+     "reserved": 100,
+     "awarded": 0,
+     "committed": 50,
+     "available": 50
+    }
+   },
+   {
+    "label": "after approve",
+    "builder": 890,
+    "tester": 50,
+    "studyBudget": {
+     "reserved": 100,
+     "awarded": 50,
+     "committed": 0,
+     "available": 50
+    }
+   },
+   {
+    "label": "after duplicate approve",
+    "builder": 890,
+    "tester": 50,
+    "studyBudget": {
+     "reserved": 100,
+     "awarded": 50,
+     "committed": 0,
+     "available": 50
+    }
+   }
+  ],
+  "retryComplete": {
+   "status": 200,
+   "sameEvidence": true,
+   "evidenceCount": 1
+  },
+  "submit": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/submit",
+    "status": 200
+   },
+   "status": "submitted"
+  },
+  "review": {
+   "showsNote": true,
+   "showsEvidence": true
+  },
+  "finding": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/findings",
+    "status": 200
+   },
+   "list": [
+    {
+     "title": "QA synthetic finding: cart below the fold",
+     "severity": "major",
+     "evidenceId": "7a034806-8e22-4700-8018-69dd8ba23271"
+    }
+   ]
+  },
+  "approve": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/44d0e05e-7787-43b0-b440-883b961d4c89/approve",
+    "status": 200
+   },
+   "status": "approved"
+  },
+  "duplicateApprove": {
+   "status": 409,
+   "code": "CONFLICT_STATE",
+   "message": "Cannot approve a participation that is approved."
+  },
+  "testerCredits": [
+   [
+    "reward_credit",
+    50,
+    true
+   ]
+  ],
+  "crossAccount": {
+   "builderOnForeignParticipation": 404,
+   "builderOnForeignEvidenceList": 404,
+   "builderOnForeignFindings": 404,
+   "testerOnBuilderStudy": 403,
+   "testerApprovesOwn": 403,
+   "testerWritesFinding": 403,
+   "builderPlaybackOwnStudy": 200
+  }
+ },
+ "p8": {
+  "ledger": [
+   {
+    "label": "before D/W",
+    "builder": 890,
+    "tester": 50,
+    "studies": {
+     "A": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 50
+     }
+    }
+   },
+   {
+    "label": "after publishing D(20x1) and W(30x1)",
+    "builder": 840,
+    "tester": 50,
+    "studies": {
+     "A": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 50
+     },
+     "D": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 0,
+      "available": 20
+     },
+     "W": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 30
+     }
+    }
+   },
+   {
+    "label": "after reject (hold kept during the 7-day dispute window)",
+    "builder": 840,
+    "tester": 50,
+    "studies": {
+     "D": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 20,
+      "available": 0
+     }
+    }
+   },
+   {
+    "label": "after W withdraw",
+    "builder": 840,
+    "tester": 50,
+    "studies": {
+     "W": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 30
+     }
+    }
+   }
+  ],
+  "reputation": {
+   "status": "read",
+   "points": 15,
+   "stats": {
+    "accepted": 1,
+    "rejected": 0,
+    "decided": 1,
+    "qualityScore": 20,
+    "windowDays": 90
+   },
+   "badges": [
+    "first_accepted"
+   ],
+   "events": [
+    [
+     "accepted",
+     10,
+     false
+    ],
+    [
+     "helpful",
+     5,
+     false
+    ]
+   ],
+   "leaderboard": {
+    "optedIn": false,
+    "alias": "QA synthetic be1",
+    "rank": null,
+    "minDecided": 3
+   }
+  },
+  "leaderboardOptIn": {
+   "call": {
+    "method": "PUT",
+    "path": "/api/me/leaderboard",
+    "status": 200
+   },
+   "after": {
+    "optedIn": true,
+    "alias": "QA synthetic be1",
+    "rank": null,
+    "minDecided": 3
+   }
+  },
+  "leaderboardPublic": {
+   "rows": 0,
+   "me": null,
+   "leaksEmail": false,
+   "leaksDisplayName": false,
+   "aliasListed": false
+  },
+  "leaderboardOptOut": {
+   "optedIn": false,
+   "alias": "QA synthetic be1",
+   "rank": null,
+   "minDecided": 3
+  },
+  "D": {
+   "id": "iea4563e5011440024de18ba05a4b4a0",
+   "create": 200,
+   "publish": 200
+  },
+  "W": {
+   "id": "i7bb1cc08b5bfaaa19f33f541e7487d4",
+   "create": 200,
+   "publish": 200
+  },
+  "Dparticipation": {
+   "id": "c98f6f50-9d14-4c14-8694-92f0f8644e90",
+   "consent": 200,
+   "submit": 200
+  },
+  "rejectShortReasonDisabled": true,
+  "reject": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/c98f6f50-9d14-4c14-8694-92f0f8644e90/reject",
+    "status": 200
+   },
+   "status": "rejected",
+   "decisionReason": "The note does not describe reaching the receipt screen (synthetic QA)."
+  },
+  "dispute": {
+   "call": {
+    "method": "POST",
+    "path": "/api/disputes",
+    "status": 200
+   },
+   "status": "disputed",
+   "myDisputes": [
+    {
+     "status": "open",
+     "participation": true
+    }
+   ]
+  },
+  "withdraw": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/12698da1-978d-4379-b4ed-e24ba9f2e3a4/withdraw",
+    "status": 200
+   },
+   "status": "withdrawn",
+   "slotsFilledAfter": 0,
+   "rejoin": {
+    "status": 409,
+    "message": "You already joined this study."
+   }
+  }
+ },
+ "p9": {
+  "at": "2026-10-06T19:09:30.869Z",
+  "bundle": "entry-d9b5472d9fac233b3df280ddb47bf7fa.js",
+  "config": {
+   "authMode": "firebase",
+   "storage": "r2",
+   "walletLogin": false,
+   "features": {
+    "testCredits": true,
+    "devnetTransfers": false,
+    "settlement": "simulated"
+   },
+   "googleSignIn": true
+  },
+  "ledger": [
+   {
+    "label": "before closes",
+    "builder": 840,
+    "tester": 50,
+    "A": {
+     "status": "published",
+     "budget": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 50
+     },
+     "slotsFilled": 1
+    },
+    "D": {
+     "status": "published",
+     "budget": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 20,
+      "available": 0
+     },
+     "slotsFilled": 1
+    },
+    "W": {
+     "status": "published",
+     "budget": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 30
+     },
+     "slotsFilled": 0
+    }
+   },
+   {
+    "label": "after close D attempt",
+    "builder": 840,
+    "tester": 50,
+    "A": {
+     "status": "published",
+     "budget": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 50
+     },
+     "slotsFilled": 1
+    },
+    "D": {
+     "status": "published",
+     "budget": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 20,
+      "available": 0
+     },
+     "slotsFilled": 1
+    },
+    "W": {
+     "status": "published",
+     "budget": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 30
+     },
+     "slotsFilled": 0
+    }
+   },
+   {
+    "label": "after close W",
+    "builder": 870,
+    "tester": 50,
+    "A": {
+     "status": "published",
+     "budget": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 50
+     },
+     "slotsFilled": 1
+    },
+    "D": {
+     "status": "published",
+     "budget": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 20,
+      "available": 0
+     },
+     "slotsFilled": 1
+    },
+    "W": {
+     "status": "closed",
+     "budget": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 0
+     },
+     "slotsFilled": 0
+    }
+   },
+   {
+    "label": "after close A",
+    "builder": 920,
+    "tester": 50,
+    "A": {
+     "status": "closed",
+     "budget": {
+      "reserved": 100,
+      "awarded": 50,
+      "committed": 0,
+      "available": 0
+     },
+     "slotsFilled": 1
+    },
+    "D": {
+     "status": "published",
+     "budget": {
+      "reserved": 20,
+      "awarded": 0,
+      "committed": 20,
+      "available": 0
+     },
+     "slotsFilled": 1
+    },
+    "W": {
+     "status": "closed",
+     "budget": {
+      "reserved": 30,
+      "awarded": 0,
+      "committed": 0,
+      "available": 0
+     },
+     "slotsFilled": 0
+    }
+   }
+  ],
+  "closeD": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/iea4563e5011440024de18ba05a4b4a0/close",
+    "status": 409
+   },
+   "error": "Action failed Resolve open disputes before closing the study."
+  },
+  "closeW": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i7bb1cc08b5bfaaa19f33f541e7487d4/close",
+    "status": 200
+   },
+   "error": null
+  },
+  "closeA": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i91e7158f895626c7d28e9cb62e72846/close",
+    "status": 200
+   },
+   "error": null
+  },
+  "builderEntries": [
+   [
+    "study_release",
+    50
+   ],
+   [
+    "study_release",
+    30
+   ],
+   [
+    "study_reserve",
+    -30
+   ],
+   [
+    "study_reserve",
+    -20
+   ],
+   [
+    "study_reserve",
+    -10
+   ],
+   [
+    "study_reserve",
+    -100
+   ],
+   [
+    "test_topup",
+    1000
+   ]
+  ],
+  "builderSettings": {
+   "url": "/builder-settings",
+   "wallet": "Wallet Devnet wallet Status: NOT LINKED Optional",
+   "exportCall": {
+    "method": "POST",
+    "path": "/api/me/export",
+    "status": 200
+   },
+   "exportNotice": "Export ready 0 participations, 6 studies, 0 evidence items, 7 ledger entries, 0 wallet escrow records (each labelled with its settlement), 0 reputation events.",
+   "deleteButtonPresent": true
+  },
+  "testerSettings": {
+   "url": "/settings",
+   "wallet": "Wallet Devnet wallet Status: NOT LINKED Optional",
+   "exportCall": {
+    "method": "POST",
+    "path": "/api/me/export",
+    "status": 200
+   },
+   "exportNotice": "Export ready 4 participations, 0 studies, 2 evidence items, 1 ledger entries, 0 wallet escrow records (each labelled with its settlement), 2 reputation events.",
+   "deleteButtonPresent": true
+  },
+  "testerExport": {
+   "keys": [
+    "exportedAt",
+    "user",
+    "studies",
+    "participations",
+    "evidence",
+    "findings",
+    "ledger",
+    "disputes",
+    "payments",
+    "reputation"
+   ],
+   "participations": 4,
+   "ownOnly": true,
+   "evidence": 2,
+   "ledger": 1,
+   "disputes": 1,
+   "reputationEvents": 2,
+   "hasPasswordOrToken": false
+  },
+  "builderExport": {
+   "studies": 6,
+   "ownOnly": true,
+   "findings": 1,
+   "ledger": 7
+  }
+ },
+ "p10": {
+  "at": "2026-10-06T19:22:14.800Z",
+  "bundle": "entry-d9b5472d9fac233b3df280ddb47bf7fa.js",
+  "ledger": [
+   {
+    "label": "resume: after H approved in run 1",
+    "builder": 800,
+    "tester": 90,
+    "studies": {
+     "D": {
+      "status": "published",
+      "budget": {
+       "reserved": 20,
+       "awarded": 0,
+       "committed": 20,
+       "available": 0
+      }
+     },
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     },
+     "H": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after publishing H2(40x1) and the tester submitting",
+    "builder": 800,
+    "tester": 90,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after tab 1 approved H2",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after the stale-tab retry on H2",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "H2": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after reject G",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     }
+    }
+   },
+   {
+    "label": "after close attempts (G, D refused; H closed)",
+    "builder": 800,
+    "tester": 130,
+    "studies": {
+     "D": {
+      "status": "published",
+      "budget": {
+       "reserved": 20,
+       "awarded": 0,
+       "committed": 20,
+       "available": 0
+      }
+     },
+     "G": {
+      "status": "published",
+      "budget": {
+       "reserved": 40,
+       "awarded": 0,
+       "committed": 40,
+       "available": 0
+      }
+     },
+     "H": {
+      "status": "closed",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     },
+     "H2": {
+      "status": "closed",
+      "budget": {
+       "reserved": 40,
+       "awarded": 40,
+       "committed": 0,
+       "available": 0
+      }
+     }
+    }
+   }
+  ],
+  "studies": {
+   "G": "i173c4532ea07153679185a4358711ff",
+   "H": "i16338b9686082d6e75f7f6cad89e9fc",
+   "H2": "if2b79146b2c024056c63629d2b30f96"
+  },
+  "participations": {
+   "G": "193cd7d9-801b-49e4-aaa1-dacf160734ee",
+   "H": "67b339dd-8caf-405a-bd16-2906c5958f53",
+   "H2": "a1f82747-d0ce-4d8c-bf90-25f5faca63f4"
+  },
+  "firstAttemptH": {
+   "note": "Run 1 (19:18Z): tab 1 approved H (POST 200); tab 2 was a new tab in the same browser and was on /sign-in (web sessions are tab-scoped by design, firebaseClient.ts:31), so it never showed the review; the retry was redone on H2 with each tab signed in.",
+   "hStatus": "approved"
+  },
+  "tab2SheetOpen": 2,
+  "tab1Approve": {
+   "method": "POST",
+   "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/approve",
+   "status": 200
+  },
+  "tab2": {
+   "calls": [
+    {
+     "method": "POST",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/approve",
+     "status": 409
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/evidence",
+     "status": 200
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4/findings",
+     "status": 200
+    },
+    {
+     "method": "GET",
+     "path": "/api/participations/a1f82747-d0ce-4d8c-bf90-25f5faca63f4",
+     "status": 200
+    }
+   ],
+   "decisionError": "Decision not saved Cannot approve a participation that is approved.",
+   "decidedNotice": null,
+   "approveButtonStill": 1,
+   "statusLine": "Status: AWAITING REVIEW QA ",
+   "errorish": "eedback helpful (adds reputation points) Decision not saved Cannot approve a participation that is approved"
+  },
+  "tab2Later": {
+   "statusLine": "Status: AWAITING REVIEW QA ",
+   "decisionError": "Decision not saved Cannot approve a participation that is approved."
+  },
+  "tab2AfterReload": {
+   "statusLine": "Status: APPROVED QA ",
+   "decidedNotice": "Decision: Approved Decided Oct 6, 9:22 PM",
+   "approveButton": 0
+  },
+  "rejectG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/participations/193cd7d9-801b-49e4-aaa1-dacf160734ee/reject",
+    "status": 200
+   },
+   "status": "rejected"
+  },
+  "disputeG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/disputes",
+    "status": 200
+   },
+   "status": "disputed"
+  },
+  "closeG": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i173c4532ea07153679185a4358711ff/close",
+    "status": 409
+   },
+   "error": "Action failed Resolve open disputes before closing the study.",
+   "status": "published"
+  },
+  "closeD": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/iea4563e5011440024de18ba05a4b4a0/close",
+    "status": 409
+   },
+   "error": "Action failed Resolve open disputes before closing the study.",
+   "status": "published"
+  },
+  "closeH": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/i16338b9686082d6e75f7f6cad89e9fc/close",
+    "status": 200
+   },
+   "error": null,
+   "status": "closed"
+  },
+  "closeH2": {
+   "call": {
+    "method": "POST",
+    "path": "/api/studies/if2b79146b2c024056c63629d2b30f96/close",
+    "status": 200
+   },
+   "error": null,
+   "status": "closed"
+  },
+  "builderResolve": {
+   "status": 403,
+   "code": "FORBIDDEN_ROLE"
+  },
+  "entries": {
+   "builder": [
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_reserve",
+     -40
+    ],
+    [
+     "study_release",
+     50
+    ],
+    [
+     "study_release",
+     30
+    ],
+    [
+     "study_reserve",
+     -30
+    ],
+    [
+     "study_reserve",
+     -20
+    ],
+    [
+     "study_reserve",
+     -10
+    ],
+    [
+     "study_reserve",
+     -100
+    ],
+    [
+     "test_topup",
+     1000
+    ]
+   ],
+   "tester": [
+    [
+     "reward_credit",
+     40
+    ],
+    [
+     "reward_credit",
+     40
+    ],
+    [
+     "reward_credit",
+     50
+    ]
+   ]
+  }
+ },
+ "p12": {
+  "at": "2026-10-06T19:44:17.964Z",
+  "bundle": "entry-03fa1a9897a6fa8d485ac9bb9a680e2e.js",
+  "ledger": [
+   {
+    "label": "before",
+    "builder": 800,
+    "tester": 130
+   },
+   {
+    "label": "after publishing J1, J2 (10x1 each) and the tester submitting both",
+    "builder": 780,
+    "tester": 130
+   }
+  ],
+  "fixtures": {
+   "J1": {
+    "study": "i3453b1df91de91d862a9465a710325e",
+    "pid": "e977b0a9-2683-41d9-a87e-3e258060c766"
+   },
+   "J2": {
+    "study": "ie0676e33702f66c2817629238b1d7d8",
+    "pid": "f31b1f3d-f4d4-44f7-8626-93d3141538d5"
+   }
+  },
+  "same": {
+   "tab1": {
+    "method": "POST",
+    "path": "/api/participations/e977b0a9-2683-41d9-a87e-3e258060c766/approve",
+    "status": 200
+   },
+   "tab2Call": {
+    "method": "POST",
+    "path": "/api/participations/e977b0a9-2683-41d9-a87e-3e258060c766/approve",
+    "status": 409
+   },
+   "tab2": {
+    "sheetOpen": false,
+    "decisionError": null,
+    "alreadyDecided": "Already approved This submission is already approved. Nothing more to do.",
+    "decided": "Decision: Approved Decided Oct 6, 9:44 PM",
+    "approveButton": 0,
+    "status": "Status: APPROVED"
+   },
+   "ledgerAfterTab1": {
+    "label": "same-outcome: after tab 1 approved",
+    "builder": 780,
+    "tester": 140
+   },
+   "ledgerAfterTab2": {
+    "label": "same-outcome: after tab 2 confirmed",
+    "builder": 780,
+    "tester": 140
+   },
+   "finalStatus": "approved"
+  },
+  "different": {
+   "tab1": {
+    "method": "POST",
+    "path": "/api/participations/f31b1f3d-f4d4-44f7-8626-93d3141538d5/approve",
+    "status": 200
+   },
+   "tab2Call": {
+    "method": "POST",
+    "path": "/api/participations/f31b1f3d-f4d4-44f7-8626-93d3141538d5/reject",
+    "status": 409
+   },
+   "tab2": {
+    "sheetOpen": false,
+    "decisionError": null,
+    "alreadyDecided": "Already decided This submission was decided elsewhere (another tab or device) before your decision arrived, so yours wasn\u2019t applied. Its decision is shown below.",
+    "decided": "Decision: Approved Decided Oct 6, 9:45 PM",
+    "approveButton": 0,
+    "status": "Status: APPROVED"
+   },
+   "ledgerAfterTab1": {
+    "label": "different-outcome: after tab 1 approved",
+    "builder": 780,
+    "tester": 150
+   },
+   "ledgerAfterTab2": {
+    "label": "different-outcome: after tab 2 confirmed",
+    "builder": 780,
+    "tester": 150
+   },
+   "finalStatus": "approved"
+  }
+ }
+}

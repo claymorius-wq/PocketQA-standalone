@@ -1,0 +1,6 @@
+2026-10-06T18:39:03Z
+HTTP/2 200 
+age: 0
+x-vercel-id: cdg1::fra1::2xwzt-1791311943999-5fb58f81e318
+{"authMode":"firebase","storage":"r2","walletLogin":false,"features":{"testCredits":true,"devnetTransfers":false,"settlement":"simulated"},"firebase":{"apiKey":"<redacted web key>","authDomain":"pocketqa-optijara.firebaseapp.com","projectId":"pocketqa-optijara","authEmulatorUrl":null,"googleSignIn":true}}
+entry-0e22ecce65b4080a0dad7d009c5007c3.js

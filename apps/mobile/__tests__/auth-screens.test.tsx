@@ -230,10 +230,11 @@ describe('Sign in launch', () => {
 });
 
 /** Records every Keyboard listener (the dock and the screen both listen); `emit` calls them all. */
-function mockKeyboard() {
+function mockKeyboard(height = 320) {
   const handlers: Record<string, (() => void)[]> = {};
-  jest.spyOn(Keyboard, 'addListener').mockImplementation(((event: string, cb: () => void) => {
-    (handlers[event] ??= []).push(cb);
+  jest.spyOn(Keyboard, 'metrics').mockImplementation(() => ({ screenX: 0, screenY: 524, width: 390, height }));
+  jest.spyOn(Keyboard, 'addListener').mockImplementation(((name: string, cb: () => void) => {
+    (handlers[name] ??= []).push(cb);
     return { remove: jest.fn() };
   }) as unknown as typeof Keyboard.addListener);
   const emit = (...events: string[]) => {
@@ -249,6 +250,14 @@ function filled() {
   while (node && node.props.contentContainerStyle === undefined) node = node.parent;
   if (!node) throw new Error('no scroll content above the form');
   return (StyleSheet.flatten(node.props.contentContainerStyle) as { flexGrow?: number }).flexGrow === 1;
+}
+
+/** The Screen scroll content padding that keeps controls clear of docks, tab bars and the keyboard. */
+function contentPaddingBottom() {
+  let node = screen.getByTestId('sign-in-email', HIDDEN_OK).parent;
+  while (node && node.props.contentContainerStyle === undefined) node = node.parent;
+  if (!node) throw new Error('no scroll content above the form');
+  return (StyleSheet.flatten(node.props.contentContainerStyle) as { paddingBottom?: number }).paddingBottom ?? 0;
 }
 
 /** The style of the wrapper that holds the error Notice and the form card (the screen's last step). */
@@ -325,6 +334,26 @@ describe('Sign in with the keyboard up', () => {
     expect(screen.getByTestId('sign-in-submit')).toBeTruthy();
     await act(async () => keyboard.hide());
     expect(footerHidden()).toBe(false);
+  });
+
+  it('keeps a failure notice and the fields clear of the Sign in dock after it rides above the keyboard', async () => {
+    const keyboardHeight = 320;
+    const dockHeight = 72;
+    const keyboard = mockKeyboard(keyboardHeight);
+    mockSignIn.mockRejectedValueOnce(new Error('Email or password is incorrect.'));
+    await renderIn('dark', <SignIn />);
+    await advance(1000);
+    await act(async () =>
+      fireEvent(screen.getByTestId('screen-dock'), 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 390, height: dockHeight } } }),
+    );
+    await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'ana@example.test');
+    await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'wrong-password');
+    await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(screen.getByTestId('sign-in-error')).toBeTruthy();
+
+    await act(async () => keyboard.show());
+
+    expect(contentPaddingBottom()).toBeGreaterThanOrEqual(dockHeight + keyboardHeight + 14);
   });
 });
 
@@ -484,7 +513,9 @@ describe('Sign in with managed identity (cloud auth)', () => {
     await renderIn('dark', <SignIn />);
     await advance(1000);
     expect(screen.getByText('Finish your account')).toBeTruthy();
-    expect(screen.getByText('You’re signed in, but no Pocket QA account uses this sign-in yet. Choose how you’ll use Pocket QA.')).toBeTruthy();
+    // QA P2: the card names the identity (here none is known) and points a returning user to their account's email.
+    expect(screen.getByText('No Pocket QA account uses this sign-in yet. If you already have an account, sign in with the email it uses.')).toBeTruthy();
+    expect(screen.getByText('To create a new account, choose how you’ll use Pocket QA.')).toBeTruthy();
     expect(screen.getByTestId('finish-name').props.value).toBe('Fiona Firebase');
     expect(screen.getByTestId('finish-role-builder').props.accessibilityState).toMatchObject({ selected: true });
     // It rises into the room above the sign-in card (the same bottom-anchored wrapper), so that card never moves.
@@ -519,7 +550,7 @@ function noteOf(text: string) {
   return node!;
 }
 const TESTER_NOTE = 'Find studies that match your device, record consented sessions, and earn test credits when your work is approved.';
-const BUILDER_NOTE = 'Create studies, fund them with local test credits, and review testers’ evidence.';
+const BUILDER_NOTE = 'Create studies, fund them with test credits (no cash value), and review testers’ evidence.';
 
 describe.each<ThemePreference>(['dark', 'light'])('Sign up in %s', (scheme) => {
   it('keeps the title, the role switch, the fields and the way back to Sign in', async () => {

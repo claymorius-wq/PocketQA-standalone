@@ -39,7 +39,7 @@ export function rewardText(reward: StudyReward): string {
   return reward.kind === 'token' ? tokenAmount(reward.units, reward.settlement) : credits(reward.credits);
 }
 
-export type PaymentStatus = 'pending' | 'submitted' | 'confirmed' | 'failed';
+export type PaymentStatus = 'pending' | 'submitted' | 'awaiting_approval' | 'confirmed' | 'failed';
 /** One wording for every payment state, everywhere, always qualified by its settlement. */
 export function paymentState(p: { status: PaymentStatus; failureReason: string | null; settlement?: Settlement }): { label: string; detail: string; tone: 'info' | 'success' | 'danger' } {
   if (p.settlement === 'squads_devnet') {
@@ -48,6 +48,9 @@ export function paymentState(p: { status: PaymentStatus; failureReason: string |
         return { label: 'Payment pending · devnet pilot', detail: 'Approved. Two of three signers will release devnet test USDC (no value) from the study vault to the frozen wallet.', tone: 'info' };
       case 'submitted':
         return { label: 'Payment submitted · devnet pilot', detail: 'Waiting for the devnet transaction to finalize.', tone: 'info' };
+      case 'awaiting_approval':
+        // POCKETQA_ENV=devnet: the platform signer completes the 2-of-3 only after this vote is on chain.
+        return { label: 'Waiting for approval · devnet', detail: 'Waiting for the cosigner to approve this payment in their wallet. Devnet test USDC, no value · test keys · not independent custody.', tone: 'info' };
       case 'confirmed':
         return { label: 'Settled on devnet · test USDC, no value', detail: 'Finalized on Solana devnet. Pilot: test keys simulate all roles; not independent custody.', tone: 'success' };
       case 'failed':
@@ -59,6 +62,7 @@ export function paymentState(p: { status: PaymentStatus; failureReason: string |
     case 'pending':
       return { label: 'Payment pending · simulation', detail: 'Approved. The simulated settlement will send the reward to the frozen wallet.', tone: 'info' };
     case 'submitted':
+    case 'awaiting_approval': // devnet only; a simulated payment never waits for a wallet vote
       return { label: 'Payment submitted · simulation', detail: 'Waiting for the simulated settlement to finalize.', tone: 'info' };
     case 'confirmed':
       return { label: 'Settled · simulation, no funds moved', detail: 'The simulated settlement finalized this transfer. No real asset was sent.', tone: 'success' };

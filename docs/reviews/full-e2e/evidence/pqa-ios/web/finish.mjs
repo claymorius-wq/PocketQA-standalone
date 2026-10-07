@@ -1,0 +1,39 @@
+/* global document, localStorage -- evidence copy: these run inside the page (Playwright evaluate/addInitScript) */
+/* eslint-disable no-empty -- evidence copy kept verbatim (lint-only header; no code changed) */
+// Desktop completion of W-20 (ledger after) and W-23 (sign-out) for the already-approved run.
+import { createRequire } from 'node:module';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
+const require = createRequire(process.env.PW_FROM + '/package.json');
+const { chromium } = require('@playwright/test');
+const BASE = 'https://pocketqa.vercel.app'; const OUT = process.argv[2];
+const PART = 'fa5abae9-1da5-4a3d-8972-a103edf46ac5'; const STUDY = '/builder/study/i5b95f5fc9bf4f57fa53d65471f156c4';
+const creds = (f) => Object.fromEntries(readFileSync(join(homedir(), '.config/pocketqa', f), 'utf8').split('\n').filter((l) => l.includes('=')).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim().replace(/^['"]|['"]$/g, '')]));
+const browser = await chromium.launch(); const res = [];
+const mk = async (role, c) => { const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: role === 'builder' ? 'light' : 'dark' }); await ctx.addInitScript(() => { try { localStorage.setItem('pocketqa.introSeen', '1'); } catch {} });
+  const page = await ctx.newPage(); const log = []; page.on('console', (m) => m.type() === 'error' && log.push(m.text().slice(0, 200))); page.on('pageerror', (e) => log.push(String(e).slice(0, 200))); page.on('response', (r) => r.status() >= 400 && log.push(`${r.status()} ${r.url().split('?')[0]}`));
+  await page.goto(`${BASE}/sign-in`); await page.getByTestId('sign-in-email').fill(c.QA_TESTER_EMAIL); await page.getByTestId('sign-in-password').fill(c.QA_TESTER_PASSWORD); await page.getByTestId('sign-in-submit').click();
+  await page.waitForFunction(() => !document.querySelector('[data-testid="sign-in-screen"]'), null, { timeout: 30000 }); return { page, log, role }; };
+const T = await mk('tester', creds('qa-synthetic-tester.env')); const B = await mk('builder', creds('qa-synthetic-builder.env'));
+const t = async (p, id) => (await p.page.getByTestId(id).first().innerText()).replace(/\s+/g, ' ').trim();
+const w = (p, id) => p.page.getByTestId(id).first().waitFor({ timeout: 25000 });
+const o20 = {};
+await T.page.goto(`${BASE}/participation/${PART}`); await w(T, 'approved-notice'); o20.approved = await t(T, 'approved-notice'); o20.findingVisible = await T.page.getByText('QA synthetic finding: main button label').first().isVisible();
+await T.page.screenshot({ path: join(OUT, 'W-20-tester-approved.png'), fullPage: true });
+await T.page.goto(`${BASE}/credits`); await w(T, 'credit-balance'); o20.testerAfter = await t(T, 'credit-balance'); o20.testerLedgerTop = (await T.page.locator('[data-testid^="ledger-"]').first().innerText()).replace(/\s+/g, ' ');
+await T.page.screenshot({ path: join(OUT, 'W-20-tester-credits.png'), fullPage: true });
+await B.page.goto(`${BASE}${STUDY}`); await w(B, 'builder-study-screen'); o20.studyBudget = (await B.page.getByTestId('budget-card').count()) ? await t(B, 'budget-card') : null;
+for (const id of ['budget-reserved', 'budget-awarded']) o20[id] = (await B.page.getByTestId(id).count()) ? await t(B, id) : null;
+await B.page.screenshot({ path: join(OUT, 'W-20-builder-study.png'), fullPage: true });
+await B.page.goto(`${BASE}/budget`); await w(B, 'credit-balance'); o20.builderAfter = await t(B, 'credit-balance');
+await B.page.screenshot({ path: join(OUT, 'W-20-builder-budget.png'), fullPage: true });
+res.push({ id: 'W-20', observed: o20, log: { tester: [...T.log], builder: [...B.log] } }); T.log.length = 0; B.log.length = 0;
+const o23 = {};
+for (const p of [T, B]) { await p.page.goto(`${BASE}/${p.role === 'builder' ? 'builder-settings' : 'settings'}`); await w(p, 'sign-out'); await p.page.getByTestId('sign-out').first().click();
+  await p.page.getByTestId('sign-in-screen').first().waitFor({ timeout: 25000 }); const after = p.page.url().replace(BASE, '');
+  await p.page.goto(`${BASE}/${p.role === 'builder' ? 'budget' : 'credits'}`); await p.page.waitForTimeout(2500);
+  o23[p.role] = { afterSignOut: after, privateRouteNow: p.page.url().replace(BASE, ''), balanceVisible: await p.page.getByTestId('credit-balance').count(), signInVisible: await p.page.getByTestId('sign-in-screen').count() };
+  await p.page.screenshot({ path: join(OUT, `W-23-${p.role}.png`), fullPage: true }); }
+res.push({ id: 'W-23', observed: o23, log: { tester: T.log, builder: B.log } });
+writeFileSync(join(OUT, 'finish.json'), JSON.stringify(res, null, 2)); console.log(JSON.stringify(res, null, 1)); await browser.close();

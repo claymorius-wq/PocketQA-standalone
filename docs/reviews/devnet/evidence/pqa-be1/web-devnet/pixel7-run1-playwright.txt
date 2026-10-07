@@ -1,0 +1,58 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [pixel7] › e2e-devnet/hosted-journey.spec.ts:242:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.1s)
+  ✓  2 [pixel7] › e2e-devnet/hosted-journey.spec.ts:273:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.4s)
+  ✘  3 [pixel7] › e2e-devnet/hosted-journey.spec.ts:282:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (35.1s)
+Testing stopped early after 1 maximum allowed failures.
+
+
+  1) [pixel7] › e2e-devnet/hosted-journey.spec.ts:282:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish 
+
+    TimeoutError: locator.click: Timeout 20000ms exceeded.
+    Call log:
+      - waiting for getByTestId('escrow-wallet-review')
+        - locator resolved to <button disabled role="button" tabindex="-1" type="button" aria-busy="true" aria-disabled="true" data-testid="escrow-wallet-review" class="css-g5y9jx r-12vffkv r-1777fci r-19yznuf r-u9wvl5 r-9azuoe">…</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+        - waiting 20ms
+        2 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+          - waiting 100ms
+        5 × waiting for element to be visible, enabled and stable
+          - element is not enabled
+        - retrying click action
+          - waiting 500ms
+        - waiting for element to be visible, enabled and stable
+      - element was detached from the DOM, retrying
+
+
+      325 |   await expect(b.getByTestId('escrow-pilot-request')).toBeVisible();
+      326 |   for (let i = 0; i < 12 && !(await b.getByTestId('escrow-wallet-plan').isVisible()); i++) {
+    > 327 |     await b.getByTestId('escrow-wallet-review').click();
+          |                                                 ^
+      328 |     await b.waitForTimeout(3_000);
+      329 |   }
+      330 |   await expect(b.getByTestId('escrow-wallet-plan')).toBeVisible();
+        at /Users/hamzadiaz/Projects/pocket-qa/.worktrees/devnet-client/apps/mobile/e2e-devnet/hosted-journey.spec.ts:327:49
+
+    Error Context: test-results/pw-pixel7/hosted-journey-3-·-builder-4ab30-ncel-once-then-sign-publish-pixel7/error-context.md
+
+    Error Context: test-results/pw-pixel7/hosted-journey-3-·-builder-4ab30-ncel-once-then-sign-publish-pixel7/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/pw-pixel7/hosted-journey-3-·-builder-4ab30-ncel-once-then-sign-publish-pixel7/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/pw-pixel7/hosted-journey-3-·-builder-4ab30-ncel-once-then-sign-publish-pixel7/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [pixel7] › e2e-devnet/hosted-journey.spec.ts:282:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish 
+  3 did not run
+  2 passed (43.7s)
+  1 error was not a part of any test, see above for details

@@ -1,8 +1,8 @@
-import { planSettlePayout, planSettleRefund, transitionPayout } from '@pocket-qa/domain';
+import { transitionPayout } from '@pocket-qa/domain';
 import type { Deps } from '../context';
-import { audit, postEscrow, studyEscrowBooks, verifyFunding, type FundingRow, type SettlementRow } from '../escrow';
-import type { DB } from '../db';
-import { SettlementFailure, type SettlementProvider } from './types';
+import { settlementLabel, verifyFunding } from '../escrow';
+import type { EscrowRepo } from '../repo/escrow/types';
+import { AwaitingCosigner, SettlementFailure, SettlementPending, type SettlementProvider } from './types';
 
 const RETRY_MS = 5 * 60_000;
 const MAX_RETRY_MS = 3600_000;
@@ -22,33 +22,59 @@ const backoff = (attempt: number) => Math.min(MAX_RETRY_MS, RETRY_MS * 2 ** Math
  *    payment that has failed ESCALATE_AFTER times or more (it keeps retrying, with backoff);
  * 5. with a network provider (the Squads devnet pilot), every study vault's on-chain balance is
  *    compared with the books: unmatched deposits and shortfalls are alerts (`reconcileVaultOnChain`).
- * The server runs one pass at a time (a guard in server.ts); overlapping runs from other callers
+ * Data access goes through the escrow repository (sqlite or firestore). The server runs one pass at
+ * a time (a guard in server.ts); overlapping runs from other callers
  * would still be safe, because every send is idempotent per persisted attempt key.
  * Unknown errors propagate: they leave the outcome unknown, and the next run resolves it.
  */
-export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'>): Promise<{ alerts: string[] }> {
-  const { db, settlement: provider } = deps;
-  if (!provider) return { alerts: [] };
+/**
+ * A bounded slice (plan §5, R5): at most `maxItems` items (fundings verified, settlements sent or
+ * polled), and none started at or after `deadlineMs`. With a `lease`, the job's fence is checked
+ * (`repo.core.leaseValid`) before every item, so a holder whose lease was taken over stops.
+ * Every item is idempotent, so a slice cut short is simply resumed by the next run.
+ */
+export type SettlementSlice = { maxItems?: number; deadlineMs?: number; lease?: { job: string; fence: number } };
+
+export async function runSettlement(
+  deps: Pick<Deps, 'now' | 'settlement'> & { repo: Pick<Deps['repo'], 'escrow'> & Partial<Pick<Deps['repo'], 'core'>> },
+  slice: SettlementSlice = {},
+): Promise<{ alerts: string[]; complete: boolean }> {
+  const { settlement: provider } = deps;
+  if (!provider) return { alerts: [], complete: true };
+  const repo = deps.repo.escrow;
   const now = deps.now();
   const touched = new Set<string>();
+  const label = settlementLabel(provider);
+  if (slice.lease && !deps.repo.core) throw new Error('runSettlement: a lease needs repo.core');
+  let items = 0;
+  let complete = true;
+  /** May the next item start? Stops the slice (complete: false) when the budget or lease is gone. */
+  const next = async () => {
+    if (!complete) return false;
+    if ((slice.maxItems !== undefined && items >= slice.maxItems) || (slice.deadlineMs !== undefined && deps.now() >= slice.deadlineMs)) complete = false;
+    else if (slice.lease && !(await deps.repo.core!.leaseValid(slice.lease.job, slice.lease.fence, deps.now()))) complete = false;
+    if (complete) items += 1;
+    return complete;
+  };
 
-  db.prepare(`UPDATE escrow_fundings SET status = 'expired' WHERE status = 'awaiting_payment' AND expires_at <= ?`).run(now);
-  for (const f of db.prepare(`SELECT * FROM escrow_fundings WHERE status = 'pending'`).all() as FundingRow[]) {
-    await verifyFunding(db, provider, f, f.signature!, now, 'system');
+  await repo.expireUnpaidFundings(now);
+  for (const f of await repo.pendingFundings()) {
+    if (!(await next())) break;
+    await verifyFunding(repo, provider, f, f.signature!, now, 'system');
     touched.add(f.study_id);
   }
 
-  const due = db
-    .prepare(`SELECT * FROM settlements WHERE status = 'pending' OR (status = 'failed' AND next_attempt_at <= ?) OR (status = 'submitted' AND signature IS NULL) ORDER BY created_at`)
-    .all(now) as SettlementRow[];
-  for (const s of due) {
+  for (const s of await repo.dueSettlements(now)) {
+    if (!(await next())) break;
     touched.add(s.study_id);
     let key = s.attempt_key;
-    if (s.status !== 'submitted') {
+    // An in-flight devnet payment (submitted without a signature yet, or waiting for its cosigner)
+    // continues its attempt: no new key, no attempt count.
+    if (s.status !== 'submitted' && s.status !== 'awaiting_approval') {
       // A new attempt: persist its key and the submitted state before sending anything.
       key = `${s.id}:${s.attempt + 1}`;
       transitionPayout(s.status, 'submit');
-      db.prepare(`UPDATE settlements SET status = 'submitted', attempt = attempt + 1, attempt_key = ?, signature = NULL, failure_reason = NULL WHERE id = ?`).run(key, s.id);
+      await repo.beginAttempt(s.id, key);
     }
     try {
       const { signature } = await provider.submit({
@@ -61,54 +87,54 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
         amountUnits: s.amount_units,
         cosigner: s.cosigner,
       });
-      db.prepare('UPDATE settlements SET signature = ? WHERE id = ?').run(signature, s.id);
+      if (s.status === 'awaiting_approval') await repo.setInFlightStatus(s.id, 'submitted');
+      await repo.recordSubmitSignature(s.id, signature);
     } catch (e) {
+      // Devnet: one step sent or confirming, or another run holds it: the next run continues (not a failure).
+      if (e instanceof SettlementPending) {
+        if (s.status === 'awaiting_approval') await repo.setInFlightStatus(s.id, 'submitted');
+        continue;
+      }
+      // Devnet: the proposal waits for the cosigner's own vote (the server signs nothing until then).
+      if (e instanceof AwaitingCosigner) {
+        await repo.setInFlightStatus(s.id, 'awaiting_approval');
+        continue;
+      }
       if (!(e instanceof SettlementFailure)) throw e;
       // The simulation can prove nothing was sent; a network provider reports the chain state it read.
       const reason = e.chainState ? `${e.message} ${e.chainState}` : e.message;
       const after = provider.mode === 'simulated' ? 'Nothing was sent; it will be retried.' : 'It will be retried.';
-      db.prepare(`UPDATE settlements SET status = 'failed', failure_reason = ?, next_attempt_at = ? WHERE id = ?`).run(reason, now + backoff(s.attempt + (s.status === 'submitted' ? 0 : 1)), s.id);
-      audit(db, 'system', `escrow.${s.kind}_failed`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${reason} ${after}`, now);
+      await repo.recordAttemptFailure(s, reason, `${reason} ${after}`, now + backoff(s.attempt + (s.status === 'submitted' ? 0 : 1)), now);
     }
   }
 
-  for (const s of db.prepare(`SELECT * FROM settlements WHERE status = 'submitted' AND signature IS NOT NULL`).all() as SettlementRow[]) {
+  for (const s of await repo.submittedSettlements()) {
+    if (!(await next())) break;
     touched.add(s.study_id);
     const st = await provider.status(s.signature!);
     if (st === 'finalized') {
-      db.transaction(() => {
-        const cur = db.prepare('SELECT status FROM settlements WHERE id = ?').get(s.id) as { status: SettlementRow['status'] };
-        if (cur.status !== 'submitted') return;
-        transitionPayout('submitted', 'confirm');
-        db.prepare(`UPDATE settlements SET status = 'confirmed', settled_at = ? WHERE id = ?`).run(now, s.id);
-        if (s.kind === 'payout') {
-          postEscrow(db, planSettlePayout({ studyId: s.study_id, participationId: s.participation_id!, testerId: s.tester_id!, amountUnits: s.amount_units }), now, s.signature);
-        } else {
-          postEscrow(db, planSettleRefund({ studyId: s.study_id, funder: s.destination, amountUnits: s.amount_units }), now, s.signature);
-        }
-        audit(db, 'system', `escrow.${s.kind}_settled`, s.kind === 'payout' ? 'participation' : 'study', s.participation_id ?? s.study_id, `${s.amount_units} units to ${s.destination} (${provider.mode === 'simulated' ? 'simulated settlement' : 'Squads devnet pilot, devnet test USDC, no value'})`, now);
-      })();
+      await repo.confirmSettlement(s, now, label);
     } else if (st === 'failed') {
-      db.prepare(`UPDATE settlements SET status = 'failed', failure_reason = ?, next_attempt_at = ? WHERE id = ? AND status = 'submitted'`).run('The transfer failed on the settlement network; it will be retried.', now + backoff(s.attempt), s.id);
+      await repo.markSettlementFailed(s.id, 'The transfer failed on the settlement network; it will be retried.', now + backoff(s.attempt));
     }
     // 'processing' and 'not_found' wait: a transfer is never assumed lost or settled early.
   }
 
   const alerts: string[] = [];
-  for (const f of db.prepare(`SELECT id, kind, attempt, failure_reason FROM settlements WHERE status = 'failed' AND attempt >= ?`).all(ESCALATE_AFTER) as { id: string; kind: string; attempt: number; failure_reason: string | null }[]) {
+  for (const f of await repo.escalations(ESCALATE_AFTER)) {
     alerts.push(`${f.kind} ${f.id}: ${ESCALATE_AFTER}+ failed attempts (${f.attempt} so far): ${f.failure_reason ?? 'unknown'}`);
   }
   for (const studyId of touched) {
-    const books = studyEscrowBooks(db, studyId, now);
+    const books = await repo.studyBooks(studyId, now);
     if (!books.ok) alerts.push(`escrow books out of balance for study ${studyId}: ${JSON.stringify(books)}`);
   }
   if (provider.vaultBalance) {
-    for (const { study_id } of db.prepare(`SELECT study_id FROM study_escrows WHERE settlement = ? AND multisig IS NOT NULL`).all(provider.mode) as { study_id: string }[]) {
-      const alert = await reconcileVaultOnChain(db, provider, study_id, now);
+    for (const studyId of await repo.escrowStudiesWithMultisig(provider.mode)) {
+      const alert = await reconcileVaultOnChain(repo, provider, studyId, now);
       if (alert) alerts.push(alert);
     }
   }
-  return { alerts };
+  return { alerts, complete };
 }
 
 /**
@@ -118,14 +144,15 @@ export async function runSettlement(deps: Pick<Deps, 'db' | 'now' | 'settlement'
  * or spendable by it (an operator returns it by hand). Less than that, beyond transfers that may
  * have landed but aren't confirmed in the books yet, is a shortfall.
  */
-export async function reconcileVaultOnChain(db: DB, provider: SettlementProvider, studyId: string, now: number): Promise<string | null> {
+export async function reconcileVaultOnChain(repo: EscrowRepo, provider: SettlementProvider, studyId: string, now: number): Promise<string | null> {
   const onChain = await provider.vaultBalance!(studyId);
   if (onChain === null) return null;
-  const books = studyEscrowBooks(db, studyId, now);
-  const expected = books.fundedUnits - books.settledUnits - books.refundedUnits;
-  const inFlight = (db.prepare(`SELECT COALESCE(SUM(amount_units),0) AS s FROM settlements WHERE study_id = ? AND status IN ('submitted','failed')`).get(studyId) as { s: number }).s;
+  const books = await repo.studyBooks(studyId, now);
+  // Swept fees (devnet decision (a)) left the vault too; earned-but-unswept fees are still in it.
+  const expected = books.fundedUnits - books.settledUnits - books.refundedUnits - books.sweptFeesUnits;
+  const inFlight = await repo.inFlightUnits(studyId);
   // A funding still being verified explains extra units until it resolves.
-  const openFunding = db.prepare(`SELECT 1 FROM escrow_fundings WHERE study_id = ? AND status IN ('awaiting_payment','pending')`).get(studyId);
+  const openFunding = await repo.hasOpenFunding(studyId);
   if (onChain > expected && !openFunding) {
     return `unmatched deposit in the vault of study ${studyId}: ${onChain - expected} units on chain that no confirmed funding credited (not credited, not spendable; return it by hand)`;
   }

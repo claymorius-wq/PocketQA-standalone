@@ -9,6 +9,7 @@ import { SessionProvider, useSession } from '../src/auth/SessionProvider';
 import { FocusRingStyles, LoadingState, Notice, lensStackScreenOptions } from '../src/ui';
 import { Platform, StyleSheet, View } from 'react-native';
 import { deploymentProblem } from '../src/lib/deployment';
+import { useAppFocus } from '../src/lib/queries';
 import { useIntroSeenWithSession } from '../src/onboarding/intro';
 import { PREVIEW_BUILD } from '../src/preview/demoAccounts';
 import { Ground } from '../src/glass';
@@ -83,6 +84,8 @@ const styles = StyleSheet.create({
 const DEPLOYMENT_PROBLEM = deploymentProblem({ env: process.env.EXPO_PUBLIC_POCKETQA_ENV, apiUrl: process.env.EXPO_PUBLIC_API_URL, preview: PREVIEW_BUILD, platform: Platform.OS });
 
 export default function RootLayout() {
+  // Queries that opt in (Discover's eligible studies) refetch when the app returns to the foreground.
+  useAppFocus();
   const [qc] = useState(
     () =>
       new QueryClient({

@@ -1,0 +1,13 @@
+# Shared: back in Pocket QA, the recording is still running: stop it here and see the clip.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _voice-reopen.yaml
+- scrollUntilVisible:
+    element:
+      id: record-stop
+- tapOn:
+    id: record-stop
+- scrollUntilVisible:
+    element:
+      id: segment-recorded
+    timeout: 20000

@@ -321,7 +321,7 @@ describe('Moderation (visibility ledger)', () => {
     mockApi.mockResolvedValueOnce(study({ moderation: 'suspended' }));
     await fireEvent.press(screen.getByTestId('confirm-ok'));
     await flush(10);
-    expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Checking moderation audit trail' } });
+    expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Checking moderation audit trail' }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     // The leaving sheet keeps its reason (the next open() clears it).
     expect(screen.getByTestId('moderation-reason', { includeHiddenElements: true }).props.value).toBe('Checking moderation audit trail');
     // The list refetches at once, but the row is held in Visible while it sinks.
@@ -403,7 +403,7 @@ describe('Moderation (visibility ledger)', () => {
     }
     await flush(10);
     await flush(10);
-    expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Misleading payout claims' } });
+    expect(mockApi).toHaveBeenCalledWith('moderateStudy', { params: { id: 's1' }, body: { action: 'suspend', reason: 'Misleading payout claims' }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     expect(mockApi).toHaveBeenCalledTimes(1);
   });
 

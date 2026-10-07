@@ -1,6 +1,8 @@
 // Pocket QA API contract (lead-authored foundation; backend owns changes after the
 // foundation commit, and every change needs an entry in docs/decisions/contract-changes.md).
 // All request and response bodies are validated with these schemas on both sides.
+// Must stay the first import: see zodConfig.ts.
+import './zodConfig';
 import { z } from 'zod';
 
 export * from './siws';
@@ -66,6 +68,18 @@ export const ErrorCode = z.enum([
   'PROVIDER_UNSUPPORTED',
   /** Not offered on this deployment (e.g. test credits in production); never a fake success. */
   'FEATURE_UNAVAILABLE',
+  /** The same Idempotency-Key was sent with a different request (plan R10). */
+  'IDEMPOTENCY_KEY_REUSED',
+  /** Devnet (POCKETQA_ENV=devnet): the operation would exceed a spend cap; nothing was signed (CH-D1). */
+  'DEVNET_SPEND_CAP',
+  /** Devnet: an approval names a different Squads index or op id than the payment's receipt (CH-D3). */
+  'APPROVAL_MISMATCH',
+  /** Devnet: the cosigner's vote is not on chain (yet); the server signs nothing until it is. */
+  'COSIGNER_NOT_SEEN',
+  /** Devnet: the study's escrow vault is still being created on chain; try again shortly. */
+  'VAULT_NOT_READY',
+  /** Devnet: the member's vote on this payment is already on chain; no second vote transaction is offered. */
+  'ALREADY_APPROVED',
   'INTERNAL',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCode>;
@@ -102,6 +116,18 @@ export const DeviceProfile = z.object({
   languages: z.array(z.string().min(2).max(12)).min(1).max(10),
 });
 export type DeviceProfile = z.infer<typeof DeviceProfile>;
+/** Android's API level as the profile form accepts it: a whole number 1–99. */
+export const isAndroidApiLevel = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 99;
+/**
+ * PUT /me/device: an Android profile must carry its API level (a profile saved from the web as
+ * Android with null hid every study with a minimum API, study ia2ed9db). Other platforms keep null.
+ * Only what is SAVED is stricter: stored profiles and User.device keep the DeviceProfile shape.
+ */
+export const DeviceProfileInput = DeviceProfile.superRefine((d, ctx) => {
+  if (d.platform === 'android' && !isAndroidApiLevel(d.androidApiLevel)) {
+    ctx.addIssue({ code: 'custom', path: ['androidApiLevel'], message: 'Android needs its API level (a whole number 1–99).' });
+  }
+});
 
 /** One address links to at most one account; linking an address owned elsewhere is CONFLICT_STATE. */
 export const WalletLink = z.object({
@@ -217,8 +243,15 @@ export const EscrowBalances = z.object({
   feesUnits: TokenUnits,
   pendingRefundUnits: TokenUnits,
   refundedUnits: TokenUnits,
+  /** Devnet: earned fees swept on close to the platform fee wallet (decision (a)). */
+  sweptFeesUnits: TokenUnits.optional(),
 });
-export const SettlementStatus = z.enum(['pending', 'submitted', 'confirmed', 'failed']);
+/**
+ * `awaiting_approval` (POCKETQA_ENV=devnet only): the payment's Squads proposal exists and waits for
+ * its cosigner's vote (the builder's wallet, or the arbiter's operator CLI) before the platform
+ * signer completes the 2-of-3. Never shown as paid.
+ */
+export const SettlementStatus = z.enum(['pending', 'submitted', 'awaiting_approval', 'confirmed', 'failed']);
 export const StudyPayment = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('test_credits') }),
   z.object({
@@ -233,7 +266,10 @@ export const StudyPayment = z.discriminatedUnion('mode', [
     /** Builder-only books; null in tester views. */
     balances: EscrowBalances.nullable(),
     fundingWallet: z.string().nullable(),
-    refund: z.object({ status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+    /** `settlementId`: the refund's settlement (devnet: GET /settlements/:id/approval for the builder's vote). */
+    refund: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable(),
+    /** Devnet: the fee sweep on close, approved by the builder like the refund (GET /settlements/:id/approval). */
+    feeSweep: z.object({ settlementId: Id, status: SettlementStatus, amountUnits: PositiveTokenUnits }).nullable().optional(),
   }),
 ]);
 export type StudyPayment = z.infer<typeof StudyPayment>;
@@ -376,6 +412,74 @@ export const EscrowFunding = z.object({
 export type EscrowFunding = z.infer<typeof EscrowFunding>;
 export const SimulatedSignature = z.string().regex(/^sim[A-Za-z0-9]{16,80}$/);
 export const SubmitFundingSignatureBody = z.object({ signature: z.union([SimulatedSignature, Base58Signature]) });
+
+// ---------- devnet (POCKETQA_ENV=devnet; docs/reviews/devnet/pqa-be3-interfaces.md) ----------
+/** The copy every devnet money line carries (devnet-phase-contract.md §6, CH-D6). */
+export const DEVNET_COPY = 'Devnet test USDC, no value · test keys · not independent custody';
+/** A v0 transaction carries no chain id: every server-built transaction names its network, and the client refuses anything else. */
+const DevnetNetwork = z.literal('devnet');
+/**
+ * The builder-signed funding transfer, built by the server from its own state (CH-D3): the pinned
+ * mint, from the builder's token account to THIS study's vault, the quoted amount, the request's
+ * reference. Unsigned; the funding wallet is the fee payer. After the wallet broadcasts it, the
+ * client calls POST /escrow/fundings/:id/signature.
+ */
+export const DevnetFundingTransaction = z.object({
+  transactionB64: z.string().min(1),
+  fundingId: Id,
+  studyId: Id,
+  /** The Solana Pay reference the transfer carries (a funding has no Squads operation id). */
+  reference: Base58Address,
+  amountUnits: PositiveTokenUnits,
+  /** The study vault's token account. */
+  destination: Base58Address,
+  mint: Base58Address,
+  network: DevnetNetwork,
+  copy: z.literal(DEVNET_COPY),
+});
+export type DevnetFundingTransaction = z.infer<typeof DevnetFundingTransaction>;
+/**
+ * The cosigner's vote on ONE payment, bound to its Squads transaction index and operation id
+ * (CH-D3): an unsigned proposal_approve, the builder's wallet as member and fee payer.
+ */
+export const SettlementApproval = z.object({
+  settlementId: Id,
+  kind: z.enum(['payout', 'refund', 'fee']),
+  transactionB64: z.string().min(1),
+  multisig: Base58Address,
+  txIndex: z.number().int().positive(),
+  opId: z.string().regex(/^pqa-op1:[0-9a-f]{64}$/),
+  amountUnits: PositiveTokenUnits,
+  /** The receiving wallet (tester, funding wallet for a refund, platform fee wallet). */
+  destination: Base58Address,
+  mint: Base58Address,
+  network: DevnetNetwork,
+  copy: z.literal(DEVNET_COPY),
+});
+export type SettlementApproval = z.infer<typeof SettlementApproval>;
+/** After the wallet broadcast the vote: its signature, and the index and op id it was for (refused if they differ from the receipt). */
+/**
+ * The operator's view of one devnet payment (admin only, read-only): exactly the inputs of the
+ * arbiter CLI (apps/api/scripts/devnet-arbiter.ts), which re-checks all of them on devnet itself.
+ */
+export const DevnetSettlementPlan = z.object({
+  settlementId: Id,
+  kind: z.enum(['payout', 'refund', 'fee']),
+  cosigner: z.enum(['builder', 'arbiter']),
+  state: z.string(),
+  multisig: Base58Address,
+  txIndex: z.number().int().positive(),
+  opId: z.string().regex(/^pqa-op1:[0-9a-f]{64}$/),
+  recipient: Base58Address,
+  amountUnits: PositiveTokenUnits,
+  mint: Base58Address,
+  network: DevnetNetwork,
+});
+export type DevnetSettlementPlan = z.infer<typeof DevnetSettlementPlan>;
+/** Where the payment stands after the vote was checked on chain (the platform signer completes it only then). */
+export const SettlementApprovalResult = z.object({ settlementId: Id, kind: z.enum(['payout', 'refund', 'fee']), status: SettlementStatus, signature: Base58Signature.nullable(), network: DevnetNetwork });
+export type SettlementApprovalResult = z.infer<typeof SettlementApprovalResult>;
+export const SubmitSettlementApprovalBody = z.object({ signature: Base58Signature, txIndex: z.number().int().positive(), opId: z.string().regex(/^pqa-op1:[0-9a-f]{64}$/) });
 export const SimulatedWalletPayment = z.object({ signature: SimulatedSignature, settlement: z.literal('simulated') });
 export const PutTaskNoteBody = z.object({ note: z.string().trim().max(2000) });
 export const WithdrawBody = z.object({ reason: z.string().trim().max(500).optional() });
@@ -431,7 +535,16 @@ export const UploadIntent = z.object({
 export type UploadIntent = z.infer<typeof UploadIntent>;
 
 /** Bound to one evidence item and the requesting user; single resource, short-lived. */
-export const PlaybackToken = z.object({ token: z.string().min(32), expiresAt: IsoDate });
+/**
+ * Bound to one evidence item and the requesting user; short-lived. Local storage: a token for
+ * GET /media/:token (the API streams the bytes). Private R2: a presigned GET on the bucket's S3
+ * endpoint (<= 5 min, no custom domain), issued after the same authorisation, so the bytes never
+ * pass through the API (Vercel body limit). Exactly one of the two.
+ */
+export const PlaybackToken = z
+  .object({ token: z.string().min(32).optional(), url: z.string().url().optional(), expiresAt: IsoDate })
+  .refine((v) => (v.token === undefined) !== (v.url === undefined), { message: 'exactly one of token or url' });
+export type PlaybackToken = z.infer<typeof PlaybackToken>;
 
 // ---------- findings / review ----------
 export const FindingSeverity = z.enum(['blocker', 'major', 'minor', 'info']);
@@ -508,7 +621,8 @@ export const AuditEntry = z.object({
   id: Id,
   actorId: Id,
   action: z.string(),
-  targetType: z.enum(['study', 'user', 'dispute', 'participation']),
+  // storage_object: a refused deletion outside the app's own keys (targetId = sha256 of the key, never the key).
+  targetType: z.enum(['study', 'user', 'dispute', 'participation', 'storage_object']),
   targetId: Id,
   reason: z.string(),
   createdAt: IsoDate,
@@ -715,6 +829,27 @@ export const Leaderboard = z.object({ items: z.array(LeaderboardRow), windowDays
 export type Leaderboard = z.infer<typeof Leaderboard>;
 export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max(1000) });
 
+// ---------- demo showcase (staging's fixed cohort, Hamza 2026-10-07; devnet with POCKETQA_DEMO_SHOWCASE=1) ----------
+/**
+ * Clearly labelled SYNTHETIC sample profiles for demos: fixtures, never accounts. No sign-in,
+ * participation, ledger, earned rating or payout stands behind them, and the real GET /leaderboard
+ * (and /me/reputation) never include them. Every row carries `demo: true`; no field is an earning,
+ * credit or USDC amount. Off (ClientConfig.features.demoShowcase false): 404 FEATURE_UNAVAILABLE.
+ */
+export const DEMO_SHOWCASE_LABEL = 'Demo examples (not real users)';
+/** A fixture id (demo-1 … demo-10; at most 10 served), never a user id. */
+const DemoId = z.string().regex(/^demo-[1-9]\d*$/);
+/** Always starts with "Demo " (so it can't be mistaken for a real pseudonym). */
+const DemoAlias = z.string().regex(/^Demo [A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/);
+/** Strict: a demo row carries no user id, email, wallet or evidence reference. */
+export const DemoTester = z.strictObject({ id: DemoId, alias: DemoAlias, qualityScore: z.number().int().min(0).max(100), decided: z.number().int().min(0), badges: z.array(BadgeId), demo: z.literal(true) });
+export type DemoTester = z.infer<typeof DemoTester>;
+export const DemoBuilder = z.strictObject({ id: DemoId, alias: DemoAlias, studiesPublished: z.number().int().min(0), demo: z.literal(true) });
+export type DemoBuilder = z.infer<typeof DemoBuilder>;
+/** In fixture-id order: not a ranking (no rank). */
+export const DemoShowcase = z.strictObject({ label: z.literal(DEMO_SHOWCASE_LABEL), testers: z.array(DemoTester), builders: z.array(DemoBuilder) });
+export type DemoShowcase = z.infer<typeof DemoShowcase>;
+
 // ---------- AI ----------
 export const AiStatus = z.object({ available: z.boolean(), provider: z.string().nullable() });
 
@@ -738,7 +873,8 @@ export const ClientConfig = z.object({
   walletLogin: z.boolean(),
   /** Production turns both off: no test-credit top-up, no devnet demo transfers. */
   // `settlement` defaults to off: a server that predates escrow never enables it by omission.
-  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off') }),
+  // `demoShowcase`: GET /demo/showcase is served (staging's fixed cohort; devnet with POCKETQA_DEMO_SHOWCASE=1); off by omission.
+  features: z.object({ testCredits: z.boolean(), devnetTransfers: z.boolean(), settlement: SettlementMode.default('off'), demoShowcase: z.boolean().default(false) }),
   firebase: z
     .object({
       apiKey: z.string().min(1),
@@ -746,6 +882,8 @@ export const ClientConfig = z.object({
       projectId: z.string().min(1),
       /** Set only for local emulator testing, e.g. http://127.0.0.1:9099 */
       authEmulatorUrl: z.string().url().nullable(),
+      /** Google sign-in is offered (the provider is enabled for this project). Off unless the server says so. */
+      googleSignIn: z.boolean().default(false),
     })
     .nullable(),
 });
@@ -789,7 +927,7 @@ export const routes = {
   clientConfig: r({ method: 'GET', path: '/config', auth: 'public', scope: 'none', body: null, response: ClientConfig }),
   identitySession: r({ method: 'POST', path: '/auth/identity/session', auth: 'identity', scope: 'self', body: IdentitySessionBody, response: IdentitySessionResponse }),
   me: r({ method: 'GET', path: '/me', auth: 'user', scope: 'self', body: null, response: User }),
-  putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfile, response: User }),
+  putDevice: r({ method: 'PUT', path: '/me/device', auth: 'tester', scope: 'self', body: DeviceProfileInput, response: User }),
   credits: r({ method: 'GET', path: '/me/credits', auth: 'user', scope: 'self', body: null, response: CreditsView }),
   topUp: r({ method: 'POST', path: '/me/credits/test-topup', auth: 'builder', scope: 'self', body: TopUpBody, response: CreditsView }),
   exportMe: r({ method: 'POST', path: '/me/export', auth: 'user', scope: 'self', body: null, response: ExportBundle }),
@@ -848,11 +986,17 @@ export const routes = {
   getEscrowFunding: r({ method: 'GET', path: '/escrow/fundings/:id', auth: 'builder', scope: 'study-owner', body: null, response: EscrowFunding }),
   simulatedWalletPayment: r({ method: 'POST', path: '/escrow/fundings/:id/simulated-wallet-payment', auth: 'builder', scope: 'study-owner', body: null, response: SimulatedWalletPayment }),
   submitFundingSignature: r({ method: 'POST', path: '/escrow/fundings/:id/signature', auth: 'builder', scope: 'study-owner', body: SubmitFundingSignatureBody, response: EscrowFunding }),
+  escrowFundingTransaction: r({ method: 'GET', path: '/escrow/fundings/:id/transaction', auth: 'builder', scope: 'study-owner', body: null, response: DevnetFundingTransaction }),
+  settlementApproval: r({ method: 'GET', path: '/settlements/:id/approval', auth: 'builder', scope: 'study-owner', body: null, response: SettlementApproval }),
+  adminDevnetSettlement: r({ method: 'GET', path: '/admin/settlements/:id/devnet', auth: 'admin', scope: 'none', body: null, response: DevnetSettlementPlan }),
+  submitSettlementApproval: r({ method: 'POST', path: '/settlements/:id/approval', auth: 'builder', scope: 'study-owner', body: SubmitSettlementApprovalBody, response: SettlementApprovalResult }),
   myPayouts: r({ method: 'GET', path: '/me/payouts', auth: 'tester', scope: 'self', body: null, response: list(Payout) }),
   adminPayouts: r({ method: 'GET', path: '/admin/payouts', auth: 'admin', scope: 'none', body: null, response: list(Payout) }),
   myReputation: r({ method: 'GET', path: '/me/reputation', auth: 'tester', scope: 'self', body: null, response: Reputation }),
   putLeaderboard: r({ method: 'PUT', path: '/me/leaderboard', auth: 'tester', scope: 'self', body: LeaderboardSettingsBody, response: Reputation }),
   leaderboard: r({ method: 'GET', path: '/leaderboard', auth: 'user', scope: 'none', body: null, response: Leaderboard }),
+  /** 404 FEATURE_UNAVAILABLE unless POCKETQA_ENV=devnet with POCKETQA_DEMO_SHOWCASE=1. Public: fixtures only. */
+  demoShowcase: r({ method: 'GET', path: '/demo/showcase', auth: 'public', scope: 'none', body: null, response: DemoShowcase }),
   adminFraud: r({ method: 'POST', path: '/admin/participations/:id/fraud', auth: 'admin', scope: 'none', body: FraudFindingBody, response: Ok }),
 } as const;
 export type RouteName = keyof typeof routes;

@@ -6,17 +6,26 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon/icon-1024.png",
     "android": {
-      "package": "com.reshareai.pocketqa"
+      "package": "com.reshareai.pocketqa",
+      "versionCode": 4,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon/adaptive-foreground-1024.png",
+        "backgroundColor": "#0B0A1F"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.reshareai.pocketqa",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.reshareai.pocketqa"]
+      }
     },
     "web": {
       "bundler": "metro",
       "output": "single"
     },
-    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image", "expo-font", "./plugins/withLocalhostCleartext"]
+    "plugins": ["expo-router", "expo-status-bar", "expo-secure-store", "expo-video", "expo-image", "expo-font", "./plugins/withLocalhostCleartext", "./plugins/withBroadcastExtension"]
   }
 }

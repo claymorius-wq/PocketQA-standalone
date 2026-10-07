@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CreditsView, Participation, Study } from '@pocket-qa/contracts';
-import { DEVICE, makeApp, PNG, seeded, STUDY, type TestApp } from './helpers';
+import { DISPUTE_WINDOW_MS } from '@pocket-qa/domain';
+import { newId } from '../src/util';
+import { DEVICE, makeApp, onFirestore, PNG, seeded, STUDY, type TestApp } from './helpers';
 
 let t: TestApp;
 beforeEach(async () => {
@@ -110,13 +112,15 @@ describe('review and ledger', () => {
     const a2 = await t.req('POST', `/participations/${participationId}/approve`, builder.token, {});
     expect(a2.status).toBe(409);
     expect(await balance(tester.token)).toBe(50);
-    const rows = t.db.prepare(`SELECT COUNT(*) AS n FROM ledger WHERE participation_id = ? AND kind = 'reward_credit' AND amount > 0`).get(participationId) as { n: number };
-    expect(rows.n).toBe(1);
+    const credits = (await t.deps.repo.studies.ledgerEntries(`user:${tester.id}`)).filter((e) => e.participation_id === participationId && e.kind === 'reward_credit' && e.amount > 0);
+    expect(credits).toHaveLength(1);
     const s = Study.parse((await t.req('GET', `/studies/${study.id}`, builder.token)).body);
     expect(s.budget).toEqual({ reserved: 100, awarded: 50, committed: 0, available: 50 });
   });
 
-  it('the database itself refuses a second reward posting and any ledger edit', async () => {
+  // SQLite's own triggers and UNIQUE index; on Firestore the ledgerRewards guard and the
+  // append-only repository are covered by test/emulator/studies.guards.test.ts.
+  it.skipIf(onFirestore())('the database itself refuses a second reward posting and any ledger edit', async () => {
     const { builder, tester, participationId } = await seeded(t);
     await t.req('POST', `/participations/${participationId}/submit`, tester.token);
     await t.req('POST', `/participations/${participationId}/approve`, builder.token, {});
@@ -149,6 +153,49 @@ describe('review and ledger', () => {
     expect(audit[0].action).toBe('dispute.overturned');
   });
 
+  // Full E2E E-08 (bugs/E-dispute-close-race.md): each handler takes `now` before its transaction,
+  // so a dispute received just before the 7-day window ends can commit after a close received just
+  // after it. The repository is called with those two times directly (one HTTP clock cannot
+  // interleave them).
+  it('a dispute timed before a close that committed first is refused on the closed study; nothing is paid twice', async () => {
+    const { builder, tester, participationId, study } = await seeded(t);
+    await t.req('POST', `/participations/${participationId}/submit`, tester.token);
+    const decidedAt = t.clock.now;
+    await t.req('POST', `/participations/${participationId}/reject`, builder.token, { reason: 'No evidence attached for task 2.' });
+    const builderBefore = await balance(builder.token);
+    t.clock.now = decidedAt + DISPUTE_WINDOW_MS + 1;
+    expect((await t.req('POST', `/studies/${study.id}/close`, builder.token)).status).toBe(200);
+    expect(await balance(builder.token)).toBe(builderBefore + 100);
+    const testerRow = (await t.deps.repo.core.userById(tester.id))!;
+    await expect(t.deps.repo.studies.openDispute(participationId, testerRow, 'Task 2 evidence is in my note.', newId(), decidedAt + DISPUTE_WINDOW_MS - 1)).rejects.toMatchObject({ code: 'CONFLICT_STATE' });
+    expect(await t.deps.repo.studies.listDisputesByStudy(study.id)).toHaveLength(0);
+    expect((await t.deps.repo.studies.getParticipation(participationId))!.status).toBe('rejected');
+    expect(await balance(tester.token)).toBe(0);
+    expect(await t.deps.repo.studies.accountBalance(`study:${study.id}`)).toBe(0);
+  });
+
+  it('an overturn never pays from a closed study (a dispute left open on one is refused, not credited)', async () => {
+    const { builder, tester, participationId, study } = await seeded(t);
+    const admin = await t.admin();
+    await t.req('POST', `/participations/${participationId}/submit`, tester.token);
+    await t.req('POST', `/participations/${participationId}/reject`, builder.token, { reason: 'No evidence attached for task 2.' });
+    const d = await t.req('POST', '/disputes', tester.token, { participationId, reason: 'Task 2 evidence is in my note, please re-check.' });
+    expect(d.status).toBe(200);
+    // The state the race above used to leave behind: an open dispute on a closed study (staged
+    // directly, as data written before the fix would be).
+    const studyBalance = await t.deps.repo.studies.accountBalance(`study:${study.id}`);
+    if (t.db) t.db.prepare(`UPDATE studies SET status = 'closed' WHERE id = ?`).run(study.id);
+    else await t.fs!.collection('studies').doc(study.id).update({ status: 'closed' });
+    const res = await t.req('POST', `/admin/disputes/${d.body.id}/resolve`, admin.token, { outcome: 'overturned', note: 'Note covers task 2.' });
+    expect(res.status).toBe(409);
+    expect(await balance(tester.token)).toBe(0);
+    expect(await t.deps.repo.studies.accountBalance(`study:${study.id}`)).toBe(studyBalance);
+    // Upheld pays nothing and stays possible, so the dispute can still be closed out.
+    const upheld = await t.req('POST', `/admin/disputes/${d.body.id}/resolve`, admin.token, { outcome: 'upheld', note: 'Study closed; nothing to pay.' });
+    expect(upheld.status).toBe(200);
+    expect(await balance(tester.token)).toBe(0);
+  });
+
   it('closing withdraws in-flight testers and releases the remaining budget to the builder', async () => {
     const { builder, study } = await seeded(t); // tester in progress
     const before = await balance(builder.token);
@@ -162,7 +209,8 @@ describe('review and ledger', () => {
 });
 
 describe('error mapping', () => {
-  it('a ledger invariant breach surfaces as 500, not as a routine 409', async () => {
+  // Fault injection through a SQLite trigger.
+  it.skipIf(onFirestore())('a ledger invariant breach surfaces as 500, not as a routine 409', async () => {
     const { builder, tester, participationId } = await seeded(t);
     await t.req('POST', `/participations/${participationId}/submit`, tester.token);
     // Simulate a buggy code path: a trigger-protected ledger row mutation inside a request.

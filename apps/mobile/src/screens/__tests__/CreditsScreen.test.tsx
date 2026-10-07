@@ -174,8 +174,8 @@ describe('Budget (builder)', () => {
     mockApi.mockResolvedValue({ balance: 5600 });
     await renderScreen('Budget');
     expect(screen.getByTestId('credit-balance')).toHaveTextContent('600 test credits');
-    expect(screen.getByText('Add local test credits')).toBeTruthy();
-    expect(screen.getByText('Fund studies in this local build. No money changes hands.')).toBeTruthy();
+    expect(screen.getByText('Add test credits (no cash value)')).toBeTruthy();
+    expect(screen.getByText('Test credits fund studies so you can try Pocket QA. They can’t be bought, sold or withdrawn, and no money changes hands.')).toBeTruthy();
     expect(screen.getAllByTestId('ledger-study_reserve')).toHaveLength(2);
     expect(screen.getByTestId('ledger-test_topup')).toBeTruthy();
     expect(screen.getByLabelText('minus 250 test credits')).toHaveTextContent('−250');
@@ -184,7 +184,7 @@ describe('Budget (builder)', () => {
 
     await fireEvent.press(screen.getByTestId('topup-amount-5000'));
     await fireEvent.press(screen.getByTestId('topup-submit'));
-    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 5000 } });
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 5000 }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     expect(mockHero.every((p) => !p.earned)).toBe(true);
   });
 
@@ -200,7 +200,7 @@ describe('Budget (builder)', () => {
     expect(screen.getByTestId('topup-amount-5000')).toHaveProp('accessibilityState', { selected: false });
     await act(async () => finish({ balance: 500 }));
     expect(mockApi).toHaveBeenCalledTimes(1);
-    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 } });
+    expect(mockApi).toHaveBeenCalledWith('topUp', { body: { amount: 500 }, idempotencyKey: expect.stringMatching(/^[0-9a-f]{32}$/) });
     mockApi.mockReset();
   });
 
@@ -210,7 +210,7 @@ describe('Budget (builder)', () => {
       await renderScreen('Budget');
       expect(screen.getByTestId('funding-unavailable')).toHaveTextContent(/paying with real money isn’t enabled yet/);
       expect(screen.queryByTestId('topup-submit')).toBeNull();
-      expect(screen.queryByText('Add local test credits')).toBeNull();
+      expect(screen.queryByText('Add test credits (no cash value)')).toBeNull();
       expect(mockApi).not.toHaveBeenCalledWith('topUp', expect.anything());
     } finally {
       mockFeatures = { testCredits: true, devnetTransfers: true, settlement: 'off' };

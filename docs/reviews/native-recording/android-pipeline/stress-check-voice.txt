@@ -1,0 +1,8 @@
+# Gate re-run by hand (this run started before the harness's set -u array fix).
+$ ./check-voice.py uploaded.mp4 --structure-only
+video 238.188 s, audio 238.121 s, |a-v| 0.067 s (limit 1.0 s)
+audio samples held 238.121 s of 238.121 s; timestamp gaps 0.000 s (limit 0.5 s)
+signal check SKIPPED (--structure-only): this verdict does not show that any signal or voice was captured
+PASS (structure only: continuous audio track; NO signal check)
+rc=0
+fe8d746475f52e7dd627ffceca4cb145c5632a466f1ba8be9bffc554dce1f6f0  .results/p3/stress/uploaded.mp4

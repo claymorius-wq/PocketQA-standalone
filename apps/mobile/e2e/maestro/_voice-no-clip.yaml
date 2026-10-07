@@ -1,0 +1,17 @@
+# After process death: the session reopens with no clip offered (the truncated file is swept) and the
+# tester is told the recording was interrupted.
+appId: com.reshareai.pocketqa
+---
+- runFlow: _voice-reopen.yaml
+- scrollUntilVisible:
+    element:
+      id: evidence-error
+    direction: UP
+    timeout: 20000
+- assertVisible: .*interrupted.*couldn.t be saved.*Nothing from it was uploaded.*
+- takeScreenshot: interrupted-notice
+- scrollUntilVisible:
+    element:
+      id: record-start
+- assertNotVisible:
+    id: segment-recorded

@@ -1,0 +1,13 @@
+
+Running 6 tests using 1 worker
+
+  ✓  1 [pixel7] › e2e-devnet/hosted-journey.spec.ts:242:5 › 1 · auth: both roles sign in; wrong network: a mainnet-only wallet is not offered (4.5s)
+  ✓  2 [pixel7] › e2e-devnet/hosted-journey.spec.ts:273:5 › 2 · wallets: builder and tester link the fixture wallets (one cancel in the wallet first) (2.9s)
+  ✓  3 [pixel7] › e2e-devnet/hosted-journey.spec.ts:282:5 › 3 · builder: escrow study on the devnet pilot, fund it in the wallet (cancel once, then sign), publish (21.1s)
+  ✓  4 [pixel7] › e2e-devnet/hosted-journey.spec.ts:351:5 › 4 · tester: finds the study, consents with the linked wallet, attaches synthetic evidence, submits (15.2s)
+  ✓  5 [pixel7] › e2e-devnet/hosted-journey.spec.ts:390:5 › 5 · builder: reviews and approves; votes on the reward in the wallet (cancel once, then sign); the payment settles on devnet (2.5m)
+  ✓  6 [pixel7] › e2e-devnet/hosted-journey.spec.ts:426:5 › 6 · builder: closes the study; votes on the refund and the fee sweep; balances (UI and chain) (2.3m)
+
+  Slow test file: [pixel7] › e2e-devnet/hosted-journey.spec.ts (5.6m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  6 passed (5.6m)
