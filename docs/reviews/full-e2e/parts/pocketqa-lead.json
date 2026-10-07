@@ -384,5 +384,85 @@
    "docs/reviews/full-e2e/incident-2026-10-07-tmp-cleanup.md"
   ],
   "notes": "No claim of no loss; post-backup local writes unverifiable from outside the process."
+ },
+ {
+  "fixtures": {},
+  "notes": "QA G-W3. No wallet-compatibility claim is made.",
+  "steps": "",
+  "id": "L-12",
+  "area": "devnet",
+  "title": "Real wallet compatibility (browser extension / Android MWA)",
+  "status": "BLOCKED",
+  "environment": "physical-android / human browser",
+  "deployment": "4ee4603",
+  "sha": "4ee4603",
+  "observed": "Every devnet signature so far came from fixture keys: the Playwright-injected \"Pocket QA Test Wallet (devnet): injected by Playwright, not an extension\" (web) or scripted signers (API harnesses). No real wallet extension (Phantom/Backpack/Solflare) or Android MWA wallet has signed a Pocket QA transaction. Needs a human with a devnet-funded wallet (extension) or the Seeker with a wallet app (MWA), and the R2 CORS gate (L-09) for the full browser path.",
+  "evidence": [
+   "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
+  ]
+ },
+ {
+  "fixtures": {},
+  "notes": "A 2-of-3 with three keys in one hand is not independent custody; mainnet is not authorized.",
+  "steps": "",
+  "id": "L-13",
+  "area": "devnet",
+  "title": "Custody: independent custody is NOT provided (devnet test keys, one custodian)",
+  "status": "NOT OFFERED",
+  "environment": "devnet",
+  "deployment": "4ee4603",
+  "sha": "4ee4603",
+  "observed": "All devnet roles are fixture keys held by the same custodian (us): platform DoUX…, builder 6XoD…, arbiter 5ZFcx5…, tester 6xof… in ~/.config/pocketqa-devnet-pilot. Outside the server, the platform key also signed the D-08 pilot run (14 txs) and two fixture fundings: 4V89zLPDyh6b (0.05 SOL to the builder) and yESeXcGYCMuc (0.01 SOL to the arbiter), each read back by pqa-qa. The product discloses \"test keys · not independent custody\".",
+  "evidence": [
+   "docs/plans/devnet-phase-contract.md"
+  ]
+ },
+ {
+  "fixtures": {},
+  "notes": "Owner: the parent (tunnel/DNS are the parent's tools, per CLAUDE.md).",
+  "steps": "",
+  "id": "L-14",
+  "area": "release",
+  "title": "pocketqa.optijara.ai (password-gated preview via the parent's tunnel)",
+  "status": "FAIL",
+  "environment": "hosted (Cloudflare tunnel)",
+  "deployment": "unknown",
+  "sha": "7bda3ce (last bound)",
+  "observed": "HTTP 502 from Cloudflare for / and /api/health at ~22:49Z (pqa-qa) and still at 00:34:51Z (pqa-qa) and at the lead's re-check; the origin is unreachable. pocketqa.vercel.app answers 200 (dpl_DfajPV9S).",
+  "evidence": [
+   "docs/reviews/full-e2e/qa (qa-sha-and-web-wallet-audit-r1)"
+  ]
+ },
+ {
+  "fixtures": {},
+  "notes": "P3; re-run the emulator suites and ship c3c0c8e in the next artifact.",
+  "steps": "",
+  "id": "L-15",
+  "area": "devnet",
+  "title": "Devnet spend books vs chain (cap accounting)",
+  "status": "PASS",
+  "environment": "loopback-devnet-artifact (real devnet)",
+  "deployment": "4ee4603",
+  "sha": "4ee4603",
+  "observed": "The cap control is PASS: it is cumulative over the namespace lifetime, refused E-28 #4 before signing at the 50M cap (QA verified), and the configurable caps under hard ceilings (9efd63e) are QA-approved. Books over-count the chain (fail-safe direction): +5213280 lamports as of 00:06Z (recorded vs on-chain platform spend). Reservations sum = recorded (no untracked spend). The exact true-down fix c3c0c8e is code-reviewed by pqa-qa only: NOT in any artifact, and its emulator suites are NOT RUN (deletion halt).",
+  "evidence": [
+   "docs/reviews/full-e2e/parts/pqa-be2-devnet.json"
+  ]
+ },
+ {
+  "fixtures": {},
+  "notes": "Kept as the historical FAIL with fix evidence.",
+  "steps": "",
+  "id": "L-16",
+  "area": "devnet",
+  "title": "Client plan binding (QA P2-CS1): the original FAIL and its fix",
+  "status": "PASS",
+  "environment": "unit / local-fake-chain",
+  "deployment": "n/a",
+  "sha": "74f9d08 / 8e92922",
+  "observed": "ORIGINAL FAIL (pqa-qa client signing r1 on 0523547): checkServerTxPlan showed the amount/destination/op id from the server JSON; QA repro: a System transfer of 1 SOL to an attacker, with a \"funding 1.50 test USDC\" plan, was ACCEPTED. FIX: 4cc99ac + 74f9d08 (templates from the BYTES; 37 mismatch tests) APPROVED by QA r2 (repro refused under funding and approval plans); CS3/CS2 8e92922 APPROVED (the vault tx decoded from devnet; mismatch refuses).",
+  "evidence": [
+   "docs/reviews/full-e2e/parts/pqa-be1-devnet.json"
+  ]
  }
 ]
