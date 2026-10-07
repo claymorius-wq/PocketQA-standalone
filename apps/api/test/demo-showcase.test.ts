@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEMO_SHOWCASE_LABEL, DemoBuilder, DemoShowcase, DemoTester, routes } from '@pocket-qa/contracts';
-import { demoProfileFixtures, DemoSeedError, isDemoAlias, sameDemoDoc, seedDemoShowcase, showcaseFrom, type DemoProfileDoc } from '../src/devnet/demoShowcase';
+import { demoProfileFixtures, DemoSeedError, isDemoAlias, MAX_DEMO_PROFILES, sameDemoDoc, seedDemoShowcase, showcaseFrom, type DemoProfileDoc } from '../src/devnet/demoShowcase';
 import type { Repos } from '../src/repo';
 import type { DemoProfilesStore } from '../src/repo/escrow/types';
 import { makeApp, type TestApp } from './helpers';
@@ -11,6 +11,12 @@ import { makeApp, type TestApp } from './helpers';
 // SYNTHETIC fixtures in the devnet namespace only. These run on SQLite and pure code; the Firestore
 // side (collection counts, idempotency, D3, the route, /leaderboard and /me/reputation unchanged) is
 // test/emulator/devnet.demo.test.ts.
+
+/** The two builder docs live devnet holds from before the 10-profile cap (exact stored content). */
+const LEGACY_BUILDERS = [
+  { id: 'demo-11', kind: 'builder', alias: 'Demo Fern Apps', studiesPublished: 2, demo: true },
+  { id: 'demo-12', kind: 'builder', alias: 'Demo Quarry Games', studiesPublished: 1, demo: true },
+];
 
 let t: TestApp | undefined;
 afterEach(async () => {
@@ -23,10 +29,12 @@ describe('the fixture (D1)', () => {
   const testers = all.filter((p) => p.kind === 'tester');
   const builders = all.filter((p) => p.kind === 'builder');
 
-  it('is 8 testers and 4 builders with fixed ids demo-1 … demo-12', () => {
+  it('Hamza: at most 10 demo profiles in total: 8 testers and 2 builders with fixed ids demo-1 … demo-10', () => {
+    expect(MAX_DEMO_PROFILES).toBe(10);
+    expect(all).toHaveLength(MAX_DEMO_PROFILES);
     expect(testers).toHaveLength(8);
-    expect(builders).toHaveLength(4);
-    expect(all.map((p) => p.id)).toEqual(Array.from({ length: 12 }, (_, i) => `demo-${i + 1}`));
+    expect(builders).toHaveLength(2);
+    expect(all.map((p) => p.id)).toEqual(Array.from({ length: 10 }, (_, i) => `demo-${i + 1}`));
   });
 
   it('is deterministic (no clock, no randomness): two calls are byte-identical', () => {
@@ -39,7 +47,7 @@ describe('the fixture (D1)', () => {
       expect(row.demo).toBe(true);
       expect((kind === 'tester' ? DemoTester : DemoBuilder).safeParse(row).success, row.id).toBe(true);
     }
-    expect(new Set(all.map((p) => p.alias.toLowerCase())).size).toBe(12);
+    expect(new Set(all.map((p) => p.alias.toLowerCase())).size).toBe(10);
   });
 
   it('carries no account data and no earnings, credit or USDC number', () => {
@@ -64,13 +72,28 @@ describe('showcaseFrom: only contract-exact demo rows are served (B4)', () => {
   it('drops anything not demo: true, non-"Demo ", with extra fields or an unknown kind; strips kind; sorts by fixture id', () => {
     const f = demoProfileFixtures();
     const a = f[0]!;
-    const docs = [f[10], f[1], { ...a, id: 'demo-20', demo: false }, { ...a, id: 'demo-21', alias: 'Real Person' }, { ...a, id: 'demo-23', email: 'x@example.test' }, { ...a, id: 'user-1' }, { ...a, id: 'demo-24', kind: 'admin' }, null, a];
+    const docs = [f[9], f[1], { ...a, id: 'demo-20', demo: false }, { ...a, id: 'demo-21', alias: 'Real Person' }, { ...a, id: 'demo-23', email: 'x@example.test' }, { ...a, id: 'user-1' }, { ...a, id: 'demo-24', kind: 'admin' }, null, a];
     const out = DemoShowcase.parse(showcaseFrom(docs));
     expect(out.label).toBe(DEMO_SHOWCASE_LABEL);
     expect(DEMO_SHOWCASE_LABEL).toBe('Demo examples (not real users)');
     expect(out.testers.map((p) => p.id)).toEqual(['demo-1', 'demo-2']);
-    expect(out.builders.map((p) => p.id)).toEqual(['demo-11']);
+    expect(out.builders.map((p) => p.id)).toEqual(['demo-10']);
     expect(JSON.stringify(out)).not.toContain('kind');
+  });
+
+  it('Hamza cap: the 12 docs stored before the cap (demo-11/12 included) serve exactly 10: the 8 testers + demo-9, demo-10', () => {
+    const out = DemoShowcase.parse(showcaseFrom([...LEGACY_BUILDERS, ...demoProfileFixtures()].reverse()));
+    expect(out.testers.map((p) => p.id)).toEqual(['demo-1', 'demo-2', 'demo-3', 'demo-4', 'demo-5', 'demo-6', 'demo-7', 'demo-8']);
+    expect(out.builders.map((p) => p.id)).toEqual(['demo-9', 'demo-10']);
+    expect(out.testers.length + out.builders.length).toBe(MAX_DEMO_PROFILES);
+  });
+
+  it('never serves more than MAX_DEMO_PROFILES, whatever is stored (ids outside the fixture are not served)', () => {
+    const f = demoProfileFixtures();
+    const extra = Array.from({ length: 30 }, (_, i) => ({ ...f[0]!, id: `demo-${20 + i}` }));
+    const out = showcaseFrom([...extra, ...f, ...LEGACY_BUILDERS]);
+    expect(out.testers.length + out.builders.length).toBe(MAX_DEMO_PROFILES);
+    expect([...out.testers, ...out.builders].map((p) => p.id)).toEqual(f.map((p) => p.id));
   });
 });
 
@@ -153,15 +176,25 @@ describe('the seed (A3, A4, D2, D3)', () => {
 
   it('touches nothing but the demo store (no core/identity, studies, evidence or other escrow call); run 2 = 0 changes', async () => {
     const m = memoryStore();
-    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 12, unchanged: 0, total: 12, readBack: 12 });
-    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 0, unchanged: 12, total: 12, readBack: 12 });
-    expect(m.writes()).toBe(12);
+    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 10, unchanged: 0, total: 10, readBack: 10 });
+    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 0, unchanged: 10, total: 10, readBack: 10 });
+    expect(m.writes()).toBe(10);
   });
 
-  it('a partial state (3 of 12) gets exactly the missing 9', async () => {
+  it('a partial state (3 of 10) gets exactly the missing 7', async () => {
     const f = demoProfileFixtures();
     const m = memoryStore(Object.fromEntries(f.slice(0, 3).map((d) => [d.id, structuredClone(d)])));
-    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 9, unchanged: 3, total: 12, readBack: 12 });
+    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 7, unchanged: 3, total: 10, readBack: 10 });
+  });
+
+  it('Hamza cap: the 12 docs stored before the cap: writes 0, refuses nothing, leaves demo-11/12 stored as they are', async () => {
+    const stored = Object.fromEntries([...demoProfileFixtures(), ...LEGACY_BUILDERS].map((d) => [d.id, structuredClone(d)]));
+    const m = memoryStore(stored);
+    expect(await seedDemoShowcase(onlyDemo(m.store))).toEqual({ written: 0, unchanged: 10, total: 10, readBack: 10 });
+    expect(m.writes()).toBe(0);
+    expect(m.docs.size).toBe(12);
+    expect(m.docs.get('demo-11')).toEqual(LEGACY_BUILDERS[0]);
+    expect(m.docs.get('demo-12')).toEqual(LEGACY_BUILDERS[1]);
   });
 
   it('QA P3-D2: refuses, writing nothing, while a REAL alias in the namespace starts with Demo (read-only pre-check)', async () => {
@@ -169,7 +202,7 @@ describe('the seed (A3, A4, D2, D3)', () => {
     await expect(seedDemoShowcase(onlyDemo(m.store))).rejects.toThrow(/Refused, nothing written: 1 real leaderboard alias starts with "Demo"/);
     expect(m.writes()).toBe(0);
     const ok = memoryStore({}, ['Careful Cat', 'Maple Demo']);
-    expect(await seedDemoShowcase(onlyDemo(ok.store))).toMatchObject({ written: 12 });
+    expect(await seedDemoShowcase(onlyDemo(ok.store))).toMatchObject({ written: 10 });
   });
 
   it('a differing document (changed or extra field) is never overwritten: refused with the ids, nothing written', async () => {

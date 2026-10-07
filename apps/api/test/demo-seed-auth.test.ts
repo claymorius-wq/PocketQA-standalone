@@ -36,7 +36,7 @@ describe('the demo seed and Firebase Auth', () => {
     };
     const trap = new Proxy({}, { get: (_, k) => { throw new Error(`touched ${String(k)}`); } });
     const repos = { kind: 'firestore', namespace: 'devnet', core: trap, studies: trap, evidence: trap, escrow: { demo } } as never;
-    expect(await seedDemoShowcase(repos)).toMatchObject({ written: 12, readBack: 12 });
+    expect(await seedDemoShowcase(repos)).toMatchObject({ written: 10, readBack: 10 });
     expect(authCalls).toEqual([]);
   });
 });

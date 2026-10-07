@@ -331,7 +331,9 @@ reservation, and no payout.
   - Rows come in fixture-id order and are not a ranking.
   - When off (no flag, or not the devnet namespace's repositories) the route answers **404 `FEATURE_UNAVAILABLE`**.
   - Stored documents that don't match the strict contract are never served.
-- **Data:** `pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-12` (8 testers, then 4 builders), reached only through `devnetFirestore`.
+- **Data:** `pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-10` (8 testers, then 2 builders), reached only through `devnetFirestore`.
+  - **Cap (Hamza, 2026-10-07):** at most 10 demo profiles in total (`MAX_DEMO_PROFILES = 10`). The fixture is these 10, and the route serves only fixture ids, never more than 10.
+  - Live devnet also holds `demo-11` and `demo-12`, seeded before the cap. They stay stored, unmodified and undeleted, and are never served. A seed over those 12 writes 0 and refuses nothing.
   - Store: `src/repo/escrow/demoProfiles.ts`, read and create only. SQLite has none.
   - Fixture: `src/devnet/demoShowcase.ts`, deterministic.
 - **The real ranking:** `GET /leaderboard` and `/me/reputation` are unchanged and never read `demoProfiles`.

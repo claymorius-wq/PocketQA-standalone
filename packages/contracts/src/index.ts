@@ -825,7 +825,7 @@ export const FraudFindingBody = z.object({ reason: z.string().trim().min(10).max
  * credit or USDC amount. Off (ClientConfig.features.demoShowcase false): 404 FEATURE_UNAVAILABLE.
  */
 export const DEMO_SHOWCASE_LABEL = 'Demo examples (not real users)';
-/** A fixture id (demo-1 … demo-12), never a user id. */
+/** A fixture id (demo-1 … demo-10; at most 10 served), never a user id. */
 const DemoId = z.string().regex(/^demo-[1-9]\d*$/);
 /** Always starts with "Demo " (so it can't be mistaken for a real pseudonym). */
 const DemoAlias = z.string().regex(/^Demo [A-Za-z0-9][A-Za-z0-9 _-]{0,23}$/);

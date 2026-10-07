@@ -1,8 +1,8 @@
-// Seeds the labelled DEMO showcase fixtures (8 testers, 4 builders; src/devnet/demoShowcase.ts) into
+// Seeds the labelled DEMO showcase fixtures (8 testers, 2 builders: at most 10; src/devnet/demoShowcase.ts) into
 // the DEVNET namespace only. Run on the host with the devnet deployment's env:
 //   npx tsx scripts/devnet-seed-demo.ts
 // It loads config as the devnet deployment does (refusing anything but POCKETQA_ENV=devnet) and
-// writes only pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-12, and only with
+// writes only pocketqaNamespaces/devnet/demoProfiles/demo-1 … demo-10, and only with
 // POCKETQA_DEMO_SHOWCASE=1. Idempotent: fixed ids; only missing documents are written, an equal one
 // is left alone (a second run writes 0), and a differing one makes it refuse without writing. It
 // creates no account, sign-in, participation, ledger, rating or payout, and has no deletion path.

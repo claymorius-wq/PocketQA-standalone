@@ -18,7 +18,17 @@ export class DemoSeedError extends Error {}
 const tester = (n: number, alias: string, qualityScore: number, decided: number, badges: DemoTester['badges']): DemoProfileDoc => ({ id: `demo-${n}`, kind: 'tester', alias: `Demo ${alias}`, qualityScore, decided, badges, demo: true });
 const builder = (n: number, alias: string, studiesPublished: number): DemoProfileDoc => ({ id: `demo-${n}`, kind: 'builder', alias: `Demo ${alias}`, studiesPublished, demo: true });
 
-/** 8 testers (demo-1 … demo-8) and 4 builders (demo-9 … demo-12): modest, varied numbers. */
+/**
+ * Hamza (2026-10-07): the demo cohort is at most 10 profiles in total. The route never serves more,
+ * and the fixture (what a seed writes in a fresh namespace) is exactly that many.
+ */
+export const MAX_DEMO_PROFILES = 10;
+
+/**
+ * 8 testers (demo-1 … demo-8) and 2 builders (demo-9, demo-10): modest, varied numbers. Live devnet
+ * also stores demo-11 and demo-12 from before the cap; they are left as they are (never modified or
+ * deleted) and never served.
+ */
 export function demoProfileFixtures(): DemoProfileDoc[] {
   return [
     tester(1, 'Maple', 78, 6, ['first_accepted', 'helpful_feedback']),
@@ -31,8 +41,6 @@ export function demoProfileFixtures(): DemoProfileDoc[] {
     tester(8, 'Clover', 60, 1, ['first_accepted']),
     builder(9, 'Lantern Labs', 3),
     builder(10, 'Birch Studio', 1),
-    builder(11, 'Fern Apps', 2),
-    builder(12, 'Quarry Games', 1),
   ];
 }
 
@@ -61,14 +69,17 @@ const idNumber = (id: string) => Number(id.slice('demo-'.length));
 /**
  * The response from stored documents. Each must still match the strict contract (`demo: true`, a
  * `Demo ` alias, no extra field); anything else is left out, so a stray or hand-edited document can
- * never appear as a real-looking profile.
+ * never appear as a real-looking profile. Only the fixture's ids are served (stored documents outside
+ * it, such as the pre-cap demo-11/12, stay stored but unserved), and never more than MAX_DEMO_PROFILES.
  */
 export function showcaseFrom(docs: unknown[]): DemoShowcase {
+  const served = new Set(demoProfileFixtures().map((f) => f.id));
   const testers: DemoTester[] = [];
   const builders: DemoBuilder[] = [];
   for (const d of docs) {
     if (!d || typeof d !== 'object') continue;
-    const { kind, ...row } = d as { kind?: unknown };
+    const { kind, ...row } = d as { kind?: unknown; id?: unknown };
+    if (typeof row.id !== 'string' || !served.has(row.id)) continue;
     if (kind === 'tester') {
       const t = DemoTester.safeParse(row);
       if (t.success) testers.push(t.data);
@@ -78,7 +89,9 @@ export function showcaseFrom(docs: unknown[]): DemoShowcase {
     }
   }
   const byId = (a: { id: string }, b: { id: string }) => idNumber(a.id) - idNumber(b.id);
-  return { label: DEMO_SHOWCASE_LABEL, testers: testers.sort(byId), builders: builders.sort(byId) };
+  // Testers first, then builders, up to the cap in total (a fixture-only id set already keeps it to 10).
+  const shownTesters = testers.sort(byId).slice(0, MAX_DEMO_PROFILES);
+  return { label: DEMO_SHOWCASE_LABEL, testers: shownTesters, builders: builders.sort(byId).slice(0, MAX_DEMO_PROFILES - shownTesters.length) };
 }
 
 /**
