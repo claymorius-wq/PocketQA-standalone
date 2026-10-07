@@ -199,9 +199,9 @@
     "sha": "7bda3ce",
     "steps": "Not run.",
     "fixtures": {},
-    "observed": "Still open after the device window: deny of the OS consent / microphone on purpose (NOT RUN), interruptions during capture (notification Stop, call taking the mic, screen lock: NOT RUN, see P-21), discard/Remove of a clip (NOT RUN, see P-20; the only removable clips are Hamza's, pending his decision), single-app sharing (FAIL P-13, fix re-check pending), submit (BLOCKED P-19). HISTORY (original BLOCKED observation, verbatim): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
+    "observed": "Still open after the device window: deny of the OS consent / microphone on purpose (NOT RUN), interruptions during capture (notification Stop, call taking the mic, screen lock: NOT RUN, see P-21), discard/Remove of a clip (NOT RUN, see P-20; the only removable clips are Hamza's, pending his decision), single-app sharing (FAIL P-13, fix re-check pending), submit (BLOCKED P-19). Current gate: not exercised: device capture paused by Hamza; deny/interruption/discard need a human at the Seeker.",
     "evidence": [],
-    "notes": "Split of the original P-03; cites P-13, P-19, P-20, P-21.",
+    "notes": "Split of the original P-03; cites P-13, P-19, P-20, P-21. HISTORY (original BLOCKED observation, verbatim, superseded): Requires a human at the device for the OS consent dialogs and narration, and adb is unauthorized (P-01).",
     "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c"
   },
   {
@@ -507,7 +507,7 @@
       "docs/reviews/full-e2e/evidence/pqa-ios/p05-physical-readiness.txt",
       "docs/reviews/full-e2e/evidence/pqa-ios/physical/p10-inspection.txt"
     ],
-    "notes": "BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device. Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker).",
+    "notes": "Cleared 2026-10-06 ~20:57Z: Hamza accepted USB debugging (adb: SM02E4072811963 device product:seeker_eea model:Seeker). HISTORY (original notes while BLOCKED, verbatim, superseded): BLOCKED (human). After authorization: non-destructive reads (installed build, launch) can run; recording consent/deny/stop/interruption/review/retain-discard still need Hamza at the device.",
     "build": "E2E APK com.reshareai.pocketqa.e2e sha256 39cf3194c01757c7c4482b0919e35453837341335e26c91efae1b8ab97e10cb3 (built from 7bda3ce; only applicationId/label differ), signer cert SHA-256 fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c; Hamza's installed app read only: base.apk sha256 6bd0d35afc7017ceef1a948af42c00f869cc59264889ab44d1a44769624095b9 = pocketqa-native-0aaa89b.apk (code 0aaa89b)"
   },
   {
