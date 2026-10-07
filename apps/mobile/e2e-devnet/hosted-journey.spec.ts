@@ -388,6 +388,10 @@ test('5 · builder: reviews and approves; votes on the reward in the wallet (can
   await until(b, 'reward awaiting the builder’s vote', () => b.getByTestId('reward-approval-review').isVisible());
   await b.getByTestId('reward-approval-review').click();
   await expect(b.getByTestId('reward-approval-plan')).toBeVisible({ timeout: 30_000 });
+  // The reward goes to the address frozen at consent (the tester fixture), whatever the account is linked to now.
+  const frozen = loadFixtureSeed('tester').address;
+  await expect(b.getByTestId('reward-approval')).toContainText(frozen);
+  if (TESTER_ACCEPT_LINK) await expect(b.getByTestId('reward-approval')).not.toContainText(TESTER_ACCEPT_LINK);
   const devnetChecked = (await b.getByTestId('reward-approval-described').count()) === 0;
   await shotOf(b, 'reward-approval', 'builder-reward-vote-card', devnetChecked ? 'amount/recipient/op id CHECKED on devnet (vault transaction read)' : `NOT checked on devnet: ${await b.getByTestId('reward-approval-described-note').innerText().catch(() => '(no note)')}`);
   run.builder!.rejectNext.add('signAndSendTransaction');
